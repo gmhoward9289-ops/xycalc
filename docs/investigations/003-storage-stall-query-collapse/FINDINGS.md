@@ -42,7 +42,7 @@ N/L — Little's law — and no amount of client concurrency exceeds it.
 |---|---|---|---|
 | Healthy SSD | 128 | 1 ms | **128,000 ops/s** — never binds |
 | Throttled EBS volume | 128 | 100 ms | **1,280 ops/s** |
-| Throttled, and concurrency reduced to the 7.0 floor | 4 | 100 ms | **40 ops/s** |
+| Throttled, on a resting 7.0 instance | 4 | 100 ms | **40 ops/s** |
 
 ```bash
 xycalc sizing mongodb.ticket-throughput-ceiling --storage-latency-seconds 0.1
@@ -104,17 +104,53 @@ starting from a much lower baseline than the old constant.
 That is a 32× range in the term that divides into the ceiling — and it moves
 *while you are having the incident*.
 
-**Open, and it matters more than anything else here:** does a storage stall
-actually drive the probing algorithm toward its floor? The algorithm reacts to
-observed throughput. A latency-induced collapse *looks* like overload, and the
-documented response to overload is to reduce concurrency. If that is what
-happens, 7.0+ makes this failure considerably worse than 6.x did, at exactly
-the wrong moment.
+### Measured, and worse than the write-up assumed
 
-This corpus does not claim it. The coefficient carries the floor and the note
-says the behaviour is unestablished. **It is one `serverStatus` field away from
-being answered**, and it is the highest-value measurement outstanding in the
-whole project.
+The `serverStatus` reading was cheap, so it was taken rather than assumed. On
+the MongoDB **7.0.39** benchmark instance, **idle**:
+
+```
+wiredTiger.concurrentTransactions.read.totalTickets  = 4
+wiredTiger.concurrentTransactions.write.totalTickets = 4
+```
+
+**Four.** The documented floor, on an instance doing nothing at all. Not the
+128 that every pre-7.0 mental model — including the first draft of this
+document — takes as the starting point.
+
+So the third row of that table is not a pessimistic worst case reached after
+the algorithm gives up. It is where a 7.0 instance *rests*. The algorithm has
+to climb from 4, and the ceiling is 40 ops/s at 100 ms until it does.
+
+Two corrections fell out of one command:
+
+- **`serverStatus().queues.execution` does not exist in 7.0.39.** The telemetry
+  doc had confidently named it as the 7.0+ location. The figures are still
+  under `wiredTiger.concurrentTransactions`, which has instead grown
+  `queueLength`, `totalTimeQueuedMicros`, `addedToQueue` and
+  `removedFromQueue`. Those four are new in 7.0 and they measure this failure
+  *directly* — the queue, and the time spent in it, rather than something you
+  infer from tickets running out.
+- **"You have 128 tickets" is wrong on 7.0+, by 32x, in the dangerous
+  direction.**
+
+### Still open
+
+Does the pool climb under load — and does it climb when the bottleneck is the
+*device* rather than concurrency?
+
+That distinction is the whole question. `throughputProbing` raises concurrency
+and measures whether throughput improves. When the limit is the disk, adding
+concurrency does not improve throughput; it just deepens the device queue. An
+algorithm doing exactly what it was designed to do could therefore conclude
+that more concurrency does not help and stay near the floor — precisely when
+the floor hurts most.
+
+That is a hypothesis with a mechanism, not a finding. It needs `totalTickets`
+and `totalTimeQueuedMicros` sampled through a real storage stall, and it
+remains the highest-value measurement outstanding in this project. One idle
+reading establishes the resting value and the field location. It establishes
+nothing about behaviour under load.
 
 ---
 
@@ -124,7 +160,8 @@ In order of how directly each one confirms this diagnosis:
 
 | Reading | Where | Says |
 |---|---|---|
-| tickets available vs out | `serverStatus().queues.execution` (7.0+), `wiredTiger.concurrentTransactions` (earlier) | whether the pool is exhausted, and **what N currently is** |
+| `totalTickets`, and `out` against it | `serverStatus().wiredTiger.concurrentTransactions` — **not** `queues.execution`, which does not exist in 7.0.39 | whether the pool is exhausted, and **what N currently is**. Do not assume 128 |
+| `totalTimeQueuedMicros`, `queueLength` | same object, new in 7.0 | the queue and the time spent in it, measured rather than inferred. Rising sharply while `out` is pinned is this failure with nothing left to interpret |
 | queued readers/writers | `serverStatus().globalLock.currentQueue` | how much demand is stacked behind the pool |
 | pages evicted by application threads | `wiredTiger.cache` | whether the feedback loop is running |
 | `VolumeIOPSExceededCheck` | CloudWatch | whether storage is actually throttled — investigation 002 |

@@ -1,0 +1,25 @@
+sources:
+- slug: obs-mongodb-tickets-swamplink-2026-07-31
+  title: MongoDB 7.0.39 serverStatus concurrentTransactions, idle instance
+  publisher: xycalc measurement (swamplink)
+  retrieved_on: '2026-07-31'
+  source_type: measured
+  notes: >-
+    Read directly from the benchmark instance during investigation 003, to
+    settle where the 7.0 dynamic concurrency algorithm actually sits. Two
+    findings, both of which corrected something written from documentation
+    alone.
+
+    First, the resting ticket pool is 4 read and 4 write — the documented
+    MINIMUM, not the 128 that every pre-7.0 mental model assumes. The instance
+    was idle, so this is the baseline the probing algorithm returns to, and it
+    means "you have 128 tickets" is simply false on 7.0.
+
+    Second, serverStatus().queues.execution does NOT exist in 7.0.39. The
+    figures are still under wiredTiger.concurrentTransactions, now carrying
+    queueLength, totalTimeQueuedMicros, addedToQueue and removedFromQueue —
+    fields that did not exist pre-7.0 and that measure the queueing behaviour
+    this investigation is about, directly.
+
+    One idle instance. It establishes the resting baseline and the field
+    location. It establishes nothing about behaviour under load.

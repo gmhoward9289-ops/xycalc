@@ -47,19 +47,31 @@ Investigation 003's series. These decide whether a storage stall has become a
 concurrency ceiling, which is the difference between "queries are slow" and
 "queries never return".
 
+**Where these live was checked rather than assumed**, and the assumption was
+wrong. This section first said the 7.0+ location is
+`serverStatus().queues.execution`. On MongoDB 7.0.39 that path **does not
+exist** — the figures are still under `wiredTiger.concurrentTransactions`,
+which has instead grown new fields. Verified on a running instance
+2026-07-31.
+
 | Series | Unit | Agg | Status | Why |
 |---|---|---|---|---|
-| `queues.execution.read.out` / `.available` / `.totalTickets` | count | last | `obtainable` | **MongoDB 7.0+.** Out equal to total means the pool is exhausted and new operations are queueing. `totalTickets` is the one to watch on 7.0+ specifically: it moves, and the model's ceiling is proportional to it. |
-| `wiredTiger.concurrentTransactions.read.out` / `.available` | count | last | `obtainable` | Pre-7.0 location for the same thing. Static 128. |
-| `globalLock.currentQueue.readers` / `.writers` | count | last | `obtainable` | Demand stacked behind the pool. Rising while tickets are exhausted is the queue that will not drain. |
-| `globalLock.activeClients.readers` / `.writers` | count | last | `obtainable` | Concurrency actually in flight. Without contention the ticket limit never binds, so this says whether the precondition holds. |
+| `wiredTiger.concurrentTransactions.read.totalTickets` | count | last | `obtainable` | **The divisor in the model, and it moves on 7.0+.** Measured at **4** on an idle 7.0.39 instance — the documented floor, not the 128 everyone assumes. |
+| `…read.out` / `.available` | count | last | `obtainable` | `out` equal to `totalTickets` means the pool is exhausted and new operations are queueing. |
+| `…read.queueLength` | count | last | `obtainable` | **New in 7.0.** The queue itself, reported directly rather than inferred. This is the number that "queries never return" looks like. |
+| `…read.totalTimeQueuedMicros` | µs | rate | `obtainable` | Cumulative time spent waiting for a ticket. Rising sharply while `out` is pinned is this failure, unambiguously. |
+| `…addedToQueue` / `.removedFromQueue` | count | rate | `obtainable` | Arrival and drain rates for the queue. Added exceeding removed, sustained, is a queue that does not drain. |
+| `globalLock.currentQueue.readers` / `.writers` | count | last | `obtainable` | Demand stacked behind the pool. |
+| `globalLock.activeClients.readers` / `.writers` | count | last | `obtainable` | Concurrency actually in flight. Without contention the ticket limit never binds, so this says whether the precondition even holds. |
 
-**The measurement that would settle the open question.** On 7.0+, record
-`queues.execution.read.totalTickets` through a storage stall. If it falls
-toward the documented floor of 4 while latency is high, the probing algorithm
-is reducing concurrency in response to a latency-induced collapse — which
-would make 7.0+ materially worse than 6.x in this failure. Nothing in this
-corpus currently claims that either way.
+**The measurement that would settle the open question.** Record
+`totalTickets` alongside `totalTimeQueuedMicros` through a real storage stall.
+The resting value is already known to be 4; what nobody here has seen is
+whether it climbs under load, and whether it climbs when the bottleneck is the
+device rather than the concurrency. An algorithm that probes by raising
+concurrency and measuring throughput will see no improvement when the disk is
+the limit — and may therefore stay at the floor precisely when the floor hurts
+most. That is a hypothesis, not a finding.
 
 ## Connections and per-operation memory
 

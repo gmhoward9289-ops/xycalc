@@ -65,10 +65,11 @@ models:
         required: false
         default: 128
         help: >-
-          From serverStatus(). On 7.0+ read queues.execution.read.totalTickets;
-          before that, wiredTiger.concurrentTransactions.read.totalTickets. The
-          default of 128 is the static pre-7.0 value and the dynamic maximum;
-          if the probing algorithm has reduced it, use what it actually reads.
+          serverStatus().wiredTiger.concurrentTransactions.read.totalTickets —
+          on 7.0 too; queues.execution does not exist there. LOOK IT UP rather
+          than taking the default: an idle 7.0.39 instance was measured at 4,
+          not 128. The 128 default here is the pre-7.0 static value and the
+          dynamic maximum, and on 7.0+ it is optimistic by up to 32x.
       - key: storage_latency_seconds
         label: Storage latency per operation, in seconds
         unit: seconds
@@ -118,7 +119,8 @@ models:
         coefficient: mongodb.tickets-probing-floor
         rationale: >-
           On 7.0+ concurrency is adjusted by a probing algorithm whose
-          documented floor is 4. Should a storage stall drive it toward that
-          floor, this model's ceiling falls by up to 32x on top of the latency
-          increase that started it. Check the ticket count before assuming it
-          is still 128.
+          documented floor is 4 — and an idle 7.0.39 instance was measured
+          sitting AT that floor, for both reads and writes. So this is not a
+          worst case the algorithm degrades into; it is where it rests, and it
+          has to climb before the ceiling improves. Read the ticket count
+          before assuming anything.

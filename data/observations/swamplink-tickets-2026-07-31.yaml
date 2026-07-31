@@ -1,0 +1,26 @@
+observations:
+- slug: swamplink-2026-07-31-read-tickets-idle
+  system: mongodb
+  parameter: db.concurrency_tickets
+  value: 4
+  unit: tickets
+  workload: idle, no client operations in flight
+  machine_class: Hetzner CX shared vCPU, 7 GB RAM
+  system_version: 7.0.39
+  observed_on: '2026-07-31'
+  source: obs-mongodb-tickets-swamplink-2026-07-31
+  notes: >-
+    wiredTiger.concurrentTransactions.read.totalTickets on an idle instance.
+    Equal to the documented throughputProbing floor. The pool the algorithm
+    rests at, not the one it can reach.
+- slug: swamplink-2026-07-31-write-tickets-idle
+  system: mongodb
+  parameter: db.concurrency_tickets
+  value: 4
+  unit: tickets
+  workload: idle, no client operations in flight
+  machine_class: Hetzner CX shared vCPU, 7 GB RAM
+  system_version: 7.0.39
+  observed_on: '2026-07-31'
+  source: obs-mongodb-tickets-swamplink-2026-07-31
+  notes: wiredTiger.concurrentTransactions.write.totalTickets, idle.

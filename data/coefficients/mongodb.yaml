@@ -187,11 +187,22 @@ coefficients:
       database throughput during cluster overload" — without publishing the
       floor. Percona does: min 4, max 128.
 
-      A 32x range in the term that divides into the throughput ceiling. Whether
-      the algorithm actually walks down to 4 during a storage stall is NOT
-      established here; that is the open question in
-      docs/investigations/003-storage-stall-query-collapse/FINDINGS.md, and it
-      is the difference between a bad hour and an outage.
+      A 32x range in the term that divides into the throughput ceiling — and
+      the floor is where an idle instance SITS. Measured on MongoDB 7.0.39
+      (swamplink, 2026-07-31): read and write pools both reported
+      totalTickets = 4 at rest. So on 7.0+ the pre-7.0 assumption of "128
+      tickets" is not a conservative simplification, it is wrong by 32x in the
+      dangerous direction.
+
+      Kept at `practitioner` rather than promoted to `measured` because the
+      observation confirms the resting VALUE while Percona is the source for it
+      being the algorithm's documented floor. The observation is recorded
+      separately as swamplink-2026-07-31-read-tickets-idle.
+
+      Still open, and it is the difference between a bad hour and an outage:
+      whether the algorithm climbs from the floor under load, and whether it
+      climbs when the bottleneck is the device rather than concurrency. See
+      docs/investigations/003-storage-stall-query-collapse/FINDINGS.md.
 
   - slug: mongodb.tickets-probing-cap
     parameter: db.concurrency_tickets
