@@ -11,7 +11,7 @@ root=$(git rev-parse --show-toplevel)
 cd "$root"
 
 install -m 0755 tools/pre-push .git/hooks/pre-push
-echo "installed pre-push  — refuses any remote but swamplink"
+echo "installed pre-push  — allowlist: swamplink + this repo"
 
 # The secret scan is George's repo-secret-scan skill, not a copy of it. This
 # repo is headed for GitHub, and the exposure surface it guards (credentials,

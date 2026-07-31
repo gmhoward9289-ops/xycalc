@@ -6,26 +6,12 @@ corrupts the corpus in one specific way and asserts the build refuses it.
 
 from __future__ import annotations
 
-import shutil
 from pathlib import Path
 
 import pytest
 import yaml
 
-import xycalc.build as build_mod
 from xycalc.build import BuildError, build
-
-ROOT = Path(__file__).resolve().parent.parent
-
-
-@pytest.fixture
-def corpus(tmp_path, monkeypatch):
-    """A writable copy of data/, with the build pointed at it."""
-    data = tmp_path / "data"
-    shutil.copytree(ROOT / "data", data)
-    monkeypatch.setattr(build_mod, "DATA", data)
-    monkeypatch.setattr(build_mod, "LOCAL", tmp_path / "local")
-    return data
 
 
 def _edit(path: Path, fn):
@@ -39,14 +25,14 @@ def test_corpus_builds(corpus, tmp_path):
 
 
 def test_unknown_source_fails_the_build(corpus, tmp_path):
-    path = corpus / "coefficients" / "mongodb.yaml"
+    path = corpus.data / "coefficients" / "mongodb.yaml"
     _edit(path, lambda d: d["coefficients"][0].update(source="no-such-source"))
     with pytest.raises(BuildError, match="unknown source"):
         build(tmp_path / "x.db")
 
 
 def test_missing_source_fails_the_build(corpus, tmp_path):
-    path = corpus / "coefficients" / "mongodb.yaml"
+    path = corpus.data / "coefficients" / "mongodb.yaml"
     _edit(path, lambda d: d["coefficients"][0].pop("source"))
     with pytest.raises(BuildError, match="cites one|no source"):
         build(tmp_path / "x.db")
@@ -54,21 +40,21 @@ def test_missing_source_fails_the_build(corpus, tmp_path):
 
 def test_missing_applies_to_fails_the_build(corpus, tmp_path):
     """Gate 2. The one poultry never needed."""
-    path = corpus / "coefficients" / "mongodb.yaml"
+    path = corpus.data / "coefficients" / "mongodb.yaml"
     _edit(path, lambda d: d["coefficients"][0].pop("applies_to"))
     with pytest.raises(BuildError, match="applies_to"):
         build(tmp_path / "x.db")
 
 
 def test_blank_applies_to_fails_the_build(corpus, tmp_path):
-    path = corpus / "coefficients" / "mongodb.yaml"
+    path = corpus.data / "coefficients" / "mongodb.yaml"
     _edit(path, lambda d: d["coefficients"][0].update(applies_to=""))
     with pytest.raises(BuildError, match="applies_to"):
         build(tmp_path / "x.db")
 
 
 def test_band_out_of_order_fails_the_build(corpus, tmp_path):
-    path = corpus / "coefficients" / "mongodb.yaml"
+    path = corpus.data / "coefficients" / "mongodb.yaml"
 
     def swap(d):
         for c in d["coefficients"]:
@@ -82,7 +68,7 @@ def test_band_out_of_order_fails_the_build(corpus, tmp_path):
 
 
 def test_term_reading_an_undeclared_input_fails(corpus, tmp_path):
-    path = corpus / "models" / "mongodb.yaml"
+    path = corpus.data / "models" / "mongodb.yaml"
     _edit(path, lambda d: d["models"][0]["terms"][0].update(input_key="nonsense"))
     with pytest.raises(BuildError, match="does not declare"):
         build(tmp_path / "x.db")
@@ -91,7 +77,7 @@ def test_term_reading_an_undeclared_input_fails(corpus, tmp_path):
 def test_build_leaves_no_database_behind_when_it_fails(corpus, tmp_path):
     """A half-built corpus that later commands would happily read is worse
     than no corpus at all."""
-    path = corpus / "coefficients" / "mongodb.yaml"
+    path = corpus.data / "coefficients" / "mongodb.yaml"
     _edit(path, lambda d: d["coefficients"][0].update(source="no-such-source"))
     target = tmp_path / "x.db"
     with pytest.raises(BuildError):

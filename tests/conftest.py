@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+import shutil
 import sqlite3
+from dataclasses import dataclass
 from pathlib import Path
 
 import pytest
 
+import xycalc.build as build_mod
 from xycalc.build import build
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -43,3 +46,29 @@ def conn(db_path):
     c.row_factory = sqlite3.Row
     yield c
     c.close()
+
+
+@dataclass
+class Corpus:
+    """A writable copy of the corpus, with the build pointed at it."""
+
+    data: Path
+    local: Path
+
+
+@pytest.fixture
+def corpus(tmp_path, monkeypatch) -> Corpus:
+    """Shared by every test that corrupts the corpus to watch a gate fire.
+
+    Lives here rather than in one test module that the others import from.
+    `from tests.test_gates import ROOT` worked locally — the editable install
+    puts the project root on sys.path — and failed on a clean checkout, where
+    `tests` is not a package. It passed here and broke in CI, which is the
+    worst order to find it in.
+    """
+    data = tmp_path / "data"
+    shutil.copytree(ROOT / "data", data)
+    local = tmp_path / "local"
+    monkeypatch.setattr(build_mod, "DATA", data)
+    monkeypatch.setattr(build_mod, "LOCAL", local)
+    return Corpus(data=data, local=local)
