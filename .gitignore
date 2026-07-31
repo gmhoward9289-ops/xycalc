@@ -1,0 +1,25 @@
+# The deployment-local corpus overlay. This is the mechanism that lets a work
+# instance hold real production telemetry while the public repo holds none.
+# Never remove this line, and never force-add anything under it.
+local/
+
+# Build artifacts. The YAML under data/ is the source of truth.
+*.db
+*.db-wal
+*.db-shm
+
+.venv/
+__pycache__/
+*.egg-info/
+.pytest_cache/
+dist/
+build/
+
+.DS_Store
+
+# Research working directories. Fetched documents are large and are re-fetchable;
+# what survives review is committed under docs/research/accepted/.
+docs/research/inbox/*
+docs/research/outbox/*
+!docs/research/inbox/.gitkeep
+!docs/research/outbox/.gitkeep

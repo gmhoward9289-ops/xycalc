@@ -1,0 +1,45 @@
+# Three jobs, not one. "Is every number sourced?" is the project's central
+# claim, so it gets its own check with its own red X rather than a line buried
+# in a test log.
+#
+# Not wired to anything yet -- this repo does not have a GitHub remote and the
+# push guard refuses to give it one. The file is here so that the day it is
+# published, the gates arrive already enforced rather than as a follow-up
+# nobody gets to.
+
+name: ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install -e ".[dev,gui]"
+      - run: python -m xycalc.build
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install -e ".[dev,gui]"
+      - run: pytest -q
+
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install -e ".[dev,gui]"
+      - run: python -m xycalc.audit

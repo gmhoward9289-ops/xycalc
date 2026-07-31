@@ -1,0 +1,206 @@
+# Terms are evaluated in the order written. `role` groups them for the
+# breakdown and is checked by the audit (a model with no floor has nothing for
+# its amplifiers to multiply); `sequence` is what drives the arithmetic. So a
+# floor term placed after an amplifier is added after it, which is exactly
+# what the index term below needs.
+
+models:
+  - slug: mongodb.wt-cache
+    question: How large does my WiredTiger cache need to be to hold the whole database?
+    system: mongodb
+    output: cache.size_bytes
+
+    summary: >-
+      Walks the on-disk size of a MongoDB database up to the cache size that
+      would hold all of it resident: decompress it, add the indexes, then make
+      room for the fact that WiredTiger works to keep the cache at 80% rather
+      than 100%.
+
+    reframe: >-
+      The number this produces is usually an argument against doing it.
+
+      MongoDB's own diagnostics FAQ answers "Must my working set size fit
+      RAM?" with "No.", and the WiredTiger page says outright: "Avoid
+      increasing the WiredTiger internal cache size above its default value."
+      Both are cited below as constraints.
+
+      The mechanism behind that advice is the second cache. RAM that is not in
+      the WiredTiger cache is used by the filesystem cache, which holds the
+      same data in its on-disk form — still compressed. Per byte of RAM that
+      cache holds several times more of the database. Pushing RAM from the
+      filesystem cache into the WiredTiger cache to make "everything fit" can
+      therefore reduce how much of the database is cached in total.
+
+      So run this to learn what "fit the whole thing" actually costs, and
+      treat a number far above your RAM as the answer to a different question:
+      size the WORKING SET, not the database, and spend what is left on IOPS
+      for the misses. That is where this question hands off to the storage
+      side — every page that does not fit becomes a read, and reads become the
+      EBS question.
+
+    notes: >-
+      Assumes the default snappy block compressor. Other compressors are in
+      the corpus (mongodb.compression-ratio-zstd, -zlib) and a variant model
+      is a YAML block, not a code change.
+
+      Do not use the compression coefficient if you can reach the database:
+      db.stats().dataSize is the uncompressed size, measured, and beats any
+      published ratio. Pass dataSize as --storage-size with --compression-
+      ratio bypassed once that flag exists; for now, divide it by 2.5 first
+      and the model reverses the arithmetic exactly.
+
+    inputs:
+      - key: storage_size
+        label: Collection bytes on disk (db.stats().storageSize)
+        unit: bytes
+        required: true
+        help: >-
+          The COMPRESSED size of collection data on disk. Not dataSize, which
+          is already uncompressed, and not totalSize, which includes indexes
+          that this model adds separately.
+      - key: index_size
+        label: Index bytes on disk (db.stats().indexSize)
+        unit: bytes
+        required: false
+        help: >-
+          Optional. Omitting it does not make the answer smaller in reality,
+          only in the output — a database with indexes and no figure for them
+          gets an answer that is knowingly too low.
+
+    terms:
+      - key: on_disk
+        label: Collection data on disk
+        role: floor
+        apply: input
+        input_key: storage_size
+        rationale: >-
+          The irreducible starting point. Everything else in this model is a
+          reason the cache must be bigger than this, never smaller.
+
+      - key: decompression
+        label: Decompression into cache
+        role: amplifier
+        apply: multiply
+        coefficient: mongodb.compression-ratio-snappy
+        rationale: >-
+          "Collection data in the WiredTiger internal cache is uncompressed
+          and uses a different representation from the on-disk format." The
+          cache does not hold what the disk holds; it holds what the disk
+          holds expanded. This is the term people leave out, and leaving it
+          out understates the answer by more than everything else combined.
+
+      - key: indexes
+        label: Indexes
+        role: floor
+        apply: input
+        input_key: index_size
+        optional: true
+        rationale: >-
+          Added after decompression rather than multiplied by it, because
+          index prefix compression survives into the cache while collection
+          block compression does not: "Indexes loaded in the WiredTiger
+          internal cache have a different data representation to the on-disk
+          format, but can still take advantage of index prefix compression to
+          reduce RAM usage." Treating in-cache index bytes as roughly
+          indexSize is the honest reading of that.
+
+      - key: eviction_headroom
+        label: Eviction headroom
+        role: amplifier
+        apply: divide_by_fraction
+        coefficient: mongodb.eviction-target-pct
+        rationale: >-
+          WiredTiger runs eviction workers to hold total cache usage at 80%,
+          so a cache configured at exactly the size of its contents is a cache
+          under permanent eviction pressure. Configure enough that the
+          contents sit at the target rather than above it.
+
+      - key: throttle_point
+        label: Where it stops being a memory problem and becomes a latency problem
+        role: constraint
+        apply: note
+        coefficient: mongodb.eviction-trigger-pct
+        rationale: >-
+          At 95% cache usage application threads are pulled into eviction.
+          Nothing crashes; queries just get slower, which is why undersized
+          cache is usually diagnosed from a latency graph rather than from a
+          memory one.
+
+      - key: dirty_ceiling
+        label: The write-heavy ceiling, hit first
+        role: constraint
+        apply: note
+        coefficient: mongodb.eviction-dirty-trigger-pct
+        rationale: >-
+          Only 20% of the cache may be dirty before application threads are
+          throttled. A bulk load can hit that at 20% total occupancy, so a
+          cache sized correctly by this model can still throttle. Sizing does
+          not settle a write-heavy incident.
+
+      - key: vendor_default
+        label: What the vendor recommends instead
+        role: constraint
+        apply: note
+        coefficient: mongodb.cache-default-share-pct
+        rationale: >-
+          The default is 50% of (RAM − 1 GB), and MongoDB advises against
+          raising it. The remaining RAM is the filesystem cache, which holds
+          the same data compressed and therefore more of it. Read the answer
+          above against this before acting on it.
+
+  - slug: mongodb.host-ram
+    question: How much RAM does the host need to support a cache of this size?
+    system: mongodb
+    output: host.ram_bytes
+
+    summary: >-
+      Runs MongoDB's documented default split backwards. Given a cache size,
+      the RAM a host needs if that cache is to be the default 50% of
+      (RAM − 1 GB).
+
+    reframe: >-
+      Answers "how much RAM does a 500 GB MongoDB take" only in the sense of
+      leaving the default split intact. Someone who has already decided to
+      raise wiredTigerCacheSizeGB is asking a different question, and this
+      model will overstate their requirement.
+
+    notes: >-
+      Chained by hand for now: run mongodb.wt-cache, feed its mode into this.
+      Model-to-model chaining is not implemented, and doing it by hand keeps
+      the band visible instead of quietly propagating only the midpoint.
+
+    inputs:
+      - key: cache_size
+        label: Required WiredTiger cache size
+        unit: bytes
+        required: true
+        help: Typically the output of mongodb.wt-cache.
+
+    terms:
+      - key: cache
+        label: Cache to be accommodated
+        role: floor
+        apply: input
+        input_key: cache_size
+        rationale: The quantity the host has to be built around.
+
+      - key: default_split
+        label: Undo the default 50% split
+        role: amplifier
+        apply: divide_by_fraction
+        coefficient: mongodb.cache-default-share-pct
+        rationale: >-
+          The cache defaults to 50% of (RAM − 1 GB), so a required cache
+          implies twice that much RAM before the reserve is added back. The
+          other half is not slack — it is the filesystem cache doing real work.
+
+      - key: os_reserve
+        label: Reserve held back before the split
+        role: headroom
+        apply: add_bytes
+        coefficient: mongodb.cache-default-reserve-bytes
+        rationale: >-
+          The documented formula subtracts 1 GB before halving, so recovering
+          RAM from cache size adds it back. Immaterial at these sizes, and
+          included anyway so the arithmetic reproduces the vendor's formula
+          exactly rather than approximately.

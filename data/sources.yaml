@@ -1,0 +1,94 @@
+# Every coefficient in this corpus traces to one of these.
+# The build refuses to insert a number whose source slug is missing.
+
+sources:
+  - slug: mongodb-manual-wiredtiger
+    title: WiredTiger Storage Engine
+    publisher: MongoDB, Inc.
+    url: https://www.mongodb.com/docs/manual/core/wiredtiger/
+    version: MongoDB 8.3 manual (Current)
+    retrieved_on: '2026-07-31'
+    source_type: vendor_doc
+    notes: >-
+      The load-bearing page for cache sizing, and the one that settles the
+      question people get wrong most often: the WiredTiger cache holds
+      UNCOMPRESSED collection data, while the filesystem cache holds the
+      on-disk format WITH its compression. Those two sentences are why a
+      500 GB database does not need a 500 GB cache and why it also cannot
+      be served by one.
+
+      Also carries the default formula and, notably, the advice not to raise
+      it. Read alongside the diagnostics FAQ, which says the same thing more
+      bluntly.
+
+  - slug: mongodb-manual-dbstats
+    title: 'dbStats (database command reference)'
+    publisher: MongoDB, Inc.
+    url: https://www.mongodb.com/docs/manual/reference/command/dbStats/
+    version: MongoDB 8.3 manual (Current)
+    retrieved_on: '2026-07-31'
+    source_type: vendor_doc
+    notes: >-
+      Defines the three numbers everyone quotes at each other without agreeing
+      on what they mean. dataSize is uncompressed; storageSize is what the
+      collections occupy on disk and "may be smaller than dataSize ... with
+      compression enabled"; indexSize is disk space allocated to indexes.
+
+      The documentation does NOT state whether indexSize is compressed, which
+      is why this corpus treats in-cache index bytes as roughly equal to
+      indexSize rather than applying an expansion factor. See the WiredTiger
+      page: index prefix compression survives into the cache, which collection
+      block compression does not.
+
+  - slug: mongodb-faq-diagnostics
+    title: 'FAQ: MongoDB Diagnostics'
+    publisher: MongoDB, Inc.
+    url: https://www.mongodb.com/docs/manual/faq/diagnostics/
+    version: MongoDB 8.3 manual (Current)
+    retrieved_on: '2026-07-31'
+    source_type: vendor_doc
+    notes: >-
+      Answers "Must my working set size fit RAM?" with one word: "No." And
+      states outright: "Avoid increasing the WiredTiger internal cache size
+      above its default value."
+
+      Carried because it contradicts the premise of the question this corpus
+      was started to answer. A vendor telling you not to do the thing you are
+      sizing for is evidence, not an obstacle, and the model reports it as a
+      constraint rather than burying it.
+
+  - slug: wiredtiger-tune-cache-mongodb-6.0
+    title: 'WiredTiger: Cache and eviction tuning'
+    publisher: MongoDB, Inc. (WiredTiger project documentation)
+    url: https://source.wiredtiger.com/mongodb-6.0/tune_cache.html
+    version: WiredTiger as shipped in MongoDB 6.0
+    retrieved_on: '2026-07-31'
+    source_type: vendor_doc
+    notes: >-
+      The eviction thresholds, from the storage engine's own documentation
+      rather than from MongoDB's. These are the numbers that make configured
+      cache size and usable cache size different quantities: WiredTiger works
+      to keep the cache at 80% full, and pulls application threads into
+      eviction work at 95%.
+
+      Version-pinned deliberately. This page exists per MongoDB release
+      because the defaults are not guaranteed stable across them, which is
+      exactly why every coefficient in this corpus must name what it applies
+      to.
+
+  - slug: percona-mongodb-compression-snappy-zstd
+    title: 'Compression Methods in MongoDB: Snappy vs. Zstd'
+    publisher: Percona
+    url: https://www.percona.com/blog/compression-methods-in-mongodb-snappy-vs-zstd/
+    retrieved_on: '2026-07-31'
+    source_type: practitioner
+    notes: >-
+      Compression ratios are workload-dependent to a degree that makes any
+      single figure misleading — the ratios published here are measured on
+      one dataset, and log-shaped data compresses far better than data that
+      is mostly numbers and ObjectIds.
+
+      Which is why the ratio coefficients in this corpus carry wide bands and
+      grade `practitioner`, not `documented`. If you can run db.stats() on the
+      real database, use its dataSize and skip the ratio entirely: a measured
+      number beats a cited range from someone else's data.

@@ -1,0 +1,154 @@
+# MongoDB / WiredTiger coefficients.
+#
+# Every row names the versions it is true for. WiredTiger's eviction defaults
+# are published per MongoDB release precisely because they are not promised to
+# be stable, so a bare "80%" here would be a figure with no shelf life.
+
+coefficients:
+  # -- eviction thresholds ----------------------------------------------
+  - slug: mongodb.eviction-target-pct
+    parameter: cache.eviction_target_pct
+    system: mongodb
+    applies_to: MongoDB 6.0 (WiredTiger default; unchanged since WiredTiger 2.x)
+    value: 80
+    confidence: documented
+    source: wiredtiger-tune-cache-mongodb-6.0
+    quote: >-
+      The eviction_target configuration value (default 80%) is the level at
+      which WiredTiger attempts to keep the overall cache usage.
+    notes: >-
+      This is the coefficient that makes "how big must the cache be" a
+      different question from "how many bytes am I caching". WiredTiger runs
+      eviction workers to hold usage at 80%, so a working set of N bytes wants
+      a cache of about N/0.8 before background eviction stops fighting it.
+
+  - slug: mongodb.eviction-trigger-pct
+    parameter: cache.eviction_trigger_pct
+    system: mongodb
+    applies_to: MongoDB 6.0 (WiredTiger default)
+    value: 95
+    confidence: documented
+    source: wiredtiger-tune-cache-mongodb-6.0
+    quote: >-
+      The eviction_trigger configuration value (default 95%) is the level at
+      which application threads start to perform eviction.
+    notes: >-
+      Not used in the arithmetic. Carried because it names the failure mode:
+      past 95% your queries are doing the eviction, and the symptom is
+      latency, not an out-of-memory error. Anyone reading this model to decide
+      whether they are in trouble needs the number they will actually see in a
+      trace.
+
+  - slug: mongodb.eviction-dirty-target-pct
+    parameter: cache.eviction_dirty_target_pct
+    system: mongodb
+    applies_to: MongoDB 6.0 (WiredTiger default)
+    value: 5
+    confidence: documented
+    source: wiredtiger-tune-cache-mongodb-6.0
+    quote: >-
+      The eviction_dirty_target (default 5%) and eviction_dirty_trigger
+      (default 20%) operate in a similar way to the overall targets, but only
+      apply to dirty data in cache.
+
+  - slug: mongodb.eviction-dirty-trigger-pct
+    parameter: cache.eviction_dirty_trigger_pct
+    system: mongodb
+    applies_to: MongoDB 6.0 (WiredTiger default)
+    value: 20
+    confidence: documented
+    source: wiredtiger-tune-cache-mongodb-6.0
+    quote: >-
+      The eviction_dirty_target (default 5%) and eviction_dirty_trigger
+      (default 20%) operate in a similar way to the overall targets, but only
+      apply to dirty data in cache.
+    notes: >-
+      The ceiling a bulk load hits first. A cache sized correctly for total
+      bytes still throttles here if the writes outrun checkpointing, which is
+      why a sizing answer alone never settles a write-heavy incident.
+
+  # -- the default split -------------------------------------------------
+  - slug: mongodb.cache-default-share-pct
+    parameter: host.cache_default_share_pct
+    system: mongodb
+    applies_to: MongoDB >=3.4 through 8.3
+    value: 50
+    confidence: documented
+    source: mongodb-manual-wiredtiger
+    quote: >-
+      The default WiredTiger internal cache size is the larger of either: 50%
+      of (RAM - 1GB), or 0.256 GB.
+    notes: >-
+      The other 50% is not spare. It is the filesystem cache, which holds the
+      same data in its on-disk form — compressed. Byte for byte that cache
+      holds more of the database than the WiredTiger cache does, which is the
+      mechanical reason the vendor advises against raising the split.
+
+  - slug: mongodb.cache-default-reserve-bytes
+    parameter: host.default_reserve_bytes
+    system: mongodb
+    applies_to: MongoDB >=3.4 through 8.3
+    value: 1000000000
+    confidence: documented
+    source: mongodb-manual-wiredtiger
+    quote: >-
+      The default WiredTiger internal cache size is the larger of either: 50%
+      of (RAM - 1GB), or 0.256 GB.
+    notes: >-
+      Held back before the split, for the operating system and mongod itself.
+      Recorded as 1 GB decimal to match how the documentation writes it; the
+      difference from 1 GiB is noise at any size where this question matters.
+
+  # -- compression -------------------------------------------------------
+  - slug: mongodb.compression-ratio-snappy
+    parameter: storage.compression_ratio
+    system: mongodb
+    applies_to: MongoDB >=3.0 with the default snappy block compressor
+    value_lo: 1.5
+    value_mode: 2.5
+    value_hi: 3.5
+    confidence: practitioner
+    source: percona-mongodb-compression-snappy-zstd
+    quote: >-
+      Typical compression ratios on log data show Snappy achieving ~2.5x
+      compression, Zlib ~3.5x compression, and Zstd ~4.0x compression.
+    notes: >-
+      The widest band in the corpus, and honestly so. The published figure is
+      measured on log data, which compresses far better than a collection that
+      is mostly ObjectIds, numbers and short keys. The low end is there for
+      exactly that case.
+
+      If you can run db.stats() against the real database, do — dataSize is
+      the measured answer and beats this range outright. This coefficient is
+      for when all you have been handed is "it's a 500 GB database".
+
+  - slug: mongodb.compression-ratio-zstd
+    parameter: storage.compression_ratio
+    system: mongodb
+    applies_to: MongoDB >=4.2 with the zstd block compressor
+    value_lo: 2.5
+    value_mode: 4.0
+    value_hi: 5.5
+    confidence: practitioner
+    source: percona-mongodb-compression-snappy-zstd
+    quote: >-
+      Typical compression ratios on log data show Snappy achieving ~2.5x
+      compression, Zlib ~3.5x compression, and Zstd ~4.0x compression.
+    notes: >-
+      Unused by the shipped model, which assumes the default compressor.
+      Present so a zstd variant is a YAML edit rather than a code change —
+      and because a better disk ratio makes the cache problem WORSE, not
+      better: the same on-disk bytes decompress to more cache bytes.
+
+  - slug: mongodb.compression-ratio-zlib
+    parameter: storage.compression_ratio
+    system: mongodb
+    applies_to: MongoDB >=3.0 with the zlib block compressor
+    value_lo: 2.0
+    value_mode: 3.5
+    value_hi: 5.0
+    confidence: practitioner
+    source: percona-mongodb-compression-snappy-zstd
+    quote: >-
+      Typical compression ratios on log data show Snappy achieving ~2.5x
+      compression, Zlib ~3.5x compression, and Zstd ~4.0x compression.

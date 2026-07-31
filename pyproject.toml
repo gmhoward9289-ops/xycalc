@@ -1,0 +1,37 @@
+[project]
+name = "xycalc"
+version = "0.1.0"
+description = "How much X do I need to run Y? Infrastructure sizing from a cited corpus."
+requires-python = ">=3.11"
+license = "MIT"
+dependencies = [
+    "PyYAML>=6.0",
+]
+
+[project.optional-dependencies]
+gui = [
+    "fastapi>=0.110",
+    "uvicorn[standard]>=0.27",
+]
+dev = [
+    "pytest>=8.0",
+    # FastAPI's TestClient is a thin wrapper over an HTTP client; without this
+    # the API tests cannot run at all.
+    "httpx>=0.27",
+]
+
+[project.scripts]
+xycalc = "xycalc.cli:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+xycalc = ["schema.sql", "static/*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

@@ -1,0 +1,92 @@
+# The vocabulary. Every coefficient, observation and model output is an
+# instance of one of these, so two figures sharing a parameter are always
+# comparable — and two figures that look comparable but are not (dataSize vs
+# storageSize) are forced apart into different parameters.
+
+parameters:
+  # -- MongoDB storage --------------------------------------------------
+  - slug: storage.collection_bytes_on_disk
+    label: Collection bytes on disk (compressed)
+    unit: bytes
+    dimension: bytes
+    notes: >-
+      db.stats().storageSize. Compressed, and includes free space inside
+      allocated extents. Deliberately a different parameter from the
+      uncompressed size — conflating the two is the single most common
+      MongoDB sizing error and this corpus makes it a type error.
+
+  - slug: storage.collection_bytes_uncompressed
+    label: Collection bytes uncompressed
+    unit: bytes
+    dimension: bytes
+    notes: >-
+      db.stats().dataSize. This is what actually occupies the WiredTiger
+      cache, because cached collection data is uncompressed.
+
+  - slug: storage.index_bytes_on_disk
+    label: Index bytes on disk
+    unit: bytes
+    dimension: bytes
+    notes: >-
+      db.stats().indexSize. Treated as roughly the in-cache size too, because
+      index prefix compression survives into the cache while collection block
+      compression does not.
+
+  - slug: storage.compression_ratio
+    label: Block compression ratio (uncompressed ÷ compressed)
+    unit: ratio
+    dimension: ratio
+
+  # -- WiredTiger cache -------------------------------------------------
+  - slug: cache.size_bytes
+    label: WiredTiger cache size
+    unit: bytes
+    dimension: bytes
+
+  - slug: cache.eviction_target_pct
+    label: Eviction target (% of cache)
+    unit: percent
+    dimension: percent
+    notes: >-
+      The level WiredTiger works to keep total cache usage at. The practical
+      consequence: usable cache is a fraction of configured cache, so
+      "contents fit in N bytes" and "configure N bytes" are different claims.
+
+  - slug: cache.eviction_trigger_pct
+    label: Eviction trigger (% of cache)
+    unit: percent
+    dimension: percent
+    notes: >-
+      Where application threads are pulled into doing eviction work. Crossing
+      it does not fail; it converts a memory problem into a latency problem,
+      which is why it shows up in traces long before it shows up in an alarm.
+
+  - slug: cache.eviction_dirty_target_pct
+    label: Dirty eviction target (% of cache)
+    unit: percent
+    dimension: percent
+
+  - slug: cache.eviction_dirty_trigger_pct
+    label: Dirty eviction trigger (% of cache)
+    unit: percent
+    dimension: percent
+    notes: >-
+      Write-heavy workloads hit this long before they fill the cache. A cache
+      sized purely on total bytes can still throttle at 20% occupancy if all
+      of it is dirty.
+
+  # -- host -------------------------------------------------------------
+  - slug: host.ram_bytes
+    label: Host RAM
+    unit: bytes
+    dimension: bytes
+
+  - slug: host.cache_default_share_pct
+    label: Default cache share of (RAM − reserve)
+    unit: percent
+    dimension: percent
+
+  - slug: host.default_reserve_bytes
+    label: RAM held back before the default cache split
+    unit: bytes
+    dimension: bytes

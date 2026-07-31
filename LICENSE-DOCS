@@ -1,0 +1,24 @@
+Creative Commons Attribution 4.0 International (CC BY 4.0)
+
+The sizing corpus and written documentation in this repository — everything
+under docs/ and data/ — are licensed under the Creative Commons Attribution
+4.0 International License.
+
+You are free to share and adapt this material for any purpose, including
+commercially, provided you give appropriate credit ("George Howard, xycalc"),
+link to the license, and indicate if changes were made.
+
+Full legal text: https://creativecommons.org/licenses/by/4.0/legalcode
+
+Note: the underlying figures themselves are facts drawn from the primary
+sources cited alongside each coefficient — vendor documentation, source code,
+and published measurements. Facts are not subject to copyright. This license
+covers the selection, arrangement, and written presentation of the corpus,
+including the models built on top of it, not the facts, and does not override
+the terms of the cited sources.
+
+Observations contributed by a deployment (anything merged from local/) are not
+covered by this license and are not distributed with this repository.
+
+The source code in this repository is separately licensed under the MIT
+License — see LICENSE.

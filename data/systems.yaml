@@ -1,0 +1,48 @@
+# What this corpus can size.
+#
+# Most of these are stubs on purpose. The shape of the schema is proven on one
+# system answered end to end, not on six answered shallowly — a stub costs
+# nothing and a half-researched coefficient costs credibility.
+
+systems:
+  - slug: mongodb
+    label: MongoDB (WiredTiger)
+    category: database
+    notes: >-
+      The first subject, chosen because its sizing question has a well
+      documented answer that contradicts how the question is usually asked.
+
+  - slug: ebs
+    label: Amazon EBS
+    category: storage
+    notes: >-
+      Stub. The question waiting here is microbursting: whether a volume is
+      saturating at sub-second timescales that CloudWatch's one-minute
+      averages structurally cannot show. See docs/telemetry/ebs.md — the
+      metric we need does not exist in the obvious place, which is the finding
+      rather than an obstacle to it.
+
+  - slug: clickhouse
+    label: ClickHouse
+    category: database
+    notes: Stub. No coefficients yet.
+
+  - slug: redis
+    label: Redis
+    category: cache
+    notes: Stub. No coefficients yet.
+
+  - slug: celery
+    label: Celery
+    category: queue
+    notes: >-
+      Stub. Has a head start when its turn comes: ~/Claude/SCHEDULED-JOBS.md
+      already holds a Celery+Redis evaluation dated 2026-07-31 and the
+      conditions that would justify revisiting the decision.
+
+  - slug: nvme-ssd
+    label: NVMe SSD (direct-attached)
+    category: hardware
+    notes: >-
+      Stub. Exists mainly as the comparison arm for EBS — "how much worse is
+      network storage" is only answerable against a local baseline.
