@@ -1,11 +1,7 @@
 # Three jobs, not one. "Is every number sourced?" is the project's central
 # claim, so it gets its own check with its own red X rather than a line buried
-# in a test log.
-#
-# Not wired to anything yet -- this repo does not have a GitHub remote and the
-# push guard refuses to give it one. The file is here so that the day it is
-# published, the gates arrive already enforced rather than as a follow-up
-# nobody gets to.
+# in a test log. A corpus whose citation guarantee fails silently inside a test
+# summary has a guarantee nobody can see.
 
 name: ci
 

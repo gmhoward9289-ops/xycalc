@@ -125,6 +125,21 @@ end, not six answered shallowly.
 Both models are **unvalidated**. See `docs/telemetry/` for the measurements
 that would change that, including the ones we cannot currently obtain.
 
+## Contributing a figure
+
+The bar is not "is this true" — it is "can a stranger check it".
+
+A pull request adding a coefficient needs the source, the sentence the figure
+was read from, and the versions it applies to. The build enforces the first and
+third; `tests/test_corpus.py` enforces the second for anything graded
+`documented`. `xycalc build && xycalc audit && pytest -q` is the whole gate, and
+CI runs those as three separate jobs.
+
+Grades that assert something about a figure's *provenance* rather than about
+the number — `documented`, `code`, `measured`, `derived` — are human-only, for
+the same reason machine-extracted research is checked rather than trusted. See
+`docs/research/README.md`.
+
 ## Licence
 
 Code: MIT (`LICENSE`). Corpus and documentation: CC BY 4.0 (`LICENSE-DOCS`).
