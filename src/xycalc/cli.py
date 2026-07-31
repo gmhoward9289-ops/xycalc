@@ -25,7 +25,7 @@ from pathlib import Path
 from . import audit as audit_mod
 from . import build as build_mod
 from .db import connect
-from .model import Model, ModelError, format_bytes, headroom, validation_status
+from .model import Model, ModelError, format_quantity, headroom, validation_status
 
 BAR = "─" * 68
 
@@ -35,11 +35,7 @@ def _flag(key: str) -> str:
 
 
 def _fmt(value: float, unit: str) -> str:
-    if unit == "bytes":
-        return format_bytes(value)
-    if unit == "percent":
-        return f"{value:,.1f}%"
-    return f"{value:,.2f} {unit}"
+    return format_quantity(value, unit)
 
 
 def _load(conn: sqlite3.Connection, slug: str) -> Model:

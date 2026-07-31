@@ -92,3 +92,43 @@ sources:
       grade `practitioner`, not `documented`. If you can run db.stats() on the
       real database, use its dataSize and skip the ratio entirely: a measured
       number beats a cited range from someone else's data.
+
+  - slug: aws-ebs-io-characteristics
+    title: Amazon EBS I/O characteristics and monitoring
+    publisher: Amazon Web Services
+    url: https://docs.aws.amazon.com/ebs/latest/userguide/ebs-io-characteristics.html
+    version: EBS User Guide, retrieved 2026-07-31
+    retrieved_on: '2026-07-31'
+    source_type: vendor_doc
+    notes: >-
+      Settles the question docs/telemetry/ebs.md was left holding. The
+      exceeded-checks fire when driven IOPS "for any second within the minute"
+      consistently exceeds provisioned performance — so the metric's resolution
+      is ONE SECOND, not one minute. A burst shorter than a second is invisible
+      to CloudWatch entirely, and needs the NVMe detailed performance
+      statistics.
+
+      Also carries the two accounting rules that make measured IOPS and
+      provisioned IOPS different quantities: SSD I/O is capped at 256 KiB per
+      operation, so one large write counts as several, while small sequential
+      writes are merged and count as one. An application's operation count is
+      not the volume's.
+
+  - slug: aws-ebs-general-purpose-ssd
+    title: Amazon EBS General Purpose SSD volumes (gp2 and gp3)
+    publisher: Amazon Web Services
+    url: https://docs.aws.amazon.com/ebs/latest/userguide/general-purpose.html
+    version: EBS User Guide, retrieved 2026-07-31
+    retrieved_on: '2026-07-31'
+    source_type: vendor_doc
+    notes: >-
+      The gp3 limits, and the sentence that removes an entire failure mode from
+      the newer volume type: "gp3 volumes do not use burst performance. They
+      can indefinitely sustain their full provisioned IOPS and throughput
+      performance."
+
+      That is why BurstBalance does not exist for gp3 and why looking for it is
+      not a broken dashboard. gp2's credit bucket is documented here too, and
+      is kept because plenty of volumes are still gp2 and the burst-exhaustion
+      failure is entirely different from microbursting — it is slow, visible in
+      averages, and has a metric.

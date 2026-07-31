@@ -171,3 +171,26 @@ def test_format_bytes_rounds_half_away_from_zero_like_the_web_ui():
     the same figure, two answers, on two surfaces of one project."""
     assert format_bytes(1.25e12) == "1.3 TB"
     assert format_bytes(1.35e12) == "1.4 TB"
+
+
+class TestUnitRendering:
+    """Units are kept apart in the schema so quantities cannot be confused.
+    The display had been quietly undoing that."""
+
+    def test_bytes_still_render_as_bytes(self):
+        from xycalc.model import format_quantity
+
+        assert format_quantity(500 * 1000**3, "bytes") == "500.0 GB"
+
+    def test_iops_do_not_render_as_bytes(self):
+        """The bug the first non-byte model exposed: 4,000 IOPS shown as
+        '4,000 B'."""
+        from xycalc.model import format_quantity
+
+        assert format_quantity(4000, "iops") == "4,000 iops"
+
+    def test_an_iops_model_says_iops_in_every_step(self, conn):
+        m = Model.load(conn, "ebs.iops-to-provision")
+        r = m.evaluate({"average_iops": 4000})
+        assert "B" not in r.steps[0].contribution
+        assert "iops" in r.steps[0].contribution

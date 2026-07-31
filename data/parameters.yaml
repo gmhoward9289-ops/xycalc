@@ -90,3 +90,47 @@ parameters:
     label: RAM held back before the default cache split
     unit: bytes
     dimension: bytes
+
+  # -- block storage ------------------------------------------------------
+  - slug: io.iops
+    label: I/O operations per second
+    unit: iops
+    dimension: iops
+    notes: >-
+      Volume-side operations, which are not application-side operations. EBS
+      caps SSD I/O at 256 KiB and merges small sequential writes, so one number
+      can be several times the other in either direction.
+
+  - slug: io.peak_to_mean_ratio
+    label: Peak-second to mean-minute IOPS ratio
+    unit: ratio
+    dimension: ratio
+    notes: >-
+      The microburst factor, and the least measurable number in this corpus.
+      CloudWatch publishes minute averages; this is the thing those averages
+      remove. It cannot be recovered from them at any resolution.
+
+  - slug: io.max_io_size_kib
+    label: Maximum I/O size counted as one operation
+    unit: KiB
+    dimension: bytes
+
+  - slug: io.throughput_mibps
+    label: Volume throughput
+    unit: MiB/s
+    dimension: bytes_per_second
+
+  - slug: io.queue_depth
+    label: Average queue depth
+    unit: count
+    dimension: count
+
+  - slug: io.iops_per_gib
+    label: Provisionable IOPS per GiB of volume
+    unit: iops per GiB
+    dimension: ratio
+
+  - slug: io.check_resolution_seconds
+    label: Finest burst a metric can resolve
+    unit: seconds
+    dimension: seconds

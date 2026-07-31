@@ -138,7 +138,7 @@ class TestModels:
 
 
 class TestStubs:
-    @pytest.mark.parametrize("slug", ["ebs", "clickhouse", "redis", "celery", "nvme-ssd"])
+    @pytest.mark.parametrize("slug", ["clickhouse", "redis", "celery", "nvme-ssd"])
     def test_deferred_systems_exist_and_are_honestly_empty(self, conn, slug):
         """Named so the roadmap is visible, empty so nothing reads as
         researched when it is not."""
@@ -148,3 +148,46 @@ class TestStubs:
             (slug,),
         ).fetchone()
         assert row["n"] == 0
+
+
+class TestEbs:
+    """Investigation 002. The model whose answer is mostly a warning."""
+
+    def test_the_burst_factor_is_graded_as_ours(self, conn):
+        """It is cited to an AWS page, but only because that page establishes
+        the quantity matters. The number is reasoning, and grading it anything
+        firmer would launder our guess through their documentation."""
+        row = conn.execute(
+            "SELECT confidence, value_lo, value_hi FROM coefficient "
+            "WHERE slug = 'ebs.peak-to-mean-iops-ratio'"
+        ).fetchone()
+        assert row["confidence"] == "estimate"
+
+    def test_the_burst_factor_is_the_widest_band_in_the_corpus(self, conn):
+        """If some documented constant ever carries a wider relative band than
+        the one number we admit is a guess, something has gone wrong."""
+        rows = conn.execute(
+            "SELECT slug, value_lo, value_hi FROM coefficient WHERE value_lo > 0"
+        ).fetchall()
+        widest = max(rows, key=lambda r: r["value_hi"] / r["value_lo"])
+        assert widest["slug"] == "ebs.peak-to-mean-iops-ratio"
+
+    def test_the_model_leads_with_the_measurement_problem(self, conn):
+        """The reframe is the deliverable here. Someone who reads only the
+        number has been told to buy IOPS they may not need."""
+        reframe = conn.execute(
+            "SELECT reframe FROM model WHERE slug = 'ebs.iops-to-provision'"
+        ).fetchone()["reframe"]
+        assert "VolumeIOPSExceededCheck" in reframe
+        assert "iostat" in reframe
+
+    def test_gp2_and_gp3_figures_are_not_interchangeable(self, conn):
+        """gp3 has no burst bucket. A figure carried across the two would be
+        wrong in a way applies_to is the only defence against."""
+        for r in conn.execute(
+            "SELECT c.slug, c.applies_to FROM coefficient c "
+            "JOIN system s ON s.id = c.system_id WHERE s.slug = 'ebs'"
+        ):
+            assert "gp2" in r["applies_to"] or "gp3" in r["applies_to"] \
+                or "SSD" in r["applies_to"] or "Nitro" in r["applies_to"] \
+                or "workload property" in r["applies_to"], r["slug"]

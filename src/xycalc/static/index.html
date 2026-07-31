@@ -226,10 +226,14 @@ function fmtBytes(n) {
   }
   return Math.round(n).toLocaleString() + " B";
 }
+// Mirrors format_quantity() in model.py. Two renderings of one figure is a
+// bug this project has already shipped once.
 const fmt = (n, unit) =>
   unit === "bytes" ? fmtBytes(n)
   : unit === "percent" ? n.toFixed(1) + "%"
-  : n.toLocaleString(undefined, {maximumFractionDigits: 2}) + " " + unit;
+  : (unit === "iops" || unit === "count")
+    ? n.toLocaleString(undefined, {maximumFractionDigits: 0}) + " " + unit
+    : n.toLocaleString(undefined, {maximumFractionDigits: 2}) + " " + unit;
 
 async function boot() {
   const r = await fetch("/api/models");

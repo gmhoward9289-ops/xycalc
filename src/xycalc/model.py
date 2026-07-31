@@ -58,6 +58,25 @@ def parse_bytes(text: str | float | int) -> float:
     return value * _UNITS[unit]
 
 
+def format_quantity(n: float, unit: str) -> str:
+    """Render a figure in the unit it is actually in.
+
+    Every model before EBS output bytes, so the step formatter called
+    format_bytes unconditionally and nobody noticed. The first model with a
+    different unit rendered "4,000 IOPS" as "+ 4,000 B". Units are not
+    decoration here — the corpus keeps dataSize and storageSize apart as
+    separate parameters precisely so quantities cannot be confused, and the
+    display had been quietly undoing that.
+    """
+    if unit == "bytes":
+        return format_bytes(n)
+    if unit == "percent":
+        return f"{n:,.1f}%"
+    if unit in ("iops", "count"):
+        return f"{n:,.0f} {unit}"
+    return f"{n:,.2f} {unit}"
+
+
 def format_bytes(n: float) -> str:
     """One decimal, rounding half away from zero.
 
@@ -244,7 +263,9 @@ class Model:
                         continue
                     raise ModelError(f"{self.slug}: input '{term.input_key}' required")
                 lo, mode, hi = lo + v, mode + v, hi + v
-                steps.append(Step(term, f"+ {format_bytes(v)}", lo, mode, hi))
+                steps.append(
+                    Step(term, f"+ {format_quantity(v, self.output_unit)}", lo, mode, hi)
+                )
                 continue
 
             clo, cmode, chi = term.coeff_lo, term.coeff_mode, term.coeff_hi
@@ -266,7 +287,7 @@ class Model:
 
             elif term.apply == "add_bytes":
                 lo, mode, hi = lo + clo, mode + cmode, hi + chi
-                contribution = f"+ {format_bytes(cmode)}"
+                contribution = f"+ {format_quantity(cmode, self.output_unit)}"
 
             elif term.apply == "add_fraction":
                 lo, mode, hi = (

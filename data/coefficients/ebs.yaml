@@ -1,0 +1,190 @@
+# Amazon EBS coefficients.
+#
+# applies_to names the volume type rather than a version, because that is what
+# actually governs these numbers. gp2 and gp3 are not two settings of one
+# product: gp3 has no burst bucket at all, and a figure carried across them
+# would be wrong in a way nothing here could catch.
+
+coefficients:
+  # -- gp3 limits --------------------------------------------------------
+  - slug: ebs.gp3-baseline-iops
+    parameter: io.iops
+    system: ebs
+    applies_to: EBS gp3, all regions except Outposts (2026-07-31)
+    value: 3000
+    confidence: documented
+    source: aws-ebs-general-purpose-ssd
+    quote: >-
+      gp3 volumes deliver a consistent baseline IOPS performance of 3,000 IOPS,
+      which is included with the price of storage.
+    notes: >-
+      Free, and sustained rather than bursted. A workload whose peak second
+      stays under 3,000 has no IOPS problem to solve and no bill to pay for it.
+
+  - slug: ebs.gp3-max-iops
+    parameter: io.iops
+    system: ebs
+    applies_to: EBS gp3, all regions except Outposts (2026-07-31)
+    value: 80000
+    confidence: documented
+    source: aws-ebs-general-purpose-ssd
+    quote: >-
+      You can provision additional IOPS (up to a maximum of 80,000) for an
+      additional cost at a ratio of 500 IOPS per GiB of volume size.
+    notes: >-
+      The hard ceiling. A model that recommends more than this has not produced
+      a configuration, it has produced an argument for a different volume type
+      or for more volumes.
+
+  - slug: ebs.gp3-iops-per-gib
+    parameter: io.iops_per_gib
+    system: ebs
+    applies_to: EBS gp3, all regions except Outposts (2026-07-31)
+    value: 500
+    confidence: documented
+    source: aws-ebs-general-purpose-ssd
+    quote: >-
+      You can provision additional IOPS (up to a maximum of 80,000) for an
+      additional cost at a ratio of 500 IOPS per GiB of volume size.
+    notes: >-
+      Couples IOPS to capacity, but far more loosely than gp2's 3 per GiB —
+      80,000 IOPS needs only 160 GiB. The reason gp3 lets you stop buying disk
+      you do not want in order to get speed you do.
+
+  - slug: ebs.gp3-baseline-throughput
+    parameter: io.throughput_mibps
+    system: ebs
+    applies_to: EBS gp3, all regions except Outposts (2026-07-31)
+    value: 125
+    confidence: documented
+    source: aws-ebs-general-purpose-ssd
+    quote: >-
+      gp3 volumes deliver a consistent baseline throughput performance of 125
+      MiB/s, which is included with the price of storage.
+
+  - slug: ebs.gp3-max-throughput
+    parameter: io.throughput_mibps
+    system: ebs
+    applies_to: EBS gp3, all regions except Outposts (2026-07-31)
+    value: 2000
+    confidence: documented
+    source: aws-ebs-general-purpose-ssd
+    quote: >-
+      You can provision additional throughput (up to a maximum of 2,000 MiB/s)
+      for an additional cost at a ratio of 0.25 MiB/s per provisioned IOPS.
+    notes: >-
+      The ceiling that is hit first by large sequential I/O. At the 256 KiB
+      maximum operation size, 2,000 MiB/s is 8,000 operations — so a
+      large-I/O workload can exhaust throughput at a tenth of the volume's
+      provisionable IOPS and look, on an IOPS graph, entirely healthy.
+
+  # -- how EBS counts an operation ---------------------------------------
+  - slug: ebs.ssd-max-io-size
+    parameter: io.max_io_size_kib
+    system: ebs
+    applies_to: EBS SSD volume types (gp2, gp3, io1, io2), 2026-07-31
+    value: 256
+    confidence: documented
+    source: aws-ebs-io-characteristics
+    quote: >-
+      I/O size is capped at 256 KiB for SSD volumes and 1,024 KiB for HDD
+      volumes because SSD volumes handle small or random I/O much more
+      efficiently than HDD volumes.
+    notes: >-
+      Why the volume's operation count is not the application's, in both
+      directions. A single 1 MiB write counts as four IOPS; eight sequential
+      32 KiB writes are merged and count as one. Random I/O is never merged.
+
+      This is the term that makes "measure your IOPS" harder than it sounds:
+      iostat inside the instance counts what the OS issued, not what EBS
+      charged you for.
+
+  - slug: ebs.queue-depth-per-1000-iops
+    parameter: io.queue_depth
+    system: ebs
+    applies_to: EBS SSD volume types, 2026-07-31
+    value: 1
+    confidence: documented
+    source: aws-ebs-io-characteristics
+    quote: >-
+      For maximum consistency, a volume must maintain an average queue depth
+      (rounded to the nearest whole number) of one for every 1,000 provisioned
+      IOPS in a minute.
+    notes: >-
+      Runs in the other direction from most of this corpus: it is a floor on
+      DEMAND, not a ceiling on supply. Drive too little concurrency and the
+      volume will not deliver what you provisioned, so a disappointing IOPS
+      graph can mean the queue is too shallow rather than the volume too small.
+
+  # -- what the instruments can and cannot see ---------------------------
+  - slug: ebs.exceeded-check-resolution
+    parameter: io.check_resolution_seconds
+    system: ebs
+    applies_to: >-
+      VolumeIOPSExceededCheck / VolumeThroughputExceededCheck on Nitro
+      instances, 2026-07-31
+    value: 1
+    confidence: documented
+    source: aws-ebs-io-characteristics
+    quote: >-
+      If the driven IOPS for any second within the minute consistently exceeds
+      your volume's provisioned IOPS performance, the VolumeIOPSExceededCheck
+      metric returns 1.
+    notes: >-
+      The number that settles what these metrics can actually see. "Any second
+      within the minute" means the check resolves to ONE SECOND — far finer
+      than the one-minute averages, and still not fine enough for a burst
+      measured in milliseconds.
+
+      So there are three tiers, not two: minute averages hide everything
+      sub-minute; the exceeded-checks catch anything lasting a second; below
+      that, only the NVMe detailed performance statistics see it at all.
+
+  # -- the term nobody measures ------------------------------------------
+  - slug: ebs.peak-to-mean-iops-ratio
+    parameter: io.peak_to_mean_ratio
+    system: ebs
+    applies_to: >-
+      Not an EBS property — a workload property. Stated for interactive
+      request-driven services as of 2026-07-31.
+    value_lo: 1.5
+    value_mode: 3.0
+    value_hi: 10.0
+    confidence: estimate
+    source: aws-ebs-io-characteristics
+    notes: >-
+      OUR REASONING, NOT AWS'S, and the widest band in the corpus by far.
+
+      The band is wide because the quantity is genuinely wide and because it is
+      structurally unmeasurable from the instrument most people have. A minute
+      average is the arithmetic that removes exactly this number; no CloudWatch
+      period recovers it. A steady batch job sits near 1.5; a request-driven
+      service with a queue drain, a checkpoint, or a cache stampede goes far
+      past 10.
+
+      It is cited to the AWS page only because that page establishes the
+      quantity matters — the metric fires on the peak SECOND while the graph
+      shows the mean minute. The number itself is ours, and it is the reason
+      this model's answer is a shape rather than a figure.
+
+      Do not tune this coefficient. Measure your own with `iostat -x 1` for a
+      few minutes under real load and divide the peak second by the mean. That
+      replaces a 6.7x-wide guess with a fact, and it is fifteen minutes' work.
+
+  # -- gp2, still widely deployed ----------------------------------------
+  - slug: ebs.gp2-baseline-iops-per-gib
+    parameter: io.iops_per_gib
+    system: ebs
+    applies_to: EBS gp2, 2026-07-31
+    value: 3
+    confidence: documented
+    source: aws-ebs-general-purpose-ssd
+    quote: >-
+      Baseline IOPS performance scales linearly between a minimum of 100 and a
+      maximum of 16,000 at a rate of 3 IOPS per GiB of volume size.
+    notes: >-
+      gp2 couples speed to capacity at 3 IOPS per GiB, so its usual failure is
+      a volume sized for data and starved for I/O. Carried because plenty of
+      volumes are still gp2 and because its burst-credit exhaustion is a
+      completely different failure from microbursting — slow, visible in
+      averages, and it has a metric (BurstBalance) that gp3 does not.

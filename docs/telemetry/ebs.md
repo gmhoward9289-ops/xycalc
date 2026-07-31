@@ -1,7 +1,8 @@
 # Telemetry wanted — Amazon EBS
 
-Written ahead of investigation 002 (EBS IOPS and microbursting). No EBS
-coefficients exist yet; this is the target list.
+Written ahead of investigation 002, which has since run — see
+`docs/investigations/002-ebs-microbursting/FINDINGS.md`. Kept as the target
+list, because most of it is still `work only` and the gap is the point.
 
 Source for everything below:
 [Amazon CloudWatch metrics for Amazon EBS](https://docs.aws.amazon.com/ebs/latest/userguide/using_cloudwatch_ebs.html),
@@ -35,12 +36,26 @@ is widespread, and because it is the exact failure mode this corpus exists to
 catch: a plausible mechanism, reasoned from real behaviour, that a primary
 source overturns in one sentence.
 
-**Still open:** the docs say "consistently attempted ... within the last
-minute". *Consistently* is doing unexamined work. It is not clear whether a
-single 200 ms saturation raises the flag or whether some sustained fraction of
-the minute is required — and that gap is precisely the size of burst under
-discussion. Do not treat `0` as proof no burst occurred until this is settled.
-Settle it with a benchmark, not with another blog post.
+**Now settled**, by the page that documents the checks:
+
+> "If the driven IOPS for **any second** within the minute consistently exceeds
+> your volume's provisioned IOPS performance, the `VolumeIOPSExceededCheck`
+> metric returns `1`."
+
+*Any second within the minute.* So the check resolves to **one second** — far
+finer than the minute averages, and still not fine enough for a burst measured
+in milliseconds. That gives three tiers rather than two, and knowing which one
+your evidence came from decides what it is evidence of:
+
+| Tier | Sees | Source |
+|---|---|---|
+| minute averages | sustained load | `VolumeAvgIOPS`, `VolumeReadOps` |
+| **one second** | **any second over the limit** | `Volume*ExceededCheck` |
+| sub-second | true microbursts | NVMe detailed performance statistics |
+
+The intuition that started this was directionally right and quantitatively
+wrong, which is the useful kind of wrong: the averages really do hide bursts,
+and the fix was already shipped and already free.
 
 ---
 

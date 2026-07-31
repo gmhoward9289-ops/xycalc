@@ -33,7 +33,7 @@ python3.12 -m venv .venv && .venv/bin/pip install -e ".[dev,gui]"
   FLOOR
     Collection data on disk                + 500.0 GB   →   500.0 GB
   AMPLIFIER
-    Decompression into cache           x 2.5 (1.5–3.5)   →     1.2 TB
+    Decompression into cache           x 2.5 (1.5–3.5)   →     1.3 TB
   FLOOR
     Indexes                                 + 40.0 GB   →     1.3 TB
   AMPLIFIER
@@ -41,7 +41,7 @@ python3.12 -m venv .venv && .venv/bin/pip install -e ".[dev,gui]"
 
   ANSWER   1.6 TB
   band     987.5 GB – 2.2 TB
-  ! unvalidated (n=0)
+  ~ thinly validated (n=1, 1 within band, mean absolute error 41.1%)
 ```
 
 A 500 GB database does not want a 500 GB cache. It wants about 1.6 TB — and
@@ -117,10 +117,13 @@ If a figure has no source, the figure does not ship. That is the whole point.
 
 ## Status
 
-Answers MongoDB WiredTiger cache sizing and the host RAM that implies. EBS,
-ClickHouse, Redis, Celery and NVMe are named in `data/systems.yaml` and are
-deliberately empty — the schema gets proven on one question answered end to
-end, not six answered shallowly.
+Three models: MongoDB WiredTiger cache sizing, the host RAM that implies, and
+EBS IOPS provisioning against microbursting. ClickHouse, Redis, Celery and NVMe
+are named in `data/systems.yaml` and are deliberately empty.
+
+The two investigations are the same question at two layers — cache misses
+become reads, reads become IOPS — which is the argument for one corpus rather
+than two spreadsheets.
 
 `mongodb.wt-cache` has survived exactly one test: **n=1, inside the band,
 +41.1% at the mode** against a MongoDB 7.0.39 benchmark. That headline is close
@@ -130,8 +133,12 @@ coefficient was wrong for that data by ~64%, while the structural terms
 percentage. See
 [`docs/investigations/001-wiredtiger-cache/FINDINGS.md`](docs/investigations/001-wiredtiger-cache/FINDINGS.md).
 
-`mongodb.host-ram` is still **unvalidated (n=0)** and says so on every
-invocation.
+`mongodb.host-ram` and `ebs.iops-to-provision` are **unvalidated (n=0)** and say
+so on every invocation. The EBS model is honest about something worse than
+being unvalidated: its single amplifier is a guess of ours with a band spanning
+a factor of 6.7, because the peak-to-mean IOPS ratio is structurally
+unrecoverable from minute-averaged metrics. Fifteen minutes with `iostat -x 1`
+replaces it with a fact — the model says so where you cannot miss it.
 
 Real measurements are wanted, especially compression ratios from collections
 that are not synthetic. `docs/telemetry/mongodb.md` lists what to capture; it

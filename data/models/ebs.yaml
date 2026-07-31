@@ -1,0 +1,146 @@
+models:
+  - slug: ebs.iops-to-provision
+    question: How many IOPS do I need to provision so my volume stops microbursting?
+    system: ebs
+    output: io.iops
+
+    summary: >-
+      Takes the average IOPS your monitoring shows and raises it to what the
+      peak second actually demands, because that is the quantity EBS throttles
+      on and the one your graph has removed.
+
+    reframe: >-
+      Microbursting is not a sizing problem that a bigger average solves. It is
+      a measurement problem wearing a sizing problem's clothes.
+
+      EBS decides you exceeded your provisioned IOPS when the driven rate "for
+      any second within the minute" goes over — the peak SECOND. CloudWatch's
+      volume metrics publish the mean MINUTE. A volume can therefore be
+      throttled every minute of the day while VolumeReadOps and VolumeWriteOps
+      show it comfortably inside its limits, and nothing on the default
+      dashboard contradicts that.
+
+      So the first move is not to provision more IOPS. It is to look at
+      VolumeIOPSExceededCheck and VolumeThroughputExceededCheck, which are
+      booleans evaluated inside the minute and exist precisely for this. If
+      they read 0, you do not have this problem and this model has nothing to
+      tell you. If they read 1, you have it, and the only question left is how
+      big the peak is.
+
+      This model answers that question with a coefficient we made up. Its band
+      spans a factor of 6.7 because peak-to-mean is a property of your workload
+      that no minute-averaged metric can recover, and pretending otherwise
+      would be the failure this corpus exists to avoid. Fifteen minutes with
+      `iostat -x 1` under real load replaces the guess with a measurement, and
+      you should spend them before you spend money on provisioned IOPS.
+
+      Three other things to rule out first, all cheaper than IOPS:
+      the instance has its own EBS limits separate from the volume's
+      (InstanceEBSIOPSExceededCheck), large I/O can exhaust throughput long
+      before IOPS, and a queue too shallow to keep the volume busy looks
+      identical to a volume too small.
+
+    notes: >-
+      Answers for gp3, which has no burst bucket and sustains its provisioned
+      figure indefinitely. On gp2 the same arithmetic applies to baseline
+      performance, but credit exhaustion is a second and unrelated failure that
+      this model does not represent.
+
+      Unvalidated, and validating it needs paired data most people do not
+      collect: one-second iostat alongside the CloudWatch checks, from the same
+      volume over the same window.
+
+    inputs:
+      - key: average_iops
+        label: Average IOPS over a minute
+        unit: iops
+        required: true
+        help: >-
+          From VolumeAvgIOPS, or Sum(VolumeReadOps + VolumeWriteOps) ÷ 60.
+          Measured at the volume, not inside the guest — EBS merges small
+          sequential operations and splits large ones, so the two counts differ.
+
+    terms:
+      - key: measured_average
+        label: Average IOPS the volume actually served
+        role: floor
+        apply: input
+        input_key: average_iops
+        rationale: >-
+          The only part of this anyone has measured. Everything above it is an
+          inference about what the averaging removed.
+
+      - key: burst_factor
+        label: Peak second against mean minute
+        role: amplifier
+        apply: multiply
+        coefficient: ebs.peak-to-mean-iops-ratio
+        rationale: >-
+          EBS throttles on the peak second; the graph shows the mean minute.
+          This term is the gap between them, and it is an estimate of ours
+          rather than anyone's documentation — which is why the answer arrives
+          as a range spanning most of an order of magnitude. Measure it with
+          one-second iostat and this model becomes far more useful than it is.
+
+      - key: free_tier
+        label: What gp3 gives away before you pay anything
+        role: constraint
+        apply: note
+        coefficient: ebs.gp3-baseline-iops
+        rationale: >-
+          3,000 IOPS is included and sustained indefinitely. If the answer above
+          sits under it, there is nothing to buy and nothing to configure.
+
+      - key: ceiling
+        label: The hard ceiling on one gp3 volume
+        role: constraint
+        apply: note
+        coefficient: ebs.gp3-max-iops
+        rationale: >-
+          80,000 IOPS. An answer above this is not a configuration, it is an
+          argument for io2, for more volumes, or for doing less I/O.
+
+      - key: throughput_wall
+        label: The limit large I/O hits first
+        role: constraint
+        apply: note
+        coefficient: ebs.gp3-max-throughput
+        rationale: >-
+          At the 256 KiB maximum operation size, 2,000 MiB/s is only 8,000
+          operations. A large sequential workload can exhaust throughput at a
+          tenth of the volume's provisionable IOPS while its IOPS graph looks
+          healthy, so check VolumeThroughputExceededCheck alongside the IOPS
+          one.
+
+      - key: io_accounting
+        label: The volume does not count operations the way your application does
+        role: constraint
+        apply: note
+        coefficient: ebs.ssd-max-io-size
+        rationale: >-
+          A 1 MiB write is four IOPS; eight sequential 32 KiB writes are one.
+          Random I/O is never merged. An IOPS figure taken from inside the
+          guest is measuring a different quantity from the one EBS throttles.
+
+      - key: queue_floor
+        label: Too little concurrency looks exactly like too little volume
+        role: constraint
+        apply: note
+        coefficient: ebs.queue-depth-per-1000-iops
+        rationale: >-
+          One unit of average queue depth per 1,000 provisioned IOPS is needed
+          to reach the provisioned figure at all. Below it the volume
+          under-delivers, and the graph is indistinguishable from a volume that
+          is too small — provisioning more IOPS then changes nothing and costs
+          money.
+
+      - key: resolution
+        label: What the instruments can and cannot see
+        role: constraint
+        apply: note
+        coefficient: ebs.exceeded-check-resolution
+        rationale: >-
+          Three tiers. Minute averages hide everything shorter than a minute.
+          The exceeded-checks resolve to one second. Below one second, only the
+          NVMe detailed performance statistics see anything at all. Knowing
+          which tier your evidence came from decides what it is evidence of.
