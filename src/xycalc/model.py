@@ -343,11 +343,22 @@ def headroom(result: Result, available: float) -> dict:
     }
 
 
+# Below these, a model has been checked but not enough to lean on. The
+# thresholds are ours, not anyone's standard, and they are deliberately
+# unflattering: one case from one machine is an anecdote, and an average error
+# of a quarter is not a sizing tool, it is a direction.
+THIN_CASES = 3
+THIN_ERROR_PCT = 25.0
+
+
 def validation_status(conn: sqlite3.Connection, model_slug: str) -> dict:
     """Say plainly how much reality this model has been checked against.
 
-    A model with no cases is unvalidated, and every surface -- CLI, API, web
-    page -- has to say so. Silence would read as confidence.
+    Three states rather than two. A binary validated/unvalidated flag turns
+    "checked once, badly" into the same green tick as "checked repeatedly and
+    accurate", which is precisely the reassurance this project exists not to
+    give. `grade` is what the surfaces colour by, so the CLI, the API and the
+    page cannot disagree about how encouraging a result is.
     """
     conn.row_factory = sqlite3.Row
     row = conn.execute(
@@ -358,17 +369,34 @@ def validation_status(conn: sqlite3.Connection, model_slug: str) -> dict:
     if row is None or not row["cases"]:
         return {
             "validated": False,
+            "grade": "none",
             "cases": 0,
             "text": "unvalidated (n=0) — no observation has ever been checked "
             "against this model",
         }
+
+    cases = row["cases"]
+    err = row["mean_abs_error_pct"] or 0.0
+    thin = cases < THIN_CASES or err > THIN_ERROR_PCT
+    detail = (
+        f"n={cases}, {row['within_band']} within band, "
+        f"mean absolute error {err:.1f}%"
+    )
+    if thin:
+        why = []
+        if cases < THIN_CASES:
+            why.append("too few cases to generalise")
+        if err > THIN_ERROR_PCT:
+            why.append("the error is large enough to need decomposing")
+        text = f"thinly validated ({detail}) — {', and '.join(why)}"
+    else:
+        text = f"validated ({detail})"
+
     return {
         "validated": True,
-        "cases": row["cases"],
+        "grade": "thin" if thin else "reasonable",
+        "cases": cases,
         "within_band": row["within_band"],
-        "mean_abs_error_pct": row["mean_abs_error_pct"],
-        "text": (
-            f"validated (n={row['cases']}, {row['within_band']} within band, "
-            f"mean absolute error {row['mean_abs_error_pct']:.1f}%)"
-        ),
+        "mean_abs_error_pct": err,
+        "text": text,
     }

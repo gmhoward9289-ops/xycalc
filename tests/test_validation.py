@@ -108,3 +108,32 @@ def test_predictions_are_recomputed_rather_than_stored(corpus, tmp_path):
 def test_a_model_with_no_cases_is_unvalidated(corpus, tmp_path):
     db = build(tmp_path / "v.db")
     assert not _status(db, "mongodb.host-ram")["validated"]
+
+
+class TestGrading:
+    """Three states, because two turns "checked once, badly" into the same
+    green tick as "checked repeatedly and accurate"."""
+
+    def test_no_cases_grades_none(self, corpus, tmp_path):
+        db = build(tmp_path / "v.db")
+        assert _status(db, "mongodb.host-ram")["grade"] == "none"
+
+    def test_one_accurate_case_is_still_thin(self, corpus, tmp_path):
+        """Zero error, but n=1. One observation from one machine is an
+        anecdote, and the label has to say so."""
+        _case(corpus)
+        s = _status(build(tmp_path / "v.db"))
+        assert s["grade"] == "thin"
+        assert "too few cases" in s["text"]
+
+    def test_a_large_error_is_thin_however_many_cases(self, corpus, tmp_path):
+        _case(corpus, actual=700e9)  # ~84% error, still inside the band
+        s = _status(build(tmp_path / "v.db"))
+        assert s["grade"] == "thin"
+        assert "decomposing" in s["text"]
+
+    def test_the_shipped_corpus_does_not_claim_more_than_it_has(self, db_path):
+        """The real one: n=1 at 41.1%. Two independent reasons to be thin."""
+        s = _status(db_path)
+        assert s["grade"] == "thin"
+        assert "thinly validated" in s["text"]

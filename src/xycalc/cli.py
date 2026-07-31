@@ -97,7 +97,9 @@ def _print_constraints(result) -> None:
 
 def _print_validation(conn: sqlite3.Connection, slug: str) -> None:
     status = validation_status(conn, slug)
-    marker = "✓" if status["validated"] else "!"
+    # Three markers because there are three states. A tick beside a model
+    # checked once at 41% error is the wrong signal.
+    marker = {"none": "!", "thin": "~", "reasonable": "✓"}[status["grade"]]
     print(f"\n  {marker} {status['text']}")
 
 

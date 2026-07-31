@@ -94,7 +94,9 @@ button:hover { filter: brightness(1.1); }
   border: 1px solid var(--warn-line); background: var(--warn-bg); color: var(--warn-ink);
   margin-top: 1.25rem;
 }
-.validation.ok { border-color: var(--accent); background: transparent; color: var(--accent); }
+/* Amber is the default and covers both "never checked" and "checked, thinly".
+   Green is reserved for a model that has actually earned it. */
+.validation.reasonable { border-color: var(--accent); background: transparent; color: var(--accent); }
 .validation strong { font-weight: 700; }
 
 /* -- breakdown -- */
@@ -300,8 +302,9 @@ function render(d) {
   }
 
   const v = $("validation");
-  v.className = "validation" + (d.validation.validated ? " ok" : "");
-  v.innerHTML = `<strong>${d.validation.validated ? "Validated" : "Unvalidated"}</strong> — ${d.validation.text}`;
+  const LABEL = {none: "Unvalidated", thin: "Thinly validated", reasonable: "Validated"};
+  v.className = "validation " + d.validation.grade;
+  v.innerHTML = `<strong>${LABEL[d.validation.grade]}</strong> — ${d.validation.text}`;
 
   if (d.headroom) {
     const h = d.headroom;
