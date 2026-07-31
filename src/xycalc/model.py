@@ -58,6 +58,11 @@ def parse_bytes(text: str | float | int) -> float:
     return value * _UNITS[unit]
 
 
+# Units whose fractional part is noise. "1,280.00 ops/s" implies a precision
+# the model does not have, and half a ticket does not exist.
+_INTEGRAL_UNITS = {"iops", "count", "ops/s", "tickets"}
+
+
 def format_quantity(n: float, unit: str) -> str:
     """Render a figure in the unit it is actually in.
 
@@ -72,7 +77,7 @@ def format_quantity(n: float, unit: str) -> str:
         return format_bytes(n)
     if unit == "percent":
         return f"{n:,.1f}%"
-    if unit in ("iops", "count"):
+    if unit in _INTEGRAL_UNITS:
         return f"{n:,.0f} {unit}"
     return f"{n:,.2f} {unit}"
 
@@ -244,6 +249,7 @@ class Model:
     def evaluate(self, values: dict) -> Result:
         """Run the model. `values` maps input keys to sizes or numbers."""
         supplied = self._coerce_inputs(values)
+        declared_units = {i["key"]: i["unit"] for i in self.inputs}
         lo = mode = hi = 0.0
         steps: list[Step] = []
         constraints: list[Term] = []
@@ -252,6 +258,8 @@ class Model:
             if term.role == "constraint":
                 constraints.append(term)
                 continue
+
+            in_unit = declared_units.get(term.input_key, self.output_unit)
 
             if term.apply == "input":
                 v = supplied.get(term.input_key)
@@ -264,7 +272,29 @@ class Model:
                     raise ModelError(f"{self.slug}: input '{term.input_key}' required")
                 lo, mode, hi = lo + v, mode + v, hi + v
                 steps.append(
-                    Step(term, f"+ {format_quantity(v, self.output_unit)}", lo, mode, hi)
+                    Step(term, f"+ {format_quantity(v, in_unit)}", lo, mode, hi)
+                )
+                continue
+
+            if term.apply == "divide_by_input":
+                v = supplied.get(term.input_key)
+                if v is None:
+                    if term.optional:
+                        steps.append(Step(term, "—", lo, mode, hi, True, "not supplied"))
+                        continue
+                    raise ModelError(f"{self.slug}: input '{term.input_key}' required")
+                if not v:
+                    raise ModelError(
+                        f"{self.slug}: '{term.input_key}' cannot be zero — "
+                        f"dividing by it would report an infinite ceiling"
+                    )
+                # No band inversion here. Dividing by a FRACTION inverts the
+                # band because the fraction itself carries lo/mode/hi; a
+                # caller-supplied scalar has one value, so all three ends move
+                # together.
+                lo, mode, hi = lo / v, mode / v, hi / v
+                steps.append(
+                    Step(term, f"÷ {format_quantity(v, in_unit)}", lo, mode, hi)
                 )
                 continue
 

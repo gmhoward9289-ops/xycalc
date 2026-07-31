@@ -117,13 +117,24 @@ If a figure has no source, the figure does not ship. That is the whole point.
 
 ## Status
 
-Three models: MongoDB WiredTiger cache sizing, the host RAM that implies, and
-EBS IOPS provisioning against microbursting. ClickHouse, Redis, Celery and NVMe
-are named in `data/systems.yaml` and are deliberately empty.
+Four models across three investigations, which turned out to be one failure
+told in three parts:
 
-The two investigations are the same question at two layers — cache misses
-become reads, reads become IOPS — which is the argument for one corpus rather
-than two spreadsheets.
+1. **[001](docs/investigations/001-wiredtiger-cache/FINDINGS.md)** — the cache
+   cannot hold the whole database, so misses go to disk.
+2. **[002](docs/investigations/002-ebs-microbursting/FINDINGS.md)** — the disk
+   throttles on the peak *second*, and the metrics most people watch average it
+   away.
+3. **[003](docs/investigations/003-storage-stall-query-collapse/FINDINGS.md)** —
+   the throttle becomes a concurrency ceiling, and the queue behind it does not
+   drain. This is why a slow disk makes MongoDB stop returning queries rather
+   than merely slowing them down.
+
+Each was asked as a separate question. That they compose is the argument for
+one corpus rather than three spreadsheets.
+
+ClickHouse, Redis, Celery and NVMe are named in `data/systems.yaml` and are
+deliberately empty.
 
 `mongodb.wt-cache` has survived exactly one test: **n=1, inside the band,
 +41.1% at the mode** against a MongoDB 7.0.39 benchmark. That headline is close

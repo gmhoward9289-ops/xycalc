@@ -194,3 +194,59 @@ class TestUnitRendering:
         r = m.evaluate({"average_iops": 4000})
         assert "B" not in r.steps[0].contribution
         assert "iops" in r.steps[0].contribution
+
+
+class TestTicketCeiling:
+    """Investigation 003. Little's law against MongoDB's admission control —
+    the model that explains a cliff rather than sizing a system."""
+
+    @pytest.fixture
+    def model(self, conn):
+        return Model.load(conn, "mongodb.ticket-throughput-ceiling")
+
+    def test_a_healthy_disk_never_binds(self, model):
+        """128 tickets at 1 ms is 128,000 ops/s. Nobody hits that, which is
+        why the ceiling is invisible until storage slows down."""
+        r = model.evaluate({"storage_latency_seconds": 0.001})
+        assert r.mode == pytest.approx(128_000)
+
+    def test_a_hundredfold_latency_increase_costs_a_hundredfold_throughput(self, model):
+        """The whole failure in one assertion. Nothing about the workload
+        changed; the ceiling fell by the factor the latency rose by."""
+        fast = model.evaluate({"storage_latency_seconds": 0.001}).mode
+        slow = model.evaluate({"storage_latency_seconds": 0.1}).mode
+        assert fast / slow == pytest.approx(100)
+        assert slow == pytest.approx(1_280)
+
+    def test_the_probing_floor_multiplies_the_damage(self, model):
+        """4 tickets instead of 128 is another 32x on top of the latency. 40
+        operations per second is not a slow database, it is a stopped one."""
+        r = model.evaluate({"storage_latency_seconds": 0.1, "tickets": 4})
+        assert r.mode == pytest.approx(40)
+
+    def test_tickets_default_to_the_documented_static_cap(self, model):
+        r = model.evaluate({"storage_latency_seconds": 0.001})
+        assert r.steps[0].mode == pytest.approx(128)
+
+    def test_zero_latency_is_refused_rather_than_reported_as_infinite(self, model):
+        with pytest.raises(ModelError, match="cannot be zero"):
+            model.evaluate({"storage_latency_seconds": 0})
+
+    def test_the_floor_is_rendered_in_tickets_not_in_the_output_unit(self, model):
+        """Tickets divided by seconds gives ops/s; the tickets were never
+        ops/s. An input's contribution carries the INPUT's unit."""
+        r = model.evaluate({"storage_latency_seconds": 0.1})
+        assert "tickets" in r.steps[0].contribution
+        assert "ops/s" not in r.steps[0].contribution
+
+    def test_dividing_by_an_input_does_not_invert_the_band(self, model):
+        """A caller-supplied scalar has one value, so all three ends move
+        together — unlike dividing by a coefficient FRACTION, which inverts."""
+        r = model.evaluate({"storage_latency_seconds": 0.1})
+        assert r.lo == r.mode == r.hi
+
+    def test_the_reframe_names_the_queueing_behaviour(self, model):
+        """Someone who reads only the number has learned that throughput is
+        lower. The point is that the queue never drains."""
+        assert "queued" in model.reframe
+        assert "cliff" in model.reframe

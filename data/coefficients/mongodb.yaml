@@ -152,3 +152,56 @@ coefficients:
     quote: >-
       Typical compression ratios on log data show Snappy achieving ~2.5x
       compression, Zlib ~3.5x compression, and Zstd ~4.0x compression.
+
+  # -- admission control, and the version that changed it ----------------
+  - slug: mongodb.tickets-static-cap
+    parameter: db.concurrency_tickets
+    system: mongodb
+    applies_to: MongoDB 3.x through 6.x (static wiredTigerConcurrent*Transactions)
+    value: 128
+    confidence: documented
+    source: mongodb-performance-tuning-7.0
+    quote: >-
+      The read and write tickets control the maximum number of concurrent
+      transactions. The WiredTiger ticket number should always be at 128.
+      Sustained values below 128 indicates a server delay and consequential
+      potential issues.
+    notes: >-
+      128 read and 128 write, separately. The number that sets the throughput
+      ceiling whenever storage is slow: no matter how many clients connect,
+      only 128 operations can be inside the engine, so the sustainable rate is
+      128 divided by how long each one takes.
+
+  - slug: mongodb.tickets-probing-floor
+    parameter: db.concurrency_tickets
+    system: mongodb
+    applies_to: MongoDB >=7.0 (throughputProbingMinConcurrency default)
+    value: 4
+    confidence: practitioner
+    source: percona-mongodb-concurrency-algorithm
+    notes: >-
+      The floor the 7.0 throughputProbing algorithm may reduce concurrency to,
+      and the reason this investigation exists.
+
+      MongoDB documents the dynamic algorithm and its purpose — "optimizing
+      database throughput during cluster overload" — without publishing the
+      floor. Percona does: min 4, max 128.
+
+      A 32x range in the term that divides into the throughput ceiling. Whether
+      the algorithm actually walks down to 4 during a storage stall is NOT
+      established here; that is the open question in
+      docs/investigations/003-storage-stall-query-collapse/FINDINGS.md, and it
+      is the difference between a bad hour and an outage.
+
+  - slug: mongodb.tickets-probing-cap
+    parameter: db.concurrency_tickets
+    system: mongodb
+    applies_to: MongoDB >=7.0 (throughputProbingMaxConcurrency default)
+    value: 128
+    confidence: practitioner
+    source: percona-mongodb-concurrency-algorithm
+    notes: >-
+      The ceiling of the dynamic range, unchanged from the old static value —
+      so 7.0 did not raise the maximum, it lowered the typical. Percona notes
+      the algorithm "starts with a much lower baseline number of available
+      tickets" than the pre-7.0 constant.

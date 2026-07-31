@@ -41,6 +41,26 @@ samples. At 60 s you will see sustained pressure and miss bursts entirely. At
 10 s you will see checkpoint sawtooth. Record the interval in the observation's
 `notes` — a rate without its window is not a number.
 
+## Is the ticket pool the bottleneck?
+
+Investigation 003's series. These decide whether a storage stall has become a
+concurrency ceiling, which is the difference between "queries are slow" and
+"queries never return".
+
+| Series | Unit | Agg | Status | Why |
+|---|---|---|---|---|
+| `queues.execution.read.out` / `.available` / `.totalTickets` | count | last | `obtainable` | **MongoDB 7.0+.** Out equal to total means the pool is exhausted and new operations are queueing. `totalTickets` is the one to watch on 7.0+ specifically: it moves, and the model's ceiling is proportional to it. |
+| `wiredTiger.concurrentTransactions.read.out` / `.available` | count | last | `obtainable` | Pre-7.0 location for the same thing. Static 128. |
+| `globalLock.currentQueue.readers` / `.writers` | count | last | `obtainable` | Demand stacked behind the pool. Rising while tickets are exhausted is the queue that will not drain. |
+| `globalLock.activeClients.readers` / `.writers` | count | last | `obtainable` | Concurrency actually in flight. Without contention the ticket limit never binds, so this says whether the precondition holds. |
+
+**The measurement that would settle the open question.** On 7.0+, record
+`queues.execution.read.totalTickets` through a storage stall. If it falls
+toward the documented floor of 4 while latency is high, the probing algorithm
+is reducing concurrency in response to a latency-induced collapse — which
+would make 7.0+ materially worse than 6.x in this failure. Nothing in this
+corpus currently claims that either way.
+
 ## Connections and per-operation memory
 
 | Series | Unit | Status | Why |

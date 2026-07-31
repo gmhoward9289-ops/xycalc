@@ -134,3 +134,27 @@ parameters:
     label: Finest burst a metric can resolve
     unit: seconds
     dimension: seconds
+
+  # -- concurrency and queueing ------------------------------------------
+  - slug: db.concurrency_tickets
+    label: Concurrent storage-engine transactions permitted
+    unit: tickets
+    dimension: count
+    notes: >-
+      MongoDB's admission control. Not a lock and not a connection limit: it
+      caps how many operations may be inside the storage engine at once. It is
+      the term that converts a latency problem into a throughput ceiling.
+
+  - slug: db.ops_per_second
+    label: Sustainable operation rate
+    unit: ops/s
+    dimension: iops
+    notes: >-
+      The ceiling implied by Little's law: concurrency ÷ latency. Arrivals above
+      it do not degrade throughput gracefully — they queue, and the queue does
+      not drain.
+
+  - slug: db.storage_latency_seconds
+    label: Storage latency per operation
+    unit: seconds
+    dimension: seconds

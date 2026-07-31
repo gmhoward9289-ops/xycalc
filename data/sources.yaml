@@ -132,3 +132,40 @@ sources:
       is kept because plenty of volumes are still gp2 and the burst-exhaustion
       failure is entirely different from microbursting — it is slow, visible in
       averages, and has a metric.
+
+  - slug: mongodb-performance-tuning-7.0
+    title: Performance Tuning — WiredTiger tickets and locking
+    publisher: MongoDB, Inc.
+    url: https://www.mongodb.com/docs/v7.0/administration/performance-tuning/
+    version: MongoDB 7.0 manual
+    retrieved_on: '2026-07-31'
+    source_type: vendor_doc
+    notes: >-
+      Describes the reported failure in the vendor's own words: when tickets
+      reach zero, "any new read or write requests will be queued until a new
+      read or write ticket is available." Queued, not rejected and not slowed —
+      which is why the symptom is queries that never return rather than queries
+      that take longer.
+
+      Also states the ticket count should always be 128 and that sustained
+      values below it indicate a server delay, and that 7.0 replaced the static
+      cap with a dynamic algorithm.
+
+  - slug: percona-mongodb-concurrency-algorithm
+    title: Customizing the New MongoDB Concurrency Algorithm
+    publisher: Percona
+    url: https://www.percona.com/blog/customizing-the-new-mongodb-concurrency-algorithm/
+    retrieved_on: '2026-07-31'
+    source_type: practitioner
+    notes: >-
+      Carries the bounds of the 7.0 throughputProbing algorithm —
+      throughputProbingMinConcurrency defaults to 4 and
+      throughputProbingMaxConcurrency to 128 — which the MongoDB manual
+      describes qualitatively without publishing the floor.
+
+      The floor is the number that matters here. An algorithm that reacts to
+      falling throughput by reducing concurrency can take the ticket pool from
+      128 to as few as 4, and 4 tickets against a slow disk is a very small
+      number of operations per second. Percona also reports the observable
+      consequence directly: restricting concurrency produced a "notable
+      increase in the Queued Ops rate".

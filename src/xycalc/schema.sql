@@ -191,6 +191,7 @@ CREATE TABLE model_term (
                     )),
     apply           TEXT    NOT NULL CHECK (apply IN (
                         'input',                -- straight from the caller
+                        'divide_by_input',      -- divide by a caller quantity
                         'multiply',             -- value is a ratio >= 1
                         'divide_by_fraction',   -- value is a percent; /(v/100)
                         'add_bytes',            -- fixed addition
@@ -207,9 +208,17 @@ CREATE TABLE model_term (
     -- A term either reads an input or cites a coefficient. A term that does
     -- neither is a number from nowhere, which is the one thing this schema
     -- exists to prevent.
+    -- `divide_by_input` exists for Little's law, which is the shape of every
+    -- queueing answer: sustainable rate = concurrency / latency. Both of those
+    -- are quantities the caller measures, so neither is a coefficient, and a
+    -- pipeline that can only divide by cited constants cannot express the one
+    -- relationship that explains why a slow disk stops a database rather than
+    -- merely slowing it down.
     CHECK (
-        (apply = 'input' AND input_key IS NOT NULL AND coefficient_id IS NULL)
-        OR (apply <> 'input' AND coefficient_id IS NOT NULL)
+        (apply IN ('input', 'divide_by_input')
+            AND input_key IS NOT NULL AND coefficient_id IS NULL)
+        OR (apply NOT IN ('input', 'divide_by_input')
+            AND coefficient_id IS NOT NULL)
     )
 );
 

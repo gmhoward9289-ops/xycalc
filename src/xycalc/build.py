@@ -259,7 +259,7 @@ class Builder:
                 for i, term in enumerate(row.get("terms", [])):
                     tctx = f"{ctx}/{term.get('key', '?')}"
                     apply = term["apply"]
-                    if apply == "input":
+                    if apply in ("input", "divide_by_input"):
                         if term["input_key"] not in input_keys:
                             raise BuildError(
                                 f"{tctx}: reads input '{term['input_key']}', "

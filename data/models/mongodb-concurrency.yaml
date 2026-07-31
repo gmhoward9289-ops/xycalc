@@ -1,0 +1,124 @@
+models:
+  - slug: mongodb.ticket-throughput-ceiling
+    question: How many operations per second can MongoDB sustain when storage is slow?
+    system: mongodb
+    output: db.ops_per_second
+
+    summary: >-
+      Little's law against MongoDB's admission control. Only so many operations
+      may be inside the storage engine at once; if each takes L seconds, the
+      ceiling is tickets ÷ L, and no amount of client concurrency exceeds it.
+
+    reframe: >-
+      This model explains a failure rather than sizing a system, and the shape
+      of the failure is the point: it is a cliff, not a slope.
+
+      A slow disk should make queries slow. It should not make them stop. What
+      turns one into the other is that MongoDB caps how many operations may be
+      inside the storage engine at once — and when that cap is reached, in the
+      vendor's own words, "any new read or write requests will be queued until
+      a new read or write ticket is available". Queued. Not rejected, not
+      served slowly. If arrivals exceed the ceiling this model computes, the
+      queue does not drain, latency climbs without bound, and from the client
+      it looks exactly like the database has stopped answering.
+
+      The arithmetic is unforgiving because latency moves by orders of
+      magnitude while the ticket count does not. A cache miss costing 1 ms
+      gives 128 tickets a ceiling of 128,000 ops/s, which never binds. Behind a
+      throttled EBS volume the same miss costs 100 ms, and the ceiling is
+      1,280 ops/s. Nothing else changed. The workload did not grow.
+
+      There is a feedback loop underneath it, which is why the collapse is
+      abrupt rather than gradual. Past the eviction trigger, WiredTiger pulls
+      application threads into doing eviction work (see investigation 001).
+      Eviction writes pages out. Writing pages needs the disk that is already
+      saturated. So more threads end up holding tickets while blocked on the
+      slow device, which lengthens its queue, which slows it further. **Queries
+      that would have been pure cache hits stall too**, because they cannot get
+      a ticket — and that is what makes it look like MongoDB stopped rather
+      than like storage got slow.
+
+      On MongoDB 7.0 and later there is a second-order effect worth
+      understanding before you tune anything. Concurrency is no longer fixed at
+      128; a probing algorithm adjusts it, with a documented floor of 4. If a
+      storage stall causes it to walk concurrency down, the divisor in this
+      model shrinks by up to 32x at exactly the wrong moment. Whether it
+      actually does that under a latency stall is not established — see the
+      findings — but it is the difference between a bad hour and an outage, and
+      it is measurable with one serverStatus field.
+
+    notes: >-
+      Read and write tickets are separate pools of the same size, so run this
+      once per pool with the relevant latency. The model does not represent the
+      two interacting, which they do: a write stall that fills the write pool
+      still consumes the disk that reads depend on.
+
+      Unvalidated. Validating it means driving a MongoDB past its ticket
+      ceiling with artificially slow storage and checking where throughput
+      actually flattens — which is a fault-injection exercise, not an
+      observation you wait for.
+
+    inputs:
+      - key: tickets
+        label: Concurrent transactions permitted
+        unit: tickets
+        required: false
+        default: 128
+        help: >-
+          From serverStatus(). On 7.0+ read queues.execution.read.totalTickets;
+          before that, wiredTiger.concurrentTransactions.read.totalTickets. The
+          default of 128 is the static pre-7.0 value and the dynamic maximum;
+          if the probing algorithm has reduced it, use what it actually reads.
+      - key: storage_latency_seconds
+        label: Storage latency per operation, in seconds
+        unit: seconds
+        required: true
+        help: >-
+          0.001 for a healthy SSD, 0.1 for a throttled EBS volume. From
+          VolumeAvgReadLatency, or the read latency in `iostat -x 1`. This is
+          the term that moves by orders of magnitude.
+
+    terms:
+      - key: admission_limit
+        label: Operations allowed inside the storage engine at once
+        role: floor
+        apply: input
+        input_key: tickets
+        rationale: >-
+          MongoDB's admission control, and the reason a latency problem becomes
+          a throughput ceiling. It is not a lock and not a connection limit —
+          connections can keep arriving, they simply cannot get in.
+
+      - key: little_law
+        label: Divided by how long each operation holds its ticket
+        role: amplifier
+        apply: divide_by_input
+        input_key: storage_latency_seconds
+        rationale: >-
+          Little's law. A ticket held for L seconds can be reused 1/L times per
+          second, so N tickets sustain N/L operations per second and not one
+          more. Everything about this failure follows from the fact that L
+          moves by factors of a hundred while N does not.
+
+      - key: queue_behaviour
+        label: What happens to arrivals above the ceiling
+        role: constraint
+        apply: note
+        coefficient: mongodb.tickets-static-cap
+        rationale: >-
+          They queue. MongoDB is explicit that requests are "queued until a new
+          read or write ticket is available", so demand above this ceiling does
+          not degrade throughput — it grows a queue that never drains, and the
+          client sees a query that never returns.
+
+      - key: probing_floor
+        label: The dynamic algorithm can shrink the divisor
+        role: constraint
+        apply: note
+        coefficient: mongodb.tickets-probing-floor
+        rationale: >-
+          On 7.0+ concurrency is adjusted by a probing algorithm whose
+          documented floor is 4. Should a storage stall drive it toward that
+          floor, this model's ceiling falls by up to 32x on top of the latency
+          increase that started it. Check the ticket count before assuming it
+          is still 128.
