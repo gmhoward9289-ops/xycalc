@@ -42,13 +42,39 @@ K_MAX = "maximum bytes configured"
 K_DIRTY = "tracked dirty bytes in the cache"
 
 
+def num(v):
+    """Read a number that may have arrived as a 64-bit wrapper.
+
+    mongosh's JSON.stringify does not emit plain integers for NumberLong. It
+    emits `{"low": ..., "high": ..., "unsigned": ...}` -- a two's-complement
+    pair -- and EJSON emits `{"$numberLong": "..."}`. Observed in the wild on
+    2026-07-31: `maximum bytes configured` came back as
+    `{'high': 0, 'low': -2147483648, 'unsigned': False}`, which is 2 GiB, and
+    which a naive reader would take as -2147483648 or crash on.
+
+    The crash is the good outcome. Silently importing a negative cache size as
+    a measurement is the bad one, and it is the reason this is a function
+    rather than a cast at the call site.
+    """
+    if isinstance(v, bool):
+        raise SystemExit(f"expected a number, got a boolean: {v!r}")
+    if isinstance(v, (int, float)):
+        return v
+    if isinstance(v, dict):
+        if "$numberLong" in v:
+            return int(v["$numberLong"])
+        if "low" in v and "high" in v:
+            return (int(v["high"]) << 32) + (int(v["low"]) & 0xFFFFFFFF)
+    raise SystemExit(f"cannot read a number from {v!r}")
+
+
 def _get(d: dict, key: str, ctx: str):
     if key not in d:
         raise SystemExit(
             f"{ctx}: no {key!r} in the dump. Was serverStatus().wiredTiger.cache "
             f"included? A dump without it cannot validate anything."
         )
-    return d[key]
+    return num(d[key])
 
 
 def build_rows(dump: dict, args) -> tuple[list[dict], list[dict]]:
@@ -70,7 +96,7 @@ def build_rows(dump: dict, args) -> tuple[list[dict], list[dict]]:
         "title": f"MongoDB db.stats() and wiredTiger.cache, {when}",
         "publisher": args.publisher,
         "retrieved_on": when,
-        "source_type": "measured",
+        "source_type": args.source_type,
         "notes": (
             f"Imported by tools/import_mongodb.py. MongoDB {version}. "
             f"Machine class: {args.machine_class or 'unrecorded'}. "
@@ -99,7 +125,7 @@ def build_rows(dump: dict, args) -> tuple[list[dict], list[dict]]:
     ):
         if key in stats:
             observations.append(
-                {"slug": f"{tag}-{key}", "parameter": param, "value": stats[key],
+                {"slug": f"{tag}-{key}", "parameter": param, "value": num(stats[key]),
                  "notes": note, **common}
             )
 
@@ -108,24 +134,26 @@ def build_rows(dump: dict, args) -> tuple[list[dict], list[dict]]:
             {
                 "slug": f"{tag}-resident",
                 "parameter": "cache.size_bytes",
-                "value": cache[K_IN_CACHE],
+                "value": num(cache[K_IN_CACHE]),
                 "notes": f"serverStatus().wiredTiger.cache['{K_IN_CACHE}']",
                 **common,
             }
         )
 
-    # The measured compression ratio, which beats the corpus's published band
-    # outright for this database. Recorded as its own observation because it is
-    # the single most useful number in the dump.
+    # The measured compression ratio for THIS collection set. Recorded as its
+    # own observation because it is the most reusable number in the dump -- and
+    # because it is the one term the corpus cannot generalise. It is a property
+    # of the data, not of MongoDB.
     if stats.get("storageSize"):
         observations.append(
             {
                 "slug": f"{tag}-compression-ratio",
                 "parameter": "storage.compression_ratio",
-                "value": round(stats["dataSize"] / stats["storageSize"], 3),
+                "value": round(num(stats["dataSize"]) / num(stats["storageSize"]), 3),
                 "notes": (
                     "dataSize / storageSize — measured on this collection set. "
-                    "Beats any published ratio for this database."
+                    "Applies to this data and no other: compressibility is a "
+                    "property of the documents, not of the storage engine."
                 ),
                 **{**common, "unit": "ratio"},
             }
@@ -134,7 +162,7 @@ def build_rows(dump: dict, args) -> tuple[list[dict], list[dict]]:
     validations = []
     if args.validate:
         resident = _get(cache, K_IN_CACHE, "validation")
-        configured = cache.get(K_MAX)
+        configured = num(cache[K_MAX]) if K_MAX in cache else None
         if configured and resident / configured > 0.75:
             print(
                 f"warning: cache is {resident / configured:.0%} full. A cache "
@@ -150,8 +178,8 @@ def build_rows(dump: dict, args) -> tuple[list[dict], list[dict]]:
                 "case": f"{tag}-resident",
                 "observation": f"{tag}-resident",
                 "inputs": {
-                    "storage_size": stats["storageSize"],
-                    "index_size": stats.get("indexSize", 0),
+                    "storage_size": num(stats["storageSize"]),
+                    "index_size": num(stats.get("indexSize", 0)),
                 },
                 # Against the running total after `indexes` — the predicted
                 # cache CONTENTS — not the model's final output, which is the
@@ -183,6 +211,14 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--workload", help="read-heavy 400rps, bulk load, idle, ...")
     p.add_argument("--version", help="MongoDB version, if absent from the dump")
     p.add_argument("--publisher", default="local measurement")
+    p.add_argument(
+        "--source-type",
+        default="measured",
+        choices=["measured", "benchmark"],
+        help="`benchmark` when a committed harness produced the data, "
+        "`measured` when it came off a system doing real work. The difference "
+        "matters to anyone deciding whether the figure applies to them.",
+    )
     p.add_argument("--tag", help="slug prefix; defaults to machine-class + date")
     p.add_argument(
         "--no-validate",

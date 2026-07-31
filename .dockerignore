@@ -1,0 +1,10 @@
+.git
+.venv
+local/
+*.db
+__pycache__
+*.egg-info
+.pytest_cache
+tests/
+docs/research/inbox
+docs/research/outbox

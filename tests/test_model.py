@@ -139,10 +139,20 @@ class TestHeadroom:
 
 class TestValidation:
     def test_unvalidated_models_say_so(self, conn):
-        status = validation_status(conn, "mongodb.wt-cache")
+        """host-ram has never been checked and must keep saying so. It cannot
+        be validated by the swamplink benchmark either, because that instance
+        ran with an explicitly pinned cache size rather than the default split
+        the model inverts."""
+        status = validation_status(conn, "mongodb.host-ram")
         assert status["validated"] is False
         assert "unvalidated" in status["text"]
         assert "n=0" in status["text"]
+
+    def test_a_validated_model_reports_its_error(self, conn):
+        status = validation_status(conn, "mongodb.wt-cache")
+        assert status["validated"] is True
+        assert status["cases"] >= 1
+        assert "mean absolute error" in status["text"]
 
     def test_every_model_reports_a_status(self, conn):
         for slug in Model.all(conn):

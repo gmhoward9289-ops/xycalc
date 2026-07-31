@@ -1,0 +1,62 @@
+observations:
+- slug: swamplink-bench-2026-07-31-dataSize
+  parameter: storage.collection_bytes_uncompressed
+  value: 299100000
+  notes: db.stats().dataSize
+  system: mongodb
+  unit: bytes
+  workload: synthetic events collection, fully scanned then idle
+  machine_class: Hetzner CX shared vCPU, 7 GB RAM, 2 GiB WT cache
+  system_version: 7.0.39
+  observed_on: '2026-07-31'
+  source: obs-mongodb-swamplink-bench-2026-07-31
+- slug: swamplink-bench-2026-07-31-storageSize
+  parameter: storage.collection_bytes_on_disk
+  value: 210558976
+  notes: db.stats().storageSize
+  system: mongodb
+  unit: bytes
+  workload: synthetic events collection, fully scanned then idle
+  machine_class: Hetzner CX shared vCPU, 7 GB RAM, 2 GiB WT cache
+  system_version: 7.0.39
+  observed_on: '2026-07-31'
+  source: obs-mongodb-swamplink-bench-2026-07-31
+- slug: swamplink-bench-2026-07-31-indexSize
+  parameter: storage.index_bytes_on_disk
+  value: 56549376
+  notes: db.stats().indexSize
+  system: mongodb
+  unit: bytes
+  workload: synthetic events collection, fully scanned then idle
+  machine_class: Hetzner CX shared vCPU, 7 GB RAM, 2 GiB WT cache
+  system_version: 7.0.39
+  observed_on: '2026-07-31'
+  source: obs-mongodb-swamplink-bench-2026-07-31
+- slug: swamplink-bench-2026-07-31-resident
+  parameter: cache.size_bytes
+  value: 413259504
+  notes: serverStatus().wiredTiger.cache['bytes currently in the cache'] after a full collection
+    scan and one scan per index. Cache was 19% full, so this measures the database rather
+    than the ceiling. Came in 13.9% above dataSize + indexSize — the cache holds page structures
+    and an in-memory index representation on top of the bytes themselves.
+  system: mongodb
+  unit: bytes
+  workload: synthetic events collection, fully scanned then idle
+  machine_class: Hetzner CX shared vCPU, 7 GB RAM, 2 GiB WT cache
+  system_version: 7.0.39
+  observed_on: '2026-07-31'
+  source: obs-mongodb-swamplink-bench-2026-07-31
+- slug: swamplink-bench-2026-07-31-compression-ratio
+  parameter: storage.compression_ratio
+  value: 1.421
+  notes: 'dataSize / storageSize, measured. 1.42x — BELOW the corpus band''s low end of
+    1.5. Applies to this data and no other: compressibility is a property of the documents,
+    not of the storage engine, and this generator writes random base62 strings that barely
+    compress. Read it as a floor on what is possible, not as a typical value.'
+  system: mongodb
+  unit: ratio
+  workload: synthetic events collection, fully scanned then idle
+  machine_class: Hetzner CX shared vCPU, 7 GB RAM, 2 GiB WT cache
+  system_version: 7.0.39
+  observed_on: '2026-07-31'
+  source: obs-mongodb-swamplink-bench-2026-07-31

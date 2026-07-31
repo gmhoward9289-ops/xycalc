@@ -1,0 +1,14 @@
+validation:
+- model: mongodb.wt-cache
+  case: swamplink-bench-2026-07-31-resident
+  observation: swamplink-bench-2026-07-31-resident
+  inputs:
+    storage_size: 210558976
+    index_size: 56549376
+  at_term: indexes
+  actual: 413259504
+  notes: "Predicted in-cache bytes (uncompressed data + indexes) against bytes actually\
+    \ resident. Tests the decompression and index terms together \u2014 the model's\
+    \ two weakest inferences \u2014 and nothing else. Meaningful only when the cache\
+    \ was large enough to hold everything; otherwise resident bytes measure the cache,\
+    \ not the database."

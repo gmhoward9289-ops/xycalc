@@ -1,0 +1,31 @@
+# Tunnel-only, following the house pattern on swamplink: every container there
+# publishes to 127.0.0.1 and nothing else, and UFW allows only 22/80/443. The
+# calculator is a tool, not a public site, so it gets no Caddy vhost and no
+# certificate — reach it over SSH from a machine you trust:
+#
+#     ssh -N -L 8104:127.0.0.1:8104 swamplink
+#     open http://127.0.0.1:8104
+#
+# The same shape as the Ollama forward on COOPER, and for the same reason:
+# binding a service to the wildcard to "fix" connectivity is how an internal
+# tool becomes an internet-facing one.
+#
+# Ports in use on swamplink: 8100 api-demo, 8101 wings, 8102 wings-preview,
+# 8103 portal. xycalc takes 8104.
+
+services:
+  xycalc:
+    build: .
+    image: xycalc:local
+    container_name: xycalc
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8104:8000"
+    # No volumes. The corpus is in the image and the app writes nothing; a
+    # bind mount here would only create a way for the served answers to
+    # disagree with the committed YAML.
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true

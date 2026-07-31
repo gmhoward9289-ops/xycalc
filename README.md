@@ -122,8 +122,20 @@ ClickHouse, Redis, Celery and NVMe are named in `data/systems.yaml` and are
 deliberately empty — the schema gets proven on one question answered end to
 end, not six answered shallowly.
 
-Both models are **unvalidated**. See `docs/telemetry/` for the measurements
-that would change that, including the ones we cannot currently obtain.
+`mongodb.wt-cache` has survived exactly one test: **n=1, inside the band,
++41.1% at the mode** against a MongoDB 7.0.39 benchmark. That headline is close
+to meaningless on its own and the decomposition is the point — the compression
+coefficient was wrong for that data by ~64%, while the structural terms
+*understated* resident bytes by 13.9%. Two errors, opposite signs, one
+percentage. See
+[`docs/investigations/001-wiredtiger-cache/FINDINGS.md`](docs/investigations/001-wiredtiger-cache/FINDINGS.md).
+
+`mongodb.host-ram` is still **unvalidated (n=0)** and says so on every
+invocation.
+
+Real measurements are wanted, especially compression ratios from collections
+that are not synthetic. `docs/telemetry/mongodb.md` lists what to capture; it
+is three lines of `mongosh` and identifies nothing.
 
 ## Contributing a figure
 

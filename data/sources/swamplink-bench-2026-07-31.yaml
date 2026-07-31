@@ -1,0 +1,27 @@
+sources:
+- slug: obs-mongodb-swamplink-bench-2026-07-31
+  title: MongoDB 7.0.39 db.stats() and wiredTiger.cache, synthetic events collection
+  publisher: xycalc benchmark (swamplink)
+  retrieved_on: '2026-07-31'
+  source_type: benchmark
+  notes: >-
+    The first measurement this corpus was ever checked against. Harness is
+    committed at tools/bench/mongodb_load.js, so the run reproduces: MongoDB
+    7.0.39 in Docker with --wiredTigerCacheSizeGB 2, 500,000 documents in an
+    events-shaped collection with four indexes, then a full collection scan
+    and one scan per index to force residency. Machine: Hetzner CX shared
+    vCPU, 7 GB RAM. Cache finished 19% full, so everything genuinely fit and
+    resident bytes measure the database rather than the ceiling.
+
+    READ THE COMPRESSION FIGURE WITH CARE. The generator fills the large
+    fields with random base62 strings, which are close to incompressible, and
+    snappy managed only 1.42x on the result. Real collections carry repeated
+    field names, enum values and clustered timestamps and do better. So this
+    is a floor on compressibility rather than a typical value, and it is
+    deliberately NOT used to widen or move the corpus coefficient — one
+    synthetic dataset is not evidence about the population of real ones.
+
+    What it IS evidence about is the structural terms, which do not depend on
+    how well the data compresses: given the measured uncompressed size,
+    resident bytes came in 13.9% ABOVE dataSize + indexSize. See
+    docs/investigations/001-wiredtiger-cache/FINDINGS.md.

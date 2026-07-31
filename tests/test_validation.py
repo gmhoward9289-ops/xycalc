@@ -6,6 +6,7 @@ validation number: it looks like evidence.
 
 from __future__ import annotations
 
+import shutil
 import sqlite3
 from pathlib import Path
 
@@ -18,7 +19,7 @@ from xycalc.model import validation_status
 ROOT = Path(__file__).resolve().parent.parent
 
 
-def _case(local, **over):
+def _case(corpus, **over):
     """A validation case against the numbers the model itself produces.
 
     500 GB on disk x 2.5 = 1250, + 40 GB indexes = 1290 GB of predicted cache
@@ -33,8 +34,15 @@ def _case(local, **over):
         "at_term": "indexes",
     }
     row.update(over)
-    (local / "validation").mkdir(parents=True, exist_ok=True)
-    (local / "validation" / "case.yaml").write_text(
+    # Clear the cases the corpus actually ships. These tests assert exact error
+    # percentages against one hand-built case, and a real observation landing in
+    # data/validation/ would silently average into every one of them.
+    shipped = corpus.data / "validation"
+    if shipped.is_dir():
+        for f in shipped.glob("*.yaml"):
+            f.unlink()
+    (corpus.local / "validation").mkdir(parents=True, exist_ok=True)
+    (corpus.local / "validation" / "case.yaml").write_text(
         yaml.safe_dump({"validation": [row]}), encoding="utf-8"
     )
 
@@ -50,7 +58,7 @@ def _status(db, slug="mongodb.wt-cache"):
 def test_at_term_compares_against_the_intermediate(corpus, tmp_path):
     """Resident bytes are cache CONTENTS. Scored against the term that
     predicts contents, a correct model scores zero error."""
-    _case(corpus.local)
+    _case(corpus)
     status = _status(build(tmp_path / "v.db"))
     assert status["validated"]
     assert status["mean_abs_error_pct"] == pytest.approx(0, abs=0.01)
@@ -64,7 +72,7 @@ def test_without_at_term_the_same_measurement_looks_25_percent_wrong(
     Comparing resident bytes to the model's final output — the cache size to
     CONFIGURE — reports 25% error for a model that is exactly right, because
     1/0.80 is 1.25. A validation wrong in either direction is useless."""
-    _case(corpus.local, at_term=None)
+    _case(corpus, at_term=None)
     status = _status(build(tmp_path / "v.db"))
     assert status["mean_abs_error_pct"] == pytest.approx(25.0, abs=0.01)
 
@@ -72,13 +80,13 @@ def test_without_at_term_the_same_measurement_looks_25_percent_wrong(
 def test_an_unknown_at_term_fails_the_build(corpus, tmp_path):
     """Silently falling back to the final answer would reintroduce the bug
     under a name that looks correct."""
-    _case(corpus.local, at_term="no-such-term")
+    _case(corpus, at_term="no-such-term")
     with pytest.raises(BuildError, match="at_term"):
         build(tmp_path / "v.db")
 
 
 def test_a_case_outside_the_band_is_recorded_as_outside(corpus, tmp_path):
-    _case(corpus.local, actual=99e9)
+    _case(corpus, actual=99e9)
     db = build(tmp_path / "v.db")
     c = sqlite3.connect(db)
     within = c.execute("SELECT within_band FROM validation").fetchone()[0]

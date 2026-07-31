@@ -56,10 +56,18 @@ class TestSizing:
 
     def test_validation_status_is_never_omitted(self, client):
         """A response without it would read as a validated answer to anything
-        that forgot to check."""
+        that forgot to check. Asserts presence and substance, not a particular
+        verdict — the verdict moves as observations land, and a test pinned to
+        `unvalidated` would have to be edited every time the corpus improves."""
         body = client.post("/api/sizing", json=SIZING).json()
         assert "validation" in body
+        assert body["validation"]["text"]
+        assert isinstance(body["validation"]["validated"], bool)
+
+    def test_an_unchecked_model_still_says_so(self, client):
+        body = client.get("/api/why/mongodb.host-ram").json()
         assert body["validation"]["validated"] is False
+        assert "unvalidated" in body["validation"]["text"]
 
     def test_every_computed_step_carries_its_citation(self, client):
         body = client.post("/api/sizing", json=SIZING).json()

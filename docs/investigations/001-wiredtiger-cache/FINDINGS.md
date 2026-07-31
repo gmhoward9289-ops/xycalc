@@ -1,7 +1,9 @@
 # Findings — WiredTiger cache sizing
 
 **Investigated:** 2026-07-31 · **Model:** `mongodb.wt-cache`, `mongodb.host-ram`
-· **Validation:** none. Both models are unvalidated (n=0).
+· **Validation:** `mongodb.wt-cache` n=1, within band, +41.1% at the mode.
+`mongodb.host-ram` still unvalidated. See *First contact with a real database*
+below — the 41% decomposes into two very different things.
 
 ---
 
@@ -137,23 +139,70 @@ check.
 
 ---
 
-## What would validate this
+## First contact with a real database
 
-Both models are `unvalidated (n=0)`. One `db.stats()` plus one
-`serverStatus().wiredTiger.cache` from any real MongoDB would produce the first
-case:
+Run on 2026-07-31: MongoDB 7.0.39 in Docker on swamplink, 2 GiB cache, 500,000
+documents in an events-shaped collection with four indexes, fully scanned to
+force residency. Harness at `tools/bench/mongodb_load.js`; the cache finished
+19% full, so everything genuinely fit and resident bytes measure the database
+rather than the ceiling.
+
+| | |
+|---|---|
+| `dataSize` | 0.299 GB |
+| `storageSize` | 0.211 GB |
+| `indexSize` | 0.057 GB |
+| bytes currently in the cache | **0.413 GB** |
+
+The model predicted 0.583 GB of cache contents. **Error +41.1%, inside the
+band** — but the headline number is close to meaningless, because it is two
+unrelated errors pointing the same way. Decomposed:
+
+**1. The compression coefficient was wrong for this data, by a lot.** Measured
+ratio 1.42× against the corpus's 2.5× mode — *below the band's low end of 1.5*.
+Alone, that overstates the answer by ~64%.
+
+This is a fact about the benchmark, not about MongoDB. The generator fills its
+large fields with random base62 strings, which are close to incompressible.
+Real collections carry repeated field names, enum values and clustered
+timestamps, and do better. **The coefficient was deliberately not changed**:
+one synthetic dataset is not evidence about the population of real ones, and
+widening a band to swallow a measurement is how a corpus stops meaning
+anything. What it does establish is a floor — high-entropy collections exist
+and the published band does not reach them.
+
+**2. In-cache bytes exceeded `dataSize + indexSize` by 13.9%**, and this one is
+about the model. Given the *measured* uncompressed size, predicted contents were
+0.356 GB against 0.413 GB resident. The cache holds more than document and index
+bytes: page structures, internal B-tree pages, and an in-memory index
+representation the documentation says differs from the on-disk format.
+
+That is the weakest inference in this investigation — named as such before the
+measurement existed — and the measurement says it **understates**. One case on
+one synthetic dataset is not enough to add a term for it. Two or three
+observations from real collections would be.
+
+The two errors happen to point opposite ways at the structural level and the
+same way overall, which is exactly why a single error percentage was worth
+taking apart. A validation number nobody has decomposed is a number, not
+evidence.
+
+### What would strengthen this
+
+Real collections, on real hardware, doing real work — chiefly to get honest
+compression ratios and to see whether the 13.9% overhead holds. The capture is
+three lines and identifies nothing beyond what you choose to put in
+`machine_class`:
 
 ```javascript
 db.stats()                                    // dataSize, storageSize, indexSize
 db.serverStatus().wiredTiger.cache            // "bytes currently in the cache"
+db.version()
 ```
 
-The check that matters: does `dataSize + indexSize` predict "bytes currently in
-the cache" when the cache is large enough to hold everything? That tests the
-decompression and index terms together against reality, and it needs no load
-generator — just a database that fits.
-
 `docs/telemetry/mongodb.md` lists the full series. `xy-observe` imports them.
+`mongodb.host-ram` remains unvalidated and will stay so until an instance runs
+with the default cache split rather than an explicitly pinned size.
 
 ---
 

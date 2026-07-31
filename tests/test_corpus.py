@@ -16,12 +16,26 @@ def rows(conn, sql):
 
 
 class TestSources:
+    # A benchmark's citation is its harness, not a URL, and a measurement's is
+    # the machine it came off. Neither has somewhere to link to.
+    NO_URL = ("estimate", "derived", "measured", "benchmark")
+
     def test_every_source_is_retrievable(self, conn):
         """A source nobody can go and read is an assertion, not a citation."""
         for r in rows(conn, "SELECT slug, url, source_type FROM source"):
-            if r["source_type"] in ("estimate", "derived", "measured"):
+            if r["source_type"] in self.NO_URL:
                 continue
             assert r["url"], f"{r['slug']} has no URL"
+
+    def test_benchmarks_say_how_to_reproduce_themselves(self, conn):
+        """The substitute for a URL. A benchmark whose harness is not named is
+        an anecdote with a number attached."""
+        for r in rows(
+            conn, "SELECT slug, notes FROM source WHERE source_type = 'benchmark'"
+        ):
+            assert "tools/bench/" in (r["notes"] or ""), (
+                f"{r['slug']} is graded benchmark but names no harness"
+            )
 
     def test_every_source_records_when_it_was_read(self, conn):
         for r in rows(conn, "SELECT slug, retrieved_on FROM source"):
