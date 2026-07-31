@@ -1,0 +1,19 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "xycalc",
+      "runtimeExecutable": ".venv/bin/python",
+      "runtimeArgs": [
+        "-m",
+        "uvicorn",
+        "xycalc.api:app",
+        "--host",
+        "127.0.0.1",
+        "--port",
+        "8200"
+      ],
+      "port": 8200
+    }
+  ]
+}

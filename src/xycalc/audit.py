@@ -39,8 +39,19 @@ def _rows(conn: sqlite3.Connection, sql: str, *args) -> list[sqlite3.Row]:
     return conn.execute(sql, args).fetchall()
 
 
-def audit(db_path: Path = DEFAULT_DB) -> int:
-    if not db_path.exists():
+def audit(db_path: Path = DEFAULT_DB, rebuild: bool = True) -> int:
+    """Rebuild before auditing, always.
+
+    Auditing a database that no longer matches the YAML is worse than not
+    auditing: it reports a clean corpus that does not exist. This bit during
+    development — an observation was imported, the audit was run, and it
+    cheerfully reported the previous corpus's validation figures.
+
+    The build takes well under a second. There is no saving here worth a
+    wrong answer. `rebuild=False` exists only for tests that deliberately
+    corrupt a built database.
+    """
+    if rebuild or not db_path.exists():
         build(db_path)
         print()
 

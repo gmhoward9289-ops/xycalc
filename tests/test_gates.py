@@ -118,4 +118,6 @@ def test_audit_fails_when_a_model_has_no_floor(db_path, tmp_path):
     c.execute("DELETE FROM model_term WHERE role = 'floor'")
     c.commit()
     c.close()
-    assert audit(broken) == 1
+    # rebuild=False: this test corrupts a built database on purpose, and the
+    # audit's default is to rebuild over exactly that kind of edit.
+    assert audit(broken, rebuild=False) == 1

@@ -19,6 +19,7 @@ direction.
 
 from __future__ import annotations
 
+import math
 import re
 import sqlite3
 from dataclasses import dataclass, field
@@ -58,9 +59,19 @@ def parse_bytes(text: str | float | int) -> float:
 
 
 def format_bytes(n: float) -> str:
+    """One decimal, rounding half away from zero.
+
+    Not `f"{v:,.1f}"`. Python's format rounds half to EVEN, so 1.25 TB renders
+    as "1.2 TB" while the web UI's toLocaleString renders the same float as
+    "1.3 TB" — and 1.25 TB is precisely what this corpus's first worked example
+    produces. One figure displayed two ways across two surfaces is the kind of
+    drift a project about trustworthy numbers cannot have.
+    """
     for unit, size in (("TB", 1000**4), ("GB", 1000**3), ("MB", 1000**2)):
         if abs(n) >= size:
-            return f"{n / size:,.1f} {unit}"
+            v = n / size
+            v = math.copysign(math.floor(abs(v) * 10 + 0.5) / 10, v)
+            return f"{v:,.1f} {unit}"
     return f"{n:,.0f} B"
 
 

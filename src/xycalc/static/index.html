@@ -1,0 +1,369 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>xycalc — how much X does it take to run Y?</title>
+<style>
+/* The page is an instrument, so it reads like one: figures in a mono face at a
+   size you can compare at a glance, prose in a proportional face and out of the
+   way. The one deliberate loudness is the validation banner -- an unvalidated
+   answer that looked as confident as a validated one would undo the point. */
+:root {
+  --bg: #fbfaf8;
+  --panel: #ffffff;
+  --ink: #1a1a1a;
+  --muted: #6b6b6b;
+  --line: #e2ded8;
+  --accent: #1f5f4f;
+  --warn-bg: #fdf6e3;
+  --warn-line: #d9c08a;
+  --warn-ink: #7a5c18;
+  --floor: #3d5a80;
+  --amplifier: #9c4221;
+  --headroom: #2c6e49;
+  --constraint: #6b6b6b;
+  --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #16181a; --panel: #1e2124; --ink: #e8e6e3; --muted: #9a9793;
+    --line: #32363a; --accent: #6dc3a8;
+    --warn-bg: #2a2415; --warn-line: #6b5a2a; --warn-ink: #e0c67a;
+    --floor: #8fb0d9; --amplifier: #e0996b; --headroom: #7fc9a0;
+    --constraint: #9a9793;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--bg); color: var(--ink);
+  font-family: var(--sans); line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+.wrap { max-width: 60rem; margin: 0 auto; padding: 2rem 1.25rem 5rem; }
+
+header { border-bottom: 1px solid var(--line); padding-bottom: 1.25rem; margin-bottom: 2rem; }
+h1 { font-size: 1.5rem; margin: 0 0 .25rem; letter-spacing: -.01em; }
+h1 span { color: var(--accent); font-family: var(--mono); }
+.tagline { color: var(--muted); margin: 0; font-size: .95rem; }
+.claim { margin: .75rem 0 0; font-size: .85rem; color: var(--muted); }
+.claim code { font-family: var(--mono); font-size: .8rem; }
+
+.panel {
+  background: var(--panel); border: 1px solid var(--line);
+  border-radius: 8px; padding: 1.25rem; margin-bottom: 1.5rem;
+}
+label { display: block; font-size: .8rem; font-weight: 600; margin-bottom: .3rem; }
+.help { font-size: .78rem; color: var(--muted); font-weight: 400; margin-top: .2rem; }
+select, input {
+  width: 100%; padding: .55rem .7rem; font-size: .95rem;
+  font-family: var(--mono);
+  border: 1px solid var(--line); border-radius: 6px;
+  background: var(--bg); color: var(--ink);
+}
+select { font-family: var(--sans); }
+input:focus, select:focus, button:focus-visible {
+  outline: 2px solid var(--accent); outline-offset: 1px;
+}
+.field { margin-bottom: 1rem; }
+.question { font-size: 1.05rem; margin: 0 0 1.25rem; }
+button {
+  background: var(--accent); color: #fff; border: 0; border-radius: 6px;
+  padding: .6rem 1.2rem; font-size: .95rem; font-weight: 600; cursor: pointer;
+}
+button:hover { filter: brightness(1.1); }
+
+/* -- answer -- */
+.answer { text-align: center; padding: 1.5rem 0 .5rem; }
+.answer .value {
+  font-family: var(--mono); font-size: clamp(2.2rem, 9vw, 3.4rem);
+  font-weight: 600; letter-spacing: -.02em; line-height: 1;
+}
+.answer .band { color: var(--muted); font-family: var(--mono); font-size: .95rem; margin-top: .5rem; }
+.answer .label { font-size: .75rem; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+
+.bandbar { height: 6px; background: var(--line); border-radius: 3px; position: relative; margin: 1.25rem 0 .35rem; }
+.bandbar .fill { position: absolute; top: 0; bottom: 0; background: var(--accent); opacity: .35; border-radius: 3px; }
+.bandbar .mark { position: absolute; top: -3px; width: 2px; height: 12px; background: var(--accent); }
+.bandends { display: flex; justify-content: space-between; font-family: var(--mono); font-size: .75rem; color: var(--muted); }
+
+/* -- validation -- */
+.validation {
+  border-radius: 6px; padding: .7rem .9rem; font-size: .85rem;
+  border: 1px solid var(--warn-line); background: var(--warn-bg); color: var(--warn-ink);
+  margin-top: 1.25rem;
+}
+.validation.ok { border-color: var(--accent); background: transparent; color: var(--accent); }
+.validation strong { font-weight: 700; }
+
+/* -- breakdown -- */
+h2 { font-size: .8rem; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin: 2rem 0 .75rem; }
+table { width: 100%; border-collapse: collapse; font-size: .88rem; }
+th { text-align: left; font-size: .7rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 600; padding-bottom: .4rem; border-bottom: 1px solid var(--line); }
+td { padding: .6rem .4rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+td.num { font-family: var(--mono); text-align: right; white-space: nowrap; }
+.role { font-family: var(--mono); font-size: .68rem; text-transform: uppercase; letter-spacing: .05em; }
+.role-floor { color: var(--floor); }
+.role-amplifier { color: var(--amplifier); }
+.role-headroom { color: var(--headroom); }
+.role-constraint { color: var(--constraint); }
+.term-label { font-weight: 600; }
+.cite { font-size: .74rem; color: var(--muted); margin-top: .2rem; }
+.cite a { color: var(--muted); }
+.grade { font-family: var(--mono); font-size: .68rem; padding: .05rem .35rem; border: 1px solid var(--line); border-radius: 3px; color: var(--muted); }
+.skipped td { opacity: .5; }
+details { margin-top: .3rem; }
+summary { cursor: pointer; font-size: .74rem; color: var(--muted); }
+blockquote { margin: .4rem 0 0; padding-left: .7rem; border-left: 2px solid var(--line); font-size: .8rem; color: var(--muted); font-style: italic; }
+
+.constraint-item { border-bottom: 1px solid var(--line); padding: .7rem 0; font-size: .85rem; }
+.constraint-item:last-child { border-bottom: 0; }
+.constraint-item .v { font-family: var(--mono); color: var(--amplifier); font-weight: 600; }
+.constraint-item p { margin: .25rem 0 0; color: var(--muted); font-size: .82rem; }
+
+.reframe { border-left: 3px solid var(--accent); padding: .25rem 0 .25rem 1rem; }
+.reframe h2 { margin-top: 0; color: var(--accent); }
+.reframe p { font-size: .92rem; }
+
+.scroll { overflow-x: auto; }
+.error { color: #b3261e; font-family: var(--mono); font-size: .85rem; }
+footer { margin-top: 3rem; padding-top: 1.25rem; border-top: 1px solid var(--line); font-size: .78rem; color: var(--muted); }
+[hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1><span>xycalc</span> — how much X does it take to run Y?</h1>
+  <p class="tagline">Infrastructure sizing from a corpus where every number cites a source.</p>
+  <p class="claim">
+    Two guarantees, enforced by a build that fails when they break: every figure
+    <strong>cites a source</strong>, and every figure <strong>names the versions it applies to</strong>.
+    Plus one made by admission — every model says how much reality it has been checked against.
+  </p>
+</header>
+
+<div class="panel">
+  <div class="field">
+    <label for="model">Question</label>
+    <select id="model"></select>
+  </div>
+  <div id="inputs"></div>
+  <div class="field">
+    <label for="available">What you already have <span class="help" style="display:inline">optional — turns this into a headroom check</span></label>
+    <input id="available" placeholder="e.g. 256GB" autocomplete="off">
+  </div>
+  <button id="go">Calculate</button>
+  <p id="error" class="error" hidden></p>
+</div>
+
+<div id="result" hidden>
+  <div class="panel">
+    <p class="question" id="q"></p>
+
+    <div class="answer">
+      <div class="label">Answer</div>
+      <div class="value" id="answer"></div>
+      <div class="band" id="band"></div>
+    </div>
+
+    <div class="bandbar" id="bandbar" hidden>
+      <div class="fill" id="bandfill"></div>
+      <div class="mark" id="bandmode"></div>
+    </div>
+    <div class="bandends" id="bandends" hidden></div>
+
+    <div id="headroom" hidden></div>
+
+    <div class="validation" id="validation"></div>
+  </div>
+
+  <div class="panel">
+    <h2 style="margin-top:0">Breakdown</h2>
+    <div class="scroll">
+      <table>
+        <thead><tr>
+          <th>Term</th><th style="text-align:right">Effect</th><th style="text-align:right">Running</th>
+        </tr></thead>
+        <tbody id="steps"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="panel" id="constraints-panel" hidden>
+    <h2 style="margin-top:0">Constraints</h2>
+    <p style="font-size:.82rem;color:var(--muted);margin:0 0 .5rem">
+      Not in the arithmetic. They still bind, and they are frequently what actually matters.
+    </p>
+    <div id="constraints"></div>
+  </div>
+
+  <div class="panel reframe" id="reframe-panel" hidden>
+    <h2>Read this before acting on the number</h2>
+    <div id="reframe"></div>
+  </div>
+</div>
+
+<footer>
+  Code MIT · corpus CC BY 4.0 ·
+  <code>xycalc why &lt;model&gt;</code> prints this citation chain in a terminal.
+</footer>
+
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+let MODELS = [];
+
+function fmtBytes(n) {
+  const units = [["TB", 1e12], ["GB", 1e9], ["MB", 1e6]];
+  for (const [u, size] of units) {
+    if (Math.abs(n) >= size) return (n / size).toLocaleString(undefined, {maximumFractionDigits: 1}) + " " + u;
+  }
+  return Math.round(n).toLocaleString() + " B";
+}
+const fmt = (n, unit) =>
+  unit === "bytes" ? fmtBytes(n)
+  : unit === "percent" ? n.toFixed(1) + "%"
+  : n.toLocaleString(undefined, {maximumFractionDigits: 2}) + " " + unit;
+
+async function boot() {
+  const r = await fetch("/api/models");
+  MODELS = (await r.json()).models;
+  $("model").innerHTML = MODELS.map(m => `<option value="${m.slug}">${m.question}</option>`).join("");
+  renderInputs();
+  $("model").addEventListener("change", renderInputs);
+  $("go").addEventListener("click", calculate);
+}
+
+function current() {
+  return MODELS.find(m => m.slug === $("model").value);
+}
+
+function renderInputs() {
+  const m = current();
+  $("inputs").innerHTML = m.inputs.map(i => `
+    <div class="field">
+      <label for="in-${i.key}">${i.label}${i.required ? "" : " <span class='help' style='display:inline'>optional</span>"}</label>
+      <input id="in-${i.key}" data-key="${i.key}" autocomplete="off"
+             placeholder="${i.unit === "bytes" ? "e.g. 500GB" : i.unit}">
+      ${i.help ? `<div class="help">${i.help}</div>` : ""}
+    </div>`).join("");
+  $("result").hidden = true;
+}
+
+async function calculate() {
+  const m = current();
+  const inputs = {};
+  document.querySelectorAll("#inputs input").forEach(el => {
+    if (el.value.trim()) inputs[el.dataset.key] = el.value.trim();
+  });
+  const body = {model: m.slug, inputs};
+  const avail = $("available").value.trim();
+  if (avail) body.available = avail;
+
+  $("error").hidden = true;
+  const r = await fetch("/api/sizing", {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify(body)
+  });
+  const data = await r.json();
+  if (!r.ok) {
+    $("error").textContent = data.detail || "something went wrong";
+    $("error").hidden = false;
+    $("result").hidden = true;
+    return;
+  }
+  render(data);
+}
+
+function render(d) {
+  const u = d.unit;
+  $("q").textContent = d.question;
+  $("answer").textContent = fmt(d.answer.mode, u);
+  $("band").textContent = `band ${fmt(d.answer.lo, u)} – ${fmt(d.answer.hi, u)}`;
+
+  // The band as a bar, because a range written as text reads as decoration and
+  // the range is the honest part of the answer.
+  const spread = d.answer.hi - d.answer.lo;
+  if (spread > 0) {
+    $("bandbar").hidden = $("bandends").hidden = false;
+    $("bandfill").style.left = "0%";
+    $("bandfill").style.right = "0%";
+    $("bandmode").style.left = ((d.answer.mode - d.answer.lo) / spread * 100) + "%";
+    $("bandends").innerHTML = `<span>${fmt(d.answer.lo, u)}</span><span>${fmt(d.answer.hi, u)}</span>`;
+  } else {
+    $("bandbar").hidden = $("bandends").hidden = true;
+  }
+
+  const v = $("validation");
+  v.className = "validation" + (d.validation.validated ? " ok" : "");
+  v.innerHTML = `<strong>${d.validation.validated ? "Validated" : "Unvalidated"}</strong> — ${d.validation.text}`;
+
+  if (d.headroom) {
+    const h = d.headroom;
+    $("headroom").hidden = false;
+    $("headroom").innerHTML = `
+      <table style="margin-top:1.5rem">
+        <tbody>
+        <tr><td>Available</td><td class="num">${fmt(h.available, u)}</td></tr>
+        <tr><td>Required (mode)</td><td class="num">${fmt(h.required_mode, u)}</td></tr>
+        <tr><td>Utilisation</td><td class="num">${h.utilisation_mode_pct.toFixed(0)}%</td></tr>
+        <tr><td>Margin</td><td class="num">${fmt(h.margin_mode, u)}</td></tr>
+        <tr><td><strong>Verdict</strong></td><td class="num"><strong>${h.verdict}</strong></td></tr>
+        </tbody>
+      </table>`;
+  } else {
+    $("headroom").hidden = true;
+  }
+
+  $("steps").innerHTML = d.steps.map(s => {
+    if (s.skipped) return `<tr class="skipped">
+      <td><span class="role role-${s.role}">${s.role}</span><div class="term-label">${s.label}</div></td>
+      <td class="num">—</td><td class="num">${s.skip_reason}</td></tr>`;
+    const cite = s.source ? `
+      <div class="cite">
+        <span class="grade">${s.confidence}</span>
+        ${s.source_url ? `<a href="${s.source_url}" target="_blank" rel="noopener">${s.source}</a>` : s.source}
+        · ${s.applies_to}
+      </div>` : "";
+    const quote = s.quote ? `<details><summary>the sentence it was read from</summary>
+      <blockquote>${s.quote}</blockquote></details>` : "";
+    return `<tr>
+      <td>
+        <span class="role role-${s.role}">${s.role}</span>
+        <div class="term-label">${s.label}</div>
+        <div class="cite">${s.rationale}</div>
+        ${cite}${quote}
+      </td>
+      <td class="num">${s.contribution}</td>
+      <td class="num">${fmt(s.running.mode, d.unit)}</td>
+    </tr>`;
+  }).join("");
+
+  $("constraints-panel").hidden = d.constraints.length === 0;
+  $("constraints").innerHTML = d.constraints.map(c => `
+    <div class="constraint-item">
+      <span class="v">${c.value}${c.unit === "percent" ? "%" : ""}</span>
+      <strong>${c.label}</strong>
+      <p>${c.rationale}</p>
+      <div class="cite">${c.source_url ? `<a href="${c.source_url}" target="_blank" rel="noopener">${c.source}</a>` : c.source}</div>
+    </div>`).join("");
+
+  $("reframe-panel").hidden = !d.reframe;
+  if (d.reframe) {
+    $("reframe").innerHTML = d.reframe.trim().split(/\n\s*\n/)
+      .map(p => `<p>${p.replace(/\s+/g, " ")}</p>`).join("");
+  }
+
+  $("result").hidden = false;
+  $("result").scrollIntoView({behavior: "smooth", block: "start"});
+}
+
+boot();
+</script>
+</body>
+</html>

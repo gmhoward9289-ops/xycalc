@@ -152,3 +152,12 @@ class TestValidation:
 def test_format_bytes_reads_like_a_person_wrote_it():
     assert format_bytes(1.6125e12) == "1.6 TB"
     assert format_bytes(500 * 1000**3) == "500.0 GB"
+
+
+def test_format_bytes_rounds_half_away_from_zero_like_the_web_ui():
+    """1.25 TB is what this corpus's first worked example produces at the
+    decompression step. Python's default format rounds half to EVEN and would
+    render it "1.2 TB", while the browser's toLocaleString renders "1.3 TB" —
+    the same figure, two answers, on two surfaces of one project."""
+    assert format_bytes(1.25e12) == "1.3 TB"
+    assert format_bytes(1.35e12) == "1.4 TB"

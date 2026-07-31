@@ -16,8 +16,11 @@ gui = [
 dev = [
     "pytest>=8.0",
     # FastAPI's TestClient is a thin wrapper over an HTTP client; without this
-    # the API tests cannot run at all.
-    "httpx>=0.27",
+    # the API tests cannot run at all. httpx2 rather than httpx: starlette
+    # deprecates the latter and warns on every run. Floor matches starlette's
+    # own — a looser bound lets a resolver pick an early httpx2 that lacks the
+    # testclient calls.
+    "httpx2>=2.0",
 ]
 
 [project.scripts]

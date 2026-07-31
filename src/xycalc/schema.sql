@@ -252,6 +252,19 @@ CREATE TABLE validation (
     case_slug       TEXT    NOT NULL,
     observation_id  INTEGER REFERENCES observation(id),
     inputs_json     TEXT    NOT NULL,   -- what was fed in
+
+    -- Compare against the running total after this term rather than against
+    -- the final answer. Not a convenience: most measurements observe an
+    -- INTERMEDIATE quantity, and comparing them to the final one measures the
+    -- gap between two different questions.
+    --
+    -- The case that forced it: `mongodb.wt-cache` outputs the cache size to
+    -- CONFIGURE, while serverStatus reports the bytes currently RESIDENT.
+    -- Those differ by exactly the eviction-headroom divisor, so validating one
+    -- against the other reported a 25% error for a model that was working
+    -- perfectly. A validation that is wrong in a flattering direction would be
+    -- bad; one wrong in either direction is useless.
+    at_term         TEXT,
     predicted_lo    REAL    NOT NULL,
     predicted_mode  REAL    NOT NULL,
     predicted_hi    REAL    NOT NULL,

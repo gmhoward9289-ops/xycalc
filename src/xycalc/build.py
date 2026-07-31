@@ -329,19 +329,38 @@ class Builder:
                     raise BuildError(f"{ctx}: unknown model '{slug}'")
                 model = Model.load(self.c, slug)
                 result = model.evaluate(row["inputs"])
+
+                # Most measurements observe an intermediate quantity, not the
+                # model's final output. Comparing them anyway measures the gap
+                # between two different questions.
+                at_term = row.get("at_term")
+                if at_term:
+                    step = next(
+                        (s for s in result.steps if s.term.key == at_term), None
+                    )
+                    if step is None:
+                        raise BuildError(
+                            f"{ctx}: at_term '{at_term}' is not a term of "
+                            f"{slug}. Terms: "
+                            f"{', '.join(s.term.key for s in result.steps)}"
+                        )
+                    lo, mode, hi = step.lo, step.mode, step.hi
+                else:
+                    lo, mode, hi = result.lo, result.mode, result.hi
+
                 actual = float(row["actual"])
-                mode = result.mode
                 self.ins(
                     "validation",
                     model_id=self.model[slug],
                     case_slug=row["case"],
                     observation_id=self.observation.get(row.get("observation")),
                     inputs_json=json.dumps(row["inputs"], sort_keys=True),
-                    predicted_lo=result.lo,
+                    at_term=at_term,
+                    predicted_lo=lo,
                     predicted_mode=mode,
-                    predicted_hi=result.hi,
+                    predicted_hi=hi,
                     actual=actual,
-                    within_band=1 if result.lo <= actual <= result.hi else 0,
+                    within_band=1 if lo <= actual <= hi else 0,
                     error_pct=((mode - actual) / actual * 100) if actual else 0.0,
                     notes=row.get("notes"),
                 )
