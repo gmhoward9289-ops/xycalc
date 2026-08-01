@@ -19,7 +19,14 @@
 # containers and the network on exit, success or failure.
 set -euo pipefail
 
-NAME="${PROBE_NAME:-xycalc-ticket-probe}"
+# Unique per run. The names used to be a fixed default, and `cleanup` runs at
+# STARTUP as well as on exit -- so a second run beginning while a first was
+# still going would docker-rm the first one's containers out from under it.
+# That happened on 2026-08-01: two sessions probed this box within minutes of
+# each other, one run died mid-load, and it was initially misdiagnosed as an
+# ssh teardown killing the process. A benchmark harness that silently destroys
+# a concurrent benchmark is worse than one that refuses to start.
+NAME="${PROBE_NAME:-xycalc-ticket-probe-$$-$(date +%s)}"
 NET="${NAME}-net"
 DRIVER="${NAME}-driver"
 IMAGE="${PROBE_IMAGE:-mongo:7}"
@@ -56,7 +63,15 @@ cleanup() {
     docker network rm "$NET" >/dev/null 2>&1 || true
 }
 trap cleanup EXIT
-cleanup
+
+# Deliberately NOT a blanket cleanup of a shared name at startup. The names are
+# unique to this run, so there is nothing of ours to clear, and anything
+# matching an older pattern belongs to somebody else's run.
+if docker ps --format '{{.Names}}' | grep -q '^xycalc-ticket-probe'; then
+    echo "note: another ticket_probe run is active on this host. Proceeding —" >&2
+    echo "      names are unique per run — but the two will contend for the" >&2
+    echo "      same device and CPU, so neither result is cleanly isolated." >&2
+fi
 
 {
     echo "device      $dev  ->  ${READ_BPS} B/s, ${READ_IOPS} IOPS (this container only)"

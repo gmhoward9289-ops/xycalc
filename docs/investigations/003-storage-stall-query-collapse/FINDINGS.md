@@ -230,6 +230,44 @@ so hold time can be computed against a genuinely stable N.
 
 ---
 
+### Reproduced, and a caveat about how
+
+A second session ran the identical experiment from the same committed harness
+within minutes of the first. The two agree on every qualitative claim and
+closely on the numbers:
+
+| | primary run | second run |
+|---|---|---|
+| tickets at rest | 4 | 4 |
+| tickets peak, concurrency 64 | 74 | 71 |
+| throughput range across the sweep | 108.8 – 118.4 ops/s | 102.7 – 113.0 ops/s |
+| latency, concurrency 1 → 64 | 9.2 → 535.5 ms | 9.7 → 567.8 ms |
+
+Two independent runs reaching the same conclusion is the difference between a
+finding and an anecdote, and the flat-throughput result in particular is now
+hard to argue with.
+
+**The caveat is that they overlapped in time on the same two-vCPU host**, so
+neither is cleanly isolated — they contended for the same device. The agreement
+is therefore weaker evidence than two runs separated in time would be, and both
+throughput figures are more likely depressed than inflated. That does not touch
+the central claim, which is about the *shape* of the response rather than its
+absolute level.
+
+Little's law closes on the whole system to within 2% at every level in the
+second run: throughput × latency reproduces the offered thread count almost
+exactly (at 64 threads, 110.7 × 0.568 = 62.9). The queue is real, and the
+device is the binding constraint rather than the ticket pool.
+
+The overlap also exposed a defect in the harness itself. Container names were a
+fixed default and `cleanup` ran at startup as well as on exit, so a second run
+beginning while a first was still going would `docker rm` the first one's
+containers. That is exactly what happened — one run died mid-load and was
+initially misdiagnosed as an ssh teardown killing the process. Names are now
+unique per run, and the script warns rather than destroys when it finds another
+run active. A benchmark harness that silently destroys a concurrent benchmark
+is worse than one that refuses to start.
+
 ## What to look at during an incident
 
 In order of how directly each one confirms this diagnosis:

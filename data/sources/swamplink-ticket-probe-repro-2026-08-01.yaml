@@ -1,0 +1,35 @@
+sources:
+- slug: obs-mongodb-ticket-probe-repro-2026-08-01
+  title: >-
+    MongoDB 7.0.39 throughputProbing under load — independent second run,
+    same harness and configuration
+  publisher: xycalc benchmark (swamplink)
+  retrieved_on: '2026-08-01'
+  source_type: benchmark
+  notes: >-
+    An independent repetition of obs-mongodb-ticket-probe-swamplink-2026-08-01,
+    run by a second session from the same committed harness
+    (tools/bench/ticket_probe.sh) with identical settings: MongoDB 7.0.39,
+    8 MiB/s and 150 IOPS block-IO limit on the container only, 0.25 GB
+    wiredTiger cache in a 640 MB container, 1.5M documents, 25s at each of
+    seven concurrency levels. All three validity guards held —
+    cacheOversubscription 4.22, totalPagesReadIntoCache 23,222, and
+    queuedMicrosDelta zero below the ceiling and clearly non-zero above it.
+
+    Carried because a single benchmark on a shared-vCPU box is exactly the kind
+    of result that can be an artifact, and the two runs agree closely on every
+    qualitative claim: the pool climbs from the floor of 4 (to 71 here, 74
+    there), throughput stays flat across a 64x concurrency sweep (102.7-113.0
+    ops/s here, 108.8-118.4 there), and latency rises in proportion to
+    concurrency. Two independent runs reaching the same conclusion is the
+    difference between a finding and an anecdote.
+
+    READ WITH THIS CAVEAT. The two runs overlapped in time on the same host, so
+    neither is a cleanly isolated measurement — they contended for the same
+    device and the same two vCPUs. The agreement between them is therefore
+    weaker evidence than two runs separated in time would be, and the
+    throughput figures in both are more likely to be depressed than inflated.
+    The harness has since been changed to give each run unique container names
+    and to warn when another run is active; before that change, a second run
+    starting would docker-rm the first one's containers, which is how one run
+    died mid-load today.

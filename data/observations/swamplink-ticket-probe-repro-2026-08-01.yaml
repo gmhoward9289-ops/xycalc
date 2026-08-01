@@ -1,0 +1,55 @@
+observations:
+# Independent second run of the same experiment. Only the two endpoints of the
+# ladder are recorded here: the resting floor, and how far the pool climbed at
+# maximum offered concurrency. The full seven-level table for the primary run
+# is in swamplink-ticket-probe-2026-08-01.yaml; repeating all of it would add
+# rows without adding evidence.
+- slug: swamplink-repro-2026-08-01-tickets-c1
+  system: mongodb
+  parameter: db.concurrency_tickets
+  value: 4
+  unit: tickets
+  workload: >-
+    random point lookups by _id, 1 thread, throttled device (8 MiB/s, 150 IOPS),
+    concurrent with a second probe run on the same host
+  machine_class: Hetzner CX shared vCPU, 7 GB RAM
+  system_version: 7.0.39
+  observed_on: '2026-08-01'
+  source: obs-mongodb-ticket-probe-repro-2026-08-01
+  notes: >-
+    Steady at the resting floor for the whole window (4 -> 4), matching both the
+    idle reading of 2026-07-31 and the primary run. The floor is reproducible.
+- slug: swamplink-repro-2026-08-01-tickets-c64
+  system: mongodb
+  parameter: db.concurrency_tickets
+  value: 71
+  unit: tickets
+  workload: >-
+    random point lookups by _id, 64 threads, throttled device (8 MiB/s, 150
+    IOPS), concurrent with a second probe run on the same host
+  machine_class: Hetzner CX shared vCPU, 7 GB RAM
+  system_version: 7.0.39
+  observed_on: '2026-08-01'
+  source: obs-mongodb-ticket-probe-repro-2026-08-01
+  notes: >-
+    Peak read.totalTickets at 64 offered threads; the pool rose 33 -> 56 across
+    the window and had not converged when it closed. The primary run reached 74
+    under the same conditions. Two runs, 71 and 74, against a documented floor
+    of 4 and a documented maximum of 128.
+- slug: swamplink-repro-2026-08-01-throughput-c64
+  system: mongodb
+  parameter: db.ops_per_second
+  value: 110.7
+  unit: ops/s
+  workload: >-
+    random point lookups by _id, 64 threads, throttled device (8 MiB/s, 150 IOPS)
+  machine_class: Hetzner CX shared vCPU, 7 GB RAM
+  system_version: 7.0.39
+  observed_on: '2026-08-01'
+  source: obs-mongodb-ticket-probe-repro-2026-08-01
+  notes: >-
+    Against 102.7 ops/s at concurrency 1 — a 64x increase in offered
+    concurrency bought 8% more work. Little's law closes on the whole system to
+    within 2% at every level (throughput x latency reproduces the offered
+    thread count), which says the queue is real and the device is the binding
+    constraint, not the ticket pool.
