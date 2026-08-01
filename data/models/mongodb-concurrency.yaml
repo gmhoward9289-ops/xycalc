@@ -75,9 +75,21 @@ models:
         unit: seconds
         required: true
         help: >-
-          0.001 for a healthy SSD, 0.1 for a throttled EBS volume. From
-          VolumeAvgReadLatency, or the read latency in `iostat -x 1`. This is
-          the term that moves by orders of magnitude.
+          The time an operation HOLDS its ticket — not the round-trip
+          latency a client observes. Those differ once the pool queues:
+          client latency is queue wait plus hold time, and a fault-injection
+          run on 2026-08-01 measured queue wait as a real, growing share of
+          client latency (roughly 10-20% and climbing with concurrency, by
+          the direct totalTimeQueuedMicros counter). Feeding a
+          dashboard-reported client latency into this input overstates the
+          collapse, because part of that number is time the operation was
+          NOT holding a ticket at all. 0.001 for a healthy SSD, 0.1 for a
+          throttled EBS volume as rough anchors; where possible measure hold
+          time directly rather than inferring it from client latency, since
+          the same run also found totalTickets does not reach a steady value
+          within a load period at high concurrency, which makes a clean
+          latency-minus-queue-time split unreliable in practice. See
+          docs/investigations/003-storage-stall-query-collapse/FINDINGS.md.
 
     terms:
       - key: admission_limit
@@ -100,6 +112,19 @@ models:
           second, so N tickets sustain N/L operations per second and not one
           more. Everything about this failure follows from the fact that L
           moves by factors of a hundred while N does not.
+
+          L is hold time, not client-observed latency, and conflating the two
+          is a specific, confirmed mistake: a 2026-08-01 fault-injection run
+          measured queue wait as a distinct, non-zero, concurrency-dependent
+          component of client latency via WiredTiger's own
+          totalTimeQueuedMicros counter (zero below the ticket ceiling,
+          tens to hundreds of seconds of cumulative queued time per 25s
+          window above it). The same run could not resolve L to a precise
+          number, though, because at the concurrency levels where queueing
+          existed, N itself was still climbing throughout the measurement
+          window rather than holding a steady value — so there is no single
+          moment to read N and L from together. That is the open half of
+          this term's validation, not the direction of the correction.
 
       - key: queue_behaviour
         label: What happens to arrivals above the ceiling

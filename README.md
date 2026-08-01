@@ -144,12 +144,20 @@ coefficient was wrong for that data by ~64%, while the structural terms
 percentage. See
 [`docs/investigations/001-wiredtiger-cache/FINDINGS.md`](docs/investigations/001-wiredtiger-cache/FINDINGS.md).
 
-`mongodb.host-ram` and `ebs.iops-to-provision` are **unvalidated (n=0)** and say
-so on every invocation. The EBS model is honest about something worse than
-being unvalidated: its single amplifier is a guess of ours with a band spanning
-a factor of 6.7, because the peak-to-mean IOPS ratio is structurally
-unrecoverable from minute-averaged metrics. Fifteen minutes with `iostat -x 1`
-replaces it with a fact — the model says so where you cannot miss it.
+`mongodb.host-ram`, `ebs.iops-to-provision` and `mongodb.ticket-throughput-ceiling`
+are **unvalidated (n=0)** and say so on every invocation. The EBS model is
+honest about something worse than being unvalidated: its single amplifier is a
+guess of ours with a band spanning a factor of 6.7, because the peak-to-mean
+IOPS ratio is structurally unrecoverable from minute-averaged metrics. Fifteen
+minutes with `iostat -x 1` replaces it with a fact — the model says so where
+you cannot miss it. The ticket model's `n=0` undersells it slightly: a
+2026-08-01 fault-injection run confirmed its central claim — throughput flat
+at 108.8–118.4 ops/s across a 64x concurrency sweep behind a rate-limited
+device, while the ticket pool itself climbed from 4 to 74 — but no formal
+validation case was published, because the pool never reached a steady value
+within a measurement window at the concurrencies where the model's formula
+needed one. See
+[`docs/investigations/003-storage-stall-query-collapse/FINDINGS.md`](docs/investigations/003-storage-stall-query-collapse/FINDINGS.md).
 
 Real measurements are wanted, especially compression ratios from collections
 that are not synthetic. `docs/telemetry/mongodb.md` lists what to capture; it

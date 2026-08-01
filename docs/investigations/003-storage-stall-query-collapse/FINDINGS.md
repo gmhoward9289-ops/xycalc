@@ -1,7 +1,10 @@
 # Findings — why MongoDB stops returning queries when storage is throttled
 
-**Investigated:** 2026-07-31, from a field observation ·
-**Model:** `mongodb.ticket-throughput-ceiling` · **Validation:** none (n=0).
+**Investigated:** 2026-07-31, from a field observation. Fault-injection run
+added 2026-08-01. ·
+**Model:** `mongodb.ticket-throughput-ceiling` · **Validation:** none (n=0) —
+survived one fault-injection experiment on one machine; no formal validation
+case published yet (see "Measured under load" below for why).
 
 > "When IOPS or throughput exceed, MongoDB starts not returning queries,
 > especially when there is some contention." — George
@@ -134,23 +137,96 @@ Two corrections fell out of one command:
 - **"You have 128 tickets" is wrong on 7.0+, by 32x, in the dangerous
   direction.**
 
-### Still open
+### Measured under load — the pool climbs, and climbing does not help
 
-Does the pool climb under load — and does it climb when the bottleneck is the
-*device* rather than concurrency?
+A fault-injection run on 2026-08-01 answered the question this section used to
+ask. Harness: `tools/bench/ticket_probe.sh` /
+`tools/bench/ticket_probe.py`. MongoDB 7.0.39, block-IO cgroup-limited to
+8 MiB/s and 150 IOPS on its container only, 1.5M documents (4.2x the
+wiredTiger cache), random point lookups by `_id` for 25 seconds at each of
+seven concurrency levels — 1 through 64 threads, doubling each step — on a
+real connection pool of real OS threads. All three run-validity guards held
+(`cacheOversubscription` 4.22, `totalPagesReadIntoCache` 21,944,
+`queuedMicrosDelta` zero below the ceiling and clearly non-zero above it).
+Full data: `data/observations/swamplink-ticket-probe-2026-08-01.yaml`,
+`data/sources/swamplink-ticket-probe-2026-08-01.yaml`.
 
-That distinction is the whole question. `throughputProbing` raises concurrency
-and measures whether throughput improves. When the limit is the disk, adding
-concurrency does not improve throughput; it just deepens the device queue. An
-algorithm doing exactly what it was designed to do could therefore conclude
-that more concurrency does not help and stay near the floor — precisely when
-the floor hurts most.
+**The pool climbs, and climbs far past what a smaller smoke run suggested.**
+An earlier, shorter smoke run (800k docs, 10s per level, three concurrency
+points) had shown `totalTickets` reaching 9 at concurrency 8 and 13 at
+concurrency 64 — a modest climb, consistent with "sits near the floor." The
+full run, with a complete seven-step ladder and 25 seconds per level, told a
+different story:
 
-That is a hypothesis with a mechanism, not a finding. It needs `totalTickets`
-and `totalTimeQueuedMicros` sampled through a real storage stall, and it
-remains the highest-value measurement outstanding in this project. One idle
-reading establishes the resting value and the field location. It establishes
-nothing about behaviour under load.
+| Concurrency | 1 | 2 | 4 | 8 | 16 | 32 | 64 |
+|---|---|---|---|---|---|---|---|
+| `totalTickets` (peak in window) | 4 | 4 | 5 | 7 | 18 | 35 | **74** |
+| Mean latency (ms) | 9.2 | 16.9 | 34.0 | 70.1 | 143.8 | 274.9 | 535.5 |
+| Throughput (ops/s) | 108.8 | 118.4 | 117.6 | 114.0 | 111.0 | 115.5 | **117.7** |
+
+At concurrency 64 the pool reached 74 tickets — 58% of the documented dynamic
+maximum of 128 — and was **still rising** when the 25-second window ended
+(29 → 68 over the window, peak 74). It had not converged; sustained demand
+would very likely push it higher still. The floor is not a ceiling the
+algorithm refuses to leave. Given long enough sustained demand, it leaves it
+substantially.
+
+**And it does not matter.** Throughput sat in a 108.8–118.4 ops/s band —
+a 9% range — across the entire 64x sweep in offered concurrency. Eighteen and
+a half times more tickets and fifty-eight times more latency bought nothing:
+the device was rate-limited to 150 IOPS, and 150 IOPS is what the workload
+got, regardless of how many operations MongoDB let into the storage engine at
+once. This is `throughputProbing` doing exactly what investigation 003
+originally worried it might *not* do — climbing — but the climb is not
+protective and not diagnostic of anything working correctly. It simply means
+more concurrent operations pile up against a device that was never going to
+serve them faster, each one now waiting behind more neighbours than before.
+A closed-queueing-system sanity check (offered threads ≈ throughput × mean
+latency) matched to within 1.5% at every level, which is the measurement
+behaving exactly as it should — the flatness is not an artifact of the
+harness.
+
+**Little's-law hold time vs. client latency — confirmed in direction, not
+yet in magnitude.** The smoke run had inferred that `storage_latency_seconds`
+means ticket-*hold* time, not round-trip client latency, because the naive
+`predictedCeiling = totalTickets / meanLatency` undershot actual throughput by
+~4.8x at its one data point. The full run confirms queue wait is real and
+distinct — `queuedMicrosDelta` is exactly zero at concurrency 1, 2 and 4 (no
+queueing below the resting pool) and climbs to 40.5s, 67.7s, 80.1s and 302.2s
+of cumulative queued time per 25-second window from concurrency 8 upward —
+directly measured, not inferred. Subtracting mean queued-time-per-op from
+mean client latency puts held time at roughly 80–90% of client latency across
+the levels that queued, the *opposite* proportion from the smoke run's
+one-point estimate (21% held / 79% queued at its single c=64 sample).
+
+That disagreement is itself informative rather than a contradiction to
+paper over: it traces to `totalTickets` never reaching a steady value within
+a level at these higher concurrencies (see the table above — start and end
+differ by 2-3x at c=16 through c=64). Little's law assumes a stable N over
+the interval being measured; this harness's 25-second levels, run back to
+back in one continuous `mongod` process so ticket state carries forward, do
+not give N time to settle before the level ends. Two different ways of
+estimating hold time from this run's own data (subtracting measured queue
+time from latency, versus the smoke run's `N / throughput` using the peak N)
+disagree with each other by roughly 1.8x, and the latter is not even always
+physically possible here — at c=64, `peak tickets / throughput` (74/117.7 =
+629 ms) exceeds the 535 ms of latency actually observed, which cannot be
+right if that quantity really is a subset of latency. The peak is real; using
+it as if it were the level's steady N is what breaks.
+
+**So: the qualitative fix stands, a precise numeric correction factor does
+not — yet.** `storage_latency_seconds` is documented as hold time, not
+client-observed latency, in the model input (`data/models/mongodb-concurrency.yaml`)
+and that correction is low-risk and should be trusted. But no
+`validation:` case was added against `predictedCeiling` from this run,
+because doing so would compare a formula that assumes steady-state N against
+a run where N was still moving — precisely the "comparing the wrong two
+quantities" trap this project has already been burned by once (see
+`.claude/skills/xy-observe/SKILL.md`). The concrete next step, not yet done:
+re-run with each level held long enough for `totalTickets` to visibly
+plateau (or discard a warm-up portion of each level before measuring), and
+record time-averaged tickets over the window rather than only start/end/max,
+so hold time can be computed against a genuinely stable N.
 
 ---
 
@@ -186,11 +262,15 @@ concurrency.
 - **The model treats read and write pools independently, and they are not.** A
   write stall that fills the write pool still consumes the device that reads
   depend on.
-- **`mongodb.ticket-throughput-ceiling` is unvalidated.** Validating it needs
-  fault injection — a MongoDB driven past its ticket ceiling behind
-  artificially slow storage, checking where throughput actually flattens
-  against where the model says it should. That is a deliberate experiment, not
-  something to wait for.
+- **`mongodb.ticket-throughput-ceiling` is unvalidated.** The 2026-08-01 fault
+  injection did drive a MongoDB past its ticket ceiling behind artificially
+  slow storage, and throughput did flatten exactly as the model's core claim
+  predicts (108.8–118.4 ops/s across a 64x concurrency sweep). But a formal
+  point-validation of the model's `predictedCeiling` formula was not published
+  from that run, because `totalTickets` never reached a steady value within a
+  measurement window at the concurrencies where it mattered — see "Measured
+  under load" above. The model has survived one experiment's central claim; it
+  has not yet been validated to a number.
 
 ---
 

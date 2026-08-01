@@ -1,0 +1,51 @@
+sources:
+- slug: obs-mongodb-ticket-probe-swamplink-2026-08-01
+  title: MongoDB 7.0.39 throughputProbing under sustained load behind a throttled device
+  publisher: xycalc benchmark (swamplink)
+  retrieved_on: '2026-08-01'
+  source_type: benchmark
+  notes: >-
+    Investigation 003's open question, settled by fault injection rather than
+    left as a hypothesis: does the ticket pool climb when the bottleneck is
+    the device rather than concurrency? Harness is committed at
+    tools/bench/ticket_probe.sh and tools/bench/ticket_probe.py, so the run
+    reproduces: MongoDB 7.0.39 in Docker, block-IO cgroup limited to 8 MiB/s
+    and 150 IOPS on this container only, 0.25 GB wiredTiger cache, 640 MB
+    container memory (bounds the page cache so the cgroup throttle actually
+    engages rather than being served from host RAM — a failure mode two
+    earlier smoke runs of this harness hit). 1,500,000 documents (~1.13 GB
+    uncompressed, 4.2x the cache) loaded, then random point lookups by _id
+    run for 25 seconds at each of seven concurrency levels — 1, 2, 4, 8, 16,
+    32, 64 threads — against a Python/pymongo driver container using real OS
+    threads on a real connection pool (mongosh auto-awaits its driver calls,
+    so "concurrent" operations there run serially and measure nothing; this
+    is why the harness is Python, not mongosh). Machine: Hetzner CX shared
+    vCPU, 7 GB RAM — the same box as the idle reading in
+    obs-mongodb-tickets-swamplink-2026-07-31, now under load.
+
+    All three run-validity guards held: cacheOversubscription 4.22 (>= 2.0
+    required), totalPagesReadIntoCache 21,944 (> 0, so reads genuinely
+    reached the throttled device rather than being served from cache), and
+    queuedMicrosDelta was exactly zero at concurrency 1, 2 and 4 (demand
+    below the resting ticket pool) and clearly non-zero from concurrency 8
+    upward — 40.5s, 67.7s, 80.1s and 302.2s of cumulative queued time across
+    the four highest levels respectively, inside a 25-second window each.
+
+    Levels ran sequentially in one continuous mongod process, so ticket
+    state carries forward between levels rather than resetting — this is
+    what let the pool climb across the whole ladder, but it also means
+    totalTickets does not reach a steady value within a level at the higher
+    concurrencies: at c=64 it was still climbing when the 25-second window
+    ended (29 -> 68, peak 74). See
+    docs/investigations/003-storage-stall-query-collapse/FINDINGS.md for
+    what that non-stationarity does to the Little's-law hold-time
+    calculation, and why no point-validation of predictedCeiling was
+    published from this run despite the effort.
+
+    No containers were left running after the harness exited (trap-based
+    cleanup on EXIT); confirmed with docker ps -a afterward. A second,
+    unrelated ticket-probe process was found running on the same host under
+    the same default container names shortly after this run finished (PID
+    657111, started 15:19 UTC vs this run's completion at 15:15:43 UTC) —
+    not started by this run, not touched by it, and not the source of any
+    number recorded here.

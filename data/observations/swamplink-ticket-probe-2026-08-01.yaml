@@ -1,0 +1,148 @@
+observations:
+# -- db.concurrency_tickets: how far the pool climbed, by offered concurrency --
+# Value is the PEAK read.totalTickets observed during the 25s window (0.5s
+# sampling). Where start != end the pool had not reached a steady value by
+# the time the window closed — noted per row.
+- slug: swamplink-2026-08-01-tickets-c1
+  system: mongodb
+  parameter: db.concurrency_tickets
+  value: 4
+  unit: tickets
+  workload: random point lookups by _id, 1 thread, throttled device (8 MiB/s, 150 IOPS)
+  machine_class: Hetzner CX shared vCPU, 7 GB RAM
+  system_version: 7.0.39
+  observed_on: '2026-08-01'
+  source: obs-mongodb-ticket-probe-swamplink-2026-08-01
+  notes: Steady at the resting floor for the whole window (4 -> 4). No queueing at this concurrency.
+- slug: swamplink-2026-08-01-tickets-c2
+  system: mongodb
+  parameter: db.concurrency_tickets
+  value: 4
+  unit: tickets
+  workload: random point lookups by _id, 2 threads, throttled device (8 MiB/s, 150 IOPS)
+  machine_class: Hetzner CX shared vCPU, 7 GB RAM
+  system_version: 7.0.39
+  observed_on: '2026-08-01'
+  source: obs-mongodb-ticket-probe-swamplink-2026-08-01
+  notes: Steady at the resting floor (4 -> 4). No queueing.
+- slug: swamplink-2026-08-01-tickets-c4
+  system: mongodb
+  parameter: db.concurrency_tickets
+  value: 5
+  unit: tickets
+  workload: random point lookups by _id, 4 threads, throttled device (8 MiB/s, 150 IOPS)
+  machine_class: Hetzner CX shared vCPU, 7 GB RAM
+  system_version: 7.0.39
+  observed_on: '2026-08-01'
+  source: obs-mongodb-ticket-probe-swamplink-2026-08-01
+  notes: First sign of movement (4 -> 5). Still no measurable queueing.
+- slug: swamplink-2026-08-01-tickets-c8
+  system: mongodb
+  parameter: db.concurrency_tickets
+  value: 7
+  unit: tickets
+  workload: random point lookups by _id, 8 threads, throttled device (8 MiB/s, 150 IOPS)
+  machine_class: Hetzner CX shared vCPU, 7 GB RAM
+  system_version: 7.0.39
+  observed_on: '2026-08-01'
+  source: obs-mongodb-ticket-probe-swamplink-2026-08-01
+  notes: >-
+    5 -> 7 across the window. Demand (8 threads) first exceeded the pool
+    here; queuedMicrosDelta jumped from 0 to 40.5s cumulative in this 25s
+    window.
+- slug: swamplink-2026-08-01-tickets-c16
+  system: mongodb
+  parameter: db.concurrency_tickets
+  value: 18
+  unit: tickets
+  workload: random point lookups by _id, 16 threads, throttled device (8 MiB/s, 150 IOPS)
+  machine_class: Hetzner CX shared vCPU, 7 GB RAM
+  system_version: 7.0.39
+  observed_on: '2026-08-01'
+  source: obs-mongodb-ticket-probe-swamplink-2026-08-01
+  notes: 7 -> 16 by window end, peak 18. Not yet steady when the window closed.
+- slug: swamplink-2026-08-01-tickets-c32
+  system: mongodb
+  parameter: db.concurrency_tickets
+  value: 35
+  unit: tickets
+  workload: random point lookups by _id, 32 threads, throttled device (8 MiB/s, 150 IOPS)
+  machine_class: Hetzner CX shared vCPU, 7 GB RAM
+  system_version: 7.0.39
+  observed_on: '2026-08-01'
+  source: obs-mongodb-ticket-probe-swamplink-2026-08-01
+  notes: 16 -> 29 by window end, peak 35. Still climbing at window close.
+- slug: swamplink-2026-08-01-tickets-c64
+  system: mongodb
+  parameter: db.concurrency_tickets
+  value: 74
+  unit: tickets
+  workload: random point lookups by _id, 64 threads, throttled device (8 MiB/s, 150 IOPS)
+  machine_class: Hetzner CX shared vCPU, 7 GB RAM
+  system_version: 7.0.39
+  observed_on: '2026-08-01'
+  source: obs-mongodb-ticket-probe-swamplink-2026-08-01
+  notes: >-
+    29 -> 68 by window end, peak 74 (58% of the documented dynamic maximum
+    of 128) — still rising when the 25s window ended, so this is a lower
+    bound on how far sustained demand would push it, not a settled ceiling.
+    Far past the 13 a smaller/shorter smoke run reached at the same
+    concurrency; the difference is attributable to ticket state carrying
+    forward across a full seven-level ladder with 25s per level here, versus
+    a shorter ladder over less data.
+
+# -- db.ops_per_second: measured throughput, by offered concurrency --
+# The headline result: flat across a 64x range of offered concurrency,
+# despite ticket count climbing 18.5x and mean latency climbing 58x over the
+# same range. Device-bound, not concurrency-bound.
+- slug: swamplink-2026-08-01-opsec-c1
+  system: mongodb
+  parameter: db.ops_per_second
+  value: 108.8
+  unit: ops/s
+  workload: random point lookups by _id, 1 thread, throttled device (8 MiB/s, 150 IOPS)
+  machine_class: Hetzner CX shared vCPU, 7 GB RAM
+  system_version: 7.0.39
+  observed_on: '2026-08-01'
+  source: obs-mongodb-ticket-probe-swamplink-2026-08-01
+  notes: Mean latency 9.19ms, no queueing. Client concurrency, not the ticket pool, is what limits throughput here.
+- slug: swamplink-2026-08-01-opsec-c8
+  system: mongodb
+  parameter: db.ops_per_second
+  value: 114.0
+  unit: ops/s
+  workload: random point lookups by _id, 8 threads, throttled device (8 MiB/s, 150 IOPS)
+  machine_class: Hetzner CX shared vCPU, 7 GB RAM
+  system_version: 7.0.39
+  observed_on: '2026-08-01'
+  source: obs-mongodb-ticket-probe-swamplink-2026-08-01
+  notes: Mean latency 70.14ms (7.6x the c=1 latency) for the same throughput. Queueing has begun.
+- slug: swamplink-2026-08-01-opsec-c32
+  system: mongodb
+  parameter: db.ops_per_second
+  value: 115.5
+  unit: ops/s
+  workload: random point lookups by _id, 32 threads, throttled device (8 MiB/s, 150 IOPS)
+  machine_class: Hetzner CX shared vCPU, 7 GB RAM
+  system_version: 7.0.39
+  observed_on: '2026-08-01'
+  source: obs-mongodb-ticket-probe-swamplink-2026-08-01
+  notes: Mean latency 274.93ms. Throughput is within 6% of the c=1 value despite 32x the offered concurrency.
+- slug: swamplink-2026-08-01-opsec-c64
+  system: mongodb
+  parameter: db.ops_per_second
+  value: 117.7
+  unit: ops/s
+  workload: random point lookups by _id, 64 threads, throttled device (8 MiB/s, 150 IOPS)
+  machine_class: Hetzner CX shared vCPU, 7 GB RAM
+  system_version: 7.0.39
+  observed_on: '2026-08-01'
+  source: obs-mongodb-ticket-probe-swamplink-2026-08-01
+  notes: >-
+    Mean latency 535.51ms (58x the c=1 latency), ticketsMax 74 (18.5x the
+    c=1 ticket count) — and throughput is 108% of the c=1 value. All of the
+    64x increase in offered concurrency, all of the pool's climb, and all of
+    the latency growth bought nothing: this level ran 3,036 ops over 25.8s,
+    sustaining 117.7 ops/s against a device rate-limited to 150 IOPS.
+    Cumulative queued time was 302.2s inside the 25.8s window (necessarily
+    spread across concurrent operations, not literal wall time).
