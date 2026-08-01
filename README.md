@@ -185,6 +185,29 @@ short version, worst first:
 Contributions of real measurements are worth more here than contributions of
 code.
 
+## What is next
+
+Ten designed experiments, specified in
+[`docs/investigations/ROADMAP.md`](docs/investigations/ROADMAP.md) and tracked
+as [#9–#18](https://github.com/gmhoward9289-ops/xycalc/labels/roadmap). Each
+names its question, what would falsify it, and what the corpus gets — ordered by
+what changes if the answer is surprising, not by how easy they are. Every one
+runs on a single Linux box with Docker; an experiment nobody can run is a wish.
+
+The three most likely to overturn something already published:
+
+- **[#9](https://github.com/gmhoward9289-ops/xycalc/issues/9)** — is the cache
+  cliff a cliff? "Size for the working set" assumes performance holds right up
+  to the boundary. Nobody has checked.
+- **[#12](https://github.com/gmhoward9289-ops/xycalc/issues/12)** — is
+  investigation 003's flat throughput actually flat, or is a 25-second mean
+  hiding a checkpoint sawtooth? If so, this corpus made at small scale the same
+  error it documented AWS's minute averages for making.
+- **[#15](https://github.com/gmhoward9289-ops/xycalc/issues/15)** — Celery's
+  docs recommend a Redis eviction policy that practitioners say silently drops
+  queued tasks, and the alternative deadlocks workers on OOM. Both documented
+  options fail. Report the conflict, do not pick a winner.
+
 ## Contributing a figure
 
 The bar is not "is this true" — it is "can a stranger check it".

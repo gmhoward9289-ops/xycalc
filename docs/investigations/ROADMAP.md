@@ -1,0 +1,291 @@
+# The next ten tests
+
+Written 2026-08-01, after three investigations that turned out to be one
+failure told in three parts: the cache cannot hold the working set, so misses
+reach a device that throttles on the peak second, and the throttle becomes a
+concurrency problem whose queue does not drain.
+
+Each entry below is a *designed experiment*, not a topic. It names the question,
+what would falsify it, and what the corpus gets if it runs. They are ordered by
+what they would change if the answer is surprising — not by how easy they are.
+
+Every one is runnable on hardware already available. Nothing here needs AWS,
+production access, or a budget. That is deliberate: an experiment nobody can
+run is a wish.
+
+## The rule these all inherit
+
+Two harnesses in this repo have produced clean, plausible tables that measured
+nothing at all ([#8](https://github.com/gmhoward9289-ops/xycalc/issues/8)).
+Before believing any result below, ask the question that would have caught every
+instance: **would this produce a plausible table if the environment were
+healthy?** If yes, the experiment has no guard and is not ready to run.
+
+---
+
+## T1 — Where is the cache cliff, and is it a cliff?
+
+**Question.** As the working set grows past the cache, does throughput degrade
+smoothly or fall off a knee? If a knee, where — at 1.0× cache, or later?
+
+**Why it matters most.** Investigation 001 sizes a cache to hold *everything*
+and then explains why you should not. The obvious alternative is "size it for
+the working set", which silently assumes performance is acceptable right up to
+the boundary and collapses after. **Nobody has checked.** If the knee is at
+0.8×, every working-set recommendation in circulation is wrong by 20%. If
+degradation is smooth, "size for the working set" is much weaker advice than it
+sounds, because there is no boundary to be on the right side of.
+
+**Method.** Fix the cache; sweep dataset size to give working-set ratios of
+0.5, 0.8, 1.0, 1.2, 1.5, 2, 4, 8×. Uniform random point lookups. Measure
+throughput, latency, and `pages read into cache` per operation at each ratio.
+
+**Falsifies.** A smooth hyperbola falsifies "there is a cliff". A sharp knee
+below 1.0× falsifies "cache-resident means the cache equals the data".
+
+**Corpus gets.** A `cache.hit_ratio_by_oversubscription` curve, and either a
+knee coefficient or a documented absence of one. Feeds `mongodb.wt-cache`.
+
+**Watch for.** The page cache. The device throttle must bind, or this measures
+host RAM. Same trap that cost two runs in investigation 003.
+
+---
+
+## T2 — Compression ratio as a function of data shape
+
+**Question.** How does the snappy ratio move between high-entropy and
+structured documents, and where in that range do real collections sit?
+
+**Why.** The widest coefficient in the corpus is `1.5 – 2.5 – 3.5`, graded
+`practitioner`, and the only measurement so far came in at **1.42× — below the
+band**. That was a synthetic corpus of random base62, which is close to
+incompressible. The band is the largest single error term in `mongodb.wt-cache`.
+
+This differs from [#5](https://github.com/gmhoward9289-ops/xycalc/issues/5),
+which asks for samples from real collections. This *manufactures the curve*, so
+that a real collection can be placed on it from its own shape rather than
+guessed at.
+
+**Method.** Generate corpora of controlled entropy: pure random strings; random
+strings with repeated field names; low-cardinality enums; realistic mixed
+documents; near-duplicate documents. Measure `dataSize / storageSize` for
+snappy, zstd and zlib on each.
+
+**Falsifies.** If the ratio is insensitive to shape, the wide band is wrong and
+should be narrow. If it spans more than the current band, the band is *too
+narrow* and the model is overconfident.
+
+**Corpus gets.** Ratio as a function of a measurable property of the data, and
+a defensible band. **Do not narrow the shipped band on synthetic data alone** —
+this produces the curve; #5 places real data on it.
+
+---
+
+## T3 — At what write rate does eviction conscript application threads?
+
+**Question.** Investigation 001 carries `eviction_dirty_trigger` (20%) as a
+cited constraint that was never measured. At what sustained write rate does
+`pages evicted by application threads` leave zero?
+
+**Why.** It is the write-side analogue of the whole storage chain, and the
+constraint most likely to be hit first in practice: a cache correctly sized for
+total bytes still throttles at 20% occupancy if the writes are dirty enough.
+Bulk loads hit it routinely and the symptom is blamed on the wrong thing.
+
+**Method.** Fixed cache, throttled device, sweep sustained insert/update rate.
+Watch `tracked dirty bytes` against cache size, and
+`pages evicted by application threads` as the binary "is the application doing
+storage work now" signal.
+
+**Falsifies.** If app-thread eviction begins well below 20% dirty, the
+documented trigger is not the operative threshold and the constraint as written
+is misleading.
+
+**Corpus gets.** A write-rate coefficient, and a second model:
+`mongodb.write-rate-ceiling`.
+
+---
+
+## T4 — Is the flat throughput of investigation 003 actually flat?
+
+**Question.** WiredTiger checkpoints periodically. Does that show as a sawtooth
+in latency that a 25-second mean conceals?
+
+**Why.** Investigation 003 reported throughput flat within 8% across a 64×
+concurrency sweep and drew a strong conclusion from it. If there is a periodic
+stall inside those windows, the mean is hiding exactly the kind of tail that
+investigation 002 was about — **and this corpus would have made, at a smaller
+scale, the same error it documented AWS's metrics for making.**
+
+**Method.** Re-run one concurrency level for several minutes at 1-second
+resolution. Plot p50/p95/p99 per second against checkpoint activity.
+
+**Falsifies.** A visible periodic spike falsifies "flat", and requires the 003
+write-up to be qualified.
+
+**Corpus gets.** Either a confirmation with better evidence, or a correction to
+a published finding. Both are worth having; the second is worth more.
+
+---
+
+## T5 — Do covered queries change the device load the way 001 assumes?
+
+**Question.** `mongodb.wt-cache` treats in-cache index bytes as ≈ `indexSize`,
+because index prefix compression survives into cache while collection block
+compression does not. Its own validation run came in **13.9% above**
+`dataSize + indexSize`. Does an index-only workload behave as the model implies?
+
+**Why.** This is the model's weakest inference, named as such before any
+measurement existed, and the one place a structural error would be invisible in
+the aggregate.
+
+**Method.** Same dataset, two workloads: covered queries (projection satisfied
+entirely by an index) versus document fetches. Compare `pages read into cache`
+per operation and resident bytes.
+
+**Falsifies.** If covered queries still drive document-level reads, the index
+term is wrong in a way the current model cannot express.
+
+**Corpus gets.** Either a correction to the index term, or the first real
+support for it.
+
+---
+
+## T6 — How much does prefetch hide the backlog?
+
+**Question.** A Celery worker reserves `prefetch_multiplier × concurrency`
+tasks. Those are off the queue but not running. How far does queue depth
+understate outstanding work, and how much slower is the fleet to shed load?
+
+**Why.** Queue depth is the number everyone alerts on. If it understates
+reality by a factor of the prefetch multiplier, every such alert fires late,
+and the "drain" measured in investigation 004 starts from a false zero.
+
+**Method.** Fixed arrival rate above the completion ceiling. Sweep prefetch 1,
+2, 4, 8, 16. Compare broker queue depth against true outstanding
+(enqueued − completed) throughout, and measure time-to-quiet after arrivals
+stop.
+
+**Falsifies.** If depth tracks outstanding work regardless of prefetch, the
+concern is unfounded and worth saying so.
+
+**Corpus gets.** A correction factor for queue-depth alarms, and a constraint on
+the Celery model.
+
+---
+
+## T7 — Redis as a broker: lose the tasks, or deadlock the workers?
+
+**Question.** What happens when a Celery broker's Redis hits `maxmemory` under
+each eviction policy?
+
+**Why — this one has a documented contradiction.** Celery's own docs say to set
+`maxmemory-policy` to "`noeviction` **or** `allkeys-lru`". Practitioner guidance
+says `allkeys-lru` silently drops queued tasks, which is data loss with no error
+anywhere. And `noeviction` has its own failure: celery#5716 reports workers
+deadlocking on Redis OOM.
+
+So both documented options fail, differently, and the vendor documentation
+recommends one of them without qualification. **Report the conflict; do not
+declare a winner** — that is the research contract, and this is a textbook case
+for it.
+
+**Method.** Small `maxmemory`, backlog driven past it, under `noeviction`,
+`allkeys-lru`, and `volatile-lru`. Count tasks enqueued versus tasks ever
+executed. Watch whether producers error, workers stall, or nothing at all
+appears to be wrong.
+
+**Falsifies.** If `allkeys-lru` loses nothing, Celery's docs are right and the
+practitioner consensus is folklore.
+
+**Corpus gets.** A loss/deadlock characterisation per policy, and — regardless
+of outcome — a documented disagreement between a vendor and its own users.
+
+---
+
+## T8 — Retry storms: does backoff actually help a stalled dependency?
+
+**Question.** A dependency stalls, tasks time out, Celery retries. With
+no backoff, exponential backoff, and backoff with jitter — how much *additional*
+load does each put on the thing that is already failing?
+
+**Why.** Retries are the third positive-feedback loop this project has met, after
+eviction conscripting application threads (001) and broker redelivery (004).
+The pattern is worth naming as a class: **a system that responds to overload by
+generating more load.**
+
+**Method.** Stall the database mid-run. Compare offered load during and after,
+across the three retry configurations. Measure time to recovery once the stall
+is lifted — that is the number that matters, not peak amplification.
+
+**Falsifies.** If jitter and backoff make little difference at these scales,
+the standard advice is cargo cult here even if sound elsewhere.
+
+**Corpus gets.** An amplification coefficient per retry policy, and a recovery
+time, which is what an incident actually cares about.
+
+---
+
+## T9 — When does throughput bind before IOPS?
+
+**Question.** At what I/O size does a gp3 volume hit its throughput ceiling
+before its IOPS ceiling — and what does a local NVMe do on the same workload?
+
+**Why.** Investigation 002 carries this as arithmetic: at the 256 KiB maximum
+operation size, gp3's 2,000 MiB/s ceiling is only 8,000 operations, a tenth of
+its provisionable IOPS. Never measured, and it is the reason an IOPS graph can
+look healthy on a saturated volume. The NVMe arm gives the corpus its first
+non-network storage baseline — "how much worse is network storage" is
+unanswerable without one.
+
+**Method.** `fio` sweeping I/O size 4 KiB → 1 MiB at fixed queue depth, against
+a cgroup-throttled device locally, and against real gp3 if an account is
+available. Record the crossover.
+
+**Falsifies.** If the crossover is not where the 256 KiB accounting predicts,
+the corpus's understanding of how EBS counts an operation is wrong.
+
+**Corpus gets.** A crossover coefficient, an NVMe baseline, and the first
+figures for the `nvme-ssd` stub.
+
+---
+
+## T10 — ClickHouse: how few inserts per second is too many?
+
+**Question.** At what insert frequency does part count outrun merges and
+inserts start being delayed, then rejected?
+
+**Why, and the version trap.** ClickHouse delays inserts at
+`parts_to_delay_insert` and rejects at `parts_to_throw_insert`. Those defaults
+were **150 and 300 before ClickHouse 23.6, and 1000 and 3000 from 23.6** — a
+tenfold change in the threshold that decides whether ingestion works. A figure
+written down without a version is worse than useless here, which makes this the
+cleanest possible demonstration of why `applies_to` is a build gate.
+
+It is also the classic ClickHouse incident: the failure is caused by insert
+*frequency*, not volume, so it arrives when someone "helpfully" switches from
+batching to streaming.
+
+**Method.** Fixed total rows, sweep batch size from 1 row to 100k rows per
+insert. Watch active part count, insert latency, and where delay begins and
+rejection starts, on a 23.x and a 24.x+ image.
+
+**Falsifies.** If part count is governed by something other than insert
+frequency at fixed row volume, the folklore is wrong.
+
+**Corpus gets.** The first ClickHouse coefficients, a
+`clickhouse.insert-batch-floor` model, and a version-drift example strong enough
+to justify the gate to anyone who thinks it is bureaucracy.
+
+---
+
+## What this deliberately does not include
+
+- **Anything needing production access.** Every test above runs on one Linux box
+  with Docker.
+- **Kubernetes, autoscaling, service meshes.** Real questions, but the corpus
+  has no way to check an answer about them yet.
+- **Cost modelling.** Prices move faster than the corpus could track, and a
+  stale price is a wrong answer with a confident face.
+- **Anything about NVMe endurance or wear.** Interesting, but it needs months of
+  wall-clock time to measure honestly and cannot be faked.
