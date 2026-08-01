@@ -1,0 +1,71 @@
+# Celery load against a deliberately I/O-starved MongoDB.
+#
+#   cd tools/bench/celery_probe && ./run.sh
+#
+# Everything is scoped to this project: its own network, its own containers,
+# its own Redis. The block-IO and memory limits apply to the mongo container's
+# cgroup only, so a host serving other things is not affected -- swamplink also
+# runs wings, blog and api-demo.
+#
+# The knobs worth sweeping are all environment variables, because the point of
+# the experiment is what Celery's own configuration does to a database under
+# stress:
+#
+#   PROBE_PREFETCH            tasks a worker reserves per slot (default 4)
+#   PROBE_ACKS_LATE           1 to ack after execution instead of before
+#   PROBE_VISIBILITY_TIMEOUT  seconds before the broker redelivers (default 30)
+#   PROBE_CONCURRENCY         worker processes (default 8)
+
+name: xycalc-celery-probe
+
+services:
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    mem_limit: 256m
+
+  mongo:
+    image: mongo:7
+    command: ["--wiredTigerCacheSizeGB", "0.25"]
+    # Bounds the PAGE CACHE, not just the heap. Without it the host serves
+    # reads from its own RAM, the block-IO throttle never engages, and the
+    # probe reports a healthy database on a "throttled" disk.
+    mem_limit: 640m
+    memswap_limit: 640m
+    blkio_config:
+      device_read_bps:
+        - path: /dev/sda
+          rate: 8388608
+      device_read_iops:
+        - path: /dev/sda
+          rate: 150
+
+  worker:
+    build: .
+    command: >-
+      celery -A tasks worker
+      --loglevel=warning
+      --concurrency=${PROBE_CONCURRENCY:-8}
+      --without-gossip --without-mingle --without-heartbeat
+    environment:
+      PROBE_REDIS: redis://redis:6379/0
+      PROBE_MONGO: mongodb://mongo:27017
+      PROBE_DOCS: ${PROBE_DOCS:-1500000}
+      PROBE_PREFETCH: ${PROBE_PREFETCH:-4}
+      PROBE_ACKS_LATE: ${PROBE_ACKS_LATE:-0}
+      PROBE_VISIBILITY_TIMEOUT: ${PROBE_VISIBILITY_TIMEOUT:-30}
+    depends_on: [redis, mongo]
+    mem_limit: 1g
+
+  driver:
+    build: .
+    command: ["python", "drive.py"]
+    environment:
+      PROBE_REDIS: redis://redis:6379/0
+      PROBE_MONGO: mongodb://mongo:27017
+      PROBE_DOCS: ${PROBE_DOCS:-1500000}
+      PROBE_RATES: ${PROBE_RATES:-25,50,100,200,400}
+      PROBE_SECONDS: ${PROBE_SECONDS:-30}
+      PROBE_VISIBILITY_TIMEOUT: ${PROBE_VISIBILITY_TIMEOUT:-30}
+    depends_on: [redis, mongo, worker]
+    profiles: ["driver"]
