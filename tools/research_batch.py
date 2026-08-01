@@ -240,7 +240,10 @@ def _documents(batch: str) -> dict[str, str]:
         return docs
     for p in sorted(base.rglob("*")):
         if p.is_file():
-            docs[str(p.relative_to(INBOX))] = normalise(
+            # as_posix: findings reference documents with forward slashes (the
+            # format the contract's own example uses); str() would produce
+            # backslash keys on Windows and reject every row.
+            docs[p.relative_to(INBOX).as_posix()] = normalise(
                 p.read_text(encoding="utf-8", errors="replace")
             )
     return docs
