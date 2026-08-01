@@ -163,6 +163,28 @@ Real measurements are wanted, especially compression ratios from collections
 that are not synthetic. `docs/telemetry/mongodb.md` lists what to capture; it
 is three lines of `mongosh` and identifies nothing.
 
+## What is open
+
+Tracked as [issues](https://github.com/gmhoward9289-ops/xycalc/issues). The
+short version, worst first:
+
+- **[#2](https://github.com/gmhoward9289-ops/xycalc/issues/2)** — the ticket
+  model's formula assumes a pinned pool, and MongoDB 7.0 does not pin it. It
+  describes pre-7.0 and the ramp, not steady state.
+- **[#4](https://github.com/gmhoward9289-ops/xycalc/issues/4)** — the EBS
+  model's only amplifier is a guess of ours with a 6.7x band.
+- **[#5](https://github.com/gmhoward9289-ops/xycalc/issues/5)** — every
+  compression measurement so far is synthetic, and it is the largest error term
+  in the cache model.
+- **[#1](https://github.com/gmhoward9289-ops/xycalc/issues/1)** — investigation
+  004, what a queue does to a stalled dependency. Harness built, sweep not run.
+- **[#8](https://github.com/gmhoward9289-ops/xycalc/issues/8)** — two harnesses
+  have produced clean tables that measured nothing. Both guarded now; the next
+  one will invent a fourth way.
+
+Contributions of real measurements are worth more here than contributions of
+code.
+
 ## Contributing a figure
 
 The bar is not "is this true" — it is "can a stranger check it".
