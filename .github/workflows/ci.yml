@@ -30,6 +30,26 @@ jobs:
       - run: pip install -e ".[dev,gui]"
       - run: pytest -q
 
+  # Deliberately a SEPARATE job rather than a matrix on `test`. The branch
+  # ruleset requires status checks by exact name -- `audit`, `build`, `test` --
+  # and a matrix renames them to `test (3.12)` / `test (3.14)`, so the required
+  # check `test` would never report again and every pull request would block
+  # forever. Additive is the only safe shape here.
+  #
+  # Exists because Dependabot bumped the Dockerfile to python:3.14-slim (#24)
+  # while CI tested only 3.12: what ships was not what was tested. The image
+  # build already proves `xycalc.build` and `xycalc.audit` run on 3.14 (the
+  # Dockerfile runs both); the test suite is the part that never had.
+  test-3.14:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.14'
+      - run: pip install -e ".[dev,gui]"
+      - run: pytest -q
+
   audit:
     runs-on: ubuntu-latest
     steps:
