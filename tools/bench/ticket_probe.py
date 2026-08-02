@@ -61,6 +61,24 @@ def tickets() -> dict:
     }
 
 
+# Verified present on MongoDB 7.0.39 by reading a live serverStatus, not by
+# reading documentation. The corpus has already been wrong once about where a
+# field lives (queues.execution), and issue #21 exists because a wrong name
+# here used to vanish silently.
+CKPT_RUNNING = "transaction checkpoint currently running"
+CKPT_GENERATION = "transaction checkpoint generation"
+CKPT_RECENT_MS = "transaction checkpoint most recent time (msecs)"
+
+
+def checkpoint() -> dict:
+    tx = admin.command("serverStatus")["wiredTiger"]["transaction"]
+    return {
+        "ckptRunning": int(tx[CKPT_RUNNING]),
+        "ckptGeneration": int(tx[CKPT_GENERATION]),
+        "ckptRecentMs": int(tx[CKPT_RECENT_MS]),
+    }
+
+
 def cache_state() -> dict:
     c = admin.command("serverStatus")["wiredTiger"]["cache"]
     return {
@@ -115,19 +133,65 @@ def load() -> None:
         )
 
 
+def _pct(values: list[float], q: float) -> float:
+    if not values:
+        return 0.0
+    s = sorted(values)
+    return round(s[min(int(q * len(s)), len(s) - 1)], 2)
+
+
+def _checkpoint_split(latencies: list[tuple[float, float]], samples: list[dict]) -> dict:
+    """Split latencies into seconds a checkpoint was running and seconds it was not.
+
+    Investigation 003 reported throughput "flat" from a 25-second mean. If a
+    periodic checkpoint stalls the device inside those windows, the mean hides
+    exactly the kind of tail investigation 002 was about -- this corpus making,
+    at small scale, the error it documented AWS's minute averages for making.
+    """
+    busy = {
+        int(s["t"]) for s in samples if s.get("ckptRunning")
+    }
+    # A checkpoint shorter than the sample interval can still be caught by the
+    # generation counter advancing between two samples.
+    prev = None
+    for s in sorted(samples, key=lambda x: x["t"]):
+        gen = s.get("ckptGeneration")
+        if prev is not None and gen is not None and gen != prev:
+            busy.add(int(s["t"]))
+        prev = gen
+
+    during = [ms for ts, ms in latencies if int(ts) in busy]
+    outside = [ms for ts, ms in latencies if int(ts) not in busy]
+    return {
+        "ckptSecondsObserved": len(busy),
+        "ckptOpsDuring": len(during),
+        "ckptOpsOutside": len(outside),
+        "ckptP50During": _pct(during, 0.50),
+        "ckptP50Outside": _pct(outside, 0.50),
+        "ckptP99During": _pct(during, 0.99),
+        "ckptP99Outside": _pct(outside, 0.99),
+    }
+
+
 def run_level(level: int) -> dict:
     samples: list[dict] = []
+    errors: list[str] = []
     stop = threading.Event()
     before, cache_before = tickets(), cache_state()
+    before_ckpt_gen = checkpoint()["ckptGeneration"]
 
     def sampler() -> None:
         # totalTickets is the whole point and it MOVES on 7.0. A reading taken
         # only at the end would miss the algorithm's response entirely.
         while not stop.is_set():
             try:
-                samples.append(tickets())
-            except Exception:
-                pass
+                samples.append({"t": time.time(), **tickets(), **checkpoint()})
+            except Exception as e:
+                # Counted, never swallowed. This used to be `except: pass`,
+                # which meant a renamed field discarded every sample and the run
+                # reported a clean empty series -- indistinguishable from
+                # "measured, and there was nothing there". See issue #21.
+                errors.append(f"{type(e).__name__}: {e}")
             stop.wait(SAMPLE_S)
 
     latencies: list[float] = []
@@ -142,7 +206,10 @@ def run_level(level: int) -> dict:
             i = random.randrange(DOCS)
             t0 = time.perf_counter()
             db.docs.find_one({"_id": i})
-            local.append((time.perf_counter() - t0) * 1000)
+            # Wall-clock second alongside the latency, so operations can be
+            # grouped into the second they completed in and compared against
+            # what the checkpointer was doing during that second.
+            local.append((time.time(), (time.perf_counter() - t0) * 1000))
             ops += 1
         with lock:
             latencies.extend(local)
@@ -158,10 +225,26 @@ def run_level(level: int) -> dict:
 
     elapsed = time.time() - t_start
     after, cache_after = tickets(), cache_state()
-    mean_ms = statistics.mean(latencies) if latencies else 0.0
+
+    if errors and not samples:
+        # Every sample failed. That is not a degraded measurement, it is no
+        # measurement, and continuing would emit a full table of zeros that
+        # reads exactly like a finding.
+        raise SystemExit(
+            f"SAMPLER FAILED ON EVERY ATTEMPT at concurrency {level} "
+            f"({len(errors)} errors, first: {errors[0]}). No ticket or "
+            f"checkpoint data was captured, so this run measured nothing."
+        )
+
+    after_ckpt_gen = checkpoint()["ckptGeneration"]
+    lat_values = [ms for _, ms in latencies]
+    mean_ms = statistics.mean(lat_values) if lat_values else 0.0
     p95_ms = (
-        statistics.quantiles(latencies, n=20)[18] if len(latencies) > 20 else mean_ms
+        statistics.quantiles(lat_values, n=20)[18]
+        if len(lat_values) > 20
+        else mean_ms
     )
+    ckpt = _checkpoint_split(latencies, samples)
     max_tickets = max((s["readTotal"] for s in samples), default=after["readTotal"])
 
     return {
@@ -183,6 +266,10 @@ def run_level(level: int) -> dict:
         # where the two diverge is where the model is wrong.
         "predictedCeiling": round(max_tickets / (mean_ms / 1000), 1) if mean_ms else None,
         "samples": len(samples),
+        "samplerErrors": len(errors),
+        "samplerFirstError": errors[0] if errors else None,
+        "checkpointsObserved": after_ckpt_gen - before_ckpt_gen,
+        **ckpt,
     }
 
 
