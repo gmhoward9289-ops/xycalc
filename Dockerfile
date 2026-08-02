@@ -2,7 +2,7 @@
 # no state here at all: no metrics store, no user data, no local/ overlay. A
 # redeploy is the only way its answers change, which is the correct coupling
 # for a project whose output is supposed to be reproducible from its YAML.
-FROM python:3.12-slim
+FROM python:3.14-slim
 
 WORKDIR /app
 
