@@ -36,11 +36,16 @@ jobs:
   # check `test` would never report again and every pull request would block
   # forever. Additive is the only safe shape here.
   #
+  # The job ID is `test-py314`, not `test-3.14`: GitHub Actions job IDs allow
+  # letters, digits, `-` and `_` only. A dot makes the whole workflow file
+  # invalid, and the run fails in 0 seconds with no jobs and no readable error
+  # -- which looks exactly like CI silently not running.
+  #
   # Exists because Dependabot bumped the Dockerfile to python:3.14-slim (#24)
   # while CI tested only 3.12: what ships was not what was tested. The image
   # build already proves `xycalc.build` and `xycalc.audit` run on 3.14 (the
   # Dockerfile runs both); the test suite is the part that never had.
-  test-3.14:
+  test-py314:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
