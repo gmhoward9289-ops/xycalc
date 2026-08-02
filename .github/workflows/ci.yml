@@ -9,6 +9,20 @@ on:
   push:
   pull_request:
 
+# CodeQL alerts #8, #9, #11 and #12 (actions/missing-workflow-permissions).
+# Without this, GITHUB_TOKEN is granted whatever the repository default is,
+# which can include write access to contents, packages, issues and pull
+# requests. These three jobs check out a public repo and run pytest; read is
+# all any of them needs, and scoping it here covers every job at once rather
+# than four times over.
+#
+# It matters more than it looks on a repo that runs Dependabot: a compromised
+# or malicious dependency executing during `pip install -e` inherits this
+# token, and the difference between read and write is the difference between
+# a bad afternoon and a rewritten history.
+permissions:
+  contents: read
+
 jobs:
   build:
     runs-on: ubuntu-latest

@@ -14,6 +14,22 @@ const STATUS = ["pending", "settled", "failed", "refunded", "disputed"];
 const REGION = ["us-east-1", "us-west-2", "eu-central-1", "ap-southeast-2"];
 const CHARS = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
 
+// CodeQL flags this as js/insecure-randomness (alert #4, HIGH), because
+// Math.random() flows into fields named `session` and `idempotency_key`, and
+// those names read as security contexts. The rule is well aimed even though
+// nothing here is exploitable: these documents exist only to occupy pages in a
+// throwaway container, nothing authenticates against them, and the container is
+// destroyed when the benchmark ends.
+//
+// The names are kept rather than renamed because this generator produced a
+// benchmark the corpus CITES (obs-mongodb-swamplink-bench-2026-07-31), and BSON
+// stores field names per document -- renaming them changes storage size and
+// stops future runs being comparable to the recorded one.
+//
+// SO: do not lift this function to seed a development or staging environment.
+// It produces predictable values in fields whose names promise unpredictability,
+// which is the shape of a real vulnerability even though this instance is not
+// one.
 function rnd(n) {
   let s = "";
   for (let i = 0; i < n; i++) s += CHARS[Math.floor(Math.random() * CHARS.length)];
