@@ -216,3 +216,26 @@ coefficients:
       so 7.0 did not raise the maximum, it lowered the typical. Percona notes
       the algorithm "starts with a much lower baseline number of available
       tickets" than the pre-7.0 constant.
+
+  - slug: mongodb.cache-minimum-bytes
+    parameter: cache.size_bytes
+    system: mongodb
+    applies_to: MongoDB >=3.4 through 8.3
+    value: 268435456
+    confidence: documented
+    source: mongodb-manual-wiredtiger
+    quote: >-
+      The default WiredTiger internal cache size is the larger of either: 50%
+      of (RAM - 1GB), or 0.256 GB.
+    notes: >-
+      The second branch of the default formula, and the one the model ignored
+      until 2026-08-02. "0.256 GB" is written decimally in the documentation
+      but the implementation uses 256 MiB — measured at 268,435,456 bytes on a
+      MongoDB 7.0.39 container capped at 1 GiB, where 0.5 x (1 GiB - 1 GB) is
+      about 37 MB and this branch therefore binds.
+
+      That measurement also established that MongoDB sizes the cache from the
+      CGROUP limit rather than host RAM, and that hostInfo().system.memSizeMB
+      reports host RAM inside a capped container while memLimitMB reports the
+      cap. Validating against memSizeMB would compare every container to the
+      same number.

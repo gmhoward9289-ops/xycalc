@@ -196,6 +196,8 @@ CREATE TABLE model_term (
                         'divide_by_fraction',   -- value is a percent; /(v/100)
                         'add_bytes',            -- fixed addition
                         'add_fraction',         -- percent of the running total
+                        'floor_at',             -- never below this coefficient
+                        'cap_at',               -- never above this coefficient
                         'note'                  -- constraints; no arithmetic
                     )),
     input_key       TEXT,           -- for apply='input'
@@ -208,6 +210,13 @@ CREATE TABLE model_term (
     -- A term either reads an input or cites a coefficient. A term that does
     -- neither is a number from nowhere, which is the one thing this schema
     -- exists to prevent.
+    -- `floor_at` and `cap_at` exist because vendors write limits as max() and
+    -- min() constantly and every other mode here is monotonic. MongoDB's cache
+    -- default is "the LARGER of 50% of (RAM - 1GB), or 0.256 GB"; gp3 gives you
+    -- 3,000 IOPS whether you ask or not and refuses above 80,000. Without these
+    -- the model can print that it is out of bounds while still returning a
+    -- number computed as though it were not.
+    --
     -- `divide_by_input` exists for Little's law, which is the shape of every
     -- queueing answer: sustainable rate = concurrency / latency. Both of those
     -- are quantities the caller measures, so neither is a coefficient, and a

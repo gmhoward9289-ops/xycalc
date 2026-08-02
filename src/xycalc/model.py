@@ -259,7 +259,7 @@ class Model:
                 constraints.append(term)
                 continue
 
-            in_unit = declared_units.get(term.input_key, self.output_unit)
+            in_unit = declared_units.get(term.input_key) or term.unit or self.output_unit
 
             if term.apply == "input":
                 v = supplied.get(term.input_key)
@@ -318,6 +318,21 @@ class Model:
             elif term.apply == "add_bytes":
                 lo, mode, hi = lo + clo, mode + cmode, hi + chi
                 contribution = f"+ {format_quantity(cmode, self.output_unit)}"
+
+            elif term.apply in ("floor_at", "cap_at"):
+                # A bound applies to each end of the band independently, which
+                # can COLLAPSE it: if a floor sits above hi, all three ends meet
+                # and the answer stops looking uncertain when it still is. That
+                # is honest -- the bound really does determine the value -- but
+                # it must be visible, so the step records whether it happened.
+                if term.apply == "floor_at":
+                    lo, mode, hi = max(lo, clo), max(mode, cmode), max(hi, chi)
+                    contribution = f"≥ {format_quantity(cmode, in_unit)}"
+                else:
+                    lo, mode, hi = min(lo, clo), min(mode, cmode), min(hi, chi)
+                    contribution = f"≤ {format_quantity(cmode, in_unit)}"
+                if lo == hi:
+                    contribution += " (band collapsed)"
 
             elif term.apply == "add_fraction":
                 lo, mode, hi = (

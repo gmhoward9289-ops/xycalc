@@ -115,6 +115,18 @@ models:
           under permanent eviction pressure. Configure enough that the
           contents sit at the target rather than above it.
 
+      - key: minimum_cache
+        label: The floor the vendor formula never goes below
+        role: floor
+        apply: floor_at
+        coefficient: mongodb.cache-minimum-bytes
+        rationale: >-
+          MongoDB's default is a max(), not a product: "the LARGER of 50% of
+          (RAM - 1GB), or 0.256 GB". Every other term here only ever raises the
+          answer, so without this the model happily returns a cache smaller
+          than one MongoDB would ever configure. It binds only on small
+          instances, which is exactly where nobody checks.
+
       - key: throttle_point
         label: Where it stops being a memory problem and becomes a latency problem
         role: constraint
