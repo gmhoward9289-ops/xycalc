@@ -250,3 +250,54 @@ class TestTicketCeiling:
         lower. The point is that the queue never drains."""
         assert "queued" in model.reframe
         assert "cliff" in model.reframe
+
+
+class TestBounds:
+    """floor_at / cap_at — the first non-monotonic apply modes.
+
+    Every other mode only pushes the running total one way. Vendors write
+    limits as max() and min() constantly, and without these the model can print
+    that it is out of bounds while still returning a number computed as though
+    it were not.
+    """
+
+    @pytest.fixture
+    def model(self, conn):
+        return Model.load(conn, "mongodb.wt-cache")
+
+    def test_the_floor_binds_on_a_small_database(self, model):
+        """MongoDB's default is 'the LARGER of 50% of (RAM-1GB), or 0.256 GB'.
+        10 MB of data implies ~31 MB of cache by the other terms; no MongoDB
+        would ever configure that."""
+        r = model.evaluate({"storage_size": "10MB"})
+        assert r.mode == pytest.approx(256 * 1024**2)
+
+    def test_the_floor_stays_out_of_the_way_when_it_should(self, model):
+        """A floor that changed the headline answer would be a bug, not a
+        bound."""
+        r = model.evaluate({"storage_size": "500GB", "index_size": "40GB"})
+        assert r.mode == pytest.approx(1612.5 * 1000**3)
+
+    def test_a_bound_can_collapse_the_band_and_says_so(self, model):
+        """Honest, but it must be visible: below the floor all three ends meet
+        and the answer stops looking uncertain when the inputs still are."""
+        r = model.evaluate({"storage_size": "10MB"})
+        assert r.lo == r.mode == r.hi
+        step = next(s for s in r.steps if s.term.key == "minimum_cache")
+        assert "band collapsed" in step.contribution
+
+    def test_a_bounding_term_must_not_be_role_constraint(self, conn):
+        """The evaluator skips constraint-role terms entirely, so a floor_at
+        filed as a constraint would silently never apply -- a change that
+        passes every test and does nothing. Caught exactly that way in
+        review."""
+        rows = conn.execute(
+            "SELECT key, role, apply FROM model_term "
+            "WHERE apply IN ('floor_at', 'cap_at')"
+        ).fetchall()
+        assert rows, "no bounding terms in the corpus to check"
+        for r in rows:
+            assert r["role"] != "constraint", (
+                f"{r['key']} computes but is filed as a constraint, so it is "
+                f"skipped and does nothing"
+            )

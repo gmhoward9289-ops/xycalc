@@ -111,8 +111,16 @@ class TestSizing:
 
 class TestWhy:
     def test_returns_the_citation_chain_without_running_the_model(self, client):
+        """Asserts the invariant, not a term count. A hardcoded 7 broke the
+        moment the model gained its floor term, which told us nothing about
+        whether the endpoint works."""
         body = client.get("/api/why/mongodb.wt-cache").json()
-        assert len(body["terms"]) == 7
+        assert len(body["terms"]) >= 7
+        for term in body["terms"]:
+            assert term["rationale"], f"{term['key']} explains nothing"
+            assert term["coefficient"] or term["input_key"], (
+                f"{term['key']} cites nothing and reads no input"
+            )
 
     def test_documented_terms_expose_the_sentence_they_came_from(self, client):
         body = client.get("/api/why/mongodb.wt-cache").json()
