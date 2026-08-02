@@ -4,7 +4,10 @@
 added 2026-08-01. ·
 **Model:** `mongodb.ticket-throughput-ceiling` · **Validation:** none (n=0) —
 survived one fault-injection experiment on one machine; no formal validation
-case published yet (see "Measured under load" below for why).
+case published yet (see "Measured under load" below for why). Two claims in
+this document were later walked back as stronger than the evidence: that the
+device was shown to be the binding constraint, and that convergence was shown
+not to happen. Both are marked in place rather than quietly edited.
 
 > "When IOPS or throughput exceed, MongoDB starts not returning queries,
 > especially when there is some contention." — George
@@ -256,8 +259,24 @@ absolute level.
 
 Little's law closes on the whole system to within 2% at every level in the
 second run: throughput × latency reproduces the offered thread count almost
-exactly (at 64 threads, 110.7 × 0.568 = 62.9). The queue is real, and the
-device is the binding constraint rather than the ticket pool.
+exactly (at 64 threads, 110.7 × 0.568 = 62.9). **The queue is real** — that much
+the arithmetic settles.
+
+What it does **not** settle is what the queue is waiting for. This document
+previously said "the device is the binding constraint rather than the ticket
+pool", and that claim is stronger than the experiment supports. The run varied
+**concurrency** and found throughput flat. It never varied the **device cap**.
+Flat-under-concurrency rules out the ticket pool as the binding constraint, but
+it does not identify the device as the replacement — anything else invariant to
+concurrency produces the same flat table. Driver threading, cgroup accounting
+granularity, and the single-vCPU-shared host are all live candidates that were
+never excluded.
+
+The honest statement is: **the ticket pool is not what binds, and the device is
+the leading hypothesis for what does.** Confirming it takes a second axis — hold
+concurrency fixed and sweep the device's own IOPS cap. If throughput tracks the
+cap, the device is the ceiling. If it does not, something else is, and it has
+been mislabelled here since 2026-08-01. That sweep is tracked in #2.
 
 The overlap also exposed a defect in the harness itself. Container names were a
 fixed default and `cleanup` ran at startup as well as on exit, so a second run
