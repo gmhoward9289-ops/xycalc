@@ -409,6 +409,131 @@ def headroom(result: Result, available: float) -> dict:
     }
 
 
+@dataclass
+class InstanceSpec:
+    name: str               # e.g. "r8i.24xlarge" -- read from `applies_to`,
+                             # not `slug`, so it matches what `xycalc why`
+                             # shows for the same coefficient.
+    ram_bytes: float
+    vcpu: float | None
+    source_title: str
+    source_url: str | None
+
+
+def load_instance_catalog(
+    conn: sqlite3.Connection, system: str = "aws-ec2"
+) -> list[InstanceSpec]:
+    """The catalog `select_instance()` picks from.
+
+    Grouped by `applies_to` rather than by coefficient slug. Slug is this
+    corpus's internal identifier and can be anything; `applies_to` is the
+    field the schema defines as "which variant this figure is true for," so
+    using it here is what keeps the catalog from silently drifting apart from
+    what a human reading `xycalc why aws.r8i...` for the same row would see.
+    """
+    conn.row_factory = sqlite3.Row
+    rows = conn.execute(
+        "SELECT c.applies_to, p.slug AS param_slug, c.value_mode, "
+        "       s.title AS source_title, s.url AS source_url "
+        "FROM coefficient c "
+        "JOIN system sy   ON sy.id = c.system_id "
+        "JOIN parameter p ON p.id = c.parameter_id "
+        "JOIN source s    ON s.id = c.source_id "
+        "WHERE sy.slug = ?",
+        (system,),
+    ).fetchall()
+
+    by_name: dict[str, dict] = {}
+    for r in rows:
+        name = r["applies_to"].split(",")[0].strip()
+        entry = by_name.setdefault(
+            name,
+            {"source_title": r["source_title"], "source_url": r["source_url"]},
+        )
+        if r["param_slug"] == "host.ram_bytes":
+            entry["ram_bytes"] = r["value_mode"]
+        elif r["param_slug"] == "instance.vcpu_count":
+            entry["vcpu"] = r["value_mode"]
+
+    return sorted(
+        (
+            InstanceSpec(
+                name=name,
+                ram_bytes=e["ram_bytes"],
+                vcpu=e.get("vcpu"),
+                source_title=e["source_title"],
+                source_url=e["source_url"],
+            )
+            for name, e in by_name.items()
+            if "ram_bytes" in e  # a row with only a vcpu coefficient is unusable
+        ),
+        key=lambda i: i.ram_bytes,
+    )
+
+
+def select_instance(
+    result: Result,
+    catalog: list[InstanceSpec],
+    family: str | None = None,
+    ceiling_bytes: float | None = None,
+) -> dict:
+    """Which named instance is the smallest one covering a RAM requirement --
+    evaluated separately at the low, mode, and high end of `result`'s band.
+
+    Deliberately per band-end rather than against `result.mode` alone, for
+    the same reason `headroom()` reports against the whole band: collapsing a
+    lo/mode/hi requirement to one number before picking an instance hides
+    exactly the uncertainty the rest of this corpus exists to keep visible.
+    An instance that covers the mode but not the high end is a real,
+    nameable risk -- "the 12xlarge fits if the estimate is right, the
+    24xlarge fits regardless" -- and printing only the mode's answer would
+    erase that distinction.
+
+    `family` filters the catalog by name prefix (case-insensitive), e.g.
+    "r8i" or "u7i". Raises if the filtered pool is empty.
+
+    `ceiling_bytes` is an operational policy cutoff, not a vendor fact --
+    r8i itself goes to 3,072 GiB (r8i.96xlarge), but an org can decide to
+    stop recommending within a family below its real technical ceiling and
+    require a family change past that point instead. When set, instances
+    above it are excluded from the pool before picking, so the existing
+    `exceeds_pool` / "custom sizing" branch fires at the POLICY ceiling, not
+    necessarily the family's actual maximum -- deliberately not a coefficient
+    in aws-ec2.yaml, because it is a standing internal decision that changes
+    when the next family is chosen, not a sourced AWS spec.
+    """
+    pool = [
+        i for i in catalog if not family or i.name.lower().startswith(family.lower())
+    ]
+    if not pool:
+        raise ModelError(f"no instances in catalog matching family '{family}'")
+    if ceiling_bytes is not None:
+        capped = [i for i in pool if i.ram_bytes <= ceiling_bytes]
+        if not capped:
+            raise ModelError(
+                f"ceiling {ceiling_bytes:g} bytes excludes every instance "
+                f"matching family '{family}'"
+            )
+        pool = capped
+
+    def pick(need: float) -> InstanceSpec | None:
+        fits = [i for i in pool if i.ram_bytes >= need]
+        return min(fits, key=lambda i: i.ram_bytes) if fits else None
+
+    largest = max(pool, key=lambda i: i.ram_bytes)
+
+    return {
+        "required_lo": result.lo,
+        "required_mode": result.mode,
+        "required_hi": result.hi,
+        "pick_lo": pick(result.lo),
+        "pick_mode": pick(result.mode),
+        "pick_hi": pick(result.hi),
+        "largest_in_pool": largest,
+        "exceeds_pool": result.hi > largest.ram_bytes,
+    }
+
+
 # Below these, a model has been checked but not enough to lean on. The
 # thresholds are ours, not anyone's standard, and they are deliberately
 # unflattering: one case from one machine is an anecdote, and an average error

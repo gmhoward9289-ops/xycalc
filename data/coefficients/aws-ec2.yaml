@@ -1,0 +1,221 @@
+# AWS EC2 memory-optimized instance catalog (r8i, U7i).
+#
+# Not a sizing chain like mongodb.yaml — each entry here is a spec, not an
+# uncertain estimate, so lo == mode == hi. What ties them together is that
+# they all resolve `instance-select`'s catalog lookup: given a RAM
+# requirement, which named instance is the smallest one that covers it.
+#
+# Confidence is `practitioner`, not `documented`, across the board — these
+# were read via an Anthropic deep-research pass (WebSearch + WebFetch across
+# many agents), not fetched and archived by a human in this session the way
+# the rest of this corpus's `documented` rows were. The figures are AWS's own
+# published specs and were cross-checked against multiple independent
+# aggregators during research, but this corpus's own rule is that a human
+# promotes `documented` after confirming the live source — do that before
+# leaning hard on these for a real purchase, especially since AWS instance
+# catalogs change without much notice.
+
+coefficients:
+  # -- r8i family: 8 GiB RAM per vCPU, confirmed across every published size
+  - slug: aws.r8i.large.ram-bytes
+    parameter: host.ram_bytes
+    system: aws-ec2
+    applies_to: r8i.large, AWS EC2, 2026
+    value: 17179869184  # 16 GiB
+    confidence: practitioner
+    source: aws-ec2-instance-types-r8i
+    quote: "r8i.large | 2 vCPU | 16 GiB | Memory optimized"
+  - slug: aws.r8i.large.vcpu
+    parameter: instance.vcpu_count
+    system: aws-ec2
+    applies_to: r8i.large, AWS EC2, 2026
+    value: 2
+    confidence: practitioner
+    source: aws-ec2-instance-types-r8i
+    quote: "r8i.large | 2 vCPU | 16 GiB | Memory optimized"
+
+  - slug: aws.r8i.xlarge.ram-bytes
+    parameter: host.ram_bytes
+    system: aws-ec2
+    applies_to: r8i.xlarge, AWS EC2, 2026
+    value: 34359738368  # 32 GiB
+    confidence: practitioner
+    source: aws-ec2-instance-types-r8i
+    quote: "r8i.xlarge | 4 vCPU | 32 GiB | Memory optimized"
+  - slug: aws.r8i.xlarge.vcpu
+    parameter: instance.vcpu_count
+    system: aws-ec2
+    applies_to: r8i.xlarge, AWS EC2, 2026
+    value: 4
+    confidence: practitioner
+    source: aws-ec2-instance-types-r8i
+    quote: "r8i.xlarge | 4 vCPU | 32 GiB | Memory optimized"
+
+  - slug: aws.r8i.2xlarge.ram-bytes
+    parameter: host.ram_bytes
+    system: aws-ec2
+    applies_to: r8i.2xlarge, AWS EC2, 2026
+    value: 68719476736  # 64 GiB
+    confidence: practitioner
+    source: aws-ec2-instance-types-r8i
+    quote: "r8i.2xlarge | 8 vCPU | 64 GiB | Memory optimized"
+  - slug: aws.r8i.2xlarge.vcpu
+    parameter: instance.vcpu_count
+    system: aws-ec2
+    applies_to: r8i.2xlarge, AWS EC2, 2026
+    value: 8
+    confidence: practitioner
+    source: aws-ec2-instance-types-r8i
+    quote: "r8i.2xlarge | 8 vCPU | 64 GiB | Memory optimized"
+
+  - slug: aws.r8i.4xlarge.ram-bytes
+    parameter: host.ram_bytes
+    system: aws-ec2
+    applies_to: r8i.4xlarge, AWS EC2, 2026
+    value: 137438953472  # 128 GiB
+    confidence: practitioner
+    source: aws-ec2-instance-types-r8i
+    quote: "r8i.4xlarge | 16 vCPU | 128 GiB"
+  - slug: aws.r8i.4xlarge.vcpu
+    parameter: instance.vcpu_count
+    system: aws-ec2
+    applies_to: r8i.4xlarge, AWS EC2, 2026
+    value: 16
+    confidence: practitioner
+    source: aws-ec2-instance-types-r8i
+    quote: "r8i.4xlarge | 16 vCPU | 128 GiB"
+
+  - slug: aws.r8i.8xlarge.ram-bytes
+    parameter: host.ram_bytes
+    system: aws-ec2
+    applies_to: r8i.8xlarge, AWS EC2, 2026
+    value: 274877906944  # 256 GiB
+    confidence: practitioner
+    source: aws-ec2-instance-types-r8i
+    quote: "r8i.8xlarge | 32 vCPU | 256 GiB"
+  - slug: aws.r8i.8xlarge.vcpu
+    parameter: instance.vcpu_count
+    system: aws-ec2
+    applies_to: r8i.8xlarge, AWS EC2, 2026
+    value: 32
+    confidence: practitioner
+    source: aws-ec2-instance-types-r8i
+    quote: "r8i.8xlarge | 32 vCPU | 256 GiB"
+
+  - slug: aws.r8i.12xlarge.ram-bytes
+    parameter: host.ram_bytes
+    system: aws-ec2
+    applies_to: r8i.12xlarge, AWS EC2, 2026
+    value: 412316860416  # 384 GiB
+    confidence: practitioner
+    source: aws-ec2-instance-types-r8i
+    quote: "r8i.12xlarge | 48 vCPU | 384 GiB"
+  - slug: aws.r8i.12xlarge.vcpu
+    parameter: instance.vcpu_count
+    system: aws-ec2
+    applies_to: r8i.12xlarge, AWS EC2, 2026
+    value: 48
+    confidence: practitioner
+    source: aws-ec2-instance-types-r8i
+    quote: "r8i.12xlarge | 48 vCPU | 384 GiB"
+
+  - slug: aws.r8i.16xlarge.ram-bytes
+    parameter: host.ram_bytes
+    system: aws-ec2
+    applies_to: r8i.16xlarge, AWS EC2, 2026
+    value: 549755813888  # 512 GiB
+    confidence: practitioner
+    source: aws-ec2-instance-types-r8i
+    quote: "r8i.16xlarge | 64 vCPU | 512 GiB"
+  - slug: aws.r8i.16xlarge.vcpu
+    parameter: instance.vcpu_count
+    system: aws-ec2
+    applies_to: r8i.16xlarge, AWS EC2, 2026
+    value: 64
+    confidence: practitioner
+    source: aws-ec2-instance-types-r8i
+    quote: "r8i.16xlarge | 64 vCPU | 512 GiB"
+
+  - slug: aws.r8i.24xlarge.ram-bytes
+    parameter: host.ram_bytes
+    system: aws-ec2
+    applies_to: r8i.24xlarge, AWS EC2, 2026
+    value: 824633720832  # 768 GiB
+    confidence: practitioner
+    source: aws-ec2-instance-types-r8i
+    quote: "r8i.24xlarge | 96 vCPU | 768 GiB"
+  - slug: aws.r8i.24xlarge.vcpu
+    parameter: instance.vcpu_count
+    system: aws-ec2
+    applies_to: r8i.24xlarge, AWS EC2, 2026
+    value: 96
+    confidence: practitioner
+    source: aws-ec2-instance-types-r8i
+    quote: "r8i.24xlarge | 96 vCPU | 768 GiB"
+
+  - slug: aws.r8i.32xlarge.ram-bytes
+    parameter: host.ram_bytes
+    system: aws-ec2
+    applies_to: r8i.32xlarge, AWS EC2, 2026
+    value: 1099511627776  # 1,024 GiB
+    confidence: practitioner
+    source: aws-ec2-instance-types-r8i
+    quote: "r8i.32xlarge | 128 vCPU | 1,024 GiB"
+  - slug: aws.r8i.32xlarge.vcpu
+    parameter: instance.vcpu_count
+    system: aws-ec2
+    applies_to: r8i.32xlarge, AWS EC2, 2026
+    value: 128
+    confidence: practitioner
+    source: aws-ec2-instance-types-r8i
+    quote: "r8i.32xlarge | 128 vCPU | 1,024 GiB"
+
+  - slug: aws.r8i.48xlarge.ram-bytes
+    parameter: host.ram_bytes
+    system: aws-ec2
+    applies_to: r8i.48xlarge, AWS EC2, 2026
+    value: 1649267441664  # 1,536 GiB
+    confidence: practitioner
+    source: aws-ec2-instance-types-r8i
+    quote: "r8i.48xlarge | 192 vCPU | 1,536 GiB"
+  - slug: aws.r8i.48xlarge.vcpu
+    parameter: instance.vcpu_count
+    system: aws-ec2
+    applies_to: r8i.48xlarge, AWS EC2, 2026
+    value: 192
+    confidence: practitioner
+    source: aws-ec2-instance-types-r8i
+    quote: "r8i.48xlarge | 192 vCPU | 1,536 GiB"
+
+  - slug: aws.r8i.96xlarge.ram-bytes
+    parameter: host.ram_bytes
+    system: aws-ec2
+    applies_to: r8i.96xlarge, AWS EC2, 2026
+    value: 3298534883328  # 3,072 GiB = 3 TiB, the r8i family ceiling
+    confidence: practitioner
+    source: aws-ec2-instance-types-r8i
+    quote: "r8i.96xlarge | 384 vCPU | 3,072 GiB"
+    notes: >-
+      The largest published r8i size. A requirement above this exceeds the
+      whole family — instance-select should report "past r8i, see U7i" rather
+      than silently returning no match.
+  - slug: aws.r8i.96xlarge.vcpu
+    parameter: instance.vcpu_count
+    system: aws-ec2
+    applies_to: r8i.96xlarge, AWS EC2, 2026
+    value: 384
+    confidence: practitioner
+    source: aws-ec2-instance-types-r8i
+    quote: "r8i.96xlarge | 384 vCPU | 3,072 GiB"
+
+  # -- U7i family: deliberately NOT populated yet.
+  #
+  # r8i.96xlarge (3,072 GiB) is the current ceiling of what this catalog can
+  # recommend. A requirement above that reports as "custom sizing" rather
+  # than naming a U7i instance -- see select_instance()'s `exceeds_pool`
+  # branch. Recommending a specific U7i size here would be presenting a
+  # guess as this corpus's answer, which is exactly what the rest of it
+  # refuses to do. Fill this back in, sourced the same way as the r8i rows
+  # above, once the actual instance family for >3TB deployments is decided.
+  # aws-ec2-instance-types-u7i stays registered in sources.yaml for when
+  # that happens.

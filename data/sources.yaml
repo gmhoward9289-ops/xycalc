@@ -169,3 +169,40 @@ sources:
       number of operations per second. Percona also reports the observable
       consequence directly: restricting concurrency produced a "notable
       increase in the Queued Ops rate".
+
+  - slug: aws-ec2-instance-types-r8i
+    title: Amazon EC2 R8i Instances
+    publisher: Amazon Web Services
+    url: https://aws.amazon.com/ec2/instance-types/r8i
+    version: current as of 2026
+    retrieved_on: '2026-08-16'
+    source_type: vendor_doc
+    notes: >-
+      Read via an Anthropic deep-research pass, not fetched and archived by a
+      human in this session — flagged `practitioner` rather than `documented`
+      for that reason (see coefficient notes). Confirmed arithmetically:
+      exactly 8 GiB RAM per vCPU across every published r8i size, r8i.large
+      (2 vCPU / 16 GiB) through r8i.96xlarge (384 vCPU / 3,072 GiB), including
+      bare-metal variants. r8i.96xlarge is the family's memory ceiling —
+      beyond it the next option is a different family (X2iedn, U7i), not a
+      larger r8i.
+
+  - slug: aws-ec2-instance-types-u7i
+    title: Amazon EC2 High Memory (U7i) Instances
+    publisher: Amazon Web Services
+    url: https://aws.amazon.com/ec2/instance-types/u7i/
+    version: current as of 2026
+    retrieved_on: '2026-08-16'
+    source_type: vendor_doc
+    notes: >-
+      Same provenance caveat as aws-ec2-instance-types-r8i: sourced via
+      deep-research, not a human-verified live fetch — `practitioner` pending
+      promotion. Current-generation answer for working sets past r8i's 3TB
+      ceiling: u7i-12tb.224xlarge (896 vCPU / 12,288 GiB) through
+      u7inh-32tb.480xlarge (1,920 vCPU / 32,768 GiB, a 16-socket HPE Compute
+      Scale-Up Server 3200 via AWS Nitro). Available on standard On-Demand,
+      Reserved Instance, and Savings Plan purchase options, not
+      reservation-only — unlike the legacy u-series Dedicated Hosts this
+      family supersedes, which are deliberately NOT catalogued here (several
+      of their specific capacity/pricing figures failed independent
+      verification during research).

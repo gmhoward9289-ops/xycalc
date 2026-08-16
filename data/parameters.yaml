@@ -158,3 +158,16 @@ parameters:
     label: Storage latency per operation
     unit: seconds
     dimension: seconds
+
+  # -- AWS EC2 instance catalog -------------------------------------------
+  - slug: instance.vcpu_count
+    label: vCPU count
+    unit: vcpu
+    dimension: count
+    notes: >-
+      Carried alongside host.ram_bytes for context in `instance-select`
+      output. Not used to choose an instance — r8i pricing is confirmed flat
+      per GB of RAM across the whole family, so RAM alone determines the
+      smallest instance that fits a given requirement. vCPU is informational,
+      not a selection criterion, unless a future model adds a CPU-bound
+      sizing question.

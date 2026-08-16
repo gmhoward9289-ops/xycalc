@@ -25,7 +25,26 @@ from pathlib import Path
 from . import audit as audit_mod
 from . import build as build_mod
 from .db import connect
-from .model import Model, ModelError, format_quantity, headroom, validation_status
+from .model import (
+    Model,
+    ModelError,
+    format_quantity,
+    headroom,
+    load_instance_catalog,
+    parse_bytes,
+    select_instance,
+    validation_status,
+)
+
+# Standing internal policy, not an AWS ceiling: r8i itself goes to 3,072 GiB
+# (r8i.96xlarge), but the org has decided to cap recommendations at 1,536 GiB
+# (== r8i.48xlarge exactly, in binary GiB -- NOT the decimal "1.5TB" a casual
+# reading would suggest, which would be slightly smaller and wrongly exclude
+# the boundary instance itself) and require a family change above that,
+# pending a decision on what that next family is. Set 2026-08-16. Revisit
+# once the >1.5TB family is chosen -- see the comment block at the end of
+# data/coefficients/aws-ec2.yaml.
+DEFAULT_INSTANCE_CEILING = "1536GiB"
 
 BAR = "─" * 68
 
@@ -183,6 +202,78 @@ def cmd_headroom(args) -> int:
     return 0
 
 
+def cmd_instance_select(args) -> int:
+    """Run any model on its own inputs, then look up its band against the
+    AWS instance catalog instead of collapsing it to one number first --
+    mirrors `headroom`'s shape, swapping a supplied `--available` for a
+    lookup against `data/coefficients/aws-ec2.yaml`."""
+    conn = connect(args.db)
+    model = _load(conn, args.model)
+    values = {i["key"]: getattr(args, i["key"]) for i in model.inputs}
+    values = {k: v for k, v in values.items() if v is not None}
+    try:
+        result = model.evaluate(values)
+    except ModelError as e:
+        print(f"error: {e}", file=sys.stderr)
+        return 2
+
+    catalog = load_instance_catalog(conn)
+    try:
+        ceiling = parse_bytes(args.max_ram) if args.max_ram else None
+        if ceiling == 0:  # explicit escape hatch: --max-ram 0 lifts the cap
+            ceiling = None
+        sel = select_instance(result, catalog, family=args.family, ceiling_bytes=ceiling)
+    except ModelError as e:
+        print(f"error: {e}", file=sys.stderr)
+        return 2
+
+    print(f"\n{model.question}")
+    print(BAR)
+    print(
+        f"  required (band)    {_fmt(sel['required_lo'], result.unit)} – "
+        f"{_fmt(sel['required_hi'], result.unit)}  "
+        f"(mode {_fmt(sel['required_mode'], result.unit)})"
+    )
+    print()
+    for label, key in (("low end", "pick_lo"), ("mode", "pick_mode"), ("high end", "pick_hi")):
+        spec = sel[key]
+        if spec is None:
+            print(f"  {label:<10} custom sizing — over the largest instance in this pool")
+        else:
+            headroom_bytes = spec.ram_bytes - {
+                "pick_lo": sel["required_lo"],
+                "pick_mode": sel["required_mode"],
+                "pick_hi": sel["required_hi"],
+            }[key]
+            print(
+                f"  {label:<10} {spec.name:<24} "
+                f"{_fmt(spec.ram_bytes, result.unit)} RAM"
+                + (f", {spec.vcpu:g} vCPU" if spec.vcpu else "")
+                + f"  (+{_fmt(headroom_bytes, result.unit)} headroom)"
+            )
+
+    if sel["exceeds_pool"]:
+        largest = sel["largest_in_pool"]
+        capped = ceiling is not None and largest.ram_bytes >= ceiling
+        print(
+            f"\n  NOTE  the high end of the band exceeds "
+            + (
+                f"the {_fmt(ceiling, result.unit)} sizing ceiling "
+                f"(org policy, not an AWS limit — pass --max-ram to change it)."
+                if capped
+                else f"the largest instance in this pool "
+                f"({largest.name}, {_fmt(largest.ram_bytes, result.unit)})."
+            )
+            + " No family is decided for sizing above that yet — this is a "
+            "placeholder, not a real recommendation."
+        )
+
+    _print_constraints(result)
+    _print_validation(conn, model.slug)
+    conn.close()
+    return 0
+
+
 def cmd_why(args) -> int:
     """The citation chain. Every term, what it cites, and the sentence it was
     read from."""
@@ -299,6 +390,29 @@ def build_parser(db: Path | None = None) -> argparse.ArgumentParser:
             )
         _add_model_flags(sp, db)
         sp.set_defaults(func=fn)
+
+    sp = sub.add_parser(
+        "instance-select",
+        help="which named AWS instance covers a model's required band",
+    )
+    sp.add_argument("model")
+    sp.add_argument(
+        "--family",
+        default=None,
+        help="filter the catalog by name prefix, e.g. r8i or u7i (default: whole catalog)",
+    )
+    sp.add_argument(
+        "--max-ram",
+        default=DEFAULT_INSTANCE_CEILING,
+        help=(
+            "org policy ceiling, not an AWS spec — above this, report "
+            f"'custom sizing' rather than naming an instance (default: "
+            f"{DEFAULT_INSTANCE_CEILING}, == r8i.48xlarge; pass a larger "
+            "value or 0 to lift it)"
+        ),
+    )
+    _add_model_flags(sp, db)
+    sp.set_defaults(func=cmd_instance_select)
 
     sp = sub.add_parser("why", help="the citation chain behind every term")
     sp.add_argument("model")
