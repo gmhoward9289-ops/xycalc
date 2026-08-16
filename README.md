@@ -2,6 +2,8 @@
 
 **How much X does it take to run Y?**
 
+[![Discussions](https://img.shields.io/github/discussions/gmhoward9289-ops/xycalc)](https://github.com/gmhoward9289-ops/xycalc/discussions)
+
 How much RAM does a 500 GB MongoDB take? How many IOPS before EBS microbursts?
 How many Celery workers before Redis becomes the bottleneck?
 
@@ -23,6 +25,9 @@ And one guarantee it makes by admission rather than by refusal:
    would not be normal is leaving it unsaid.
 
 ## Quick start
+
+Questions, ideas, or a real measurement to share? →
+[Discussions](https://github.com/gmhoward9289-ops/xycalc/discussions)
 
 ```bash
 python3.12 -m venv .venv && .venv/bin/pip install -e ".[dev,gui]"
