@@ -276,3 +276,27 @@ coefficients:
       reports host RAM inside a capped container while memLimitMB reports the
       cap. Validating against memSizeMB would compare every container to the
       same number.
+
+  # -- capacity planning (informational only; the model term is caller-input,
+  #    not this coefficient — see mongodb.wt-cache's growth_buffer_pct) ------
+  - slug: mongodb.capacity-buffer-default-pct
+    parameter: host.capacity_buffer_pct
+    system: mongodb
+    applies_to: >-
+      Not a MongoDB property — a generic planning default: 15-40%/year
+      database growth compounded over a 2-year horizon, offered only for
+      when the caller has no growth curve of their own.
+    value_lo: 32.25
+    value_mode: 56.25
+    value_hi: 96
+    confidence: estimate
+    source: xycalc-capacity-planning-default
+    notes: >-
+      OUR REASONING, NOT A VENDOR FIGURE. Computed as (1 + annual_growth)^years
+      - 1 at three annual-growth assumptions over a fixed 2-year horizon: 15%
+      (lo), 25% (mode), 40% (hi). Both the growth rate and the horizon are
+      exactly the two things `--growth-buffer-pct` lets a caller override —
+      this coefficient exists purely so that default has a citable origin
+      instead of being an unexplained 35% (or any other number) baked into
+      code. Never evaluated automatically; surfaced only as a note alongside
+      the model's answer.

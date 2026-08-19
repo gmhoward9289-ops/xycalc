@@ -79,7 +79,7 @@ class TestSizing:
 
     def test_constraints_come_back_even_though_they_do_not_compute(self, client):
         body = client.post("/api/sizing", json=SIZING).json()
-        assert len(body["constraints"]) == 3
+        assert len(body["constraints"]) == 4
 
     def test_the_reframe_is_part_of_the_answer(self, client):
         """For this model the reframe is most of the answer, so a client that

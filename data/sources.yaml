@@ -206,3 +206,21 @@ sources:
       family supersedes, which are deliberately NOT catalogued here (several
       of their specific capacity/pricing figures failed independent
       verification during research).
+
+  - slug: xycalc-capacity-planning-default
+    title: "Planning default: 25%/year database growth, 2-year provisioning horizon"
+    publisher: xycalc project (not a vendor figure)
+    url:
+    version:
+    retrieved_on: '2026-08-19'
+    source_type: estimate
+    notes: >-
+      OUR OWN PLANNING ASSUMPTION, not read off any MongoDB or AWS page —
+      recorded so the default that ships with the `growth_buffer_pct` input
+      has a citable origin instead of being tribal knowledge. 25%/year is a
+      generic aggressive-but-plausible SaaS/product database growth rate; a
+      2-year horizon is a common hardware-refresh/reservation-commitment
+      cycle. Neither is universal. Anyone with their own growth curve should
+      pass their own number to `--growth-buffer-pct` and ignore this default
+      entirely — it exists only for the case where nobody has a better one
+      yet.
