@@ -47,6 +47,26 @@ models:
       findings — but it is the difference between a bad hour and an outage, and
       it is measurable with one serverStatus field.
 
+      **Scope: this model is valid wherever the pool is pinned, not wherever
+      the version number says 7.0.** A pinned pool is pre-7.0 (statically 128),
+      any version with `storageEngineConcurrentReadTransactions` /
+      `...WriteTransactions` set by hand, or the transient window on 7.0+
+      before `throughputProbing` has ramped. It is **not established** for
+      7.0+ once the probing algorithm has been running under sustained load —
+      a 2026-08-01 fault-injection run held concurrency at 64 for 25-second
+      windows and watched totalTickets climb from 4 through 71-74 without
+      converging, so there is no single N this formula can be fed for that
+      regime yet, only a moving one. The same run found throughput flat across
+      an 18.5x range of that moving N, which is a strong hint the device, not
+      the pool, was the actual ceiling in that case — but it is a hint, not a
+      measurement, because the run never varied the device's own cap to
+      confirm it. Until that experiment is done (tracked in
+      docs/plans/issue-2-ticket-ceiling-pinned-pool-scope.md), do not trust
+      this model's output for a 7.0+ instance under sustained load: read
+      totalTickets yourself, and treat a climbing, unconverged number as a
+      sign you are outside this model's scope rather than as this model's
+      input.
+
     notes: >-
       Read and write tickets are separate pools of the same size, so run this
       once per pool with the relevant latency. The model does not represent the
@@ -62,14 +82,16 @@ models:
       - key: tickets
         label: Concurrent transactions permitted
         unit: tickets
-        required: false
-        default: 128
+        required: true
         help: >-
           serverStatus().wiredTiger.concurrentTransactions.read.totalTickets —
-          on 7.0 too; queues.execution does not exist there. LOOK IT UP rather
-          than taking the default: an idle 7.0.39 instance was measured at 4,
-          not 128. The 128 default here is the pre-7.0 static value and the
-          dynamic maximum, and on 7.0+ it is optimistic by up to 32x.
+          on 7.0 too; queues.execution does not exist there. There is no
+          default here on purpose: 128 is the pre-7.0 static value and the
+          7.0+ dynamic maximum, but an idle 7.0.39 instance was measured
+          resting at 4, and a fault-injection run under sustained load saw it
+          climb through 71-74 without settling — neither end of that range is
+          a safe stand-in for the other. LOOK IT UP for the instance you are
+          sizing; do not carry a number over from a different one.
       - key: storage_latency_seconds
         label: Storage latency per operation, in seconds
         unit: seconds
