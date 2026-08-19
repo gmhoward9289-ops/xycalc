@@ -44,12 +44,21 @@ body {
 }
 .wrap { max-width: 60rem; margin: 0 auto; padding: 2rem 1.25rem 5rem; }
 
-header { border-bottom: 1px solid var(--line); padding-bottom: 1.25rem; margin-bottom: 2rem; }
+header { border-bottom: 1px solid var(--line); padding-bottom: 1.25rem; margin-bottom: 1.25rem; }
 h1 { font-size: 1.5rem; margin: 0 0 .25rem; letter-spacing: -.01em; }
 h1 span { color: var(--accent); font-family: var(--mono); }
 .tagline { color: var(--muted); margin: 0; font-size: .95rem; }
 .claim { margin: .75rem 0 0; font-size: .85rem; color: var(--muted); }
 .claim code { font-family: var(--mono); font-size: .8rem; }
+
+/* -- tabs -- */
+.tabs { display: flex; gap: .25rem; margin-bottom: 1.5rem; border-bottom: 1px solid var(--line); }
+.tab {
+  background: none; border: 0; color: var(--muted); font-size: .9rem; font-weight: 600;
+  padding: .6rem 1rem; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px;
+}
+.tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+.tab:hover:not(.active) { color: var(--ink); }
 
 .panel {
   background: var(--panel); border: 1px solid var(--line);
@@ -74,6 +83,20 @@ button {
   padding: .6rem 1.2rem; font-size: .95rem; font-weight: 600; cursor: pointer;
 }
 button:hover { filter: brightness(1.1); }
+
+/* -- scenario picker -- */
+.scenario-list { display: flex; flex-direction: column; gap: .5rem; }
+.scenario-opt {
+  display: flex; align-items: flex-start; gap: .6rem; padding: .6rem .7rem;
+  border: 1px solid var(--line); border-radius: 6px; cursor: pointer;
+}
+.scenario-opt:hover { border-color: var(--accent); }
+.scenario-opt input[type=radio] { width: auto; margin: .2rem 0 0; accent-color: var(--accent); }
+.scenario-opt .label { font-weight: 600; font-size: .92rem; }
+.scenario-opt .sub { font-size: .8rem; color: var(--muted); margin-top: .1rem; }
+.scenario-opt.disabled { opacity: .55; cursor: not-allowed; }
+.scenario-opt.disabled:hover { border-color: var(--line); }
+.scenario-opt.selected { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 6%, transparent); }
 
 /* -- answer -- */
 .answer { text-align: center; padding: 1.5rem 0 .5rem; }
@@ -117,7 +140,7 @@ td.num { font-family: var(--mono); text-align: right; white-space: nowrap; }
 .grade { font-family: var(--mono); font-size: .68rem; padding: .05rem .35rem; border: 1px solid var(--line); border-radius: 3px; color: var(--muted); }
 .skipped td { opacity: .5; }
 details { margin-top: .3rem; }
-summary { cursor: pointer; font-size: .74rem; color: var(--muted); }
+details > summary { cursor: pointer; font-size: .74rem; color: var(--muted); }
 blockquote { margin: .4rem 0 0; padding-left: .7rem; border-left: 2px solid var(--line); font-size: .8rem; color: var(--muted); font-style: italic; }
 
 .constraint-item { border-bottom: 1px solid var(--line); padding: .7rem 0; font-size: .85rem; }
@@ -133,6 +156,32 @@ blockquote { margin: .4rem 0 0; padding-left: .7rem; border-left: 2px solid var(
 .error { color: #b3261e; font-family: var(--mono); font-size: .85rem; }
 footer { margin-top: 3rem; padding-top: 1.25rem; border-top: 1px solid var(--line); font-size: .78rem; color: var(--muted); }
 [hidden] { display: none !important; }
+
+/* -- cascade (scenario view) -- */
+.cascade { display: flex; flex-direction: column; align-items: stretch; }
+.chain-arrow {
+  text-align: center; color: var(--muted); font-size: .78rem; font-family: var(--mono);
+  padding: .35rem 0; position: relative;
+}
+.chain-arrow::before { content: "↓"; display: block; font-size: 1.1rem; }
+.card { position: relative; }
+.card .step-kicker {
+  font-size: .72rem; text-transform: uppercase; letter-spacing: .07em; color: var(--muted);
+  font-weight: 700; margin-bottom: .4rem;
+}
+.card .chained-note {
+  font-size: .78rem; color: var(--muted); font-style: italic; margin-top: -.6rem; margin-bottom: .6rem;
+}
+.instance-pick-table td.name { font-family: var(--mono); font-weight: 600; }
+.pool-note {
+  margin-top: 1rem; padding: .7rem .9rem; border-radius: 6px;
+  border: 1px solid var(--warn-line); background: var(--warn-bg); color: var(--warn-ink); font-size: .85rem;
+}
+.see-also {
+  border-left: 3px solid var(--line); padding: .25rem 0 .25rem 1rem; font-size: .87rem; color: var(--muted);
+}
+.see-also a { color: var(--accent); cursor: pointer; text-decoration: underline; background: none; border: 0; padding: 0; font: inherit; }
+.worst-grade { font-size: .78rem; color: var(--warn-ink); margin-top: .4rem; }
 </style>
 </head>
 <body>
@@ -148,70 +197,56 @@ footer { margin-top: 3rem; padding-top: 1.25rem; border-top: 1px solid var(--lin
   </p>
 </header>
 
-<div class="panel">
-  <div class="field">
-    <label for="model">Question</label>
-    <select id="model"></select>
-  </div>
-  <div id="inputs"></div>
-  <div class="field">
-    <label for="available">What you already have <span class="help" style="display:inline">optional — turns this into a headroom check</span></label>
-    <input id="available" placeholder="e.g. 256GB" autocomplete="off">
-  </div>
-  <button id="go">Calculate</button>
-  <p id="error" class="error" hidden></p>
+<div class="tabs">
+  <button class="tab active" id="tab-btn-scenario" data-tab="scenario">Scenario</button>
+  <button class="tab" id="tab-btn-single" data-tab="single">Single question</button>
 </div>
 
-<div id="result" hidden>
+<!-- ============================= SCENARIO TAB ============================= -->
+<div id="tab-scenario">
   <div class="panel">
-    <p class="question" id="q"></p>
-
-    <div class="answer">
-      <div class="label">Answer</div>
-      <div class="value" id="answer"></div>
-      <div class="band" id="band"></div>
-    </div>
-
-    <div class="bandbar" id="bandbar" hidden>
-      <div class="fill" id="bandfill"></div>
-      <div class="mark" id="bandmode"></div>
-    </div>
-    <div class="bandends" id="bandends" hidden></div>
-
-    <div id="headroom" hidden></div>
-
-    <div class="validation" id="validation"></div>
+    <label>What do you know?</label>
+    <div class="scenario-list" id="scenario-picker"></div>
   </div>
 
+  <div class="panel" id="scenario-form-panel" hidden>
+    <p class="question" id="scn-question"></p>
+    <div id="scenario-inputs"></div>
+    <div class="field">
+      <label for="scn-available">RAM you already have
+        <span class="help" style="display:inline">optional — turns the last card into a headroom check</span></label>
+      <input id="scn-available" placeholder="e.g. 256GB" autocomplete="off">
+    </div>
+    <button id="scn-go">Calculate</button>
+    <p id="scn-error" class="error" hidden></p>
+  </div>
+
+  <div id="scenario-cascade" class="cascade"></div>
+</div>
+
+<!-- ========================== SINGLE QUESTION TAB ========================== -->
+<div id="tab-single" hidden>
   <div class="panel">
-    <h2 style="margin-top:0">Breakdown</h2>
-    <div class="scroll">
-      <table>
-        <thead><tr>
-          <th>Term</th><th style="text-align:right">Effect</th><th style="text-align:right">Running</th>
-        </tr></thead>
-        <tbody id="steps"></tbody>
-      </table>
+    <div class="field">
+      <label for="model">Question</label>
+      <select id="model"></select>
     </div>
+    <div id="inputs"></div>
+    <div class="field">
+      <label for="available">What you already have <span class="help" style="display:inline">optional — turns this into a headroom check</span></label>
+      <input id="available" placeholder="e.g. 256GB" autocomplete="off">
+    </div>
+    <button id="go">Calculate</button>
+    <p id="error" class="error" hidden></p>
   </div>
 
-  <div class="panel" id="constraints-panel" hidden>
-    <h2 style="margin-top:0">Constraints</h2>
-    <p style="font-size:.82rem;color:var(--muted);margin:0 0 .5rem">
-      Not in the arithmetic. They still bind, and they are frequently what actually matters.
-    </p>
-    <div id="constraints"></div>
-  </div>
-
-  <div class="panel reframe" id="reframe-panel" hidden>
-    <h2>Read this before acting on the number</h2>
-    <div id="reframe"></div>
-  </div>
+  <div id="result" hidden></div>
 </div>
 
 <footer>
   Code Apache-2.0 · corpus CC BY 4.0 ·
-  <code>xycalc why &lt;model&gt;</code> prints this citation chain in a terminal.
+  <code>xycalc why &lt;model&gt;</code> prints a citation chain in a terminal ·
+  <code>xycalc scenario &lt;slug&gt;</code> prints a cascade in a terminal.
 </footer>
 
 </div>
@@ -219,6 +254,8 @@ footer { margin-top: 3rem; padding-top: 1.25rem; border-top: 1px solid var(--lin
 <script>
 const $ = (id) => document.getElementById(id);
 let MODELS = [];
+let SCENARIOS = [];
+let currentScenario = null;
 
 function fmtBytes(n) {
   const units = [["TB", 1e12], ["GB", 1e9], ["MB", 1e6]];
@@ -236,99 +273,45 @@ const fmt = (n, unit) =>
     ? n.toLocaleString(undefined, {maximumFractionDigits: 0}) + " " + unit
     : n.toLocaleString(undefined, {maximumFractionDigits: 2}) + " " + unit;
 
-async function boot() {
-  const r = await fetch("/api/models");
-  MODELS = (await r.json()).models;
-  $("model").innerHTML = MODELS.map(m => `<option value="${m.slug}">${m.question}</option>`).join("");
-  renderInputs();
-  $("model").addEventListener("change", renderInputs);
-  $("go").addEventListener("click", calculate);
+const VALIDATION_LABEL = {none: "Unvalidated", thin: "Thinly validated", reasonable: "Validated"};
+
+// ---------------------------------------------------------------------------
+// tabs
+// ---------------------------------------------------------------------------
+
+function setTab(name) {
+  $("tab-scenario").hidden = name !== "scenario";
+  $("tab-single").hidden = name !== "single";
+  $("tab-btn-scenario").classList.toggle("active", name === "scenario");
+  $("tab-btn-single").classList.toggle("active", name === "single");
 }
 
-function current() {
-  return MODELS.find(m => m.slug === $("model").value);
-}
+// ---------------------------------------------------------------------------
+// shared card renderer -- one model's answer, whether reached by typing into
+// the single-question form or by a scenario chaining a band into it.
+// ---------------------------------------------------------------------------
 
-function renderInputs() {
-  const m = current();
-  $("inputs").innerHTML = m.inputs.map(i => `
-    <div class="field">
-      <label for="in-${i.key}">${i.label}${i.required ? "" : " <span class='help' style='display:inline'>optional</span>"}</label>
-      <input id="in-${i.key}" data-key="${i.key}" autocomplete="off"
-             placeholder="${i.unit === "bytes" ? "e.g. 500GB" : i.unit}">
-      ${i.help ? `<div class="help">${i.help}</div>` : ""}
-    </div>`).join("");
-  $("result").hidden = true;
-}
-
-async function calculate() {
-  const m = current();
-  const inputs = {};
-  document.querySelectorAll("#inputs input").forEach(el => {
-    if (el.value.trim()) inputs[el.dataset.key] = el.value.trim();
-  });
-  const body = {model: m.slug, inputs};
-  const avail = $("available").value.trim();
-  if (avail) body.available = avail;
-
-  $("error").hidden = true;
-  const r = await fetch("/api/sizing", {
-    method: "POST",
-    headers: {"Content-Type": "application/json"},
-    body: JSON.stringify(body)
-  });
-  const data = await r.json();
-  if (!r.ok) {
-    $("error").textContent = data.detail || "something went wrong";
-    $("error").hidden = false;
-    $("result").hidden = true;
-    return;
-  }
-  render(data);
-}
-
-function render(d) {
+function renderAnswerCard(d) {
   const u = d.unit;
-  $("q").textContent = d.question;
-  $("answer").textContent = fmt(d.answer.mode, u);
-  $("band").textContent = `band ${fmt(d.answer.lo, u)} – ${fmt(d.answer.hi, u)}`;
-
-  // The band as a bar, because a range written as text reads as decoration and
-  // the range is the honest part of the answer.
   const spread = d.answer.hi - d.answer.lo;
-  if (spread > 0) {
-    $("bandbar").hidden = $("bandends").hidden = false;
-    $("bandfill").style.left = "0%";
-    $("bandfill").style.right = "0%";
-    $("bandmode").style.left = ((d.answer.mode - d.answer.lo) / spread * 100) + "%";
-    $("bandends").innerHTML = `<span>${fmt(d.answer.lo, u)}</span><span>${fmt(d.answer.hi, u)}</span>`;
-  } else {
-    $("bandbar").hidden = $("bandends").hidden = true;
-  }
 
-  const v = $("validation");
-  const LABEL = {none: "Unvalidated", thin: "Thinly validated", reasonable: "Validated"};
-  v.className = "validation " + d.validation.grade;
-  v.innerHTML = `<strong>${LABEL[d.validation.grade]}</strong> — ${d.validation.text}`;
+  const bandbar = spread > 0 ? `
+    <div class="bandbar"><div class="fill" style="left:0%;right:0%"></div>
+      <div class="mark" style="left:${((d.answer.mode - d.answer.lo) / spread * 100)}%"></div></div>
+    <div class="bandends"><span>${fmt(d.answer.lo, u)}</span><span>${fmt(d.answer.hi, u)}</span></div>` : "";
 
-  if (d.headroom) {
-    const h = d.headroom;
-    $("headroom").hidden = false;
-    $("headroom").innerHTML = `
-      <table style="margin-top:1.5rem">
-        <tbody>
-        <tr><td>Available</td><td class="num">${fmt(h.available, u)}</td></tr>
-        <tr><td>Required (mode)</td><td class="num">${fmt(h.required_mode, u)}</td></tr>
-        <tr><td>Utilisation</td><td class="num">${h.utilisation_mode_pct.toFixed(0)}%</td></tr>
-        <tr><td>Margin</td><td class="num">${fmt(h.margin_mode, u)}</td></tr>
-        <tr><td><strong>Verdict</strong></td><td class="num"><strong>${h.verdict}</strong></td></tr>
-        </tbody>
-      </table>`;
-  } else {
-    $("headroom").hidden = true;
-  }
+  const headroomBlock = d.headroom ? `
+    <table style="margin-top:1.5rem">
+      <tbody>
+      <tr><td>Available</td><td class="num">${fmt(d.headroom.available, u)}</td></tr>
+      <tr><td>Required (mode)</td><td class="num">${fmt(d.headroom.required_mode, u)}</td></tr>
+      <tr><td>Utilisation</td><td class="num">${d.headroom.utilisation_mode_pct.toFixed(0)}%</td></tr>
+      <tr><td>Margin</td><td class="num">${fmt(d.headroom.margin_mode, u)}</td></tr>
+      <tr><td><strong>Verdict</strong></td><td class="num"><strong>${d.headroom.verdict}</strong></td></tr>
+      </tbody>
+    </table>` : "";
 
-  $("steps").innerHTML = d.steps.map(s => {
+  const steps = d.steps.map(s => {
     if (s.skipped) return `<tr class="skipped">
       <td><span class="role role-${s.role}">${s.role}</span><div class="term-label">${s.label}</div></td>
       <td class="num">—</td><td class="num">${s.skip_reason}</td></tr>`;
@@ -352,26 +335,269 @@ function render(d) {
     </tr>`;
   }).join("");
 
-  $("constraints-panel").hidden = d.constraints.length === 0;
-  $("constraints").innerHTML = d.constraints.map(c => `
-    <div class="constraint-item">
-      <span class="v">${c.value}${c.unit === "percent" ? "%" : ""}</span>
-      <strong>${c.label}</strong>
-      <p>${c.rationale}</p>
-      <div class="cite">${c.source_url ? `<a href="${c.source_url}" target="_blank" rel="noopener">${c.source}</a>` : c.source}</div>
+  const breakdown = `
+    <details ${d.steps.length <= 2 ? "open" : ""}>
+      <summary>breakdown (${d.steps.filter(s => !s.skipped).length} terms, cited)</summary>
+      <div class="scroll" style="margin-top:.6rem">
+        <table>
+          <thead><tr><th>Term</th><th style="text-align:right">Effect</th><th style="text-align:right">Running</th></tr></thead>
+          <tbody>${steps}</tbody>
+        </table>
+      </div>
+    </details>`;
+
+  const constraints = d.constraints.length ? `
+    <details>
+      <summary>constraints (${d.constraints.length}) — not in the arithmetic, and they still bind</summary>
+      <div style="margin-top:.6rem">
+        ${d.constraints.map(c => `
+          <div class="constraint-item">
+            <span class="v">${c.value}${c.unit === "percent" ? "%" : ""}</span>
+            <strong>${c.label}</strong>
+            <p>${c.rationale}</p>
+            <div class="cite">${c.source_url ? `<a href="${c.source_url}" target="_blank" rel="noopener">${c.source}</a>` : c.source}</div>
+          </div>`).join("")}
+      </div>
+    </details>` : "";
+
+  const reframe = d.reframe ? `
+    <details>
+      <summary>read this before acting on the number</summary>
+      <div class="reframe" style="margin-top:.6rem;border-left:none;padding-left:0">
+        ${d.reframe.trim().split(/\n\s*\n/).map(p => `<p>${p.replace(/\s+/g, " ")}</p>`).join("")}
+      </div>
+    </details>` : "";
+
+  return `
+    <div class="answer">
+      <div class="label">Answer</div>
+      <div class="value">${fmt(d.answer.mode, u)}</div>
+      <div class="band">band ${fmt(d.answer.lo, u)} – ${fmt(d.answer.hi, u)}</div>
+    </div>
+    ${bandbar}
+    ${headroomBlock}
+    <div class="validation ${d.validation.grade}"><strong>${VALIDATION_LABEL[d.validation.grade]}</strong> — ${d.validation.text}</div>
+    ${breakdown}
+    ${constraints}
+    ${reframe}`;
+}
+
+// ---------------------------------------------------------------------------
+// single-question tab -- unchanged behaviour, one model at a time
+// ---------------------------------------------------------------------------
+
+async function bootSingle() {
+  const r = await fetch("/api/models");
+  MODELS = (await r.json()).models;
+  $("model").innerHTML = MODELS.map(m => `<option value="${m.slug}">${m.question}</option>`).join("");
+  renderSingleInputs();
+  $("model").addEventListener("change", renderSingleInputs);
+  $("go").addEventListener("click", calculateSingle);
+}
+
+function currentModel() {
+  return MODELS.find(m => m.slug === $("model").value);
+}
+
+function renderSingleInputs() {
+  const m = currentModel();
+  $("inputs").innerHTML = m.inputs.map(i => `
+    <div class="field">
+      <label for="in-${i.key}">${i.label}${i.required ? "" : " <span class='help' style='display:inline'>optional</span>"}</label>
+      <input id="in-${i.key}" data-key="${i.key}" autocomplete="off"
+             placeholder="${i.unit === "bytes" ? "e.g. 500GB" : i.unit}">
+      ${i.help ? `<div class="help">${i.help}</div>` : ""}
     </div>`).join("");
+  $("result").hidden = true;
+}
 
-  $("reframe-panel").hidden = !d.reframe;
-  if (d.reframe) {
-    $("reframe").innerHTML = d.reframe.trim().split(/\n\s*\n/)
-      .map(p => `<p>${p.replace(/\s+/g, " ")}</p>`).join("");
+async function calculateSingle() {
+  const m = currentModel();
+  const inputs = {};
+  document.querySelectorAll("#inputs input").forEach(el => {
+    if (el.value.trim()) inputs[el.dataset.key] = el.value.trim();
+  });
+  const body = {model: m.slug, inputs};
+  const avail = $("available").value.trim();
+  if (avail) body.available = avail;
+
+  $("error").hidden = true;
+  const r = await fetch("/api/sizing", {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify(body)
+  });
+  const data = await r.json();
+  if (!r.ok) {
+    $("error").textContent = data.detail || "something went wrong";
+    $("error").hidden = false;
+    $("result").hidden = true;
+    return;
   }
-
+  $("result").innerHTML = `<div class="panel"><p class="question">${data.question}</p>${renderAnswerCard(data)}</div>`;
   $("result").hidden = false;
   $("result").scrollIntoView({behavior: "smooth", block: "start"});
 }
 
-boot();
+// ---------------------------------------------------------------------------
+// scenario tab -- put in what you measured once, watch it cascade
+// ---------------------------------------------------------------------------
+
+async function bootScenario() {
+  const r = await fetch("/api/scenarios");
+  SCENARIOS = (await r.json()).scenarios;
+  $("scenario-picker").innerHTML = SCENARIOS.map(s => `
+    <label class="scenario-opt ${s.disabled ? "disabled" : ""}" data-slug="${s.slug}"
+           title="${s.disabled ? s.note.replace(/"/g, "&quot;") : ""}">
+      <input type="radio" name="scenario" value="${s.slug}" ${s.disabled ? "disabled" : ""}>
+      <span>
+        <div class="label">${s.label}</div>
+        <div class="sub">${s.disabled ? s.note : (s.summary || "")}</div>
+      </span>
+    </label>`).join("");
+
+  document.querySelectorAll(".scenario-opt input[type=radio]").forEach(el => {
+    el.addEventListener("change", () => selectScenario(el.value));
+  });
+  $("scn-go").addEventListener("click", calculateScenario);
+}
+
+function selectScenario(slug) {
+  currentScenario = SCENARIOS.find(s => s.slug === slug);
+  document.querySelectorAll(".scenario-opt").forEach(el =>
+    el.classList.toggle("selected", el.dataset.slug === slug));
+
+  $("scn-question").textContent = currentScenario.question || "";
+  $("scenario-inputs").innerHTML = currentScenario.inputs.map(i => `
+    <div class="field">
+      <label for="scn-in-${i.key}">${i.label}${i.required ? "" : " <span class='help' style='display:inline'>optional</span>"}</label>
+      <input id="scn-in-${i.key}" data-key="${i.key}" autocomplete="off"
+             placeholder="${i.unit === "bytes" ? "e.g. 500GB" : i.unit}">
+      ${i.help ? `<div class="help">${i.help}</div>` : ""}
+    </div>`).join("");
+
+  document.querySelectorAll("#scenario-inputs input").forEach(el => {
+    let t;
+    el.addEventListener("input", () => {
+      clearTimeout(t);
+      t = setTimeout(maybeAutoCalculate, 300);
+    });
+  });
+
+  $("scenario-form-panel").hidden = false;
+  $("scenario-cascade").innerHTML = "";
+  $("scn-error").hidden = true;
+}
+
+function maybeAutoCalculate() {
+  const required = currentScenario.inputs.filter(i => i.required).map(i => i.key);
+  const filled = required.every(k => {
+    const el = $(`scn-in-${k}`);
+    return el && el.value.trim();
+  });
+  if (filled) calculateScenario();
+}
+
+async function calculateScenario() {
+  if (!currentScenario) return;
+  const inputs = {};
+  document.querySelectorAll("#scenario-inputs input").forEach(el => {
+    if (el.value.trim()) inputs[el.dataset.key] = el.value.trim();
+  });
+  const body = {scenario: currentScenario.slug, inputs};
+  const avail = $("scn-available").value.trim();
+  if (avail) body.available = avail;
+
+  $("scn-error").hidden = true;
+  const r = await fetch("/api/scenario", {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify(body)
+  });
+  const data = await r.json();
+  if (!r.ok) {
+    $("scn-error").textContent = data.detail || "something went wrong";
+    $("scn-error").hidden = false;
+    $("scenario-cascade").innerHTML = "";
+    return;
+  }
+  renderCascade(data);
+}
+
+function renderInstanceCard(step, n) {
+  const rows = [["low end", "pick_lo"], ["mode", "pick_mode"], ["high end", "pick_hi"]]
+    .map(([label, key]) => {
+      const spec = step.pick[key];
+      const need = step.pick["required_" + (key === "pick_lo" ? "lo" : key === "pick_hi" ? "hi" : "mode")];
+      if (!spec) {
+        return `<tr><td>${label}</td><td colspan="2" class="num">custom sizing — over the largest instance in this pool</td></tr>`;
+      }
+      const hd = spec.ram_bytes - need;
+      return `<tr>
+        <td>${label}</td>
+        <td class="name">${spec.name} <span class="help" style="display:inline">${spec.vcpu ? spec.vcpu + " vCPU" : ""}</span></td>
+        <td class="num">${fmtBytes(spec.ram_bytes)}<div class="help">+${fmtBytes(hd)} headroom</div></td>
+      </tr>`;
+    }).join("");
+
+  const poolNote = step.pick.exceeds_pool ? `
+    <div class="pool-note">The high end of the band exceeds this pool. No family is decided
+      for sizing above that yet — this is a placeholder, not a recommendation.</div>` : "";
+
+  return `
+    <div class="panel card">
+      <div class="step-kicker">Step ${n} · smallest instance covering the band above</div>
+      <table class="instance-pick-table"><tbody>${rows}</tbody></table>
+      ${poolNote}
+    </div>`;
+}
+
+function renderCascade(data) {
+  const worst = { none: 0, thin: 1, reasonable: 2 };
+  let worstGrade = null;
+  const parts = [];
+
+  data.steps.forEach((step, i) => {
+    if (step.kind === "lookup") {
+      parts.push(renderInstanceCard(step, i + 1));
+      return;
+    }
+    if (worstGrade === null || worst[step.validation.grade] < worst[worstGrade]) {
+      worstGrade = step.validation.grade;
+    }
+    parts.push(`
+      <div class="panel card">
+        <div class="step-kicker">Step ${i + 1}</div>
+        <p class="question">${step.question}</p>
+        ${step.chained ? `<div class="chained-note">input: the band from the step above, not typed in</div>` : ""}
+        ${renderAnswerCard(step)}
+      </div>`);
+    if (i < data.steps.length - 1) parts.push(`<div class="chain-arrow">band flows down — all three ends, never just the mode</div>`);
+  });
+
+  const seeAlso = (data.see_also || []).map(sa => `
+    <div class="panel see-also">
+      ${sa.reason} <button class="see-also-link" data-target="${sa.scenario}">Go to that scenario →</button>
+    </div>`).join("");
+
+  $("scenario-cascade").innerHTML = parts.join("") + seeAlso;
+  document.querySelectorAll(".see-also-link").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const radio = document.querySelector(`.scenario-opt input[value="${btn.dataset.target}"]`);
+      if (radio) { radio.checked = true; selectScenario(btn.dataset.target); }
+      $("scenario-form-panel").scrollIntoView({behavior: "smooth", block: "start"});
+    });
+  });
+  $("scenario-cascade").scrollIntoView({behavior: "smooth", block: "start"});
+}
+
+// ---------------------------------------------------------------------------
+
+document.querySelectorAll(".tab").forEach(btn =>
+  btn.addEventListener("click", () => setTab(btn.dataset.tab)));
+
+bootScenario();
+bootSingle();
 </script>
 </body>
 </html>
