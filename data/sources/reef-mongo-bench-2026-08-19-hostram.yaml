@@ -1,0 +1,33 @@
+sources:
+- slug: obs-mongodb-reef-hostram-2026-08-19
+  title: MongoDB 7.0.40 default-split WiredTiger cache vs. host RAM, no override
+  publisher: xycalc benchmark (reef)
+  retrieved_on: '2026-08-19'
+  source_type: benchmark
+  notes: >-
+    MongoDB 7.0.40 under WSL2 Ubuntu on reef, started with NO
+    wiredTigerCacheSizeGB override — the default 50%-of-(RAM-1GB) split left
+    untouched. Empty database; the default split is computed from visible
+    host RAM at startup and does not depend on data volume, so no seeding was
+    needed for this one.
+
+    db.hostInfo().system.memSizeMB reported 32024 MiB (33,579,597,824 bytes)
+    — this is the same figure mongod used internally to compute its default
+    cache size, so it is the correct "host RAM" to compare against rather
+    than the OS's own free -b total (33,580,249,088 bytes), which differs by
+    ~5 KB from kernel/WSL rounding.
+
+    serverStatus().wiredTiger.cache['maximum bytes configured'] came back
+    16,252,928,000 bytes — exactly 0.5 * (33,579,597,824 - 1,073,741,824),
+    i.e. the documented formula reproduced exactly, to the byte.
+
+    Read this validation for what it is: mongodb.host-ram inverts the same
+    formula MongoDB itself used to produce the cache figure, from the same
+    underlying RAM value, so an exact round-trip is expected by construction
+    rather than surprising. Its value is confirming the coefficients
+    (cache-default-share-pct, cache-default-reserve-bytes) are implemented
+    correctly and that the model's arithmetic is self-consistent against a
+    live host — not an independent test of MongoDB's own behavior, which
+    was never in doubt. This is the cheapest gap in the corpus precisely
+    because of that: no load, no dataset, no eviction pressure, just a
+    default-configured instance and one query.

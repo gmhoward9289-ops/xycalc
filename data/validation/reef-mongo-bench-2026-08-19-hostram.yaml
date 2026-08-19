@@ -1,0 +1,18 @@
+validation:
+- model: mongodb.host-ram
+  case: reef-mongo-bench-2026-08-19-hostram
+  observation: reef-mongo-bench-2026-08-19-hostram-ram
+  inputs:
+    cache_size: 16252928000
+  at_term: os_reserve
+  actual: 33579597824
+  notes: >-
+    First validation of mongodb.host-ram (previously n=0). Cache size is the
+    default-split value MongoDB itself configured on an unmodified instance;
+    actual is the host RAM mongod computed that split from. Because the
+    model inverts the exact formula MongoDB used to produce the cache
+    figure in the first place, from the same underlying RAM value, an exact
+    round-trip is expected by construction — this confirms the
+    cache-default-share-pct and cache-default-reserve-bytes coefficients are
+    implemented correctly and the arithmetic is self-consistent against a
+    live host, not an independent test of MongoDB's own behavior.
