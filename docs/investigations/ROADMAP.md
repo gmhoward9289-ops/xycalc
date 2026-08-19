@@ -279,6 +279,56 @@ to justify the gate to anyone who thinks it is bureaucracy.
 
 ---
 
+## T11 — Colocated Mongo+Redis+ClickHouse+Celery at a scale where they actually compete for RAM
+
+**Question.** `docs/research/mongodb-vertical-scaling-r8.md` §7 states, from
+vendor docs rather than any measurement in this repo, that WiredTiger should be
+capped to 50-70% of Mongo's *own share* of RAM rather than 50-70% of total host
+RAM once Redis, ClickHouse and Celery are colocated on the same box. Is that
+number right, and what does "competing for RAM" actually look like when it
+happens?
+
+**Why.** `tools/bench/colocation_probe/` now exists and produced its first
+observation
+([reef-colocation-probe-2026-08-19](../../data/observations/reef-colocation-probe-2026-08-19.yaml)),
+but that run was deliberately small (200k docs, 145MB dataSize against a 1GB
+cache) — none of the four services came close to pressuring a shared host at
+that scale, so it measured per-service RSS *shape*, not the colocation
+question itself. The headline finding it DID produce — mongod's RSS nearly
+doubling from loaded to under-load (265MB -> 453MB) well below its configured
+cache — is itself worth re-checking at a scale large enough to matter, since a
+2x swing that's noise at 265MB could be the whole story at 20GB.
+
+**Method.** Same harness, scaled up: size the Mongo dataset to actually
+approach its configured cache (2x+ oversubscription, matching the guard
+`celery_probe`'s `drive.py` already enforces), give ClickHouse a table sized to
+pressure the OS page cache Mongo's filesystem cache also depends on, and run
+all four services' `mem_limit`s summing to something close to the WSL2 VM's
+31.3GiB ceiling (or reef's real 64GB, past the VM cap — set explicitly in
+`.wslconfig` first). Sample idle -> loaded -> under-load exactly as now, but
+also sweep WiredTiger's cache share (50%, 60%, 70%, 80%) at fixed colocated
+memory pressure to see where the vendor's 50-70% recommendation actually
+starts costing ClickHouse page-cache hits or where going past it actually
+starves a neighbor.
+
+**Falsifies.** If neighbors' RSS/hit-rate is flat regardless of Mongo's cache
+share up to and past 80%, the "cap at 50-70%" guidance is not doing anything a
+colocated deployment can measure, and the corpus should say so rather than
+carry it as advice.
+
+**Corpus gets.** A real `mongodb.colocation-share-pct` coefficient (or a
+documented absence of one), replacing the current narrative-only guidance in
+the research doc with something `xycalc why` can cite — and a second,
+larger-n data point for `host.container_rss_bytes` to check whether the
+idle-to-under-load RSS jump T11's first run found is real or an artifact of
+running below any real memory pressure.
+
+**Watch for.** The same trap as T1: a colocated box with enough free RAM that
+nothing actually competes measures four services running independently side by
+side, not colocation.
+
+---
+
 ## What this deliberately does not include
 
 - **Anything needing production access.** Every test above runs on one Linux box
