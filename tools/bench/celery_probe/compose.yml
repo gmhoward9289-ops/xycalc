@@ -12,9 +12,13 @@
 # stress:
 #
 #   PROBE_PREFETCH            tasks a worker reserves per slot (default 4)
-#   PROBE_ACKS_LATE           1 to ack after execution instead of before
+#   PROBE_ACKS_LATE           0 to ack before execution instead of after
+#                              (default 1 -- see tasks.py for why)
 #   PROBE_VISIBILITY_TIMEOUT  seconds before the broker redelivers (default 30)
 #   PROBE_CONCURRENCY         worker processes (default 8)
+#   PROBE_RETRY_POLICY        none|immediate|exponential|jitter (default none)
+#   PROBE_RETRY_DEADLINE      wall-clock seconds a task may keep retrying
+#                              (default 120)
 
 name: xycalc-celery-probe
 
