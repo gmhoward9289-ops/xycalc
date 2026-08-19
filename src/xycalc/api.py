@@ -16,7 +16,16 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from .db import connect
-from .model import Model, ModelError, headroom, parse_bytes, validation_status
+from .model import (
+    Model,
+    ModelError,
+    chain_evaluate,
+    get_scenario,
+    headroom,
+    load_scenarios,
+    parse_bytes,
+    validation_status,
+)
 
 STATIC = Path(__file__).parent / "static"
 
@@ -125,6 +134,102 @@ def post_sizing(payload: dict):
         except ModelError as e:
             raise HTTPException(status_code=422, detail=str(e))
     return body
+
+
+def _serialise_instance_spec(spec) -> dict | None:
+    if spec is None:
+        return None
+    return {
+        "name": spec.name,
+        "ram_bytes": spec.ram_bytes,
+        "vcpu": spec.vcpu,
+        "source_title": spec.source_title,
+        "source_url": spec.source_url,
+    }
+
+
+def _serialise_instance_pick(pick: dict) -> dict:
+    return {
+        "required_lo": pick["required_lo"],
+        "required_mode": pick["required_mode"],
+        "required_hi": pick["required_hi"],
+        "pick_lo": _serialise_instance_spec(pick["pick_lo"]),
+        "pick_mode": _serialise_instance_spec(pick["pick_mode"]),
+        "pick_hi": _serialise_instance_spec(pick["pick_hi"]),
+        "largest_in_pool": _serialise_instance_spec(pick["largest_in_pool"]),
+        "exceeds_pool": pick["exceeds_pool"],
+    }
+
+
+@app.get("/api/scenarios")
+def list_scenarios():
+    conn = _conn()
+    out = []
+    for s in load_scenarios():
+        entry = {
+            "slug": s["slug"],
+            "label": s["label"],
+            "summary": s.get("summary"),
+            "disabled": bool(s.get("disabled")),
+            "note": s.get("note"),
+            "see_also": s.get("see_also", []),
+        }
+        if not entry["disabled"]:
+            # The form only ever needs the FIRST step's inputs: every later
+            # step's inputs the caller could set are fed from the previous
+            # step's band instead (that is what makes it a chain). A model
+            # loaded here purely to read its `inputs` list, never evaluated.
+            first = s["steps"][0]
+            entry["question"] = None
+            if first.get("kind", "model") == "model":
+                m = Model.load(conn, first["model"])
+                entry["question"] = m.question
+                entry["inputs"] = m.inputs
+                entry["unit"] = m.output_unit
+        out.append(entry)
+    return {"scenarios": out}
+
+
+@app.post("/api/scenario")
+def post_scenario(payload: dict):
+    scenario = get_scenario(payload.get("scenario", ""))
+    if scenario.get("disabled"):
+        raise HTTPException(status_code=422, detail=f"{scenario['slug']}: not yet modeled")
+
+    available = payload.get("available")
+    try:
+        available_bytes = parse_bytes(available) if available else None
+        steps = chain_evaluate(
+            _conn(), scenario, payload.get("inputs", {}), available=available_bytes
+        )
+    except ModelError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+
+    body_steps = []
+    for s in steps:
+        if s.kind == "model":
+            step_body = _serialise(s.result, s.model)
+            step_body["chained"] = s.chained
+            if s.headroom is not None:
+                step_body["headroom"] = s.headroom
+            body_steps.append({"kind": "model", **step_body})
+        else:
+            body_steps.append(
+                {
+                    "kind": "lookup",
+                    "lookup": s.slug,
+                    "chained": True,
+                    "pick": _serialise_instance_pick(s.instance_pick),
+                }
+            )
+
+    return {
+        "scenario": scenario["slug"],
+        "label": scenario["label"],
+        "summary": scenario.get("summary"),
+        "see_also": scenario.get("see_also", []),
+        "steps": body_steps,
+    }
 
 
 @app.get("/api/why/{model_slug:path}")
