@@ -32,6 +32,23 @@ import time
 from concurrent.futures import ThreadPoolExecutor
 
 from pymongo import MongoClient
+from pymongo import errors as pymongo_errors
+
+# The only failures a sampler should ever swallow: transient connectivity
+# problems where the *next* sample will very likely succeed once the network
+# or a replica election settles. AutoReconnect and NetworkTimeout are both
+# ConnectionFailure subclasses; ServerSelectionTimeoutError is included
+# separately because this client sets serverSelectionTimeoutMS explicitly and
+# a busy/reconnecting node can legitimately blow through it mid-run.
+# Anything else -- a KeyError from a renamed serverStatus field, a TypeError
+# from a reshaped document -- is a real bug and must crash the run instead of
+# vanishing into an empty series. See issue #21.
+TRANSIENT_ERRORS = (
+    pymongo_errors.AutoReconnect,
+    pymongo_errors.NetworkTimeout,
+    pymongo_errors.ConnectionFailure,
+    pymongo_errors.ServerSelectionTimeoutError,
+)
 
 URI = os.environ.get("PROBE_URI", "mongodb://127.0.0.1:27017")
 LEVELS = [int(x) for x in os.environ.get("PROBE_LEVELS", "1,2,4,8,16,32,64").split(",")]
@@ -186,11 +203,17 @@ def run_level(level: int) -> dict:
         while not stop.is_set():
             try:
                 samples.append({"t": time.time(), **tickets(), **checkpoint()})
-            except Exception as e:
+            except TRANSIENT_ERRORS as e:
                 # Counted, never swallowed. This used to be `except: pass`,
                 # which meant a renamed field discarded every sample and the run
                 # reported a clean empty series -- indistinguishable from
                 # "measured, and there was nothing there". See issue #21.
+                #
+                # Only genuinely transient connectivity errors are caught
+                # here. A KeyError/TypeError from a wrong or renamed field
+                # (exactly the mistake issue #21 was filed over) is not
+                # caught -- it propagates and crashes the run loudly, which
+                # is the correct behavior for a bug rather than a blip.
                 errors.append(f"{type(e).__name__}: {e}")
             stop.wait(SAMPLE_S)
 
