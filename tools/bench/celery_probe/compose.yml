@@ -56,7 +56,7 @@ services:
       PROBE_MONGO: mongodb://mongo:27017
       PROBE_DOCS: ${PROBE_DOCS:-1500000}
       PROBE_PREFETCH: ${PROBE_PREFETCH:-4}
-      PROBE_ACKS_LATE: ${PROBE_ACKS_LATE:-0}
+      PROBE_ACKS_LATE: ${PROBE_ACKS_LATE:-1}
       PROBE_VISIBILITY_TIMEOUT: ${PROBE_VISIBILITY_TIMEOUT:-30}
     depends_on: [redis, mongo]
     mem_limit: 1g
@@ -70,6 +70,7 @@ services:
       PROBE_DOCS: ${PROBE_DOCS:-1500000}
       PROBE_RATES: ${PROBE_RATES:-25,50,100,200,400}
       PROBE_SECONDS: ${PROBE_SECONDS:-30}
+      PROBE_ACKS_LATE: ${PROBE_ACKS_LATE:-1}
       PROBE_VISIBILITY_TIMEOUT: ${PROBE_VISIBILITY_TIMEOUT:-30}
     depends_on: [redis, mongo, worker]
     profiles: ["driver"]
