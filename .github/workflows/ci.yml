@@ -55,10 +55,10 @@ jobs:
   # invalid, and the run fails in 0 seconds with no jobs and no readable error
   # -- which looks exactly like CI silently not running.
   #
-  # Exists because Dependabot bumped the Dockerfile to python:3.14-slim (#24)
-  # while CI tested only 3.12: what ships was not what was tested. The image
-  # build already proves `xycalc.build` and `xycalc.audit` run on 3.14 (the
-  # Dockerfile runs both); the test suite is the part that never had.
+  # Exists because Dependabot once bumped a now-removed Dockerfile to
+  # python:3.14-slim (#24) while CI tested only 3.12: what shipped was not
+  # what was tested. Kept as an explicit 3.14 check now that nothing else
+  # exercises that version.
   test-py314:
     runs-on: ubuntu-latest
     steps:
