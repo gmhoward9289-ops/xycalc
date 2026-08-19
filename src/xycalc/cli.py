@@ -3,13 +3,16 @@
     xycalc models
     xycalc sizing   mongodb.wt-cache --storage-size 500GB --index-size 40GB
     xycalc headroom mongodb.wt-cache --storage-size 500GB --available 256GB
+    xycalc scenarios
+    xycalc scenario mongodb.size-to-instance --storage-size 500GB --index-size 40GB
     xycalc why      mongodb.wt-cache
     xycalc build
     xycalc audit
     xycalc gui
 
-Flags for `sizing` and `headroom` are generated from the model's declared
-inputs, so a new model needs no argument-parsing code — only YAML.
+Flags for `sizing`, `headroom`, and `scenario` are generated from the
+model's declared inputs, so a new model needs no argument-parsing code —
+only YAML.
 
 Every answer prints its validation status. A model that has never been checked
 against a running system says so, on every invocation, without being asked.
@@ -26,25 +29,24 @@ from . import audit as audit_mod
 from . import build as build_mod
 from .db import connect
 from .model import (
+    DEFAULT_INSTANCE_CEILING,
     Model,
     ModelError,
+    chain_evaluate,
     format_quantity,
+    get_scenario,
     headroom,
     load_instance_catalog,
+    load_scenarios,
     parse_bytes,
     select_instance,
     validation_status,
 )
 
-# Standing internal policy, not an AWS ceiling: r8i itself goes to 3,072 GiB
-# (r8i.96xlarge), but the org has decided to cap recommendations at 1,536 GiB
-# (== r8i.48xlarge exactly, in binary GiB -- NOT the decimal "1.5TB" a casual
-# reading would suggest, which would be slightly smaller and wrongly exclude
-# the boundary instance itself) and require a family change above that,
-# pending a decision on what that next family is. Set 2026-08-16. Revisit
-# once the >1.5TB family is chosen -- see the comment block at the end of
+# NOT the decimal "1.5TB" a casual reading would suggest, which would be
+# slightly smaller and wrongly exclude the boundary instance itself. Revisit
+# once a >1.5TB family is chosen -- see the comment block at the end of
 # data/coefficients/aws-ec2.yaml.
-DEFAULT_INSTANCE_CEILING = "1536GiB"
 
 BAR = "─" * 68
 
@@ -274,6 +276,108 @@ def cmd_instance_select(args) -> int:
     return 0
 
 
+def cmd_scenarios(args) -> int:
+    for s in load_scenarios():
+        if s.get("disabled"):
+            print(f"{s['slug']:<26} (not yet modeled — {s.get('note', '').strip()})")
+        else:
+            print(f"{s['slug']:<26} {s['label']}")
+    return 0
+
+
+def cmd_scenario(args) -> int:
+    """Run every step of a scenario, feeding one step's whole band into the
+    next instead of the user copying a mode value by hand — the thing
+    mongodb.host-ram's own `notes` field used to ask for."""
+    conn = connect(args.db)
+    try:
+        scenario = get_scenario(args.scenario)
+    except ModelError as e:
+        print(f"error: {e}", file=sys.stderr)
+        return 2
+    if scenario.get("disabled"):
+        print(
+            f"error: {scenario['slug']}: not yet modeled — {scenario.get('note', '').strip()}",
+            file=sys.stderr,
+        )
+        return 2
+
+    first = scenario["steps"][0]
+    values: dict = {}
+    if first.get("kind", "model") == "model":
+        m = Model.load(conn, first["model"])
+        values = {i["key"]: getattr(args, i["key"], None) for i in m.inputs}
+        values = {k: v for k, v in values.items() if v is not None}
+
+    try:
+        available = parse_bytes(args.available) if args.available else None
+        steps = chain_evaluate(conn, scenario, values, available=available)
+    except ModelError as e:
+        print(f"error: {e}", file=sys.stderr)
+        return 2
+
+    print(f"\n{scenario['label']}")
+    print(BAR)
+    if scenario.get("summary"):
+        for line in _wrap(scenario["summary"], 68):
+            print(f"  {line}")
+
+    prev_unit = "bytes"
+    for i, s in enumerate(steps, 1):
+        print(f"\n{BAR}")
+        if s.kind == "model":
+            print(f"STEP {i} — {'chained from the step above' if s.chained else 'your input'}")
+            _print_breakdown(s.result, s.model)
+            _print_constraints(s.result)
+            _print_validation(conn, s.model.slug)
+            if s.headroom is not None:
+                h = s.headroom
+                print(f"\n  available          {_fmt(available, s.result.unit)}")
+                print(f"  utilisation        {h['utilisation_mode_pct']:,.0f}% of available")
+                print(f"  VERDICT  {h['verdict']}")
+            _print_reframe(s.model)
+            prev_unit = s.result.unit
+        else:
+            print(f"STEP {i} — smallest AWS instance covering the band above")
+            pick = s.instance_pick
+            for label, key in (
+                ("low end", "pick_lo"),
+                ("mode", "pick_mode"),
+                ("high end", "pick_hi"),
+            ):
+                spec = pick[key]
+                if spec is None:
+                    print(f"  {label:<10} custom sizing — over the largest instance in this pool")
+                    continue
+                need = {
+                    "pick_lo": pick["required_lo"],
+                    "pick_mode": pick["required_mode"],
+                    "pick_hi": pick["required_hi"],
+                }[key]
+                headroom_bytes = spec.ram_bytes - need
+                print(
+                    f"  {label:<10} {spec.name:<24} {_fmt(spec.ram_bytes, prev_unit)} RAM"
+                    + (f", {spec.vcpu:g} vCPU" if spec.vcpu else "")
+                    + f"  (+{_fmt(headroom_bytes, prev_unit)} headroom)"
+                )
+            if pick["exceeds_pool"]:
+                print(
+                    "\n  NOTE  the high end of the band exceeds this pool — no family is "
+                    "decided for sizing above that yet. Custom sizing, not a recommendation."
+                )
+
+    if scenario.get("see_also"):
+        print(f"\n{BAR}")
+        print("  SEE ALSO")
+        for sa in scenario["see_also"]:
+            print(f"    · {sa['scenario']}")
+            for line in _wrap(sa["reason"], 64):
+                print(f"        {line}")
+
+    conn.close()
+    return 0
+
+
 def cmd_why(args) -> int:
     """The citation chain. Every term, what it cites, and the sentence it was
     read from."""
@@ -413,6 +517,23 @@ def build_parser(db: Path | None = None) -> argparse.ArgumentParser:
     )
     _add_model_flags(sp, db)
     sp.set_defaults(func=cmd_instance_select)
+
+    sub.add_parser(
+        "scenarios", help="list scenarios — chains of models a user can run in one step"
+    ).set_defaults(func=cmd_scenarios)
+
+    sp = sub.add_parser(
+        "scenario",
+        help="run a chain of models, feeding one step's whole band into the next",
+    )
+    sp.add_argument("scenario")
+    sp.add_argument(
+        "--available",
+        default=None,
+        help="what you already have, e.g. 256GB — turns the last step into a headroom check",
+    )
+    _add_model_flags(sp, db)
+    sp.set_defaults(func=cmd_scenario)
 
     sp = sub.add_parser("why", help="the citation chain behind every term")
     sp.add_argument("model")

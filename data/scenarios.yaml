@@ -1,0 +1,73 @@
+# Scenarios chain existing models together so a caller can type what they
+# actually measured once and see every model that follows from it, instead of
+# running one model, copying its mode by hand into the next one's input, and
+# losing the band in the copy.
+#
+# A scenario never computes anything itself -- every step names a model or
+# lookup that already exists and is audited on its own. `feed: {input_key:
+# previous}` means "the previous step's WHOLE band feeds this input", not its
+# mode; chain_evaluate() in model.py runs the fed model three times, once per
+# band-end, and never collapses to a point before that. See model.py's
+# `chain_evaluate()` docstring for why that is the only honest way to do it.
+#
+# `see_also` is prose, not another step, for exactly the case it names below:
+# a real connection exists (cache misses become reads) but no coefficient in
+# this corpus turns one into the other, so the UI must not pretend it can.
+
+scenarios:
+  - slug: mongodb.size-to-instance
+    label: My MongoDB's size on disk
+    summary: >-
+      From the two numbers db.stats() already gives you, walk to the
+      WiredTiger cache that would hold the whole database, the host RAM that
+      cache implies at MongoDB's default split, and the smallest r8i instance
+      that covers it -- all three with the band intact.
+    steps:
+      - kind: model
+        model: mongodb.wt-cache
+      - kind: model
+        model: mongodb.host-ram
+        feed:
+          cache_size: previous
+      - kind: lookup
+        lookup: instance_select
+        family: r8i
+        feed: previous
+    see_also:
+      - scenario: ebs.microburst
+        reason: >-
+          Every page that does not fit in cache becomes a read, and reads
+          become the EBS question -- but no coefficient here turns a cache
+          size into an IOPS figure. That needs its own measurement.
+
+  - slug: ebs.microburst
+    label: My EBS volume's average IOPS
+    summary: >-
+      Raise the average IOPS your monitoring shows to what the peak second
+      actually demands, which is what EBS throttles on and your dashboard has
+      already averaged away.
+    steps:
+      - kind: model
+        model: ebs.iops-to-provision
+
+  - slug: clickhouse.stub
+    label: ClickHouse
+    disabled: true
+    note: Stub. No coefficients yet.
+  - slug: redis.stub
+    label: Redis
+    disabled: true
+    note: Stub. No coefficients yet.
+  - slug: celery.stub
+    label: Celery
+    disabled: true
+    note: >-
+      Stub. Has a head start when its turn comes: ~/Claude/SCHEDULED-JOBS.md
+      already holds a Celery+Redis evaluation dated 2026-07-31 and the
+      conditions that would justify revisiting the decision.
+  - slug: nvme-ssd.stub
+    label: NVMe SSD (direct-attached)
+    disabled: true
+    note: >-
+      Stub. Exists mainly as the comparison arm for EBS -- "how much worse is
+      network storage" is only answerable against a local baseline.
