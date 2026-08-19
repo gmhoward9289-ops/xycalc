@@ -287,6 +287,82 @@ unique per run, and the script warns rather than destroys when it finds another
 run active. A benchmark harness that silently destroys a concurrent benchmark
 is worse than one that refuses to start.
 
+### Convergence and decay — issue #3, a first pass
+
+Issue #3 asked two questions this section left open: does the pool settle at
+a steady value under sustained demand, and does it walk back down once load
+stops? A 2026-08-19 run answers both directionally, on a reduced scope from
+the full plan in `docs/plans/issue-3-ticket-pool-convergence-and-decay.md` —
+one concurrency level (64, the literal figure the issue itself proposed) held
+for 600 seconds instead of 25, followed by a true-idle cooldown, rather than
+the plan's `64,150` climb and idle-vs-trickle cooldown comparison. Harness:
+`tools/bench/ticket_probe.sh` unchanged for the climb, plus a new
+purpose-built single-connection sampler, `tools/bench/cooldown_sample.js`,
+for the cooldown. Full data:
+`data/observations/swamplink-ticket-decay-2026-08-19.yaml`,
+`data/sources/swamplink-ticket-decay-2026-08-19.yaml`.
+
+**Convergence, partial answer.** At concurrency 64 held for 600.8 seconds,
+`totalTickets` peaked at 77 (60% of the documented dynamic maximum of 128) —
+higher than the 74 the 2026-08-01 run reached in a 25-second window at the
+same concurrency, as expected from ten times the time to climb. But the
+window did not end at the peak: `totalTickets` was 64 when the load stopped,
+13 below the 77 it had reached earlier in the same window, while load was
+**still running**. The pool is not monotonically climbing toward some ceiling
+and holding there; it moves both directions in response to something, even
+mid-load. This run cannot say where the pool converges under real headroom
+(64 offered threads cannot distinguish "the algorithm's steady state is ≤64"
+from "demand was capped at 64" — see the plan's §4d, and note `ticketsMax`
+of 77 already exceeds the offered thread count, so demand-capping is not the
+whole story here either, just not conclusively ruled out as part of it). The
+`64,150` run the plan calls for is still the one that would settle that
+question.
+
+**Decay, answered — and it falsifies the issue's own framing.** After the
+600s load stopped, a single dedicated connection (deliberately not the load
+client's pool — see the plan's guard against pooled-socket heartbeat traffic
+being mistaken for load) polled `serverStatus()` every 5 seconds for 611
+seconds of genuinely zero client operations. `totalTickets` read 64 — the
+exact value load left it at — at all 123 samples. Zero movement, not slow
+movement. `read.out` was 0 at every sample too, ruling out the sampler's own
+polling as an unaccounted-for load source. The issue's framing was "leave the
+pool alone and it drifts back to 4 on some timescale"; over ten minutes of
+true idle, it did not drift at all.
+
+This matches the mechanism the plan's §3 flagged as the shakier alternative
+to the issue's premise: `throughputProbing` is a hill-climbing controller
+that adjusts concurrency based on a recent throughput sample, and at zero
+concurrent operations there is no sample for it to react to — so it should
+freeze at its last value rather than decay on a clock. The mid-load
+77-to-64 dip described above is indirect support for the same mechanism: the
+controller reduced concurrency in response to *something* while load was
+still present to give it a signal, which is exactly the behaviour "decay
+requires a throughput signal" predicts and "decay is a background timer"
+does not.
+
+**What this changes elsewhere in the corpus.** The `tickets` input note and
+`probing_floor` term in `data/models/mongodb-concurrency.yaml`, and the
+`mongodb.tickets-probing-floor` coefficient, describe 4 as where a 7.0.39
+instance "rests." That is still true for an instance idle a long time, but it
+is not a safe assumption for an instance that was recently busy — this run's
+own pool sat at 64 for at least 611 seconds after its load ended, nowhere
+near the floor. A new coefficient,
+`mongodb.tickets-idle-hold-seconds-min` (611s, `confidence: practitioner`,
+n=1), and a new model term (`no_idle_decay`) record this. Read the ticket
+count after an incident rather than assuming it has settled.
+
+**What is still open.** Whether a low, nonzero trickle of subsequent traffic
+would drive the pool back down — the plan's other cooldown branch, not run in
+this pass — and on what timescale if so. Also open: the `64,150` convergence
+run, and the harness-level instrumentation (raw sample series, an automated
+convergence verdict) the plan specifies in its §4a/4b, none of which landed
+here. This pass answered the two questions the issue asked well enough to
+close its immediate concern (the pool does not evaporate back to 4 the moment
+an incident ends), but the full plan is not yet executed and issue #2 still
+wants the `64,150` result specifically.
+
+---
+
 ## What to look at during an incident
 
 In order of how directly each one confirms this diagnosis:

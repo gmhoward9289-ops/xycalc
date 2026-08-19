@@ -1,0 +1,65 @@
+sources:
+- slug: obs-mongodb-ticket-decay-swamplink-2026-08-19
+  title: MongoDB 7.0.39 throughputProbing over a 10-minute hold, then a true-idle cooldown
+  publisher: xycalc benchmark (swamplink)
+  retrieved_on: '2026-08-19'
+  source_type: benchmark
+  notes: >-
+    Investigation 003's open question (issue #3): does the ticket pool
+    settle at a steady value under sustained demand, and does it walk back
+    down once load stops? Two phases, one session, containers left running
+    between them so the cooldown measures the same mongod that generated the
+    load rather than a fresh instance:
+
+    **Phase 1 (climb).** `tools/bench/ticket_probe.sh` unchanged, with
+    `PROBE_LEVELS=64 PROBE_SECONDS=600` -- the literal configuration the
+    issue text suggested, a single concurrency level held for ten minutes
+    instead of the previous run's 25-second-per-level ladder. Same guarded
+    setup as the 2026-08-01 run: MongoDB 7.0.39 in Docker, block-IO cgroup
+    limited to 8 MiB/s and 150 IOPS on this container only, 0.25 GB
+    wiredTiger cache, 640 MB container memory, 1,500,000 documents (1.13 GB,
+    4.2x the cache -- cacheOversubscription 4.22, confirmed >= the 2.0
+    minimum). totalPagesReadIntoCache was 52,177 (nonzero, so reads reached
+    the throttled device rather than being served from cache).
+    queuedMicrosDelta was 3,581s cumulative over the 600.8s window --
+    substantial, sustained queueing, not a transient. Machine: Hetzner CX
+    shared vCPU, 7 GB RAM, same box as the earlier runs.
+
+    **Phase 2 (cooldown).** After the load-phase Python process exited (its
+    connection pool closed with it), a purpose-built single-connection
+    mongosh script (`tools/bench/cooldown_sample.js`, committed) ran inside
+    the still-live mongod container: one `mongosh` session, one connection,
+    polling `serverStatus().wiredTiger.concurrentTransactions` every 5
+    seconds and printing a JSON line per sample, for up to 900s or until
+    totalTickets held at the documented floor (4) for 60 continuous seconds
+    -- whichever came first. Deliberately a single persistent connection
+    rather than a client library's connection pool, per the plan's guard
+    against pooled-socket heartbeat traffic being mistaken for load. Stopped
+    manually at 611s once the result was unambiguous (123 samples, zero
+    movement, no sign of approaching the early-exit condition) rather than
+    running the full 900s, since a flat line for over ten minutes already
+    settles the "does it decay from idle" question this pass was scoped to
+    answer.
+
+    Both containers were torn down manually after data collection (no
+    EXIT-trap cleanup was used for this run, unlike the standard harness --
+    intentional, so the mongod container would survive past the load
+    script's exit for the cooldown phase to sample). Confirmed removed via
+    `docker ps -a` afterward; no leftover containers or processes on the
+    host.
+
+    **Reduced scope versus the full plan.** `docs/plans/issue-3-ticket-pool-
+    convergence-and-decay.md` calls for a `PROBE_LEVELS=64,150` climb (the
+    150 level to test convergence with real headroom above the documented
+    128 max, since 64 offered threads cannot by itself distinguish "pool
+    converged" from "pool capped by demand"), the harness-level 4a/4b/4c
+    instrumentation (raw sample series, an automated convergence verdict,
+    and a built-in cooldown phase with both idle and low-trickle variants),
+    and a trickle-cooldown comparison run. None of that landed in this pass;
+    what ran here was the literal `PROBE_LEVELS=64 PROBE_SECONDS=600` the
+    GitHub issue itself proposed, plus a hand-rolled idle-only cooldown
+    sampler kept deliberately separate from `ticket_probe.py` rather than
+    built into it. This answers the issue's two questions directionally (see
+    FINDINGS.md) but leaves the convergence-under-headroom and
+    decays-with-traffic questions open for a follow-up pass that does
+    implement the full plan.
