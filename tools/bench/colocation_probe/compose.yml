@@ -35,7 +35,7 @@ services:
     image: redis:7-alpine
     # NOT setting maxmemory. The whole point is to observe the documented
     # default (0 = unlimited on 64-bit) actually happening next to the other
-    # three services, not to pre-empt it.
+    # three services, not to preempt it.
     mem_limit: ${REDIS_MEM:-2g}
     memswap_limit: ${REDIS_MEM:-2g}
 
