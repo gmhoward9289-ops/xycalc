@@ -5,6 +5,9 @@ sources:
   retrieved_on: '2026-08-19'
   source_type: benchmark
   notes: >-
+    Harness: tools/bench/mongodb_default_split.sh <dbpath>, which reproduces
+    this run exactly. No dataset required.
+
     MongoDB 7.0.40 under WSL2 Ubuntu on reef, started with NO
     wiredTigerCacheSizeGB override — the default 50%-of-(RAM-1GB) split left
     untouched. Empty database; the default split is computed from visible

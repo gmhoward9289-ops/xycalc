@@ -5,6 +5,9 @@ sources:
   retrieved_on: '2026-08-19'
   source_type: benchmark
   notes: >-
+    Harness: tools/bench/mongodb_saturated_cache.sh <dbpath> 8 20, which
+    reproduces this run exactly (cache_gb=8, target_gb=20).
+
     MongoDB 7.0.40 under WSL2 Ubuntu on reef, wiredTigerCacheSizeGB pinned to
     8 via mongod.conf, dbPath on a dedicated NVMe volume. Collection seeded to
     ~971k documents (~19.5 GB dataSize, ~20.5 GB storageSize) — deliberately
