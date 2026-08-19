@@ -139,7 +139,14 @@ class TestPage:
 
     def test_the_page_hardcodes_no_corpus_figures(self, client):
         """Every number on the page must arrive from the API. A figure baked
-        into the HTML bypasses both gates and goes stale silently."""
-        html = client.get("/").text
+        into the HTML bypasses both gates and goes stale silently.
+
+        The favicon is excluded: its coordinates are SVG artwork, not a
+        sizing figure, and "2.5" turning up inside a `rotate(45 26 26)`
+        transform is not the drift this test exists to catch.
+        """
+        import re
+
+        html = re.sub(r"<link rel=\"icon\".*?>", "", client.get("/").text)
         for figure in ("1.6 TB", "1612", "2.5", "987.5"):
             assert figure not in html, f"{figure!r} is hardcoded in the page"
