@@ -1,0 +1,96 @@
+name: Deploy calculator
+
+# swamplink.com/tools/xycalc/calculator/ is a static page baked by
+# `xycalc export`, published from a SEPARATE repo (swamplink-root) that also
+# holds every other page on the site. There's no webhook between the two --
+# publishing means writing the exported file into that repo and pushing it to
+# swamplink-root's own bare repo on lynx, whose post-receive hook then
+# unpacks the tree straight into /var/www/swamplink. Pushing IS deploying.
+#
+# The deploy key is scoped to exactly this: a forced command on lynx
+# (/usr/local/bin/xycalc-push-only) permits only git-upload-pack and
+# git-receive-pack against swamplink-root.git, nothing else. Read access is
+# needed -- unlike a single-repo deploy that can force-push its own full
+# tree, this job edits one file inside a repo it doesn't otherwise own, so it
+# has to clone, splice in the export, and push a normal commit.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-calculator
+  cancel-in-progress: false
+
+# The deploy credentials live on the `production` environment, not on the
+# repo, so a workflow change on a non-protected branch can't read them.
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Build the corpus and export the calculator
+        run: |
+          pip install -e .
+          xycalc export --out /tmp/calculator.html \
+            --crumb '<div class="crumb"><a href="/">swamplink.com</a> / <a href="/tools/">tools</a> / <a href="/tools/xycalc/">xycalc</a> / calculator</div>'
+
+      - name: Splice the export into swamplink-root and push
+        env:
+          SSH_KEY: ${{ secrets.SWAMPLINK_SSH_KEY }}
+          HOST: ${{ secrets.SWAMPLINK_HOST }}
+          KNOWN_HOSTS: ${{ secrets.SWAMPLINK_KNOWN_HOSTS }}
+        run: |
+          if [ -z "$SSH_KEY" ] || [ -z "$HOST" ] || [ -z "$KNOWN_HOSTS" ]; then
+            echo "::error::SWAMPLINK_SSH_KEY, SWAMPLINK_HOST and SWAMPLINK_KNOWN_HOSTS must be set."
+            exit 1
+          fi
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/deploy && chmod 600 ~/.ssh/deploy
+          printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts && chmod 600 ~/.ssh/known_hosts
+          export GIT_SSH_COMMAND='ssh -i ~/.ssh/deploy -o BatchMode=yes'
+
+          git clone "${HOST}:/srv/git/swamplink-root.git" /tmp/swamplink-root
+          cd /tmp/swamplink-root
+
+          if [ ! -f tools/xycalc/calculator/index.html ]; then
+            echo "::error::tools/xycalc/calculator/index.html not found in swamplink-root -- refusing to guess where the export goes"
+            exit 1
+          fi
+          cp /tmp/calculator.html tools/xycalc/calculator/index.html
+
+          git config user.name "xycalc deploy"
+          git config user.email "dev@swamplink.com"
+
+          if git diff --quiet -- tools/xycalc/calculator/index.html; then
+            echo "export unchanged, nothing to deploy"
+            exit 0
+          fi
+
+          git add tools/xycalc/calculator/index.html
+          git commit -m "chore(xycalc): re-export calculator @ ${GITHUB_SHA}"
+          git push origin master
+
+      - name: Verify the page is reachable anonymously
+        run: |
+          for i in $(seq 1 12); do
+            code="$(curl -s -o /tmp/page.html -w '%{http_code}' https://www.swamplink.com/tools/xycalc/calculator/)"
+            if [ "$code" = "200" ] && grep -qi '<title>xycalc' /tmp/page.html; then
+              echo "anonymous GET is 200 and serves the page"
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "::error::https://www.swamplink.com/tools/xycalc/calculator/ did not serve 200 with the expected title"
+          head -c 500 /tmp/page.html
+          exit 1
