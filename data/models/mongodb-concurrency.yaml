@@ -91,7 +91,11 @@ models:
           resting at 4, and a fault-injection run under sustained load saw it
           climb through 71-74 without settling — neither end of that range is
           a safe stand-in for the other. LOOK IT UP for the instance you are
-          sizing; do not carry a number over from a different one.
+          sizing; do not carry a number over from a different one — including
+          from the same instance's own recent past: a 2026-08-19 run found
+          the pool frozen at its post-load value for over ten minutes of true
+          idle with no traffic to react to, so "it was busy earlier" does not
+          mean it has settled back toward 4 by the time you read it.
       - key: storage_latency_seconds
         label: Storage latency per operation, in seconds
         unit: seconds
@@ -171,3 +175,17 @@ models:
           worst case the algorithm degrades into; it is where it rests, and it
           has to climb before the ceiling improves. Read the ticket count
           before assuming anything.
+
+      - key: no_idle_decay
+        label: The pool does not walk back down on elapsed idle time alone
+        role: constraint
+        apply: note
+        coefficient: mongodb.tickets-idle-hold-seconds-min
+        rationale: >-
+          A 2026-08-19 run held the pool at 64 with a 600-second load, then
+          measured true-idle serverStatus for 611 seconds afterward: zero
+          movement. "Resting at 4" is what an instance that has been idle a
+          LONG time looks like — it is not what a busy instance decays to
+          shortly after load stops. After an incident, read the ticket count;
+          do not assume it has returned to the floor just because the load
+          did.

@@ -1,0 +1,75 @@
+observations:
+# -- db.concurrency_tickets: a 10-minute hold at concurrency 64, then a
+# true-idle cooldown, extending investigation 003's 25-second-per-level run
+# to answer issue #3's two questions: where does the pool converge, and does
+# it decay once load stops? --
+- slug: swamplink-2026-08-19-tickets-c64-600s
+  system: mongodb
+  parameter: db.concurrency_tickets
+  value: 77
+  unit: tickets
+  workload: random point lookups by _id, 64 threads, throttled device (8 MiB/s, 150 IOPS), 600s hold
+  machine_class: Hetzner CX shared vCPU, 7 GB RAM
+  system_version: 7.0.39
+  observed_on: '2026-08-19'
+  source: obs-mongodb-ticket-decay-swamplink-2026-08-19
+  notes: >-
+    Peak totalTickets over the 600.8s window: 4 -> 77 (60% of the documented
+    dynamic max of 128), but ticketsEnd was 64 -- lower than the peak. The
+    pool did not simply climb and hold; it eased back down by 13 tickets
+    while load was STILL RUNNING, before the window closed and before any
+    cooldown began. That is direct evidence the controller reduces
+    concurrency in response to its own throughput/queue signal, not only
+    raises it -- "decay" during cooldown, described below, looks like the
+    same mechanism running with no signal to react to, rather than a
+    separate idle-timeout behaviour. Offered concurrency was capped at 64
+    threads, so this run does not test where the pool converges under real
+    headroom above the documented max (that needs a level above 128 -- see
+    docs/plans/issue-3-ticket-pool-convergence-and-decay.md section 4d); it
+    only shows the pool CAN exceed the offered thread count (77 > 64), which
+    the previous 25-second run at the same concurrency did not have time to
+    show.
+- slug: swamplink-2026-08-19-tickets-idle-cooldown
+  system: mongodb
+  parameter: db.concurrency_tickets
+  value: 64
+  unit: tickets
+  workload: zero client operations, single dedicated connection polling serverStatus every 5s, 611s after the 600s/c=64 load stopped
+  machine_class: Hetzner CX shared vCPU, 7 GB RAM
+  system_version: 7.0.39
+  observed_on: '2026-08-19'
+  source: obs-mongodb-ticket-decay-swamplink-2026-08-19
+  notes: >-
+    totalTickets read 64 at every one of 123 samples taken every 5 seconds
+    for 611 seconds (>10 minutes) of true idle after load stopped -- zero
+    movement, not "slow" movement. read.out was 0 at every sample too,
+    confirming the serverStatus polling itself never touched the read ticket
+    pool, so this genuinely measured zero load rather than sampler-induced
+    traffic. Falsifies the issue's framing that decay is a background,
+    elapsed-time process: the pool freezes at whatever value the last
+    controller adjustment left it at and does not walk back toward the
+    documented floor of 4 on its own. Matches the mechanism proposed in the
+    plan (throughputProbing has no throughput sample to act on at zero
+    traffic, so there is nothing for it to adjust). Whether a low-trickle of
+    subsequent traffic WOULD decay it -- the comparison branch the plan
+    calls for -- was not run in this pass; see FINDINGS.md.
+
+# -- db.ops_per_second: throughput at the one concurrency level run here --
+- slug: swamplink-2026-08-19-opsec-c64-600s
+  system: mongodb
+  parameter: db.ops_per_second
+  value: 75.8
+  unit: ops/s
+  workload: random point lookups by _id, 64 threads, throttled device (8 MiB/s, 150 IOPS), 600s hold
+  machine_class: Hetzner CX shared vCPU, 7 GB RAM
+  system_version: 7.0.39
+  observed_on: '2026-08-19'
+  source: obs-mongodb-ticket-decay-swamplink-2026-08-19
+  notes: >-
+    Mean latency 843.27ms, p95 1591.59ms -- both higher than the 2026-08-01
+    25-second run's c=64 figures (535.51ms mean), consistent with a longer
+    hold letting queueing build further rather than a different device cap.
+    45,564 ops over 600.8s. Lower than the earlier run's 117.7 ops/s,
+    plausibly a shared-tenancy artifact (see the overlap caveat in the
+    2026-08-01 source entry) rather than a real change in device throughput
+    -- not independently confirmed in this pass.
