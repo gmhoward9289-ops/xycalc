@@ -174,3 +174,10 @@ def test_export_refuses_a_corpus_it_cannot_check(monkeypatch, conn):
 def test_crumb_is_inserted_verbatim(blob):
     html = render(blob, crumb='<div class="crumb">home / here</div>')
     assert '<div class="crumb">home / here</div>' in html
+
+
+def test_render_always_emits_lf(blob):
+    """The artifact is committed to the site repo. A Windows checkout hands
+    Python a CRLF template, and without normalising, re-exporting on a
+    different machine produces a whole-file diff that says nothing changed."""
+    assert "\r" not in render(blob)

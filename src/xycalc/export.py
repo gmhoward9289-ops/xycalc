@@ -183,7 +183,12 @@ def render(blob: dict, crumb: str | None = None) -> str:
     for marker in ("__XYCALC_CORPUS_JSON__", "__XYCALC_EVALUATE_JS__", "__XYCALC_CRUMB__"):
         if marker in html:
             raise ExportError(f"template placeholder {marker} was not substituted")
-    return html
+    # LF, always. Git hands a Windows checkout CRLF template sources, so
+    # without this the same corpus exports to a different file on a different
+    # machine -- and the artifact is committed to the site repo, where that
+    # shows up as a whole-file diff saying nothing changed. "Deterministic"
+    # has to mean across machines or it means very little.
+    return html.replace("\r\n", "\n")
 
 
 def export(
