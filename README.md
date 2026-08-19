@@ -64,11 +64,37 @@ xycalc headroom <model> --available 256GB [flags]   # how much margin is left?
 xycalc why      <model>          # the citation chain behind every term
 xycalc build                     # compile the YAML corpus into SQLite
 xycalc audit                     # the gates
-xycalc gui                       # the calculator
+xycalc gui                       # the calculator, served locally
+xycalc export --out page.html    # the calculator as one static file
 ```
 
 Flags for `sizing` and `headroom` are generated from each model's declared
 inputs, so **a new model is YAML, never code**.
+
+## The calculator
+
+`xycalc gui` serves it from FastAPI; `xycalc export` writes the same page as a
+single self-contained HTML file with the corpus compiled in, which is how it
+reaches the web — <https://swamplink.com/tools/xycalc/calculator/>. No server,
+no network calls, works offline.
+
+Beyond the single answer it draws the **curve**: sweep any input across two
+decades and the band is drawn as an envelope around it, with a line across for
+what you already have. Where that line crosses the envelope is where the sizing
+stops working, and the crossing being a range rather than a point is the whole
+argument for carrying a band.
+
+That export costs something real: the band arithmetic then exists **twice**,
+once in `model.py` and once in `static/evaluate.js`. Two implementations of one
+set of numbers is exactly the drift this project refuses everywhere else, so
+they are pinned together by golden vectors written into the exported blob —
+input combinations with the lo/mode/hi and the contribution strings Python
+produced for them. Those are checked three times over:
+`tests/test_export.py` runs the JS under node in CI, the exported page re-runs
+them on load and **renders a refusal instead of a number** if any disagree, and
+a reader can open the file and check them by hand. The export itself is
+deterministic — same corpus, byte-identical file — so a diff on the published
+page is always a real change.
 
 ## How it works
 

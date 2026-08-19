@@ -424,6 +424,17 @@ def cmd_audit(args) -> int:
     return audit_mod.main([str(args.db)] if args.db else [])
 
 
+def cmd_export(args) -> int:
+    from . import export as export_mod
+
+    argv = ["--out", str(args.out)]
+    if args.db:
+        argv += ["--db", str(args.db)]
+    if args.crumb:
+        argv += ["--crumb", args.crumb]
+    return export_mod.main(argv)
+
+
 def cmd_gui(args) -> int:
     try:
         import uvicorn
@@ -546,6 +557,13 @@ def build_parser(db: Path | None = None) -> argparse.ArgumentParser:
     sp.add_argument("--host", default="127.0.0.1")
     sp.add_argument("--port", type=int, default=8200)
     sp.set_defaults(func=cmd_gui)
+
+    sp = sub.add_parser(
+        "export", help="write the calculator as one self-contained HTML file"
+    )
+    sp.add_argument("--out", type=Path, default=Path("dist/xycalc.html"))
+    sp.add_argument("--crumb", default=None, help="raw HTML inserted above the header")
+    sp.set_defaults(func=cmd_export)
 
     return p
 
