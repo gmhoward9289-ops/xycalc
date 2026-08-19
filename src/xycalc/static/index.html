@@ -459,7 +459,7 @@ async function bootScenario() {
   document.querySelectorAll(".scenario-opt input[type=radio]").forEach(el => {
     el.addEventListener("change", () => selectScenario(el.value));
   });
-  $("scn-go").addEventListener("click", calculateScenario);
+  $("scn-go").addEventListener("click", () => calculateScenario(false));
 }
 
 function selectScenario(slug) {
@@ -495,10 +495,10 @@ function maybeAutoCalculate() {
     const el = $(`scn-in-${k}`);
     return el && el.value.trim();
   });
-  if (filled) calculateScenario();
+  if (filled) calculateScenario(true);
 }
 
-async function calculateScenario() {
+async function calculateScenario(auto) {
   if (!currentScenario) return;
   const inputs = {};
   document.querySelectorAll("#scenario-inputs input").forEach(el => {
@@ -507,6 +507,8 @@ async function calculateScenario() {
   const body = {scenario: currentScenario.slug, inputs};
   const avail = $("scn-available").value.trim();
   if (avail) body.available = avail;
+
+  const wasEmpty = $("scenario-cascade").innerHTML.trim() === "";
 
   $("scn-error").hidden = true;
   const r = await fetch("/api/scenario", {
@@ -521,7 +523,7 @@ async function calculateScenario() {
     $("scenario-cascade").innerHTML = "";
     return;
   }
-  renderCascade(data);
+  renderCascade(data, wasEmpty || !auto);
 }
 
 function renderInstanceCard(step, n) {
@@ -552,7 +554,7 @@ function renderInstanceCard(step, n) {
     </div>`;
 }
 
-function renderCascade(data) {
+function renderCascade(data, scroll) {
   const worst = { none: 0, thin: 1, reasonable: 2 };
   let worstGrade = null;
   const parts = [];
@@ -588,7 +590,7 @@ function renderCascade(data) {
       $("scenario-form-panel").scrollIntoView({behavior: "smooth", block: "start"});
     });
   });
-  $("scenario-cascade").scrollIntoView({behavior: "smooth", block: "start"});
+  if (scroll) $("scenario-cascade").scrollIntoView({behavior: "smooth", block: "start"});
 }
 
 // ---------------------------------------------------------------------------
