@@ -177,9 +177,15 @@ models:
       model will overstate their requirement.
 
     notes: >-
-      Chained by hand for now: run mongodb.wt-cache, feed its mode into this.
-      Model-to-model chaining is not implemented, and doing it by hand keeps
-      the band visible instead of quietly propagating only the midpoint.
+      Run standalone, this model still expects a single cache-size number
+      typed in by hand — which is right for someone who has already decided
+      to raise wiredTigerCacheSizeGB and wants the RAM that implies. Someone
+      starting from a database's on-disk size should run the
+      mongodb.size-to-instance scenario instead (`xycalc scenario
+      mongodb.size-to-instance` or the GUI's Scenario tab): it runs this model
+      once per band-end of mongodb.wt-cache's own output, so the band stays
+      whole from cache size through to host RAM instead of collapsing to one
+      typed-in mode.
 
     inputs:
       - key: cache_size
