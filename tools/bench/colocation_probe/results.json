@@ -1,0 +1,40 @@
+{
+  "idle": {
+    "phase": "idle",
+    "services": {
+      "worker": {"mem_used": "111.4MiB", "mem_limit": "1GiB", "mem_pct": "10.88%", "cpu_pct": "0.03%"},
+      "redis": {"mem_used": "4.91MiB", "mem_limit": "2GiB", "mem_pct": "0.24%", "cpu_pct": "0.31%"},
+      "clickhouse": {"mem_used": "150.2MiB", "mem_limit": "2GiB", "mem_pct": "7.34%", "cpu_pct": "2.64%"},
+      "mongo": {"mem_used": "73.06MiB", "mem_limit": "2GiB", "mem_pct": "3.57%", "cpu_pct": "0.26%"}
+    }
+  },
+  "loaded": {
+    "phase": "loaded",
+    "services": {
+      "worker": {"mem_used": "110.8MiB", "mem_limit": "1GiB", "mem_pct": "10.82%", "cpu_pct": "0.03%"},
+      "redis": {"mem_used": "4.539MiB", "mem_limit": "2GiB", "mem_pct": "0.22%", "cpu_pct": "0.32%"},
+      "clickhouse": {"mem_used": "208.4MiB", "mem_limit": "2GiB", "mem_pct": "10.18%", "cpu_pct": "2.34%"},
+      "mongo": {"mem_used": "264.6MiB", "mem_limit": "2GiB", "mem_pct": "12.92%", "cpu_pct": "0.26%"}
+    }
+  },
+  "under_load": {
+    "phase": "under_load",
+    "services": {
+      "worker": {"mem_used": "110.8MiB", "mem_limit": "1GiB", "mem_pct": "10.82%", "cpu_pct": "0.03%"},
+      "redis": {"mem_used": "4.766MiB", "mem_limit": "2GiB", "mem_pct": "0.23%", "cpu_pct": "0.30%"},
+      "clickhouse": {"mem_used": "227.8MiB", "mem_limit": "2GiB", "mem_pct": "11.12%", "cpu_pct": "2.76%"},
+      "mongo": {"mem_used": "452.6MiB", "mem_limit": "2GiB", "mem_pct": "22.10%", "cpu_pct": "119.56%"}
+    }
+  },
+  "run_metadata": {
+    "host": "reef (Ryzen, 64GB RAM, Windows 11, WSL2 VM capped at 31.3GiB)",
+    "date": "2026-08-19",
+    "docker_server": "29.7.2",
+    "compose": "v5.4.0",
+    "mongo_config": "--wiredTigerCacheSizeGB 1, mem_limit 2g",
+    "mongo_dataset": "200,000 docs, dataSize=145MB (via celery_probe's drive.py load())",
+    "clickhouse_dataset": "3,000,000 rows via clickhouse_load.sql (numbers() generator)",
+    "under_load_generator": "50,000 mongosh findOne point lookups + one ClickHouse GROUP BY scan, concurrent, ~2-4s window",
+    "note_on_deviation_from_run_sh": "run.sh's driver-based load phase 3 was skipped: celery_probe's drive.py refuses to run below 2x cache oversubscription (145MB dataSize vs 1GB cache = 0.1x), which is correct behavior for ITS experiment (storage-stall investigation 003) but not applicable here. Substituted a direct mongosh + clickhouse-client read-load burst instead, run manually rather than via run.sh."
+  }
+}
