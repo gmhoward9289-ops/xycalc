@@ -1,0 +1,710 @@
+<!doctype html>
+<!--
+  GENERATED FILE — do not edit.
+
+  Written by `xycalc export` from the corpus in
+  https://github.com/gmhoward9289-ops/xycalc. Editing it here means the next
+  export silently reverts the change; edit src/xycalc/static/calculator.html
+  (or the YAML under data/) in that repo and re-export instead.
+
+      xycalc export --out <this file>
+
+  The output is deterministic: same corpus, byte-identical file. A diff on this
+  file is therefore a real change to the corpus or the page, never noise.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>xycalc — how much X does it take to run Y?</title>
+<meta name="description" content="Infrastructure sizing from a corpus where every number cites a source. Sweep an input and see the whole curve, band and all.">
+<style>
+/* The page is an instrument, so it reads like one: figures in a mono face at a
+   size you can compare at a glance, prose in a proportional face and out of the
+   way. The two deliberate loudnesses are the validation banner and the
+   self-check refusal -- an unvalidated answer that looked as confident as a
+   validated one would undo the point, and a page whose arithmetic disagrees
+   with the corpus must not render a number at all. */
+:root {
+  --bg: #fbfaf8;
+  --panel: #ffffff;
+  --ink: #1a1a1a;
+  --muted: #6b6b6b;
+  --line: #e2ded8;
+  --accent: #1f5f4f;
+  --warn-bg: #fdf6e3;
+  --warn-line: #d9c08a;
+  --warn-ink: #7a5c18;
+  --stop-bg: #fdecea;
+  --stop-line: #d98a80;
+  --stop-ink: #8c1d13;
+  --floor: #3d5a80;
+  --amplifier: #9c4221;
+  --headroom: #2c6e49;
+  --constraint: #6b6b6b;
+  --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #16181a; --panel: #1e2124; --ink: #e8e6e3; --muted: #9a9793;
+    --line: #32363a; --accent: #6dc3a8;
+    --warn-bg: #2a2415; --warn-line: #6b5a2a; --warn-ink: #e0c67a;
+    --stop-bg: #2d1715; --stop-line: #7a3229; --stop-ink: #f0a79b;
+    --floor: #8fb0d9; --amplifier: #e0996b; --headroom: #7fc9a0;
+    --constraint: #9a9793;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--bg); color: var(--ink);
+  font-family: var(--sans); line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+.wrap { max-width: 60rem; margin: 0 auto; padding: 2rem 1.25rem 5rem; }
+
+.crumb { font-size: .78rem; color: var(--muted); margin-bottom: 1.25rem; }
+.crumb a { color: var(--muted); }
+
+header { border-bottom: 1px solid var(--line); padding-bottom: 1.25rem; margin-bottom: 2rem; }
+h1 { font-size: 1.5rem; margin: 0 0 .25rem; letter-spacing: -.01em; }
+h1 span { color: var(--accent); font-family: var(--mono); }
+.tagline { color: var(--muted); margin: 0; font-size: .95rem; }
+.claim { margin: .75rem 0 0; font-size: .85rem; color: var(--muted); }
+.claim code { font-family: var(--mono); font-size: .8rem; }
+
+.panel {
+  background: var(--panel); border: 1px solid var(--line);
+  border-radius: 8px; padding: 1.25rem; margin-bottom: 1.5rem;
+}
+label { display: block; font-size: .8rem; font-weight: 600; margin-bottom: .3rem; }
+.help { font-size: .78rem; color: var(--muted); font-weight: 400; margin-top: .2rem; }
+select, input {
+  width: 100%; padding: .55rem .7rem; font-size: .95rem;
+  font-family: var(--mono);
+  border: 1px solid var(--line); border-radius: 6px;
+  background: var(--bg); color: var(--ink);
+}
+select { font-family: var(--sans); }
+input:focus, select:focus, button:focus-visible {
+  outline: 2px solid var(--accent); outline-offset: 1px;
+}
+.field { margin-bottom: 1rem; }
+.question { font-size: 1.05rem; margin: 0 0 1.25rem; }
+button {
+  background: var(--accent); color: #fff; border: 0; border-radius: 6px;
+  padding: .6rem 1.2rem; font-size: .95rem; font-weight: 600; cursor: pointer;
+}
+button:hover { filter: brightness(1.1); }
+button.ghost {
+  background: transparent; color: var(--muted);
+  border: 1px solid var(--line); font-weight: 500;
+  padding: .25rem .6rem; font-size: .75rem;
+}
+button.ghost[aria-pressed="true"] { color: var(--accent); border-color: var(--accent); }
+
+/* -- answer -- */
+.answer { text-align: center; padding: 1.5rem 0 .5rem; }
+.answer .value {
+  font-family: var(--mono); font-size: clamp(2.2rem, 9vw, 3.4rem);
+  font-weight: 600; letter-spacing: -.02em; line-height: 1;
+}
+.answer .band { color: var(--muted); font-family: var(--mono); font-size: .95rem; margin-top: .5rem; }
+.answer .label { font-size: .75rem; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+
+.bandbar { height: 6px; background: var(--line); border-radius: 3px; position: relative; margin: 1.25rem 0 .35rem; }
+.bandbar .fill { position: absolute; top: 0; bottom: 0; background: var(--accent); opacity: .35; border-radius: 3px; }
+.bandbar .mark { position: absolute; top: -3px; width: 2px; height: 12px; background: var(--accent); }
+.bandends { display: flex; justify-content: space-between; font-family: var(--mono); font-size: .75rem; color: var(--muted); }
+
+/* -- validation -- */
+.validation {
+  border-radius: 6px; padding: .7rem .9rem; font-size: .85rem;
+  border: 1px solid var(--warn-line); background: var(--warn-bg); color: var(--warn-ink);
+  margin-top: 1.25rem;
+}
+/* Amber is the default and covers both "never checked" and "checked, thinly".
+   Green is reserved for a model that has actually earned it. */
+.validation.reasonable { border-color: var(--accent); background: transparent; color: var(--accent); }
+.validation strong { font-weight: 700; }
+
+/* -- the refusal -- */
+.stop {
+  border: 2px solid var(--stop-line); background: var(--stop-bg); color: var(--stop-ink);
+  border-radius: 8px; padding: 1.25rem; margin-bottom: 1.5rem;
+}
+.stop h2 { margin: 0 0 .5rem; color: inherit; font-size: 1rem; text-transform: none; letter-spacing: 0; }
+.stop pre { font-family: var(--mono); font-size: .78rem; white-space: pre-wrap; margin: .5rem 0 0; }
+
+/* -- chart -- */
+.chart-head {
+  display: flex; flex-wrap: wrap; gap: .75rem 1rem;
+  align-items: flex-end; justify-content: space-between; margin-bottom: .75rem;
+}
+.chart-head .field { margin: 0; flex: 1 1 18rem; }
+.scales { display: flex; gap: .35rem; align-items: center; font-size: .75rem; color: var(--muted); }
+svg.chart { width: 100%; height: auto; display: block; touch-action: none; }
+.chart-readout {
+  font-family: var(--mono); font-size: .82rem; margin: .5rem 0 0;
+  min-height: 1.4em; color: var(--ink);
+}
+.chart-readout .dim { color: var(--muted); }
+.axis line, .axis path { stroke: var(--line); }
+.axis text { fill: var(--muted); font-family: var(--mono); font-size: 10px; }
+.band-area { fill: var(--accent); opacity: .16; }
+.mode-line { fill: none; stroke: var(--accent); stroke-width: 2; }
+.edge-line { fill: none; stroke: var(--accent); stroke-width: 1; opacity: .45; stroke-dasharray: 3 3; }
+.have-line { stroke: var(--amplifier); stroke-width: 1.5; stroke-dasharray: 5 4; }
+.have-label { fill: var(--amplifier); font-family: var(--mono); font-size: 10px; }
+.cursor-line { stroke: var(--ink); stroke-width: 1; opacity: .35; }
+.cursor-dot { fill: var(--accent); }
+.chart-note { font-size: .78rem; color: var(--muted); margin: .6rem 0 0; }
+
+/* -- breakdown -- */
+h2 { font-size: .8rem; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin: 2rem 0 .75rem; }
+table { width: 100%; border-collapse: collapse; font-size: .88rem; }
+th { text-align: left; font-size: .7rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 600; padding-bottom: .4rem; border-bottom: 1px solid var(--line); }
+td { padding: .6rem .4rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+td.num { font-family: var(--mono); text-align: right; white-space: nowrap; }
+.role { font-family: var(--mono); font-size: .68rem; text-transform: uppercase; letter-spacing: .05em; }
+.role-floor { color: var(--floor); }
+.role-amplifier { color: var(--amplifier); }
+.role-headroom { color: var(--headroom); }
+.role-constraint { color: var(--constraint); }
+.term-label { font-weight: 600; }
+.cite { font-size: .74rem; color: var(--muted); margin-top: .2rem; }
+.cite a { color: var(--muted); }
+.grade { font-family: var(--mono); font-size: .68rem; padding: .05rem .35rem; border: 1px solid var(--line); border-radius: 3px; color: var(--muted); }
+.skipped td { opacity: .5; }
+details { margin-top: .3rem; }
+summary { cursor: pointer; font-size: .74rem; color: var(--muted); }
+blockquote { margin: .4rem 0 0; padding-left: .7rem; border-left: 2px solid var(--line); font-size: .8rem; color: var(--muted); font-style: italic; }
+
+.constraint-item { border-bottom: 1px solid var(--line); padding: .7rem 0; font-size: .85rem; }
+.constraint-item:last-child { border-bottom: 0; }
+.constraint-item .v { font-family: var(--mono); color: var(--amplifier); font-weight: 600; }
+.constraint-item p { margin: .25rem 0 0; color: var(--muted); font-size: .82rem; }
+
+.reframe { border-left: 3px solid var(--accent); padding: .25rem 0 .25rem 1rem; }
+.reframe h2 { margin-top: 0; color: var(--accent); }
+.reframe p { font-size: .92rem; }
+
+.scroll { overflow-x: auto; }
+.error { color: #b3261e; font-family: var(--mono); font-size: .85rem; }
+footer { margin-top: 3rem; padding-top: 1.25rem; border-top: 1px solid var(--line); font-size: .78rem; color: var(--muted); }
+footer code { font-family: var(--mono); }
+[hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<!--__XYCALC_CRUMB__-->
+
+<header>
+  <h1><span>xycalc</span> — how much X does it take to run Y?</h1>
+  <p class="tagline">Infrastructure sizing from a corpus where every number cites a source.</p>
+  <p class="claim">
+    Two guarantees, enforced by a build that fails when they break: every figure
+    <strong>cites a source</strong>, and every figure <strong>names the versions it applies to</strong>.
+    Plus one made by admission — every model says how much reality it has been checked against.
+  </p>
+</header>
+
+<div class="stop" id="selfcheck" hidden>
+  <h2>This page is not showing you a number.</h2>
+  <p>Its arithmetic disagrees with the corpus it was built from, on at least one
+  case where the two were supposed to agree exactly. Until that is fixed, every
+  figure it could render is suspect, so it renders none. Use the terminal —
+  <code>pip install xycalc &amp;&amp; xycalc sizing</code> — which computes from the
+  corpus directly.</p>
+  <pre id="selfcheck-detail"></pre>
+</div>
+
+<div id="app">
+<div class="panel">
+  <div class="field">
+    <label for="model">Question</label>
+    <select id="model"></select>
+  </div>
+  <div id="inputs"></div>
+  <div class="field">
+    <label for="available">What you already have <span class="help" style="display:inline">optional — turns this into a headroom check, and draws a line across the chart</span></label>
+    <input id="available" placeholder="e.g. 256GB" autocomplete="off">
+  </div>
+  <button id="go">Calculate</button>
+  <p id="error" class="error" hidden></p>
+</div>
+
+<div id="result" hidden>
+  <div class="panel">
+    <p class="question" id="q"></p>
+
+    <div class="answer">
+      <div class="label">Answer</div>
+      <div class="value" id="answer"></div>
+      <div class="band" id="band"></div>
+    </div>
+
+    <div class="bandbar" id="bandbar" hidden>
+      <div class="fill" id="bandfill"></div>
+      <div class="mark" id="bandmode"></div>
+    </div>
+    <div class="bandends" id="bandends" hidden></div>
+
+    <div id="headroom" hidden></div>
+
+    <div class="validation" id="validation"></div>
+  </div>
+
+  <div class="panel" id="chart-panel">
+    <div class="chart-head">
+      <div class="field">
+        <label for="sweep">The shape of it — vary</label>
+        <select id="sweep"></select>
+      </div>
+      <div class="scales">
+        <span>scale</span>
+        <button type="button" class="ghost" id="ylin" aria-pressed="false">linear</button>
+        <button type="button" class="ghost" id="ylog" aria-pressed="true">log</button>
+      </div>
+    </div>
+    <svg class="chart" id="chart" viewBox="0 0 720 340" role="img" aria-labelledby="chart-desc"></svg>
+    <p id="chart-desc" class="chart-readout"></p>
+    <p class="chart-note" id="chart-note"></p>
+    <details>
+      <summary>the numbers behind the curve</summary>
+      <div class="scroll">
+        <table>
+          <thead><tr><th id="sweep-h">input</th><th style="text-align:right">low</th><th style="text-align:right">mode</th><th style="text-align:right">high</th></tr></thead>
+          <tbody id="sweep-rows"></tbody>
+        </table>
+      </div>
+    </details>
+  </div>
+
+  <div class="panel">
+    <h2 style="margin-top:0">Breakdown</h2>
+    <div class="scroll">
+      <table>
+        <thead><tr>
+          <th>Term</th><th style="text-align:right">Effect</th><th style="text-align:right">Running</th>
+        </tr></thead>
+        <tbody id="steps"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="panel" id="constraints-panel" hidden>
+    <h2 style="margin-top:0">Constraints</h2>
+    <p style="font-size:.82rem;color:var(--muted);margin:0 0 .5rem">
+      Not in the arithmetic. They still bind, and they are frequently what actually matters.
+    </p>
+    <div id="constraints"></div>
+  </div>
+
+  <div class="panel reframe" id="reframe-panel" hidden>
+    <h2>Read this before acting on the number</h2>
+    <div id="reframe"></div>
+  </div>
+</div>
+</div>
+
+<footer>
+  <p>Code MIT · corpus CC BY 4.0 · <span id="provenance"></span></p>
+  <p>Everything above is computed in your browser from a corpus compiled at export
+  time. Nothing is sent anywhere. <code>xycalc why &lt;model&gt;</code> prints the same
+  citation chain in a terminal.</p>
+</footer>
+
+</div>
+
+<script id="corpus" type="application/json">/*__XYCALC_CORPUS_JSON__*/</script>
+<script>
+/*__XYCALC_EVALUATE_JS__*/
+</script>
+<script>
+(() => {
+"use strict";
+const $ = (id) => document.getElementById(id);
+const CORPUS = JSON.parse($("corpus").textContent);
+const MODELS = CORPUS.models;
+const fmt = XY.formatQuantity;
+const esc = (s) => String(s == null ? "" : s)
+  .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+
+// -- the gate ---------------------------------------------------------------
+// Before anything renders, re-run the vectors Python computed at export time.
+// A mismatch means this file's arithmetic and the corpus have drifted, and the
+// only safe output is no output.
+const FAILURES = XY.checkGolden(CORPUS);
+if (FAILURES.length) {
+  $("selfcheck").hidden = false;
+  $("app").hidden = true;
+  $("selfcheck-detail").textContent = FAILURES
+    .map((f) => f.vector.model + " " + JSON.stringify(f.vector.inputs) + "\n  " + f.reason)
+    .join("\n");
+} else {
+  boot();
+}
+
+function boot() {
+  $("provenance").textContent =
+    CORPUS.models.length + " models · corpus " + CORPUS.corpus_digest +
+    " · exported by xycalc " + CORPUS.xycalc_version;
+  $("model").innerHTML = MODELS.map((m) => `<option value="${esc(m.slug)}">${esc(m.question)}</option>`).join("");
+  renderInputs();
+  $("model").addEventListener("change", renderInputs);
+  $("go").addEventListener("click", calculate);
+  $("sweep").addEventListener("change", drawChart);
+  $("ylin").addEventListener("click", () => setScale("linear"));
+  $("ylog").addEventListener("click", () => setScale("log"));
+  // Enter in any field calculates, because a sizing question is a one-key
+  // interaction and reaching for the mouse to re-run it is friction nobody
+  // needs.
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && e.target.tagName === "INPUT") calculate();
+  });
+}
+
+function current() { return MODELS.find((m) => m.slug === $("model").value); }
+
+function renderInputs() {
+  const m = current();
+  $("inputs").innerHTML = m.inputs.map((i) => `
+    <div class="field">
+      <label for="in-${esc(i.key)}">${esc(i.label)}${i.required ? "" : " <span class='help' style='display:inline'>optional</span>"}</label>
+      <input id="in-${esc(i.key)}" data-key="${esc(i.key)}" autocomplete="off"
+             value="${esc(i.default_value == null ? "" : i.default_value)}"
+             placeholder="${i.unit === "bytes" ? "e.g. 500GB" : esc(i.unit)}">
+      ${i.help ? `<div class="help">${esc(i.help)}</div>` : ""}
+    </div>`).join("");
+  $("sweep").innerHTML = m.inputs
+    .map((i) => `<option value="${esc(i.key)}">${esc(i.label)}</option>`).join("");
+  $("result").hidden = true;
+}
+
+function readInputs() {
+  const out = {};
+  document.querySelectorAll("#inputs input").forEach((el) => {
+    if (el.value.trim()) out[el.dataset.key] = el.value.trim();
+  });
+  return out;
+}
+
+let STATE = null;          // {model, inputs, result, available}
+let YSCALE = "log";
+
+function calculate() {
+  const m = current();
+  const inputs = readInputs();
+  let result;
+  try {
+    result = XY.evaluate(m, inputs);
+  } catch (e) {
+    $("error").textContent = e.message;
+    $("error").hidden = false;
+    $("result").hidden = true;
+    return;
+  }
+  let available = null;
+  const availRaw = $("available").value.trim();
+  if (availRaw) {
+    try { available = XY.parseBytes(availRaw); }
+    catch (e) { $("error").textContent = e.message; $("error").hidden = false; return; }
+  }
+  $("error").hidden = true;
+  STATE = { model: m, inputs, result, available };
+  render();
+}
+
+function render() {
+  const { model: m, result: d, available } = STATE;
+  const u = d.unit;
+  $("q").textContent = m.question;
+  $("answer").textContent = fmt(d.mode, u);
+  $("band").textContent = `band ${fmt(d.lo, u)} – ${fmt(d.hi, u)}`;
+
+  // The band as a bar, because a range written as text reads as decoration and
+  // the range is the honest part of the answer.
+  const spread = d.hi - d.lo;
+  if (spread > 0) {
+    $("bandbar").hidden = $("bandends").hidden = false;
+    $("bandmode").style.left = ((d.mode - d.lo) / spread * 100) + "%";
+    $("bandends").innerHTML = `<span>${esc(fmt(d.lo, u))}</span><span>${esc(fmt(d.hi, u))}</span>`;
+  } else {
+    $("bandbar").hidden = $("bandends").hidden = true;
+  }
+
+  const v = $("validation");
+  const LABEL = { none: "Unvalidated", thin: "Thinly validated", reasonable: "Validated" };
+  v.className = "validation " + m.validation.grade;
+  v.innerHTML = `<strong>${esc(LABEL[m.validation.grade])}</strong> — ${esc(m.validation.text)}`;
+
+  if (available != null) {
+    const h = XY.headroom(d, available);
+    $("headroom").hidden = false;
+    $("headroom").innerHTML = `
+      <table style="margin-top:1.5rem">
+        <tbody>
+        <tr><td>Available</td><td class="num">${esc(fmt(h.available, u))}</td></tr>
+        <tr><td>Required (mode)</td><td class="num">${esc(fmt(h.required_mode, u))}</td></tr>
+        <tr><td>Utilisation</td><td class="num">${h.utilisation_mode_pct.toFixed(0)}%</td></tr>
+        <tr><td>Margin</td><td class="num">${esc(fmt(h.margin_mode, u))}</td></tr>
+        <tr><td><strong>Verdict</strong></td><td class="num"><strong>${esc(h.verdict)}</strong></td></tr>
+        </tbody>
+      </table>`;
+  } else {
+    $("headroom").hidden = true;
+  }
+
+  $("steps").innerHTML = d.steps.map((s) => {
+    const t = s.term;
+    if (s.skipped) return `<tr class="skipped">
+      <td><span class="role role-${esc(t.role)}">${esc(t.role)}</span><div class="term-label">${esc(t.label)}</div></td>
+      <td class="num">—</td><td class="num">${esc(s.skip_reason)}</td></tr>`;
+    const cite = t.source ? `
+      <div class="cite">
+        <span class="grade">${esc(t.confidence)}</span>
+        ${t.source_url ? `<a href="${esc(t.source_url)}" target="_blank" rel="noopener">${esc(t.source)}</a>` : esc(t.source)}
+        · ${esc(t.applies_to)}
+      </div>` : "";
+    const quote = t.quote ? `<details><summary>the sentence it was read from</summary>
+      <blockquote>${esc(t.quote)}</blockquote></details>` : "";
+    return `<tr>
+      <td>
+        <span class="role role-${esc(t.role)}">${esc(t.role)}</span>
+        <div class="term-label">${esc(t.label)}</div>
+        <div class="cite">${esc(t.rationale)}</div>
+        ${cite}${quote}
+      </td>
+      <td class="num">${esc(s.contribution)}</td>
+      <td class="num">${esc(fmt(s.mode, u))}</td>
+    </tr>`;
+  }).join("");
+
+  $("constraints-panel").hidden = d.constraints.length === 0;
+  $("constraints").innerHTML = d.constraints.map((c) => `
+    <div class="constraint-item">
+      <span class="v">${esc(XY.formatG(c.coeff_mode))}${c.unit === "percent" ? "%" : ""}</span>
+      <strong>${esc(c.label)}</strong>
+      <p>${esc(c.rationale)}</p>
+      <div class="cite">${c.source_url ? `<a href="${esc(c.source_url)}" target="_blank" rel="noopener">${esc(c.source)}</a>` : esc(c.source)}</div>
+    </div>`).join("");
+
+  $("reframe-panel").hidden = !m.reframe;
+  if (m.reframe) {
+    $("reframe").innerHTML = m.reframe.trim().split(/\n\s*\n/)
+      .map((p) => `<p>${esc(p.replace(/\s+/g, " "))}</p>`).join("");
+  }
+
+  $("result").hidden = false;
+  drawChart();
+}
+
+function setScale(s) {
+  YSCALE = s;
+  $("ylin").setAttribute("aria-pressed", String(s === "linear"));
+  $("ylog").setAttribute("aria-pressed", String(s === "log"));
+  drawChart();
+}
+
+// -- the curve --------------------------------------------------------------
+// One input swept across two decades either side of what was entered, with the
+// band drawn as an envelope rather than a line. The single answer above says
+// how much; this says what happens if the figure fed in was wrong -- which,
+// for a quantity nobody measures precisely, is the more useful question.
+const SAMPLES = 96;
+let SWEEP = null;   // {key, unit, xs, los, modes, his}
+
+function computeSweep() {
+  const { model: m, inputs } = STATE;
+  const key = $("sweep").value || m.inputs[0].key;
+  const spec = m.inputs.find((i) => i.key === key);
+  const centre = STATE.result.inputs[key];
+  // No value for the swept input (an optional one left blank) means there is
+  // nothing to centre on, so span a generic two decades instead of inventing a
+  // midpoint the user never supplied.
+  const from = centre ? centre / 10 : (spec.unit === "bytes" ? 1e9 : 1);
+  const to = centre ? centre * 10 : (spec.unit === "bytes" ? 1e13 : 1e4);
+  const grid = [];
+  for (let i = 0; i < SAMPLES; i++) grid.push(from * Math.pow(to / from, i / (SAMPLES - 1)));
+  // Snap one sample onto the value actually entered. Without this the readout
+  // and the marked point sit on whichever log-spaced sample landed nearest,
+  // so a page asked about 500 GB answers about 488 GB -- a small lie, and the
+  // one figure on the chart a reader is most likely to check against the
+  // number above it.
+  if (centre) grid[nearestIndex(grid, centre)] = centre;
+
+  const xs = [], los = [], modes = [], his = [];
+  for (const x of grid) {
+    const trial = Object.assign({}, inputs);
+    trial[key] = x;
+    let r;
+    try { r = XY.evaluate(m, trial); } catch (e) { continue; }
+    if (!isFinite(r.mode)) continue;
+    xs.push(x); los.push(r.lo); modes.push(r.mode); his.push(r.hi);
+  }
+  SWEEP = { key, label: spec.label, unit: spec.unit, centre, xs, los, modes, his };
+  return SWEEP;
+}
+
+function drawChart() {
+  if (!STATE) return;
+  const s = computeSweep();
+  const u = STATE.result.unit;
+  const svg = $("chart");
+  const W = 720, H = 340, L = 78, R = 16, T = 16, B = 46;
+  const iw = W - L - R, ih = H - T - B;
+
+  if (s.xs.length < 2) {
+    svg.innerHTML = "";
+    $("chart-desc").textContent = "";
+    $("chart-note").textContent = "This input cannot be swept: every trial value failed to evaluate.";
+    return;
+  }
+
+  const avail = STATE.available;
+  let yMin = Math.min.apply(null, s.los);
+  let yMax = Math.max.apply(null, s.his);
+  if (avail != null) { yMin = Math.min(yMin, avail); yMax = Math.max(yMax, avail); }
+  const logY = YSCALE === "log" && yMin > 0;
+  if (!logY) yMin = Math.min(0, yMin);
+  else { yMin = yMin / 1.15; yMax = yMax * 1.15; }
+  if (!logY) yMax = yMax * 1.05;
+  if (yMax === yMin) yMax = yMin + 1;
+
+  const xLo = s.xs[0], xHi = s.xs[s.xs.length - 1];
+  const px = (x) => L + (Math.log(x / xLo) / Math.log(xHi / xLo)) * iw;
+  const py = (y) => logY
+    ? T + ih - (Math.log(Math.max(y, yMin) / yMin) / Math.log(yMax / yMin)) * ih
+    : T + ih - ((y - yMin) / (yMax - yMin)) * ih;
+
+  const path = (arr) => arr.map((y, i) => (i ? "L" : "M") + px(s.xs[i]).toFixed(1) + " " + py(y).toFixed(1)).join(" ");
+  const area = path(s.his) + " " +
+    s.los.map((y, i) => "L" + px(s.xs[s.xs.length - 1 - i]).toFixed(1) + " " + py(s.los[s.los.length - 1 - i]).toFixed(1)).join(" ") + " Z";
+
+  const xTicks = ticks(xLo, xHi, true, 5);
+  const yTicks = ticks(yMin, yMax, logY, 5);
+
+  const parts = [];
+  parts.push(`<g class="axis">`);
+  for (const t of yTicks) {
+    const y = py(t).toFixed(1);
+    parts.push(`<line x1="${L}" x2="${W - R}" y1="${y}" y2="${y}"></line>`);
+    parts.push(`<text x="${L - 6}" y="${y}" text-anchor="end" dominant-baseline="middle">${esc(fmt(t, u))}</text>`);
+  }
+  for (const t of xTicks) {
+    const x = px(t).toFixed(1);
+    parts.push(`<line x1="${x}" x2="${x}" y1="${T + ih}" y2="${T + ih + 4}"></line>`);
+    parts.push(`<text x="${x}" y="${T + ih + 16}" text-anchor="middle">${esc(fmt(t, s.unit))}</text>`);
+  }
+  parts.push(`<text x="${L + iw / 2}" y="${H - 6}" text-anchor="middle">${esc(s.label)}</text>`);
+  parts.push(`</g>`);
+
+  parts.push(`<path class="band-area" d="${area}"></path>`);
+  parts.push(`<path class="edge-line" d="${path(s.his)}"></path>`);
+  parts.push(`<path class="edge-line" d="${path(s.los)}"></path>`);
+  parts.push(`<path class="mode-line" d="${path(s.modes)}"></path>`);
+
+  // What you already have, drawn across. Where it crosses the band is where
+  // the sizing stops working -- and the crossing being a range rather than a
+  // point is the whole argument for carrying a band at all.
+  if (avail != null && avail >= yMin && avail <= yMax) {
+    const y = py(avail).toFixed(1);
+    parts.push(`<line class="have-line" x1="${L}" x2="${W - R}" y1="${y}" y2="${y}"></line>`);
+    parts.push(`<text class="have-label" x="${W - R}" y="${Number(y) - 5}" text-anchor="end">you have ${esc(fmt(avail, u))}</text>`);
+  }
+
+  // Where the value actually entered sits on the curve.
+  if (s.centre && s.centre >= xLo && s.centre <= xHi) {
+    parts.push(`<line class="cursor-line" x1="${px(s.centre).toFixed(1)}" x2="${px(s.centre).toFixed(1)}" y1="${T}" y2="${T + ih}"></line>`);
+  }
+  parts.push(`<circle class="cursor-dot" id="dot" r="4" cx="-20" cy="-20"></circle>`);
+  parts.push(`<rect x="${L}" y="${T}" width="${iw}" height="${ih}" fill="transparent" id="hit"></rect>`);
+  svg.innerHTML = parts.join("");
+
+  const nearest = (clientX) => {
+    const box = svg.getBoundingClientRect();
+    const vx = ((clientX - box.left) / box.width) * W;
+    let best = 0, bestD = Infinity;
+    for (let i = 0; i < s.xs.length; i++) {
+      const d = Math.abs(px(s.xs[i]) - vx);
+      if (d < bestD) { bestD = d; best = i; }
+    }
+    return best;
+  };
+  const show = (i) => {
+    const dot = svg.querySelector("#dot");
+    dot.setAttribute("cx", px(s.xs[i]).toFixed(1));
+    dot.setAttribute("cy", py(s.modes[i]).toFixed(1));
+    $("chart-desc").innerHTML =
+      `${esc(fmt(s.xs[i], s.unit))} <span class="dim">→</span> ${esc(fmt(s.modes[i], u))} ` +
+      `<span class="dim">(${esc(fmt(s.los[i], u))} – ${esc(fmt(s.his[i], u))})</span>`;
+  };
+  svg.querySelector("#hit").addEventListener("pointermove", (e) => show(nearest(e.clientX)));
+
+  const centreIdx = s.centre ? nearestIndex(s.xs, s.centre) : Math.floor(s.xs.length / 2);
+  show(centreIdx);
+
+  const ratio = s.his[centreIdx] / (s.los[centreIdx] || 1);
+  $("chart-note").textContent =
+    `${s.label} swept from ${fmt(xLo, s.unit)} to ${fmt(xHi, s.unit)}; ` +
+    `everything else held at what you entered. The shaded envelope is the band, ` +
+    `not error bars — at the value you gave it spans a factor of ${ratio.toFixed(1)}.`;
+  svg.setAttribute("aria-label",
+    `${STATE.model.question} — ${s.label} on a log axis from ${fmt(xLo, s.unit)} to ${fmt(xHi, s.unit)}, ` +
+    `answer from ${fmt(s.modes[0], u)} to ${fmt(s.modes[s.modes.length - 1], u)}. The table below has the figures.`);
+
+  $("sweep-h").textContent = s.label;
+  const step = Math.max(1, Math.floor(s.xs.length / 9));
+  const rows = [];
+  for (let i = 0; i < s.xs.length; i += step) {
+    rows.push(`<tr><td class="num">${esc(fmt(s.xs[i], s.unit))}</td>` +
+      `<td class="num">${esc(fmt(s.los[i], u))}</td>` +
+      `<td class="num">${esc(fmt(s.modes[i], u))}</td>` +
+      `<td class="num">${esc(fmt(s.his[i], u))}</td></tr>`);
+  }
+  $("sweep-rows").innerHTML = rows.join("");
+}
+
+function nearestIndex(xs, x) {
+  let best = 0, bestD = Infinity;
+  for (let i = 0; i < xs.length; i++) {
+    const d = Math.abs(Math.log(xs[i]) - Math.log(x));
+    if (d < bestD) { bestD = d; best = i; }
+  }
+  return best;
+}
+
+// Round tick values so the axis reads in figures a person would say out loud
+// (1, 2, 5, 10 ...) rather than in whatever the data range happened to be.
+function ticks(lo, hi, log, count) {
+  const out = [];
+  if (log && lo > 0) {
+    const from = Math.floor(Math.log10(lo)), to = Math.ceil(Math.log10(hi));
+    for (let e = from; e <= to; e++) {
+      for (const m of [1, 2, 5]) {
+        const v = m * Math.pow(10, e);
+        if (v >= lo && v <= hi) out.push(v);
+      }
+    }
+    while (out.length > count + 2) {
+      for (let i = out.length - 2; i > 0; i -= 2) out.splice(i, 1);
+      if (out.length <= count + 2) break;
+    }
+    return out;
+  }
+  const span = hi - lo;
+  const raw = span / count;
+  const mag = Math.pow(10, Math.floor(Math.log10(raw)));
+  const norm = raw / mag;
+  const stepMul = norm > 5 ? 10 : norm > 2 ? 5 : norm > 1 ? 2 : 1;
+  const step = stepMul * mag;
+  for (let v = Math.ceil(lo / step) * step; v <= hi; v += step) out.push(v);
+  return out;
+}
+})();
+</script>
+</body>
+</html>
