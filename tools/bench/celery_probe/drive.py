@@ -29,6 +29,8 @@ import string
 import sys
 import time
 
+import celery
+import pymongo
 import redis
 from pymongo import MongoClient
 
@@ -65,18 +67,27 @@ def tickets() -> dict:
 
 
 def load() -> dict:
-    print(f"loading {DOCS:,} documents...", file=sys.stderr)
     db = mongo.ticketprobe
-    db.docs.drop()
-    alphabet = string.ascii_lowercase + string.digits
-    batch = []
-    for i in range(DOCS):
-        batch.append({"_id": i, "pad": "".join(random.choices(alphabet, k=700))})
-        if len(batch) == 2000:
+    # Idempotent: a five-value PROBE_RATES sweep used to reload 1.5M documents
+    # five times, once per invocation of this script. estimated_document_count
+    # reads collection metadata rather than scanning, so this check is cheap
+    # even at DOCS-scale. A count that doesn't match DOCS means either a fresh
+    # dataset or a differently-sized one left over -- drop and reload either way.
+    existing = db.docs.estimated_document_count() if "docs" in db.list_collection_names() else 0
+    if existing == DOCS:
+        print(f"reusing existing {DOCS:,} documents (idempotent load)", file=sys.stderr)
+    else:
+        print(f"loading {DOCS:,} documents...", file=sys.stderr)
+        db.docs.drop()
+        alphabet = string.ascii_lowercase + string.digits
+        batch = []
+        for i in range(DOCS):
+            batch.append({"_id": i, "pad": "".join(random.choices(alphabet, k=700))})
+            if len(batch) == 2000:
+                db.docs.insert_many(batch, ordered=False)
+                batch = []
+        if batch:
             db.docs.insert_many(batch, ordered=False)
-            batch = []
-    if batch:
-        db.docs.insert_many(batch, ordered=False)
     st = db.command("collstats", "docs")
     oversub = st["size"] / cache_max()
     print(
@@ -131,7 +142,9 @@ def run_rate(rate: int) -> dict:
             enqueued += 1
             next_send += interval
         if now >= next_sample:
-            samples.append({"queue": r.llen(QUEUE), **tickets(), **counters()})
+            samples.append(
+                {"t": round(now - t0, 1), "queue": r.llen(QUEUE), **tickets(), **counters()}
+            )
             next_sample = now + 0.5
         slack = min(next_send, next_sample) - time.time()
         if slack > 0:
@@ -176,6 +189,10 @@ def run_rate(rate: int) -> dict:
         "queuedMicrosDelta": after["queuedMicros"] - before["queuedMicros"],
         "pagesReadIntoCache": after["pagesRead"] - before["pagesRead"],
         "samples": len(samples),
+        # The per-sample series (queue depth + ticket + counter snapshots every
+        # 0.5s) used to be computed and thrown away, keeping only the count.
+        # #14 needs the series itself, not just how long it is.
+        "sampleSeries": samples,
     }
 
 
@@ -208,16 +225,45 @@ def main() -> int:
             file=sys.stderr,
         )
 
+    acks_late = bool(app.conf.task_acks_late)
+    total_duplicates = sum(x["duplicateExecutions"] for x in results)
+    # Under ack-before-execute, broker redelivery is structurally impossible at
+    # any arrival rate or visibility timeout -- a clean zero here is guaranteed
+    # by configuration, not by load, and does not mean redelivery was tested
+    # and found absent. Say so loudly instead of reporting a quiet zero, which
+    # is exactly the mistake the smoke run's write-up made (#20).
+    zero_dupes_is_vacuous = (not acks_late) and total_duplicates == 0
+    if zero_dupes_is_vacuous:
+        print(
+            "\nWARNING: acksLate is OFF and duplicateExecutions was ZERO across "
+            "the whole run. That zero is GUARANTEED by configuration, not "
+            "produced by load -- with ack-before-execute, the broker cannot "
+            "redeliver a task no matter how slow it runs. This run says "
+            "nothing about redelivery. Set PROBE_ACKS_LATE=1 to make "
+            "duplication possible.",
+            file=sys.stderr,
+        )
+
     print("===JSON===")
     print(
         json.dumps(
             {
                 "mongoVersion": mongo.admin.command("buildInfo")["version"],
+                # Resolved, not just requested: the Dockerfile used to install
+                # celery[redis]>=5.3 unpinned against floating image tags, so
+                # no coefficient derived from this JSON had an honest
+                # applies_to. Record what actually ran.
+                "celeryVersion": celery.__version__,
+                "pymongoVersion": pymongo.version,
+                "redisVersion": redis.__version__,
                 "prefetch": app.conf.worker_prefetch_multiplier,
-                "acksLate": app.conf.task_acks_late,
+                "acksLate": acks_late,
+                "acksLateVacuousZeroDuplicates": zero_dupes_is_vacuous,
                 "visibilityTimeout": app.conf.broker_transport_options.get(
                     "visibility_timeout"
                 ),
+                "retryPolicy": os.environ.get("PROBE_RETRY_POLICY", "none"),
+                "retryDeadline": float(os.environ.get("PROBE_RETRY_DEADLINE", "120")),
                 "secondsPerRate": SECONDS,
                 "docs": DOCS,
                 **meta,

@@ -23,6 +23,9 @@ import math
 import re
 import sqlite3
 from dataclasses import dataclass, field
+from pathlib import Path
+
+import yaml
 
 _UNITS = {
     "b": 1,
@@ -39,6 +42,12 @@ _UNITS = {
 
 class ModelError(Exception):
     pass
+
+
+# Mirrors build.py's own DATA computation rather than importing it, so this
+# module has no dependency on the build pipeline -- a scenario only ever
+# references models that build.py has already loaded into the database.
+_SCENARIOS_PATH = Path(__file__).parent.parent.parent / "data" / "scenarios.yaml"
 
 
 def parse_bytes(text: str | float | int) -> float:
@@ -471,6 +480,15 @@ def load_instance_catalog(
     )
 
 
+# Standing internal policy, not an AWS ceiling: r8i itself goes to 3,072 GiB
+# (r8i.96xlarge), but the org has decided to cap recommendations at 1,536 GiB
+# (== r8i.48xlarge exactly, in binary GiB) and require a family change above
+# that, pending a decision on what that next family is. Set 2026-08-16.
+# Shared by the CLI's `instance-select` command and the scenario chain's
+# lookup step, so the two surfaces cannot silently disagree about the cutoff.
+DEFAULT_INSTANCE_CEILING = "1536GiB"
+
+
 def select_instance(
     result: Result,
     catalog: list[InstanceSpec],
@@ -532,6 +550,161 @@ def select_instance(
         "largest_in_pool": largest,
         "exceeds_pool": result.hi > largest.ram_bytes,
     }
+
+
+def load_scenarios() -> list[dict]:
+    """Every declared scenario, in file order. Read straight from YAML rather
+    than through the build/SQLite pipeline: a scenario has no coefficient or
+    citation of its own to audit, only references to models that are already
+    audited on their own, so putting it through the same schema/build/audit
+    machinery as a sourced figure would buy nothing and cost a migration."""
+    if not _SCENARIOS_PATH.is_file():
+        return []
+    with _SCENARIOS_PATH.open(encoding="utf-8") as fh:
+        doc = yaml.safe_load(fh) or {}
+    return doc.get("scenarios", [])
+
+
+def get_scenario(slug: str) -> dict:
+    for s in load_scenarios():
+        if s["slug"] == slug:
+            return s
+    known = [s["slug"] for s in load_scenarios() if not s.get("disabled")]
+    raise ModelError(f"no scenario '{slug}'. Available: {', '.join(known) or '(none)'}")
+
+
+@dataclass
+class ScenarioStepResult:
+    """One step of a chain, with enough attached to render exactly what a
+    standalone `evaluate()` call would: a step is a `Result` reader never
+    sees anything less-audited just because it arrived by chain rather than by
+    typing."""
+
+    kind: str  # "model" | "lookup"
+    slug: str
+    chained: bool  # True if this step's band came from the previous step's
+                   # band rather than from caller-supplied input
+    model: "Model | None" = None
+    result: Result | None = None
+    instance_pick: dict | None = None
+    headroom: dict | None = None
+
+
+def chain_evaluate(
+    conn: sqlite3.Connection,
+    scenario: dict,
+    inputs: dict,
+    available: float | None = None,
+) -> list[ScenarioStepResult]:
+    """Run every step of a scenario, feeding one step's whole band into the
+    next rather than a single collapsed number.
+
+    The rule, lifted from `select_instance()`: a chained input is evaluated
+    once per band-end -- once with the previous step's lo, once with its mode,
+    once with its hi -- and the composed band is
+    ``lo = downstream(previous.lo).lo``, ``mode = downstream(previous.mode).mode``,
+    ``hi = downstream(previous.hi).hi``. That composition is only honest when
+    the downstream model is monotone non-decreasing in the fed input, which
+    every `apply` kind in this corpus is today (see the module docstring's
+    banding note); this function checks the result rather than trusting the
+    assumption, and refuses to report a band that came out inverted.
+
+    The step's rendered breakdown (`result.steps`, the per-term table) comes
+    from the mode-band run. The lo/mode/hi run each other for the top-level
+    answer only -- a reader wants one coherent breakdown to read alongside the
+    band, not three.
+    """
+    out: list[ScenarioStepResult] = []
+    previous: Result | None = None
+
+    # Headroom is reported against the last MODEL step, not the last step
+    # overall -- a scenario that ends in an instance-select lookup (a name,
+    # not a band) has nothing for `available` to be measured against there.
+    model_steps = [s for s in scenario["steps"] if s.get("kind", "model") == "model"]
+    last_model_step = model_steps[-1] if model_steps else None
+
+    for step in scenario["steps"]:
+        kind = step.get("kind", "model")
+
+        if kind == "model":
+            model = Model.load(conn, step["model"])
+            feed = step.get("feed") or {}
+
+            if not feed:
+                composed = model.evaluate(inputs)
+            else:
+                if previous is None:
+                    raise ModelError(
+                        f"{step['model']}: feed references 'previous' but this "
+                        f"is the first step"
+                    )
+                fed_keys = [k for k, v in feed.items() if v == "previous"]
+                # Only this step's OWN declared inputs are relevant -- `inputs`
+                # is the caller's flat dict for the whole scenario, and an
+                # earlier step's input key (storage_size) is not a key this
+                # model recognises at all.
+                own_keys = {i["key"] for i in model.inputs}
+
+                def _run(band_value: float) -> Result:
+                    merged = {k: v for k, v in inputs.items() if k in own_keys}
+                    merged.update({k: band_value for k in fed_keys})
+                    return model.evaluate(merged)
+
+                r_lo, r_mode, r_hi = _run(previous.lo), _run(previous.mode), _run(previous.hi)
+                if not (r_lo.lo <= r_mode.mode <= r_hi.hi):
+                    raise ModelError(
+                        f"{step['model']}: chained band inverted "
+                        f"(lo={r_lo.lo!r}, mode={r_mode.mode!r}, hi={r_hi.hi!r}) -- "
+                        f"refusing to report a band that would read as more "
+                        f"confident than it is"
+                    )
+                composed = Result(
+                    model=model.slug,
+                    lo=r_lo.lo,
+                    mode=r_mode.mode,
+                    hi=r_hi.hi,
+                    unit=r_mode.unit,
+                    steps=r_mode.steps,
+                    constraints=r_mode.constraints,
+                    inputs=r_mode.inputs,
+                )
+
+            step_result = ScenarioStepResult(
+                kind="model",
+                slug=model.slug,
+                chained=bool(feed),
+                model=model,
+                result=composed,
+            )
+            if available is not None and step is last_model_step:
+                step_result.headroom = headroom(composed, available)
+            out.append(step_result)
+            previous = composed
+
+        elif kind == "lookup":
+            if step.get("lookup") != "instance_select":
+                raise ModelError(f"unknown lookup kind '{step.get('lookup')}'")
+            if previous is None:
+                raise ModelError("instance_select: no previous step's band to pick against")
+            catalog = load_instance_catalog(conn, "aws-ec2")
+            ceiling = parse_bytes(step.get("max_ram", DEFAULT_INSTANCE_CEILING))
+            pick = select_instance(
+                previous,
+                catalog,
+                family=step.get("family"),
+                ceiling_bytes=None if ceiling == 0 else ceiling,
+            )
+            out.append(
+                ScenarioStepResult(
+                    kind="lookup", slug="aws-ec2.instance-select", chained=True,
+                    instance_pick=pick,
+                )
+            )
+
+        else:
+            raise ModelError(f"unknown scenario step kind '{kind}'")
+
+    return out
 
 
 # Below these, a model has been checked but not enough to lean on. The
