@@ -231,5 +231,5 @@ the same reason machine-extracted research is checked rather than trusted. See
 
 ## Licence
 
-Code: MIT (`LICENSE`). Corpus and documentation: CC BY 4.0 (`LICENSE-DOCS`).
+Code: Apache-2.0 (`LICENSE`). Corpus and documentation: CC BY 4.0 (`LICENSE-DOCS`).
 Anything merged from `local/` is neither, and is not distributed.
