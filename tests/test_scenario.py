@@ -167,3 +167,22 @@ class TestScenarioApi:
         assert by_year[2025]["microsoft"] == 1255
         assert "microsoft" not in by_year[2023]
         assert chart["source"] == "jerrygamblin-2025-cve-review"
+
+    def test_unbuilt_scenario_is_disabled_not_fatal(self, conn, monkeypatch):
+        from xycalc.model import Model, ModelError, describe_scenarios
+
+        orig = Model.load.__func__
+
+        def selective(cls, c, slug):
+            if slug == "ebs.gp3-iops-at-io-size":
+                raise ModelError(f"no model '{slug}'")
+            return orig(cls, c, slug)
+
+        monkeypatch.setattr(Model, "load", classmethod(selective))
+        scenarios = describe_scenarios(conn)
+        gap = next(s for s in scenarios if s["slug"] == "storage.ebs-vs-nvme-at-io-size")
+        assert gap["disabled"]
+        assert gap["default"] is False
+        assert "ebs.gp3-iops-at-io-size" in gap["note"]
+        mongodb = next(s for s in scenarios if s["slug"] == "mongodb.size-to-instance")
+        assert not mongodb["disabled"]

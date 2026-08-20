@@ -717,6 +717,22 @@ def nvd_publication_chart(conn: sqlite3.Connection) -> dict | None:
     }
 
 
+def scenario_corpus_gap(conn: sqlite3.Connection, scenario: dict) -> str | None:
+    """Return why a scenario cannot run yet, or None when every step's model is built."""
+    for step in scenario.get("steps", []):
+        if step.get("kind", "model") != "model":
+            continue
+        slug = step["model"]
+        try:
+            Model.load(conn, slug)
+        except ModelError:
+            return (
+                f"{slug} is not in the built corpus yet — run "
+                f"`xycalc build` and restart the server"
+            )
+    return None
+
+
 def describe_scenarios(conn: sqlite3.Connection) -> list[dict]:
     """The scenario picker payload — shared by the live API and the static export."""
     out = []
@@ -733,6 +749,11 @@ def describe_scenarios(conn: sqlite3.Connection) -> list[dict]:
             "steps": s.get("steps", []),
             "input_sections": s.get("input_sections", []),
         }
+        gap = None if entry["disabled"] else scenario_corpus_gap(conn, s)
+        if gap:
+            entry["disabled"] = True
+            entry["default"] = False
+            entry["note"] = gap
         if not entry["disabled"]:
             form_inputs = scenario_form_inputs(conn, s)
             input_map = {i["key"]: i for i in form_inputs}
