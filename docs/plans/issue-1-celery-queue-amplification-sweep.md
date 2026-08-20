@@ -48,17 +48,15 @@ never "does it grow" but **how fast, and what that costs** — the numbers, not 
 
 ## Premise notes — two things in the issue/BRIEF that don't match the harness as built
 
-**A. Redelivery cannot happen under the issue's own default config.** `tasks.py` sets
-`task_acks_late=os.environ.get("PROBE_ACKS_LATE", "0") == "1"` — default `acks_late=False`,
-Celery's documented default, which acks a message when the worker *receives* it, before
-execution starts. Redis's `visibility_timeout` redelivers only what's unacked; with early ack,
-the message is off the unacked set before the slow MongoDB call even begins, so no amount of
-storage-induced slowness can make it cross the timeout. The issue's "What to run" section says
-`./run.sh` with no override, and explains the smoke run's zero duplicates as "tasks still
-completed inside the window" — but with `acks_late=0`, zero duplicates is what you get
-**regardless of how long tasks take or how short the timeout is.** Provoking redelivery needs
-`PROBE_ACKS_LATE=1` as a precondition, not "higher arrival rates or a shorter timeout" as the
-issue states. This is factored into Method and the Guard below.
+**A. Redelivery cannot happen under early ack.** At plan time, `tasks.py` defaulted
+`PROBE_ACKS_LATE` to `0` (Celery's own default: ack on receive, before execute). Redis's
+`visibility_timeout` redelivers only what's unacked; with early ack the message is off the
+unacked set before the slow MongoDB call even begins, so no amount of storage-induced
+slowness can make it cross the timeout. The original issue #1 "What to run" text explained
+the smoke run's zero duplicates as "tasks still completed inside the window" — wrong: with
+`acks_late=0`, zero is guaranteed regardless of load or timeout. Fixed in #20: harness
+default is now `PROBE_ACKS_LATE=1`, and `drive.py` warns when a zero-duplicate run is
+vacuous. Control arms still set `PROBE_ACKS_LATE=0` explicitly.
 
 **B. The harness measures drain under *sustained* throttle, not drain after the stall *ends*.**
 `compose.yml`'s `blkio_config` is a static limit for the container's whole lifetime; nothing in
@@ -94,8 +92,8 @@ All runs add `PROBE_ACKS_LATE=1` except the explicit control. All use `PROBE_CON
 
 | # | Purpose | Env overrides | Rates | Seconds |
 |---|---|---|---|---|
-| 1 | **Control** — confirms Premise Note A | `PROBE_ACKS_LATE=0` (default) | `200` | 30 |
-| 2 | **Baseline ladder** — backlog + drain curve | `PROBE_ACKS_LATE=1` | `25,50,100,200,400` (default) | 30 |
+| 1 | **Control** — confirms Premise Note A | `PROBE_ACKS_LATE=0` (explicit; harness default is now 1) | `200` | 30 |
+| 2 | **Baseline ladder** — backlog + drain curve | defaults (`acks_late=1`) | `25,50,100,200,400` (default) | 30 |
 | 3 | Visibility-timeout sweep | `PROBE_ACKS_LATE=1 PROBE_VISIBILITY_TIMEOUT=10` | `200` | 60 |
 | 4 | Visibility-timeout sweep | `PROBE_ACKS_LATE=1 PROBE_VISIBILITY_TIMEOUT=5` | `200` | 60 |
 | 5 | Visibility-timeout sweep | `PROBE_ACKS_LATE=1 PROBE_VISIBILITY_TIMEOUT=2` | `200` | 60 |

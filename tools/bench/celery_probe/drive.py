@@ -7,13 +7,17 @@ a different question with at least three answers the thread probe cannot give:
   BACKLOG      Threads are self-limiting -- a thread waiting on a query cannot
                issue another. A queue is not. If tasks arrive faster than they
                complete, the backlog grows without bound, and the time to drain
-               it after the stall ends can dwarf the stall itself.
+               it under continued throttle can dwarf the arrival window itself.
+               (This harness never lifts blkio mid-run, so drain is not
+               "after the stall ends.")
 
-  REDELIVERY   The Redis broker redelivers any task unacknowledged within
-               visibility_timeout. A storage stall makes tasks slow, which is
-               exactly when they cross that threshold -- so the broker adds
-               load, in duplicate, at the worst possible moment. Positive
-               feedback, same shape as the eviction loop in investigation 001.
+  REDELIVERY   With task_acks_late (harness default), the Redis broker
+               redelivers any task unacknowledged within visibility_timeout.
+               A storage stall makes tasks slow, which is exactly when they
+               cross that threshold -- so the broker adds load, in duplicate,
+               at the worst possible moment. Positive feedback, same shape as
+               the eviction loop in investigation 001. Early ack makes this
+               structurally impossible; see the vacuous-zero guard below.
 
   PREFETCH     A worker reserves prefetch_multiplier x concurrency tasks. Those
                are off the queue but not running, so queue depth understates the
