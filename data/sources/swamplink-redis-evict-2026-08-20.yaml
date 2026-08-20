@@ -1,0 +1,11 @@
+sources:
+- slug: obs-redis-evict-swamplink-2026-08-20
+  title: Redis broker maxmemory eviction probe (swamplink)
+  publisher: xycalc benchmark (swamplink)
+  retrieved_on: '2026-08-20'
+  source_type: benchmark
+  notes: >-
+    Investigation 005 (T7) from tools/bench/celery_probe/run_evict.sh.
+    Celery 5.4.0, Redis server
+    7.4.10. 2 policy arm(s) imported.
+    Ground truth in separate bookkeeping Redis; broker used for transport only.

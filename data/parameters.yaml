@@ -249,6 +249,98 @@ parameters:
     unit: percent
     dimension: percent
 
+  - slug: server.maxmemory_bytes
+    label: Redis maxmemory ceiling (0 = unlimited)
+    unit: bytes
+    dimension: bytes
+
+  - slug: server.maxmemory_policy_default
+    label: Shipped default maxmemory-policy encoding
+    unit: count
+    dimension: count
+
+  - slug: broker.documented_maxmemory_policy_count
+    label: Celery-documented maxmemory-policy options
+    unit: count
+    dimension: count
+
+  - slug: broker.noeviction_producer_error_rate
+    label: send_task failure rate at broker maxmemory
+    unit: ratio
+    dimension: percent
+
+  - slug: broker.noeviction_worker_starts
+    label: Worker consumes while broker at maxmemory (0/1)
+    unit: count
+    dimension: count
+
+  - slug: broker.allkeys_lru_task_loss_rate
+    label: Task loss rate under broker memory pressure
+    unit: ratio
+    dimension: percent
+
+  - slug: broker.duplicate_execution_rate
+    label: Duplicate task execution rate under broker pressure
+    unit: ratio
+    dimension: percent
+
+  - slug: broker.noeviction_oom_stall_reported
+    label: Practitioner report of noeviction OOM queue stall (0/1)
+    unit: count
+    dimension: count
+
+  - slug: broker.evicted_keys_delta
+    label: Evicted keys delta over evict_probe run
+    unit: count
+    dimension: count
+
+  - slug: memory.empty_key_overhead_bytes
+    label: Empty string key MEMORY USAGE overhead
+    unit: bytes
+    dimension: bytes
+    notes: >-
+      Vendor MEMORY USAGE of SET "" "" — administrative overhead for a key with
+      empty name and empty value. Floor for key metadata, not per-list-element
+      Celery task message size.
+
+  - slug: server.maxmemory_samples
+    label: Keys sampled per approximated LRU/LFU eviction
+    unit: count
+    dimension: count
+
+  - slug: server.list_max_listpack_size
+    label: Quicklist listpack node size directive
+    unit: count
+    dimension: count
+    notes: >-
+      redis.conf list-max-listpack-size. Negative values encode KB caps
+      (-2 = 8 KB). Positive values are exact element counts per node.
+
+  - slug: broker.volatile_no_ttl_equals_noeviction
+    label: Volatile eviction with no TTLs equals noeviction (0/1)
+    unit: count
+    dimension: count
+
+  - slug: server.noeviction_reads_still_work
+    label: noeviction still serves read-only commands (0/1)
+    unit: count
+    dimension: count
+
+  - slug: memory.small_aggregate_avg_saving_factor
+    label: Average memory saving from special aggregate encoding
+    unit: ratio
+    dimension: ratio
+
+  - slug: server.hash_max_listpack_entries
+    label: Max hash fields before listpack converts to hashtable
+    unit: count
+    dimension: count
+
+  - slug: host.maxmemory_free_ram_headroom_pct
+    label: Free host RAM beyond maxmemory (vendor rule of thumb)
+    unit: percent
+    dimension: percent
+
   # -- AWS EC2 instance catalog -------------------------------------------
   - slug: instance.vcpu_count
     label: vCPU count

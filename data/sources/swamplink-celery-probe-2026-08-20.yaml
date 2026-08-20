@@ -1,0 +1,11 @@
+sources:
+- slug: obs-celery-probe-swamplink-2026-08-20
+  title: Celery queue amplification under throttled MongoDB (swamplink)
+  publisher: xycalc benchmark (swamplink)
+  retrieved_on: '2026-08-20'
+  source_type: benchmark
+  notes: >-
+    Investigation 004 sweep from tools/bench/celery_probe/ on swamplink.
+    Celery 5.4.0, MongoDB 7.0.39,
+    Redis broker visibility_timeout swept in runs 2-5. Harness pins
+    celery[redis]==5.4.0; see sweep logs for full JSON per run.

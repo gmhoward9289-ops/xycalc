@@ -3,8 +3,8 @@
 **Question:** Investigation 003 characterised the failure with raw threads. What
 changes when the load arrives through Celery instead?
 
-**Status:** harness built and smoke-tested (`tools/bench/celery_probe/`).
-Full sweep not yet run; no coefficients yet.
+**Status:** full sweep complete on swamplink 2026-08-20; coefficients and
+FINDINGS.md landed. See `docs/investigations/004-celery-queue-amplification/FINDINGS.md`.
 
 **Expected confidence ceiling:** `benchmark` for anything measured here,
 `documented` for Celery and Redis broker defaults. The interesting quantities —

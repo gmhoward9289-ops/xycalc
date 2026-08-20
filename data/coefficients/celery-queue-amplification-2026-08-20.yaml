@@ -1,0 +1,93 @@
+# Investigation 004 — celery_probe sweep on swamplink 2026-08-20.
+# Benchmark grade: each row names the full harness configuration, not "Celery."
+
+coefficients:
+  - slug: celery.queue-completion-ceiling-baseline
+    parameter: queue.completion_rate_ceiling_ops_s
+    system: celery
+    applies_to: >-
+      Celery 5.4.0 prefork c=8 prefetch=4 acks_late=1 visibility_timeout=30s,
+      Redis 7 broker, MongoDB 7.0.39 WT cache 0.25GB, docker blkio 8MiB/s 150 IOPS,
+      1.5M docs (4.05× cache), swamplink 2026-08-20 run 2
+    value: 82.4
+    confidence: measured
+    source: obs-celery-probe-swamplink-2026-08-20
+    notes: >-
+      Fleet throughput at offered 200 tasks/s (below-ceiling rates 25–50/s tracked
+      separately in observations). Includes Celery overhead on investigation 003's
+      ~115 ops/s raw-thread ceiling on the same device.
+
+  - slug: celery.queue-backlog-max-at-200-rate
+    parameter: queue.backlog_depth_max
+    system: celery
+    applies_to: >-
+      Same configuration as celery.queue-completion-ceiling-baseline at 200 tasks/s
+      for 30s
+    value: 3408
+    confidence: measured
+    source: obs-celery-probe-swamplink-2026-08-20
+    notes: >-
+      Peak Redis LIST depth during the arrival window. Producer achieved 200/s;
+      fleet completed ~82/s — classic open-loop queue growth.
+
+  - slug: celery.queue-drain-seconds-at-200-rate
+    parameter: queue.drain_seconds
+    system: celery
+    applies_to: >-
+      Same as celery.queue-backlog-max-at-200-rate; drain measured while blkio
+      throttle remains active (not after device recovery)
+    value: 36.5
+    confidence: measured
+    source: obs-celery-probe-swamplink-2026-08-20
+    notes: >-
+      Seconds from arrival stop until queue depth reached zero under sustained
+      throttle. Headroom term for the queue-amplification model.
+
+  - slug: celery.queue-backlog-max-at-400-rate
+    parameter: queue.backlog_depth_max
+    system: celery
+    applies_to: >-
+      Celery 5.4.0 prefork c=8 prefetch=4 acks_late=1 visibility_timeout=30s,
+      same Mongo/Redis/device as baseline, offered 400 tasks/s for 30s
+    value: 8885
+    confidence: measured
+    source: obs-celery-probe-swamplink-2026-08-20
+    notes: Producer held 400/s; fleet completion ~96.5/s.
+
+  - slug: celery.queue-drain-seconds-at-400-rate
+    parameter: queue.drain_seconds
+    system: celery
+    applies_to: Same as celery.queue-backlog-max-at-400-rate; sustained throttle
+    value: 99.1
+    confidence: measured
+    source: obs-celery-probe-swamplink-2026-08-20
+    notes: >-
+      Nearly 100s to drain a backlog built in 30s — the disproportionate tail
+      BRIEF.md names, under continued I/O starvation.
+
+  - slug: celery.queue-duplicate-rate-visibility-2s
+    parameter: queue.duplicate_rate_pct
+    system: celery
+    applies_to: >-
+      acks_late=1, visibility_timeout=2s, offered 200/s for 60s, otherwise same
+      harness as baseline (run 5)
+    value: 0
+    confidence: measured
+    source: obs-celery-probe-swamplink-2026-08-20
+    notes: >-
+      Guard 1 passed (acksLate true). Zero duplicates despite timeout far below
+      default — redelivery did not materialize on this configuration during the
+      stall. Also zero at visibility 5s, 10s, and 30s.
+
+  - slug: celery.queue-duplicate-rate-early-ack-control
+    parameter: queue.duplicate_rate_pct
+    system: celery
+    applies_to: >-
+      acks_late=0 (Celery default), visibility_timeout=30s, offered 200/s —
+      run 1 control
+    value: 0
+    confidence: measured
+    source: obs-celery-probe-swamplink-2026-08-20
+    notes: >-
+      Vacuous by configuration (see acksLateVacuousZeroDuplicates in probe JSON).
+      Documents Guard 1 — not evidence that redelivery was tested and absent.

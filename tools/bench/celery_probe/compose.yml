@@ -25,6 +25,20 @@ name: xycalc-celery-probe
 services:
   redis:
     image: redis:7-alpine
+    command:
+      - redis-server
+      - --save
+      - ""
+      - --appendonly
+      - "no"
+      - --maxmemory
+      - ${PROBE_MAXMEMORY:-0}
+      - --maxmemory-policy
+      - ${PROBE_MAXMEMORY_POLICY:-noeviction}
+    mem_limit: 256m
+
+  bookkeeping:
+    image: redis:7-alpine
     command: ["redis-server", "--save", "", "--appendonly", "no"]
     mem_limit: 256m
 
@@ -53,12 +67,15 @@ services:
       --without-gossip --without-mingle --without-heartbeat
     environment:
       PROBE_REDIS: redis://redis:6379/0
+      PROBE_BOOKKEEPING: redis://bookkeeping:6379/0
       PROBE_MONGO: mongodb://mongo:27017
       PROBE_DOCS: ${PROBE_DOCS:-1500000}
       PROBE_PREFETCH: ${PROBE_PREFETCH:-4}
       PROBE_ACKS_LATE: ${PROBE_ACKS_LATE:-1}
       PROBE_VISIBILITY_TIMEOUT: ${PROBE_VISIBILITY_TIMEOUT:-30}
-    depends_on: [redis, mongo]
+      PROBE_IGNORE_RESULT: ${PROBE_IGNORE_RESULT:-1}
+      PROBE_RESULT_EXPIRES: ${PROBE_RESULT_EXPIRES:-300}
+    depends_on: [redis, bookkeeping, mongo]
     mem_limit: 1g
 
   driver:
@@ -74,3 +91,23 @@ services:
       PROBE_VISIBILITY_TIMEOUT: ${PROBE_VISIBILITY_TIMEOUT:-30}
     depends_on: [redis, mongo, worker]
     profiles: ["driver"]
+
+  evict-driver:
+    build: .
+    command: ["python", "evict_probe.py"]
+    environment:
+      PROBE_REDIS: redis://redis:6379/0
+      PROBE_BOOKKEEPING: redis://bookkeeping:6379/0
+      PROBE_RESULT_BACKEND: redis://bookkeeping:6379/1
+      PROBE_MAXMEMORY_POLICY: ${PROBE_MAXMEMORY_POLICY:-noeviction}
+      PROBE_PAYLOAD_BYTES: ${PROBE_PAYLOAD_BYTES:-2048}
+      PROBE_ENQUEUE_ATTEMPTS: ${PROBE_ENQUEUE_ATTEMPTS:-20000}
+      PROBE_DRAIN_TIMEOUT: ${PROBE_DRAIN_TIMEOUT:-120}
+      PROBE_CONCURRENCY: ${PROBE_CONCURRENCY:-8}
+      PROBE_PREFETCH: ${PROBE_PREFETCH:-4}
+      PROBE_ACKS_LATE: ${PROBE_ACKS_LATE:-1}
+      PROBE_VISIBILITY_TIMEOUT: ${PROBE_VISIBILITY_TIMEOUT:-30}
+      PROBE_IGNORE_RESULT: ${PROBE_IGNORE_RESULT:-1}
+      PROBE_RESULT_EXPIRES: ${PROBE_RESULT_EXPIRES:-60}
+    depends_on: [redis, bookkeeping]
+    profiles: ["evict"]

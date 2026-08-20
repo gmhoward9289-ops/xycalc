@@ -1,0 +1,111 @@
+observations:
+- slug: swamplink-2026-08-20-evict-noeviction-producer-error-rate
+  system: celery
+  parameter: broker.noeviction_producer_error_rate
+  value: 0.0487
+  unit: ratio
+  workload: evict_probe noeviction, ignoreResult=True
+  machine_class: Hetzner CX shared vCPU, 7 GB RAM
+  system_version: Celery 5.4.0
+  observed_on: '2026-08-20'
+  source: obs-redis-evict-swamplink-2026-08-20
+  notes: Phase-1 send_task failures once at maxmemory. attempts=3164.
+- slug: swamplink-2026-08-20-evict-noeviction-worker-starts
+  system: celery
+  parameter: broker.noeviction_worker_starts
+  value: 0
+  unit: count
+  workload: evict_probe noeviction, ignoreResult=True
+  machine_class: Hetzner CX shared vCPU, 7 GB RAM
+  system_version: Celery 5.4.0
+  observed_on: '2026-08-20'
+  source: obs-redis-evict-swamplink-2026-08-20
+  notes: timeToFirstConsumption=Nones.
+- slug: swamplink-2026-08-20-evict-noeviction-task-loss-rate
+  system: celery
+  parameter: broker.allkeys_lru_task_loss_rate
+  value: 1.0
+  unit: ratio
+  workload: evict_probe noeviction, ignoreResult=True
+  machine_class: Hetzner CX shared vCPU, 7 GB RAM
+  system_version: Celery 5.4.0
+  observed_on: '2026-08-20'
+  source: obs-redis-evict-swamplink-2026-08-20
+  notes: tasksLost=3010 of enqueuedOk=3010.
+- slug: swamplink-2026-08-20-evict-noeviction-duplicate-rate
+  system: celery
+  parameter: broker.duplicate_execution_rate
+  value: 0.0
+  unit: ratio
+  workload: evict_probe noeviction, ignoreResult=True
+  machine_class: Hetzner CX shared vCPU, 7 GB RAM
+  system_version: Celery 5.4.0
+  observed_on: '2026-08-20'
+  source: obs-redis-evict-swamplink-2026-08-20
+  notes: duplicateExecutions=0.
+- slug: swamplink-2026-08-20-evict-noeviction-evicted-keys
+  system: celery
+  parameter: broker.evicted_keys_delta
+  value: 0
+  unit: count
+  workload: evict_probe noeviction, ignoreResult=True
+  machine_class: Hetzner CX shared vCPU, 7 GB RAM
+  system_version: Celery 5.4.0
+  observed_on: '2026-08-20'
+  source: obs-redis-evict-swamplink-2026-08-20
+  notes: Celery 5.4.0, Redis 7.4.10, maxmemory=16777216B, payload=2048B, policy=noeviction
+- slug: swamplink-2026-08-20-evict-allkeys-lru-producer-error-rate
+  system: celery
+  parameter: broker.noeviction_producer_error_rate
+  value: 0.0
+  unit: ratio
+  workload: evict_probe allkeys-lru, ignoreResult=True
+  machine_class: Hetzner CX shared vCPU, 7 GB RAM
+  system_version: Celery 5.4.0
+  observed_on: '2026-08-20'
+  source: obs-redis-evict-swamplink-2026-08-20
+  notes: Phase-1 send_task failures once at maxmemory. attempts=4380.
+- slug: swamplink-2026-08-20-evict-allkeys-lru-worker-starts
+  system: celery
+  parameter: broker.noeviction_worker_starts
+  value: 1
+  unit: count
+  workload: evict_probe allkeys-lru, ignoreResult=True
+  machine_class: Hetzner CX shared vCPU, 7 GB RAM
+  system_version: Celery 5.4.0
+  observed_on: '2026-08-20'
+  source: obs-redis-evict-swamplink-2026-08-20
+  notes: timeToFirstConsumption=1.0s.
+- slug: swamplink-2026-08-20-evict-allkeys-lru-task-loss-rate
+  system: celery
+  parameter: broker.allkeys_lru_task_loss_rate
+  value: 0.6872
+  unit: ratio
+  workload: evict_probe allkeys-lru, ignoreResult=True
+  machine_class: Hetzner CX shared vCPU, 7 GB RAM
+  system_version: Celery 5.4.0
+  observed_on: '2026-08-20'
+  source: obs-redis-evict-swamplink-2026-08-20
+  notes: tasksLost=3010 of enqueuedOk=4380.
+- slug: swamplink-2026-08-20-evict-allkeys-lru-duplicate-rate
+  system: celery
+  parameter: broker.duplicate_execution_rate
+  value: 0.0
+  unit: ratio
+  workload: evict_probe allkeys-lru, ignoreResult=True
+  machine_class: Hetzner CX shared vCPU, 7 GB RAM
+  system_version: Celery 5.4.0
+  observed_on: '2026-08-20'
+  source: obs-redis-evict-swamplink-2026-08-20
+  notes: duplicateExecutions=0.
+- slug: swamplink-2026-08-20-evict-allkeys-lru-evicted-keys
+  system: celery
+  parameter: broker.evicted_keys_delta
+  value: 2
+  unit: count
+  workload: evict_probe allkeys-lru, ignoreResult=True
+  machine_class: Hetzner CX shared vCPU, 7 GB RAM
+  system_version: Celery 5.4.0
+  observed_on: '2026-08-20'
+  source: obs-redis-evict-swamplink-2026-08-20
+  notes: Celery 5.4.0, Redis 7.4.10, maxmemory=16777216B, payload=2048B, policy=allkeys-lru

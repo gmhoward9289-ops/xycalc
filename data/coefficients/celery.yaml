@@ -48,3 +48,33 @@ coefficients:
       Investigation 004's redelivery sub-claim requires task_acks_late=True.
       With the default, broker redelivery is structurally unreachable regardless
       of visibility_timeout or task duration.
+
+  - slug: celery.redis-broker-maxmemory-policy-documented-count
+    parameter: broker.documented_maxmemory_policy_count
+    system: celery
+    applies_to: Celery 5.4.0 Redis broker docs (Key eviction caveat)
+    value: 2
+    confidence: documented
+    source: celery-redis-broker-5.4
+    quote: >-
+      the maxmemory-policy option to noeviction or allkeys-lru
+    notes: >-
+      Celery documents exactly two policies for broker maxmemory. volatile-lru
+      and other Redis policies are not named. Investigation 005 tests both
+      documented options plus volatile-lru as a guard arm.
+
+  - slug: celery.redis-broker-noeviction-oom-stall-reported
+    parameter: broker.noeviction_oom_stall_reported
+    system: celery
+    applies_to: Celery 4.3.0 at Redis maxmemory with noeviction (celery#5716)
+    value: 1
+    confidence: practitioner
+    source: celery-issue-5716
+    quote: >-
+      OperationalError: Command # 1 (LLEN low) of pipeline caused error: OOM
+      command not allowed when used memory > 'maxmemory'.
+    notes: >-
+      Bug report claims workers cannot drain the queue under noeviction OOM.
+      Encoded 1=reported. T7 evict_probe tests Celery 5.4.0 separately via
+      import_evict_probe.py benchmark rows.
+

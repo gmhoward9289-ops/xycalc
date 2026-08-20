@@ -72,3 +72,47 @@ elsewhere; `run.sh` refuses to start rather than run unthrottled. Everything is
 scoped to this compose project and its own network, and the block-IO and memory
 limits apply to the mongo container's cgroup only — the host may be serving
 other things.
+
+## Redis broker maxmemory probe (issue #15)
+
+Separate driver — same Docker image, different question. When the Celery
+broker's Redis hits `maxmemory`, do you lose queued tasks or stall the fleet?
+
+```bash
+cd tools/bench/celery_probe && ./run_evict.sh
+```
+
+Phase 1 enqueues `probe.noop` tasks with **no worker running** until the
+broker is at `maxmemory`. Phase 2 spawns a worker while the broker is still
+at/over the ceiling. Execution ground truth lives in a separate `bookkeeping`
+Redis that is never capped — counters on the broker itself would undercount
+when their keys get evicted.
+
+| Variable | Default | What it changes |
+|---|---|---|
+| `PROBE_MAXMEMORY` | 16mb | broker memory ceiling (compose `redis` command) |
+| `PROBE_MAXMEMORY_POLICY` | noeviction | `noeviction`, `allkeys-lru`, or `volatile-lru` |
+| `PROBE_PAYLOAD_BYTES` | 2048 | pad bytes per task message |
+| `PROBE_ENQUEUE_ATTEMPTS` | 20000 | stop after this many send attempts |
+| `PROBE_DRAIN_TIMEOUT` | 120 | seconds to wait for queue drain in phase 2 |
+| `PROBE_IGNORE_RESULT` | 1 | `0` enables result-backend TTL keys for volatile-lru |
+| `PROBE_RESULT_EXPIRES` | 60 | result TTL when ignore is off (evict driver only) |
+
+Guards refuse to report an arm if Phase 1 never reaches 95% of `maxmemory`,
+if `noeviction` evicts keys, or if an LRU policy never evicts when it should.
+Run `./run_evict.sh` on a Linux host with Docker (swamplink). No block device
+check — this probe does not use MongoDB.
+
+Three-arm sweep and corpus import:
+
+```bash
+./sweep_evict.sh
+python ../../import_evict_probe.py \
+  /root/celery-evict-sweep/noeviction.log \
+  /root/celery-evict-sweep/allkeys-lru.log \
+  /root/celery-evict-sweep/volatile-lru.log \
+  --date $(date +%F) --host swamplink --publish
+cd ../.. && python -m xycalc.build
+```
+
+See `docs/investigations/005-redis-broker-eviction/FINDINGS.md`.

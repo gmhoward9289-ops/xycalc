@@ -236,6 +236,7 @@ footer .family a:hover { color: var(--accent); text-decoration: underline; }
 .sizing-summary { border-color: var(--accent); }
 .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr)); gap: 1rem; margin-top: .75rem; }
 .summary-metric { border: 1px solid var(--line); border-radius: 6px; padding: .75rem; }
+.summary-metric .kicker { font-size: .68rem; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); font-weight: 700; }
 .summary-metric .primary { font-family: var(--mono); font-size: 1.25rem; font-weight: 600; }
 .nvd-layout { display: grid; grid-template-columns: minmax(14rem, 1.3fr) minmax(12rem, 1fr); gap: .75rem; }
 svg.nvd-chart { width: 100%; height: auto; display: block; }
@@ -421,20 +422,10 @@ const fmt = XY.formatQuantity;
 const esc = (s) => String(s == null ? "" : s)
   .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 
-// -- the gate ---------------------------------------------------------------
-// Before anything renders, re-run the vectors Python computed at export time.
-// A mismatch means this file's arithmetic and the corpus have drifted, and the
-// only safe output is no output.
-const FAILURES = XY.checkGolden(CORPUS);
-if (FAILURES.length) {
-  $("selfcheck").hidden = false;
-  $("app").hidden = true;
-  $("selfcheck-detail").textContent = FAILURES
-    .map((f) => f.vector.model + " " + JSON.stringify(f.vector.inputs) + "\n  " + f.reason)
-    .join("\n");
-} else {
-  boot();
-}
+// -- boot is gated at the bottom of this IIFE --------------------------------
+// Must run after every `let`/`const` below. Calling boot() up here used to
+// hit the TDZ on `currentScenario` and leave the scenario form permanently
+// hidden (radio checked, workspace never opened).
 
 function boot() {
   $("provenance").textContent =
@@ -640,10 +631,25 @@ function calculateScenario(auto) {
     const data = XY.chainEvaluate(CORPUS, currentScenario.slug, inputs);
     $("scn-error").hidden = true;
     const s = data.sizing_summary || {};
-    const ram = s.ram ? `<div class="summary-metric"><div>Host RAM</div><div class="primary">${esc(fmt(s.ram.mode, s.ram.unit))}</div>
-      <div class="help">${esc(fmt(s.ram.lo, s.ram.unit))} – ${esc(fmt(s.ram.hi, s.ram.unit))}</div></div>` : "";
-    const cpu = s.cpu ? `<div class="summary-metric"><div>CPU (r8i pick)</div><div class="primary">${esc(s.cpu.instance_mode || "custom")}</div></div>` : "";
-    const disk = s.disk ? `<div class="summary-metric"><div>gp3 disk</div><div class="primary">${Math.round(s.disk.volume_gib).toLocaleString()} GiB</div></div>` : "";
+    const inst = s.cpu?.instance_mode || "custom sizing";
+    const instSizing = (s.ram || s.cpu)
+      ? `<div class="summary-metric"><div class="kicker">Instance sizing</div>
+         <div class="primary">${esc(inst)}</div>
+         <div class="sub">${s.ram ? esc(fmt(s.ram.mode, s.ram.unit) + " RAM") : ""}${s.cpu?.mode != null ? " · " + s.cpu.mode + " vCPU" : ""}</div></div>`
+      : "";
+    const perf = s.disk?.provisioned_iops
+      ? `<div class="summary-metric"><div class="kicker">Storage performance</div>
+         <div class="primary">${Math.round(s.disk.provisioned_iops.mode).toLocaleString()} IOPS</div>
+         <div class="help">peak-second · ${s.disk.baseline_throughput_mibps} MiB/s incl</div></div>`
+      : s.disk
+        ? `<div class="summary-metric"><div class="kicker">Storage performance</div>
+           <div class="primary">${s.disk.baseline_iops.toLocaleString()} IOPS incl</div></div>`
+        : "";
+    const size = s.disk
+      ? `<div class="summary-metric"><div class="kicker">Storage size</div>
+         <div class="primary">${Math.round(s.disk.volume_gib).toLocaleString()} GiB</div>
+         <div class="help">gp3 volume</div></div>`
+      : "";
     const funnelRows = ["nvd.storage-from-vuln-growth", "mongodb.wt-cache", "mongodb.host-ram"]
       .map((slug) => data.steps.find((st) => st.model === slug))
       .filter((st) => st && st.answer);
@@ -652,7 +658,7 @@ function calculateScenario(auto) {
       <div class="funnel-track"><span style="width:${(st.answer.mode / fmax * 100).toFixed(1)}%"></span></div>
       <div>${esc(fmt(st.answer.mode, st.unit))}</div></div>`).join("") : "";
     $("scenario-summary").innerHTML = `<div class="panel sizing-summary"><h2>What you need</h2>
-      <div class="summary-grid">${ram}${cpu}${disk}</div>${funnel}</div>`;
+      <div class="summary-grid">${instSizing}${perf}${size}</div>${funnel}</div>`;
     const open = !auto && !openedMathOnce;
     if (open) openedMathOnce = true;
     $("scenario-cascade").innerHTML = `<details class="cascade-wrap"${open ? " open" : ""}>
@@ -1011,6 +1017,22 @@ function ticks(lo, hi, log, count) {
   const step = stepMul * mag;
   for (let v = Math.ceil(lo / step) * step; v <= hi; v += step) out.push(v);
   return out;
+}
+
+// -- the gate ---------------------------------------------------------------
+// Before anything renders, re-run the vectors Python computed at export time.
+// A mismatch means this file's arithmetic and the corpus have drifted, and the
+// only safe output is no output. Kept at the end so boot() cannot race the
+// `let` bindings it assigns into.
+const FAILURES = XY.checkGolden(CORPUS);
+if (FAILURES.length) {
+  $("selfcheck").hidden = false;
+  $("app").hidden = true;
+  $("selfcheck-detail").textContent = FAILURES
+    .map((f) => f.vector.model + " " + JSON.stringify(f.vector.inputs) + "\n  " + f.reason)
+    .join("\n");
+} else {
+  boot();
 }
 })();
 </script>

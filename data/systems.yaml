@@ -39,17 +39,19 @@ systems:
     label: Redis
     category: cache
     notes: >-
-      Celery broker coefficients start here (visibility timeout default via
-      Celery 5.4 docs). Maxmemory eviction characterisation is still open
-      (issue #15).
+      Broker defaults, Celery transport visibility timeout, MEMORY USAGE empty
+      key overhead (56 B), eviction/listpack defaults, and FAQ 20% host
+      headroom (documented). Investigation 005 (T7): maxmemory policy conflict
+      in corpus; measured loss/stall rates import from evict_probe via
+      tools/import_evict_probe.py.
 
   - slug: celery
     label: Celery
     category: queue
     notes: >-
-      Documented prefetch and ack defaults (Celery 5.4.0) plus benchmark
-      observations from tools/bench/celery_probe/ via import_celery_probe.py.
-      Queue-depth and redelivery coefficients land from investigation 004 sweeps.
+      Documented prefetch and ack defaults (Celery 5.4.0). Investigation 004
+      queue amplification and investigation 005 broker maxmemory both use
+      tools/bench/celery_probe/; benchmark rows import from probe JSON.
 
   - slug: nvme-ssd
     label: NVMe SSD (direct-attached)

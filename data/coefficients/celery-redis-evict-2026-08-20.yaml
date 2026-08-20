@@ -1,0 +1,79 @@
+coefficients:
+- slug: celery.redis-broker-noeviction-producer-error-rate
+  parameter: broker.noeviction_producer_error_rate
+  system: celery
+  applies_to: Celery 5.4.0, redis-py 5.0.8, Redis server 7.4.10, maxmemory=16777216
+    bytes, payload=2048 bytes, policy=noeviction
+  value: 0.0487
+  confidence: measured
+  source: obs-redis-evict-swamplink-2026-08-20
+  notes: Fraction of Phase-1 send_task attempts that raised once broker was at maxmemory.
+    enqueuedOk=3010, errors=154.
+- slug: celery.redis-broker-noeviction-worker-starts
+  parameter: broker.noeviction_worker_starts
+  system: celery
+  applies_to: Celery 5.4.0, redis-py 5.0.8, Redis server 7.4.10, maxmemory=16777216
+    bytes, payload=2048 bytes, policy=noeviction
+  value: 0
+  confidence: measured
+  source: obs-redis-evict-swamplink-2026-08-20
+  notes: Whether the worker began consuming while broker was still at/over maxmemory.
+    firstConsumption=Nones.
+- slug: celery.redis-broker-noeviction-task-loss-rate
+  parameter: broker.allkeys_lru_task_loss_rate
+  system: celery
+  applies_to: Celery 5.4.0, redis-py 5.0.8, Redis server 7.4.10, maxmemory=16777216
+    bytes, payload=2048 bytes, policy=noeviction
+  value: 1.0
+  confidence: measured
+  source: obs-redis-evict-swamplink-2026-08-20
+  notes: "(enqueuedOk \u2212 distinctExecuted) / enqueuedOk from bookkeeping Redis.\
+    \ distinctExecuted=0."
+- slug: celery.redis-broker-noeviction-duplicate-rate
+  parameter: broker.duplicate_execution_rate
+  system: celery
+  applies_to: Celery 5.4.0, redis-py 5.0.8, Redis server 7.4.10, maxmemory=16777216
+    bytes, payload=2048 bytes, policy=noeviction
+  value: 0.0
+  confidence: measured
+  source: obs-redis-evict-swamplink-2026-08-20
+  notes: Per-task-id execution count > 1 on bookkeeping store.
+- slug: celery.redis-broker-allkeys-lru-producer-error-rate
+  parameter: broker.noeviction_producer_error_rate
+  system: celery
+  applies_to: Celery 5.4.0, redis-py 5.0.8, Redis server 7.4.10, maxmemory=16777216
+    bytes, payload=2048 bytes, policy=allkeys-lru
+  value: 0.0
+  confidence: measured
+  source: obs-redis-evict-swamplink-2026-08-20
+  notes: Fraction of Phase-1 send_task attempts that raised once broker was at maxmemory.
+    enqueuedOk=4380, errors=0.
+- slug: celery.redis-broker-allkeys-lru-worker-starts
+  parameter: broker.noeviction_worker_starts
+  system: celery
+  applies_to: Celery 5.4.0, redis-py 5.0.8, Redis server 7.4.10, maxmemory=16777216
+    bytes, payload=2048 bytes, policy=allkeys-lru
+  value: 1
+  confidence: measured
+  source: obs-redis-evict-swamplink-2026-08-20
+  notes: Whether the worker began consuming while broker was still at/over maxmemory.
+    firstConsumption=1.0s.
+- slug: celery.redis-broker-allkeys-lru-task-loss-rate
+  parameter: broker.allkeys_lru_task_loss_rate
+  system: celery
+  applies_to: Celery 5.4.0, redis-py 5.0.8, Redis server 7.4.10, maxmemory=16777216
+    bytes, payload=2048 bytes, policy=allkeys-lru
+  value: 0.6872
+  confidence: measured
+  source: obs-redis-evict-swamplink-2026-08-20
+  notes: "(enqueuedOk \u2212 distinctExecuted) / enqueuedOk from bookkeeping Redis.\
+    \ distinctExecuted=1370."
+- slug: celery.redis-broker-allkeys-lru-duplicate-rate
+  parameter: broker.duplicate_execution_rate
+  system: celery
+  applies_to: Celery 5.4.0, redis-py 5.0.8, Redis server 7.4.10, maxmemory=16777216
+    bytes, payload=2048 bytes, policy=allkeys-lru
+  value: 0.0
+  confidence: measured
+  source: obs-redis-evict-swamplink-2026-08-20
+  notes: Per-task-id execution count > 1 on bookkeeping store.

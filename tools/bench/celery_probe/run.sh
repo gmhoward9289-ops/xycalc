@@ -21,5 +21,5 @@ cleanup() { docker compose down -v --remove-orphans >/dev/null 2>&1 || true; }
 trap cleanup EXIT
 cleanup
 
-docker compose up -d --build redis mongo worker >&2
+docker compose up -d --build redis bookkeeping mongo worker >&2
 docker compose run --rm --no-deps -T driver python drive.py

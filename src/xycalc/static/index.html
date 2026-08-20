@@ -915,58 +915,65 @@ function renderSizingSummary(s, meta = {}) {
   const valChip = worst ? `
     <span class="summary-validation ${worst}">${VALIDATION_LABEL[worst]}</span>` : "";
 
-  if (s.ram) {
-    const cur = s.current?.ram;
-    const cmp = cur ? compareMeterHtml(cur, s.ram.mode) : "";
-    metrics.push(`
-      <div class="summary-metric">
-        <div class="kicker">Host RAM</div>
-        <div class="primary">${fmt(s.ram.mode, s.ram.unit)}</div>
-        ${bandBarHtml(s.ram.lo, s.ram.mode, s.ram.hi, true)}
-        <div class="sub">${fmt(s.ram.lo, s.ram.unit)} – ${fmt(s.ram.hi, s.ram.unit)}</div>
-        ${cmp}
-      </div>`);
-  }
-
-  if (s.cpu) {
-    const cur = s.current?.vcpu;
-    const cmp = cur != null && s.cpu.mode != null
-      ? `<div class="compare">You run <strong>${cur} vCPU</strong>${cur < s.cpu.mode ? " — below mode pick" : cur > (s.cpu.hi ?? s.cpu.mode) ? " — above high band" : ""}</div>`
-      : "";
-    const instLine = s.cpu.instance_mode
+  if (s.ram || s.cpu) {
+    const curRam = s.current?.ram;
+    const curVcpu = s.current?.vcpu;
+    const instLine = s.cpu?.instance_mode
       ? s.cpu.instance_mode
       : `<span style="color:var(--amplifier)">custom sizing</span>`;
+    const ramSub = s.ram
+      ? `${fmt(s.ram.mode, s.ram.unit)} RAM · ${fmt(s.ram.lo, s.ram.unit)} – ${fmt(s.ram.hi, s.ram.unit)}`
+      : "";
+    const cpuSub = s.cpu?.mode != null
+      ? `${s.cpu.mode} vCPU mode · ${s.cpu.lo ?? "?"}–${s.cpu.hi ?? "?"} band`
+      : "";
+    const sub = [ramSub, cpuSub].filter(Boolean).join("<br>");
+    let cmp = "";
+    if (curRam && s.ram) cmp += compareMeterHtml(curRam, s.ram.mode);
+    if (curVcpu != null && s.cpu?.mode != null) {
+      cmp += `<div class="compare">You run <strong>${curVcpu} vCPU</strong>${curVcpu < s.cpu.mode ? " — below mode pick" : curVcpu > (s.cpu.hi ?? s.cpu.mode) ? " — above high band" : ""}</div>`;
+    }
     metrics.push(`
       <div class="summary-metric">
-        <div class="kicker">CPU (r8i pick)</div>
+        <div class="kicker">Instance sizing</div>
         <div class="primary">${instLine}</div>
-        <div class="sub">${s.cpu.mode != null ? s.cpu.mode + " vCPU mode" : "over pool ceiling"}
-          · ${s.cpu.lo ?? "?"}–${s.cpu.hi ?? "?"} vCPU band</div>
+        ${s.ram ? bandBarHtml(s.ram.lo, s.ram.mode, s.ram.hi, true) : ""}
+        <div class="sub">${sub}</div>
         ${cmp}
       </div>`);
   }
 
   if (s.disk) {
     const d = s.disk;
-    const prov = d.provisioned_iops
-      ? `<div class="sub">Peak-second ${d.provisioned_iops.lo.toLocaleString()}–${d.provisioned_iops.hi.toLocaleString()} IOPS
-          (mode ${d.provisioned_iops.mode.toLocaleString()}${d.provisioned_iops_assumed_mean ? ", from included 3,000 mean" : ", from measured average"})</div>`
-      : "";
-    const instEbs = d.instance_ebs_bandwidth_gbps != null
-      ? `<div class="sub">${d.instance_name} EBS ${d.instance_ebs_bandwidth_gbps} Gbps
-          (${Math.round(d.usable_throughput_mibps).toLocaleString()} MiB/s usable on this pick)</div>`
-      : "";
+    const prov = d.provisioned_iops;
+    const perfPrimary = prov
+      ? `${Math.round(prov.mode).toLocaleString()} IOPS`
+      : `${d.baseline_iops.toLocaleString()} IOPS incl`;
+    const perfSub = prov
+      ? `Peak-second ${prov.lo.toLocaleString()}–${prov.hi.toLocaleString()} IOPS
+          (mode ${prov.mode.toLocaleString()}${d.provisioned_iops_assumed_mean ? ", from included 3,000 mean" : ", from measured average"})`
+      : `${d.baseline_iops.toLocaleString()} IOPS incl · ${d.baseline_throughput_mibps} MiB/s`;
+    const tpLine = d.usable_throughput_mibps != null
+      ? `${Math.round(d.usable_throughput_mibps).toLocaleString()} MiB/s usable on ${d.instance_name || "instance pick"}`
+      : `${d.baseline_throughput_mibps} MiB/s included on gp3`;
     const curIops = s.current?.disk_iops;
     const curTp = s.current?.disk_throughput_mibps;
-    let cmp = "";
-    if (curIops != null) cmp += `<div class="compare">Disk IOPS today: <strong>${curIops.toLocaleString()}</strong></div>`;
-    if (curTp != null) cmp += `<div class="compare">Throughput today: <strong>${curTp} MiB/s</strong></div>`;
+    let perfCmp = "";
+    if (curIops != null) perfCmp += `<div class="compare">Disk IOPS today: <strong>${curIops.toLocaleString()}</strong></div>`;
+    if (curTp != null) perfCmp += `<div class="compare">Throughput today: <strong>${curTp} MiB/s</strong></div>`;
     metrics.push(`
       <div class="summary-metric">
-        <div class="kicker">gp3 disk</div>
+        <div class="kicker">Storage performance</div>
+        <div class="primary">${perfPrimary}</div>
+        <div class="sub">${perfSub}<br>${tpLine}</div>
+        ${perfCmp}
+      </div>`);
+
+    metrics.push(`
+      <div class="summary-metric">
+        <div class="kicker">Storage size</div>
         <div class="primary">${Math.round(d.volume_gib).toLocaleString()} GiB</div>
-        <div class="sub">${d.baseline_iops.toLocaleString()} IOPS incl · ${d.baseline_throughput_mibps} MiB/s</div>
-        ${instEbs}${prov}${cmp}
+        <div class="sub">gp3 volume · collection + indexes (+ snapshot search footprint)</div>
       </div>`);
   }
 

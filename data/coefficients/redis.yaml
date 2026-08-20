@@ -1,8 +1,9 @@
-# Redis coefficients referenced by Celery broker documentation.
+# Redis coefficients.
 #
-# Celery is the consumer; Redis is the broker. Visibility timeout is configured
-# through Celery's broker_transport_options, but the default is stated on
-# Celery's Redis broker page for Celery 5.4.0.
+# Broker-transport defaults are stated on Celery's Redis page even though Redis
+# is the system — the quantity is configured through Celery. Server defaults
+# come from shipped redis.conf. Memory/eviction figures from Redis vendor docs
+# enrich investigation 005. Benchmark rows land via import_evict_probe.py.
 
 coefficients:
   - slug: redis.broker-visibility-timeout-default-seconds
@@ -18,3 +19,158 @@ coefficients:
       Set via broker_transport_options visibility_timeout. The celery_probe
       harness overrides this (PROBE_VISIBILITY_TIMEOUT, default 30s) to make
       redelivery observable within bench windows — not Redis's own default.
+
+  - slug: redis.maxmemory-default-bytes
+    parameter: server.maxmemory_bytes
+    system: redis
+    applies_to: Redis 7.2 shipped redis.conf (maxmemory directive unset)
+    value: 0
+    confidence: documented
+    source: redis-conf-maxmemory-7.2
+    quote: >-
+      maxmemory <bytes> ... use zero to specify no limit (Redis 64-bit default).
+    notes: >-
+      Zero means no memory limit until an operator sets maxmemory. Production
+      Celery brokers should set an explicit ceiling; T7 uses 16mb in the probe.
+
+  - slug: redis.maxmemory-policy-default
+    parameter: server.maxmemory_policy_default
+    system: redis
+    applies_to: Redis 7.2 shipped redis.conf default
+    value: 1
+    confidence: code
+    source: redis-conf-maxmemory-7.2
+    quote: >-
+      MAXMEMORY POLICY: how Redis will select what to remove when maxmemory
+      is reached ... maxmemory-policy noeviction
+    notes: >-
+      Encoded as 1=noeviction (the only shipped default in redis.conf comments).
+      Operators must set this explicitly alongside maxmemory for T7's question.
+
+  - slug: redis.empty-string-key-overhead-bytes
+    parameter: memory.empty_key_overhead_bytes
+    system: redis
+    applies_to: Redis 7.2.0 64-bit with jemalloc (MEMORY USAGE examples)
+    value: 56
+    confidence: documented
+    source: redis-memory-usage-7.2
+    quote: >-
+      With Redis v7.2.0 64-bit and jemalloc, the empty string measures as
+      follows: SET "" "" … MEMORY USAGE "" → (integer) 56. These bytes are
+      pure overhead at the moment as no actual data is stored.
+    notes: >-
+      Floor for key metadata only. A Celery broker queue is typically one LIST
+      key with many LPUSH'd task payloads — per-task cost is payload + list
+      encoding, not another 56 B per message. Useful when estimating binding
+      keys (_kombu.binding.*) and other small string keys.
+
+  - slug: redis.maxmemory-samples-default
+    parameter: server.maxmemory_samples
+    system: redis
+    applies_to: Redis 7.2 shipped redis.conf / Key eviction docs
+    value: 5
+    confidence: documented
+    source: redis-key-eviction
+    quote: >-
+      You can tune the performance of the algorithm by changing the number of
+      samples to check before every eviction with the maxmemory-samples
+      configuration directive: maxmemory-samples 5
+    notes: >-
+      Approximated LRU/LFU sample size. Raising toward 10 improves LRU fidelity
+      at extra CPU; eviction docs say 10 is "very close to theoretical" LRU.
+
+  - slug: redis.list-max-listpack-size-default
+    parameter: server.list_max_listpack_size
+    system: redis
+    applies_to: Redis 7.2 shipped redis.conf
+    value: -2
+    confidence: code
+    source: redis-conf-maxmemory-7.2
+    quote: >-
+      -2: max size: 8 Kb <-- good … The highest performing option is usually
+      -2 (8 Kb size) or -1 (4 Kb size) … list-max-listpack-size -2
+    notes: >-
+      Quicklist node packing for LIST (Celery's broker queue type). Value -2
+      means 8 KB listpack nodes. Deep queues of large task bodies leave the
+      compact path earlier; empty-key 56 B is unrelated to this knob.
+
+  - slug: redis.volatile-no-ttl-equals-noeviction
+    parameter: broker.volatile_no_ttl_equals_noeviction
+    system: redis
+    applies_to: Redis Open Source eviction policies (docs retrieved 2026-08-20)
+    value: 1
+    confidence: documented
+    source: redis-key-eviction
+    quote: >-
+      The volatile-xxx policies behave like noeviction if no keys have an
+      associated expiration.
+    notes: >-
+      Encoded 1=vendor states equivalence. This is the documented basis for
+      investigation 005's weakest-inference note: with Celery
+      task_ignore_result=True and no TTLs, volatile-lru is not a third policy
+      — it is noeviction under another name.
+
+  - slug: redis.noeviction-reads-still-work
+    parameter: server.noeviction_reads_still_work
+    system: redis
+    applies_to: Redis 7.2 redis.conf + Key eviction docs
+    value: 1
+    confidence: documented
+    source: redis-conf-maxmemory-7.2
+    quote: >-
+      If Redis can't remove keys according to the policy, or if the policy is
+      set to 'noeviction', Redis will start to reply with errors to commands
+      that would use more memory, like SET, LPUSH, and so on, and will continue
+      to reply to read-only commands like GET.
+    notes: >-
+      Encoded 1=reads should still work at maxmemory under noeviction. Creates
+      an unresolved tension with celery#5716, which reports LLEN (a read)
+      failing with OOM in a pipeline on Celery 4.3.0. T7's noeviction arm
+      measures whether workers can still consume on Celery 5.4.0.
+
+  - slug: redis.small-aggregate-avg-memory-saving-factor
+    parameter: memory.small_aggregate_avg_saving_factor
+    system: redis
+    applies_to: Redis >= 2.2 special encoding (docs current 2026-08-20)
+    value: 5
+    confidence: documented
+    source: redis-memory-optimization
+    quote: >-
+      Hashes, Lists, Sets composed of just integers, and Sorted Sets, when
+      smaller than a given number of elements, and up to a maximum element
+      size, are encoded in a very memory-efficient way that uses up to 10
+      times less memory (with 5 times less memory used being the average
+      saving).
+    notes: >-
+      Average saving factor for special encodings below listpack/ziplist
+      thresholds. Celery queues that grow past the compact thresholds lose
+      this; do not apply 5× to a deep broker backlog blindly.
+
+  - slug: redis.hash-max-listpack-entries-default
+    parameter: server.hash_max_listpack_entries
+    system: redis
+    applies_to: Redis >= 7.0 shipped defaults (memory optimization docs)
+    value: 512
+    confidence: documented
+    source: redis-memory-optimization
+    quote: >-
+      Redis >= 7.0 … hash-max-listpack-entries 512 hash-max-listpack-value 64
+    notes: >-
+      Default field count before a hash converts off listpack. Relevant to
+      result-backend / metadata hashes more than to Celery LIST queues.
+
+  - slug: redis.maxmemory-free-ram-headroom-pct
+    parameter: host.maxmemory_free_ram_headroom_pct
+    system: redis
+    applies_to: Redis FAQ guidance (updated 2024-04-18)
+    value: 20
+    confidence: documented
+    source: redis-faq-maxmemory
+    quote: >-
+      A good conservative rule of thumb is to keep 20% of free memory available
+      in the system beyond the configured maxmemory.
+    notes: >-
+      Host provisioning headroom, not an in-Redis alert threshold. Distinct
+      from T7's used_memory/maxmemory operational alert. FAQ also notes
+      maxmemory is not an exact hard ceiling — commands may briefly exceed it
+      before eviction runs.

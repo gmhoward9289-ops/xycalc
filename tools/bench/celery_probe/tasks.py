@@ -25,6 +25,7 @@ from pymongo import MongoClient
 from pymongo.errors import PyMongoError
 
 REDIS_URL = os.environ.get("PROBE_REDIS", "redis://redis:6379/0")
+BOOKKEEPING_URL = os.environ.get("PROBE_BOOKKEEPING", "redis://bookkeeping:6379/0")
 MONGO_URL = os.environ.get("PROBE_MONGO", "mongodb://mongo:27017")
 DOCS = int(os.environ.get("PROBE_DOCS", "1500000"))
 
@@ -66,18 +67,25 @@ RETRY_BASE_DELAY = float(os.environ.get("PROBE_RETRY_BASE_DELAY", "1"))
 RETRY_MAX_DELAY = float(os.environ.get("PROBE_RETRY_MAX_DELAY", "60"))
 RETRY_DEADLINE = float(os.environ.get("PROBE_RETRY_DEADLINE", "120"))
 
-app = Celery("probe", broker=REDIS_URL, backend=REDIS_URL)
+IGNORE_RESULT = os.environ.get("PROBE_IGNORE_RESULT", "1") == "1"
+RESULT_EXPIRES = int(os.environ.get("PROBE_RESULT_EXPIRES", "300"))
+# Evict probe keeps the capped broker for transport only; results/metadata go
+# elsewhere so worker startup does not add SET traffic to an OOM broker.
+RESULT_BACKEND = os.environ.get("PROBE_RESULT_BACKEND", REDIS_URL)
+
+app = Celery("probe", broker=REDIS_URL, backend=RESULT_BACKEND)
 app.conf.update(
     worker_prefetch_multiplier=int(os.environ.get("PROBE_PREFETCH", "4")),
     task_acks_late=ACKS_LATE,
     broker_transport_options={"visibility_timeout": VISIBILITY_TIMEOUT},
-    result_expires=300,
-    task_ignore_result=True,
+    result_expires=RESULT_EXPIRES,
+    task_ignore_result=IGNORE_RESULT,
     worker_send_task_events=False,
 )
 
 _mongo: MongoClient | None = None
 _redis: redis.Redis | None = None
+_bookkeeping_redis: redis.Redis | None = None
 
 
 def _clients():
@@ -90,6 +98,13 @@ def _clients():
     if _redis is None:
         _redis = redis.Redis.from_url(REDIS_URL)
     return _mongo, _redis
+
+
+def _bookkeeping_client():
+    global _bookkeeping_redis
+    if _bookkeeping_redis is None:
+        _bookkeeping_redis = redis.Redis.from_url(BOOKKEEPING_URL)
+    return _bookkeeping_redis
 
 
 def _retry_countdown(attempt: int) -> float | None:
@@ -141,3 +156,15 @@ def lookup(self):
         raise self.retry(exc=exc, countdown=countdown)
 
     r.incr("probe:completed")
+
+
+@app.task(bind=True, name="probe.noop")
+def noop(self, pad: str = ""):
+    """No-op task for the maxmemory eviction probe. Ground truth lives in
+    bookkeeping Redis, not the broker under test."""
+    bk = _bookkeeping_client()
+    bk.incr("probe:executions")
+    if bk.incr(f"probe:exec:{self.request.id}") > 1:
+        bk.incr("probe:duplicates")
+    bk.sadd("probe:executed_ids", self.request.id)
+    _ = pad  # payload size only — keeps pad in the serialized message

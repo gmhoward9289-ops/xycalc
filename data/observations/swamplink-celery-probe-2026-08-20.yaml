@@ -1,0 +1,729 @@
+observations:
+- slug: swamplink-2026-08-20-run1-rate200-completion-ceiling
+  system: celery
+  parameter: queue.completion_rate_ceiling_ops_s
+  value: 87.4
+  unit: ops/s
+  workload: >-
+    celery_probe run 1, target 200/s for 30.0s,
+    acksLate=false,
+    prefetch=4, visibilityTimeout=30
+  machine_class: Hetzner CX shared vCPU, 7 GB RAM
+  system_version: Celery 5.4.0
+  observed_on: '2026-08-20'
+  source: obs-celery-probe-swamplink-2026-08-20
+  notes: >-
+    Achieved enqueue rate 200.0/s vs target 200/s.
+    queueDepthMax=3315, drainSeconds=32.5,
+    duplicateRatePct=0.0, pagesReadIntoCache=7434.
+
+- slug: swamplink-2026-08-20-run1-rate200-backlog-max
+  system: celery
+  parameter: queue.backlog_depth_max
+  value: 3315
+  unit: tasks
+  workload: >-
+    celery_probe run 1, target 200/s, acksLate=false
+  machine_class: Hetzner CX shared vCPU, 7 GB RAM
+  system_version: Celery 5.4.0
+  observed_on: '2026-08-20'
+  source: obs-celery-probe-swamplink-2026-08-20
+  notes: Peak Redis queue depth during arrival window.
+
+- slug: swamplink-2026-08-20-run1-rate200-drain-seconds
+  system: celery
+  parameter: queue.drain_seconds
+  value: 32.5
+  unit: seconds
+  workload: >-
+    celery_probe run 1, target 200/s, sustained throttle (not post-recovery)
+  machine_class: Hetzner CX shared vCPU, 7 GB RAM
+  system_version: Celery 5.4.0
+  observed_on: '2026-08-20'
+  source: obs-celery-probe-swamplink-2026-08-20
+  notes: Time to clear backlog after arrivals stop while device stays throttled.
+
+- slug: swamplink-2026-08-20-run2-rate25-completion-ceiling
+  system: celery
+  parameter: queue.completion_rate_ceiling_ops_s
+  value: 25.0
+  unit: ops/s
+  workload: >-
+    celery_probe run 2, target 25/s for 30.0s,
+    acksLate=true,
+    prefetch=4, visibilityTimeout=30
+  machine_class: Hetzner CX shared vCPU, 7 GB RAM
+  system_version: Celery 5.4.0
+  observed_on: '2026-08-20'
+  source: obs-celery-probe-swamplink-2026-08-20
+  notes: >-
+    Achieved enqueue rate 25.0/s vs target 25/s.
+    queueDepthMax=0, drainSeconds=0.0,
+    duplicateRatePct=0.0, pagesReadIntoCache=1205.
+
+- slug: swamplink-2026-08-20-run2-rate25-backlog-max
+  system: celery
+  parameter: queue.backlog_depth_max
+  value: 0
+  unit: tasks
+  workload: >-
+    celery_probe run 2, target 25/s, acksLate=true
+  machine_class: Hetzner CX shared vCPU, 7 GB RAM
+  system_version: Celery 5.4.0
+  observed_on: '2026-08-20'
+  source: obs-celery-probe-swamplink-2026-08-20
+  notes: Peak Redis queue depth during arrival window.
+
+- slug: swamplink-2026-08-20-run2-rate25-drain-seconds
+  system: celery
+  parameter: queue.drain_seconds
+  value: 0.0
+  unit: seconds
+  workload: >-
+    celery_probe run 2, target 25/s, sustained throttle (not post-recovery)
+  machine_class: Hetzner CX shared vCPU, 7 GB RAM
+  system_version: Celery 5.4.0
+  observed_on: '2026-08-20'
+  source: obs-celery-probe-swamplink-2026-08-20
+  notes: Time to clear backlog after arrivals stop while device stays throttled.
+
+- slug: swamplink-2026-08-20-run2-rate25-duplicate-rate
+  system: celery
+  parameter: queue.duplicate_rate_pct
+  value: 0.0
+  unit: percent
+  workload: >-
+    celery_probe run 2, visibilityTimeout=30
+  machine_class: Hetzner CX shared vCPU, 7 GB RAM
+  system_version: Celery 5.4.0
+  observed_on: '2026-08-20'
+  source: obs-celery-probe-swamplink-2026-08-20
+  notes: Broker redelivery rate with task_acks_late=True.
+
+- slug: swamplink-2026-08-20-run2-rate50-completion-ceiling
+  system: celery
+  parameter: queue.completion_rate_ceiling_ops_s
+  value: 50.0
+  unit: ops/s
+  workload: >-
+    celery_probe run 2, target 50/s for 30.0s,
+    acksLate=true,
+    prefetch=4, visibilityTimeout=30
+  machine_class: Hetzner CX shared vCPU, 7 GB RAM
+  system_version: Celery 5.4.0
+  observed_on: '2026-08-20'
+  source: obs-celery-probe-swamplink-2026-08-20
+  notes: >-
+    Achieved enqueue rate 50.0/s vs target 50/s.
+    queueDepthMax=0, drainSeconds=0.0,
+    duplicateRatePct=0.0, pagesReadIntoCache=1972.
+
+- slug: swamplink-2026-08-20-run2-rate50-backlog-max
+  system: celery
+  parameter: queue.backlog_depth_max
+  value: 0
+  unit: tasks
+  workload: >-
+    celery_probe run 2, target 50/s, acksLate=true
+  machine_class: Hetzner CX shared vCPU, 7 GB RAM
+  system_version: Celery 5.4.0
+  observed_on: '2026-08-20'
+  source: obs-celery-probe-swamplink-2026-08-20
+  notes: Peak Redis queue depth during arrival window.
+
+- slug: swamplink-2026-08-20-run2-rate50-drain-seconds
+  system: celery
+  parameter: queue.drain_seconds
+  value: 0.0
+  unit: seconds
+  workload: >-
+    celery_probe run 2, target 50/s, sustained throttle (not post-recovery)
+  machine_class: Hetzner CX shared vCPU, 7 GB RAM
+  system_version: Celery 5.4.0
+  observed_on: '2026-08-20'
+  source: obs-celery-probe-swamplink-2026-08-20
+  notes: Time to clear backlog after arrivals stop while device stays throttled.
+
+- slug: swamplink-2026-08-20-run2-rate50-duplicate-rate
+  system: celery
+  parameter: queue.duplicate_rate_pct
+  value: 0.0
+  unit: percent
+  workload: >-
+    celery_probe run 2, visibilityTimeout=30
+  machine_class: Hetzner CX shared vCPU, 7 GB RAM
+  system_version: Celery 5.4.0
+  observed_on: '2026-08-20'
+  source: obs-celery-probe-swamplink-2026-08-20
+  notes: Broker redelivery rate with task_acks_late=True.
+
+- slug: swamplink-2026-08-20-run2-rate100-completion-ceiling
+  system: celery
+  parameter: queue.completion_rate_ceiling_ops_s
+  value: 73.7
+  unit: ops/s
+  workload: >-
+    celery_probe run 2, target 100/s for 30.0s,
+    acksLate=true,
+    prefetch=4, visibilityTimeout=30
+  machine_class: Hetzner CX shared vCPU, 7 GB RAM
+  system_version: Celery 5.4.0
+  observed_on: '2026-08-20'
+  source: obs-celery-probe-swamplink-2026-08-20
+  notes: >-
+    Achieved enqueue rate 100.0/s vs target 100/s.
+    queueDepthMax=792, drainSeconds=7.5,
+    duplicateRatePct=0.0, pagesReadIntoCache=3505.
+
+- slug: swamplink-2026-08-20-run2-rate100-backlog-max
+  system: celery
+  parameter: queue.backlog_depth_max
+  value: 792
+  unit: tasks
+  workload: >-
+    celery_probe run 2, target 100/s, acksLate=true
+  machine_class: Hetzner CX shared vCPU, 7 GB RAM
+  system_version: Celery 5.4.0
+  observed_on: '2026-08-20'
+  source: obs-celery-probe-swamplink-2026-08-20
+  notes: Peak Redis queue depth during arrival window.
+
+- slug: swamplink-2026-08-20-run2-rate100-drain-seconds
+  system: celery
+  parameter: queue.drain_seconds
+  value: 7.5
+  unit: seconds
+  workload: >-
+    celery_probe run 2, target 100/s, sustained throttle (not post-recovery)
+  machine_class: Hetzner CX shared vCPU, 7 GB RAM
+  system_version: Celery 5.4.0
+  observed_on: '2026-08-20'
+  source: obs-celery-probe-swamplink-2026-08-20
+  notes: Time to clear backlog after arrivals stop while device stays throttled.
+
+- slug: swamplink-2026-08-20-run2-rate100-duplicate-rate
+  system: celery
+  parameter: queue.duplicate_rate_pct
+  value: 0.0
+  unit: percent
+  workload: >-
+    celery_probe run 2, visibilityTimeout=30
+  machine_class: Hetzner CX shared vCPU, 7 GB RAM
+  system_version: Celery 5.4.0
+  observed_on: '2026-08-20'
+  source: obs-celery-probe-swamplink-2026-08-20
+  notes: Broker redelivery rate with task_acks_late=True.
+
+- slug: swamplink-2026-08-20-run2-rate200-completion-ceiling
+  system: celery
+  parameter: queue.completion_rate_ceiling_ops_s
+  value: 82.4
+  unit: ops/s
+  workload: >-
+    celery_probe run 2, target 200/s for 30.0s,
+    acksLate=true,
+    prefetch=4, visibilityTimeout=30
+  machine_class: Hetzner CX shared vCPU, 7 GB RAM
+  system_version: Celery 5.4.0
+  observed_on: '2026-08-20'
+  source: obs-celery-probe-swamplink-2026-08-20
+  notes: >-
+    Achieved enqueue rate 200.0/s vs target 200/s.
+    queueDepthMax=3408, drainSeconds=36.5,
+    duplicateRatePct=0.0, pagesReadIntoCache=6953.
+
+- slug: swamplink-2026-08-20-run2-rate200-backlog-max
+  system: celery
+  parameter: queue.backlog_depth_max
+  value: 3408
+  unit: tasks
+  workload: >-
+    celery_probe run 2, target 200/s, acksLate=true
+  machine_class: Hetzner CX shared vCPU, 7 GB RAM
+  system_version: Celery 5.4.0
+  observed_on: '2026-08-20'
+  source: obs-celery-probe-swamplink-2026-08-20
+  notes: Peak Redis queue depth during arrival window.
+
+- slug: swamplink-2026-08-20-run2-rate200-drain-seconds
+  system: celery
+  parameter: queue.drain_seconds
+  value: 36.5
+  unit: seconds
+  workload: >-
+    celery_probe run 2, target 200/s, sustained throttle (not post-recovery)
+  machine_class: Hetzner CX shared vCPU, 7 GB RAM
+  system_version: Celery 5.4.0
+  observed_on: '2026-08-20'
+  source: obs-celery-probe-swamplink-2026-08-20
+  notes: Time to clear backlog after arrivals stop while device stays throttled.
+
+- slug: swamplink-2026-08-20-run2-rate200-duplicate-rate
+  system: celery
+  parameter: queue.duplicate_rate_pct
+  value: 0.0
+  unit: percent
+  workload: >-
+    celery_probe run 2, visibilityTimeout=30
+  machine_class: Hetzner CX shared vCPU, 7 GB RAM
+  system_version: Celery 5.4.0
+  observed_on: '2026-08-20'
+  source: obs-celery-probe-swamplink-2026-08-20
+  notes: Broker redelivery rate with task_acks_late=True.
+
+- slug: swamplink-2026-08-20-run2-rate400-completion-ceiling
+  system: celery
+  parameter: queue.completion_rate_ceiling_ops_s
+  value: 96.5
+  unit: ops/s
+  workload: >-
+    celery_probe run 2, target 400/s for 30.0s,
+    acksLate=true,
+    prefetch=4, visibilityTimeout=30
+  machine_class: Hetzner CX shared vCPU, 7 GB RAM
+  system_version: Celery 5.4.0
+  observed_on: '2026-08-20'
+  source: obs-celery-probe-swamplink-2026-08-20
+  notes: >-
+    Achieved enqueue rate 400.0/s vs target 400/s.
+    queueDepthMax=8885, drainSeconds=99.1,
+    duplicateRatePct=0.0, pagesReadIntoCache=14040.
+
+- slug: swamplink-2026-08-20-run2-rate400-backlog-max
+  system: celery
+  parameter: queue.backlog_depth_max
+  value: 8885
+  unit: tasks
+  workload: >-
+    celery_probe run 2, target 400/s, acksLate=true
+  machine_class: Hetzner CX shared vCPU, 7 GB RAM
+  system_version: Celery 5.4.0
+  observed_on: '2026-08-20'
+  source: obs-celery-probe-swamplink-2026-08-20
+  notes: Peak Redis queue depth during arrival window.
+
+- slug: swamplink-2026-08-20-run2-rate400-drain-seconds
+  system: celery
+  parameter: queue.drain_seconds
+  value: 99.1
+  unit: seconds
+  workload: >-
+    celery_probe run 2, target 400/s, sustained throttle (not post-recovery)
+  machine_class: Hetzner CX shared vCPU, 7 GB RAM
+  system_version: Celery 5.4.0
+  observed_on: '2026-08-20'
+  source: obs-celery-probe-swamplink-2026-08-20
+  notes: Time to clear backlog after arrivals stop while device stays throttled.
+
+- slug: swamplink-2026-08-20-run2-rate400-duplicate-rate
+  system: celery
+  parameter: queue.duplicate_rate_pct
+  value: 0.0
+  unit: percent
+  workload: >-
+    celery_probe run 2, visibilityTimeout=30
+  machine_class: Hetzner CX shared vCPU, 7 GB RAM
+  system_version: Celery 5.4.0
+  observed_on: '2026-08-20'
+  source: obs-celery-probe-swamplink-2026-08-20
+  notes: Broker redelivery rate with task_acks_late=True.
+
+- slug: swamplink-2026-08-20-run3-rate200-completion-ceiling
+  system: celery
+  parameter: queue.completion_rate_ceiling_ops_s
+  value: 62.8
+  unit: ops/s
+  workload: >-
+    celery_probe run 3, target 200/s for 60.0s,
+    acksLate=true,
+    prefetch=4, visibilityTimeout=10
+  machine_class: Hetzner CX shared vCPU, 7 GB RAM
+  system_version: Celery 5.4.0
+  observed_on: '2026-08-20'
+  source: obs-celery-probe-swamplink-2026-08-20
+  notes: >-
+    Achieved enqueue rate 200.0/s vs target 200/s.
+    queueDepthMax=8162, drainSeconds=82.6,
+    duplicateRatePct=0.0, pagesReadIntoCache=14268.
+
+- slug: swamplink-2026-08-20-run3-rate200-backlog-max
+  system: celery
+  parameter: queue.backlog_depth_max
+  value: 8162
+  unit: tasks
+  workload: >-
+    celery_probe run 3, target 200/s, acksLate=true
+  machine_class: Hetzner CX shared vCPU, 7 GB RAM
+  system_version: Celery 5.4.0
+  observed_on: '2026-08-20'
+  source: obs-celery-probe-swamplink-2026-08-20
+  notes: Peak Redis queue depth during arrival window.
+
+- slug: swamplink-2026-08-20-run3-rate200-drain-seconds
+  system: celery
+  parameter: queue.drain_seconds
+  value: 82.6
+  unit: seconds
+  workload: >-
+    celery_probe run 3, target 200/s, sustained throttle (not post-recovery)
+  machine_class: Hetzner CX shared vCPU, 7 GB RAM
+  system_version: Celery 5.4.0
+  observed_on: '2026-08-20'
+  source: obs-celery-probe-swamplink-2026-08-20
+  notes: Time to clear backlog after arrivals stop while device stays throttled.
+
+- slug: swamplink-2026-08-20-run3-rate200-duplicate-rate
+  system: celery
+  parameter: queue.duplicate_rate_pct
+  value: 0.0
+  unit: percent
+  workload: >-
+    celery_probe run 3, visibilityTimeout=10
+  machine_class: Hetzner CX shared vCPU, 7 GB RAM
+  system_version: Celery 5.4.0
+  observed_on: '2026-08-20'
+  source: obs-celery-probe-swamplink-2026-08-20
+  notes: Broker redelivery rate with task_acks_late=True.
+
+- slug: swamplink-2026-08-20-run4-rate200-completion-ceiling
+  system: celery
+  parameter: queue.completion_rate_ceiling_ops_s
+  value: 82.6
+  unit: ops/s
+  workload: >-
+    celery_probe run 4, target 200/s for 60.0s,
+    acksLate=true,
+    prefetch=4, visibilityTimeout=5
+  machine_class: Hetzner CX shared vCPU, 7 GB RAM
+  system_version: Celery 5.4.0
+  observed_on: '2026-08-20'
+  source: obs-celery-probe-swamplink-2026-08-20
+  notes: >-
+    Achieved enqueue rate 200.0/s vs target 200/s.
+    queueDepthMax=6935, drainSeconds=90.1,
+    duplicateRatePct=0.0, pagesReadIntoCache=12520.
+
+- slug: swamplink-2026-08-20-run4-rate200-backlog-max
+  system: celery
+  parameter: queue.backlog_depth_max
+  value: 6935
+  unit: tasks
+  workload: >-
+    celery_probe run 4, target 200/s, acksLate=true
+  machine_class: Hetzner CX shared vCPU, 7 GB RAM
+  system_version: Celery 5.4.0
+  observed_on: '2026-08-20'
+  source: obs-celery-probe-swamplink-2026-08-20
+  notes: Peak Redis queue depth during arrival window.
+
+- slug: swamplink-2026-08-20-run4-rate200-drain-seconds
+  system: celery
+  parameter: queue.drain_seconds
+  value: 90.1
+  unit: seconds
+  workload: >-
+    celery_probe run 4, target 200/s, sustained throttle (not post-recovery)
+  machine_class: Hetzner CX shared vCPU, 7 GB RAM
+  system_version: Celery 5.4.0
+  observed_on: '2026-08-20'
+  source: obs-celery-probe-swamplink-2026-08-20
+  notes: Time to clear backlog after arrivals stop while device stays throttled.
+
+- slug: swamplink-2026-08-20-run4-rate200-duplicate-rate
+  system: celery
+  parameter: queue.duplicate_rate_pct
+  value: 0.0
+  unit: percent
+  workload: >-
+    celery_probe run 4, visibilityTimeout=5
+  machine_class: Hetzner CX shared vCPU, 7 GB RAM
+  system_version: Celery 5.4.0
+  observed_on: '2026-08-20'
+  source: obs-celery-probe-swamplink-2026-08-20
+  notes: Broker redelivery rate with task_acks_late=True.
+
+- slug: swamplink-2026-08-20-run5-rate200-completion-ceiling
+  system: celery
+  parameter: queue.completion_rate_ceiling_ops_s
+  value: 77.3
+  unit: ops/s
+  workload: >-
+    celery_probe run 5, target 200/s for 60.0s,
+    acksLate=true,
+    prefetch=4, visibilityTimeout=2
+  machine_class: Hetzner CX shared vCPU, 7 GB RAM
+  system_version: Celery 5.4.0
+  observed_on: '2026-08-20'
+  source: obs-celery-probe-swamplink-2026-08-20
+  notes: >-
+    Achieved enqueue rate 200.0/s vs target 200/s.
+    queueDepthMax=7283, drainSeconds=84.6,
+    duplicateRatePct=0.0, pagesReadIntoCache=14027.
+
+- slug: swamplink-2026-08-20-run5-rate200-backlog-max
+  system: celery
+  parameter: queue.backlog_depth_max
+  value: 7283
+  unit: tasks
+  workload: >-
+    celery_probe run 5, target 200/s, acksLate=true
+  machine_class: Hetzner CX shared vCPU, 7 GB RAM
+  system_version: Celery 5.4.0
+  observed_on: '2026-08-20'
+  source: obs-celery-probe-swamplink-2026-08-20
+  notes: Peak Redis queue depth during arrival window.
+
+- slug: swamplink-2026-08-20-run5-rate200-drain-seconds
+  system: celery
+  parameter: queue.drain_seconds
+  value: 84.6
+  unit: seconds
+  workload: >-
+    celery_probe run 5, target 200/s, sustained throttle (not post-recovery)
+  machine_class: Hetzner CX shared vCPU, 7 GB RAM
+  system_version: Celery 5.4.0
+  observed_on: '2026-08-20'
+  source: obs-celery-probe-swamplink-2026-08-20
+  notes: Time to clear backlog after arrivals stop while device stays throttled.
+
+- slug: swamplink-2026-08-20-run5-rate200-duplicate-rate
+  system: celery
+  parameter: queue.duplicate_rate_pct
+  value: 0.0
+  unit: percent
+  workload: >-
+    celery_probe run 5, visibilityTimeout=2
+  machine_class: Hetzner CX shared vCPU, 7 GB RAM
+  system_version: Celery 5.4.0
+  observed_on: '2026-08-20'
+  source: obs-celery-probe-swamplink-2026-08-20
+  notes: Broker redelivery rate with task_acks_late=True.
+
+- slug: swamplink-2026-08-20-run6-rate200-completion-ceiling
+  system: celery
+  parameter: queue.completion_rate_ceiling_ops_s
+  value: 104.5
+  unit: ops/s
+  workload: >-
+    celery_probe run 6, target 200/s for 30.0s,
+    acksLate=true,
+    prefetch=4, visibilityTimeout=30
+  machine_class: Hetzner CX shared vCPU, 7 GB RAM
+  system_version: Celery 5.4.0
+  observed_on: '2026-08-20'
+  source: obs-celery-probe-swamplink-2026-08-20
+  notes: >-
+    Achieved enqueue rate 200.0/s vs target 200/s.
+    queueDepthMax=2817, drainSeconds=24.5,
+    duplicateRatePct=0.0, pagesReadIntoCache=7487.
+
+- slug: swamplink-2026-08-20-run6-rate200-backlog-max
+  system: celery
+  parameter: queue.backlog_depth_max
+  value: 2817
+  unit: tasks
+  workload: >-
+    celery_probe run 6, target 200/s, acksLate=true
+  machine_class: Hetzner CX shared vCPU, 7 GB RAM
+  system_version: Celery 5.4.0
+  observed_on: '2026-08-20'
+  source: obs-celery-probe-swamplink-2026-08-20
+  notes: Peak Redis queue depth during arrival window.
+
+- slug: swamplink-2026-08-20-run6-rate200-drain-seconds
+  system: celery
+  parameter: queue.drain_seconds
+  value: 24.5
+  unit: seconds
+  workload: >-
+    celery_probe run 6, target 200/s, sustained throttle (not post-recovery)
+  machine_class: Hetzner CX shared vCPU, 7 GB RAM
+  system_version: Celery 5.4.0
+  observed_on: '2026-08-20'
+  source: obs-celery-probe-swamplink-2026-08-20
+  notes: Time to clear backlog after arrivals stop while device stays throttled.
+
+- slug: swamplink-2026-08-20-run6-rate200-duplicate-rate
+  system: celery
+  parameter: queue.duplicate_rate_pct
+  value: 0.0
+  unit: percent
+  workload: >-
+    celery_probe run 6, visibilityTimeout=30
+  machine_class: Hetzner CX shared vCPU, 7 GB RAM
+  system_version: Celery 5.4.0
+  observed_on: '2026-08-20'
+  source: obs-celery-probe-swamplink-2026-08-20
+  notes: Broker redelivery rate with task_acks_late=True.
+
+- slug: swamplink-2026-08-20-run7-rate200-completion-ceiling
+  system: celery
+  parameter: queue.completion_rate_ceiling_ops_s
+  value: 117.2
+  unit: ops/s
+  workload: >-
+    celery_probe run 7, target 200/s for 30.0s,
+    acksLate=true,
+    prefetch=4, visibilityTimeout=30
+  machine_class: Hetzner CX shared vCPU, 7 GB RAM
+  system_version: Celery 5.4.0
+  observed_on: '2026-08-20'
+  source: obs-celery-probe-swamplink-2026-08-20
+  notes: >-
+    Achieved enqueue rate 200.0/s vs target 200/s.
+    queueDepthMax=2316, drainSeconds=20.5,
+    duplicateRatePct=0.0, pagesReadIntoCache=6177.
+
+- slug: swamplink-2026-08-20-run7-rate200-backlog-max
+  system: celery
+  parameter: queue.backlog_depth_max
+  value: 2316
+  unit: tasks
+  workload: >-
+    celery_probe run 7, target 200/s, acksLate=true
+  machine_class: Hetzner CX shared vCPU, 7 GB RAM
+  system_version: Celery 5.4.0
+  observed_on: '2026-08-20'
+  source: obs-celery-probe-swamplink-2026-08-20
+  notes: Peak Redis queue depth during arrival window.
+
+- slug: swamplink-2026-08-20-run7-rate200-drain-seconds
+  system: celery
+  parameter: queue.drain_seconds
+  value: 20.5
+  unit: seconds
+  workload: >-
+    celery_probe run 7, target 200/s, sustained throttle (not post-recovery)
+  machine_class: Hetzner CX shared vCPU, 7 GB RAM
+  system_version: Celery 5.4.0
+  observed_on: '2026-08-20'
+  source: obs-celery-probe-swamplink-2026-08-20
+  notes: Time to clear backlog after arrivals stop while device stays throttled.
+
+- slug: swamplink-2026-08-20-run7-rate200-duplicate-rate
+  system: celery
+  parameter: queue.duplicate_rate_pct
+  value: 0.0
+  unit: percent
+  workload: >-
+    celery_probe run 7, visibilityTimeout=30
+  machine_class: Hetzner CX shared vCPU, 7 GB RAM
+  system_version: Celery 5.4.0
+  observed_on: '2026-08-20'
+  source: obs-celery-probe-swamplink-2026-08-20
+  notes: Broker redelivery rate with task_acks_late=True.
+
+- slug: swamplink-2026-08-20-run8-rate200-completion-ceiling
+  system: celery
+  parameter: queue.completion_rate_ceiling_ops_s
+  value: 106.0
+  unit: ops/s
+  workload: >-
+    celery_probe run 8, target 200/s for 30.0s,
+    acksLate=true,
+    prefetch=4, visibilityTimeout=30
+  machine_class: Hetzner CX shared vCPU, 7 GB RAM
+  system_version: Celery 5.4.0
+  observed_on: '2026-08-20'
+  source: obs-celery-probe-swamplink-2026-08-20
+  notes: >-
+    Achieved enqueue rate 200.0/s vs target 200/s.
+    queueDepthMax=2774, drainSeconds=25.5,
+    duplicateRatePct=0.0, pagesReadIntoCache=7555.
+
+- slug: swamplink-2026-08-20-run8-rate200-backlog-max
+  system: celery
+  parameter: queue.backlog_depth_max
+  value: 2774
+  unit: tasks
+  workload: >-
+    celery_probe run 8, target 200/s, acksLate=true
+  machine_class: Hetzner CX shared vCPU, 7 GB RAM
+  system_version: Celery 5.4.0
+  observed_on: '2026-08-20'
+  source: obs-celery-probe-swamplink-2026-08-20
+  notes: Peak Redis queue depth during arrival window.
+
+- slug: swamplink-2026-08-20-run8-rate200-drain-seconds
+  system: celery
+  parameter: queue.drain_seconds
+  value: 25.5
+  unit: seconds
+  workload: >-
+    celery_probe run 8, target 200/s, sustained throttle (not post-recovery)
+  machine_class: Hetzner CX shared vCPU, 7 GB RAM
+  system_version: Celery 5.4.0
+  observed_on: '2026-08-20'
+  source: obs-celery-probe-swamplink-2026-08-20
+  notes: Time to clear backlog after arrivals stop while device stays throttled.
+
+- slug: swamplink-2026-08-20-run8-rate200-duplicate-rate
+  system: celery
+  parameter: queue.duplicate_rate_pct
+  value: 0.0
+  unit: percent
+  workload: >-
+    celery_probe run 8, visibilityTimeout=30
+  machine_class: Hetzner CX shared vCPU, 7 GB RAM
+  system_version: Celery 5.4.0
+  observed_on: '2026-08-20'
+  source: obs-celery-probe-swamplink-2026-08-20
+  notes: Broker redelivery rate with task_acks_late=True.
+
+- slug: swamplink-2026-08-20-run9-rate200-completion-ceiling
+  system: celery
+  parameter: queue.completion_rate_ceiling_ops_s
+  value: 48.6
+  unit: ops/s
+  workload: >-
+    celery_probe run 9, target 200/s for 30.0s,
+    acksLate=true,
+    prefetch=4, visibilityTimeout=30
+  machine_class: Hetzner CX shared vCPU, 7 GB RAM
+  system_version: Celery 5.4.0
+  observed_on: '2026-08-20'
+  source: obs-celery-probe-swamplink-2026-08-20
+  notes: >-
+    Achieved enqueue rate 200.0/s vs target 200/s.
+    queueDepthMax=4385, drainSeconds=72.1,
+    duplicateRatePct=0.0, pagesReadIntoCache=6148.
+
+- slug: swamplink-2026-08-20-run9-rate200-backlog-max
+  system: celery
+  parameter: queue.backlog_depth_max
+  value: 4385
+  unit: tasks
+  workload: >-
+    celery_probe run 9, target 200/s, acksLate=true
+  machine_class: Hetzner CX shared vCPU, 7 GB RAM
+  system_version: Celery 5.4.0
+  observed_on: '2026-08-20'
+  source: obs-celery-probe-swamplink-2026-08-20
+  notes: Peak Redis queue depth during arrival window.
+
+- slug: swamplink-2026-08-20-run9-rate200-drain-seconds
+  system: celery
+  parameter: queue.drain_seconds
+  value: 72.1
+  unit: seconds
+  workload: >-
+    celery_probe run 9, target 200/s, sustained throttle (not post-recovery)
+  machine_class: Hetzner CX shared vCPU, 7 GB RAM
+  system_version: Celery 5.4.0
+  observed_on: '2026-08-20'
+  source: obs-celery-probe-swamplink-2026-08-20
+  notes: Time to clear backlog after arrivals stop while device stays throttled.
+
+- slug: swamplink-2026-08-20-run9-rate200-duplicate-rate
+  system: celery
+  parameter: queue.duplicate_rate_pct
+  value: 0.0
+  unit: percent
+  workload: >-
+    celery_probe run 9, visibilityTimeout=30
+  machine_class: Hetzner CX shared vCPU, 7 GB RAM
+  system_version: Celery 5.4.0
+  observed_on: '2026-08-20'
+  source: obs-celery-probe-swamplink-2026-08-20
+  notes: Broker redelivery rate with task_acks_late=True.
+

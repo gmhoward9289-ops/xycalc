@@ -1,0 +1,86 @@
+models:
+  - slug: celery.queue-amplification
+    question: >-
+      When MongoDB is stalled behind a throttled disk, how much worse does a
+      Celery queue make recovery — backlog, drain time, and broker redelivery?
+    system: celery
+    output: queue.drain_seconds
+
+    summary: >-
+      Cites the measured drain tail for the benchmark configuration at 200 tasks/s
+      offered. Backlog, completion ceiling, and duplicate-rate findings are
+      constraint terms — this model's arithmetic is intentionally thin until a
+      formula ties offered rate to drain time.
+
+    reframe: >-
+      This is not "Celery is bad." It is what an open-loop queue does when a
+      closed-loop thread pool would have self-limited. The numbers here are
+      headroom and tail risk for deployments that already chose a brokered
+      architecture — especially those running task_acks_late=True for durability.
+
+      Investigation 003 showed a stable stall: throughput flat, latency rising.
+      Investigation 004 shows the queue removes the bound: backlog grows without
+      limit when arrivals exceed the measured completion ceiling (~82 tasks/s at
+      200/s offered on this configuration), and drain time while the device stays
+      throttled can dwarf the arrival window (36.5s after 30s at 200/s; 99.1s
+      after 30s at 400/s).
+
+      The redelivery loop BRIEF.md highlights did not appear in this sweep: with
+      acks_late=1 and visibility_timeout swept down to 2s, duplicate execution
+      rate stayed at zero. That is an honest negative result — not "queues are
+      safe," but "this configuration did not produce broker-driven duplicate load
+      during the stall." Deployments with longer in-flight tasks or different
+      prefetch/timeout pairings may differ; applies_to must stay explicit.
+
+    notes: >-
+      n=1 benchmark on swamplink 2026-08-20. Drain is measured under sustained
+      blkio throttle, not after the device recovers (see FINDINGS.md premise note).
+      Prefetch/concurrency sweeps (runs 6–9) moved completion rate and backlog
+      but are recorded as observations, not generalized coefficients — T6 owns
+      the prefetch/backlog relationship.
+
+    terms:
+      - key: drain_at_200
+        label: Measured drain after 200/s offered (30s window)
+        role: floor
+        apply: set_from_coefficient
+        coefficient: celery.queue-drain-seconds-at-200-rate
+        rationale: >-
+          Benchmark row for the reference configuration issue #14 uses as its
+          baseline. Sets the model output to the measured 36.5s drain while
+          the device remained throttled.
+
+      - key: completion_ceiling
+        label: Fleet throughput ceiling under stall
+        role: constraint
+        apply: note
+        coefficient: celery.queue-completion-ceiling-baseline
+        rationale: >-
+          Measured fleet completion (~82/s at 200/s offered). Arrivals above
+          this grow backlog; cited as context, not computed here.
+
+      - key: backlog_headroom
+        label: Peak backlog at 200/s offered
+        role: constraint
+        apply: note
+        coefficient: celery.queue-backlog-max-at-200-rate
+        rationale: >-
+          queueDepthMax 3408 in 30s at 200/s on the benchmark configuration.
+
+      - key: redelivery_requires_late_ack
+        label: Duplicate rate only meaningful with late ack
+        role: constraint
+        apply: note
+        coefficient: celery.task-acks-late-default
+        rationale: >-
+          Celery defaults to ack-before-execute. The control run's zero duplicate
+          rate is guaranteed by configuration, not produced by load.
+
+      - key: redelivery_measured_zero
+        label: Measured duplicate rate with late ack on this harness
+        role: constraint
+        apply: note
+        coefficient: celery.queue-duplicate-rate-visibility-2s
+        rationale: >-
+          Even with acks_late=1 and visibility_timeout=2s, duplicateRatePct
+          stayed 0 across the sweep.

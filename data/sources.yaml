@@ -341,4 +341,87 @@ sources:
     source_type: vendor_doc
     notes: >-
       Redis broker visibility timeout default (1 hour) and broker_transport_options
-      configuration surface.
+      configuration surface. Key eviction caveat recommends maxmemory with
+      maxmemory-policy noeviction or allkeys-lru.
+
+  - slug: celery-issue-5716
+    title: Celery deadlocks on redis OOM
+    publisher: Celery Project (GitHub)
+    url: https://github.com/celery/celery/issues/5716
+    version: Celery 4.3.0 (reporter)
+    retrieved_on: '2026-08-20'
+    source_type: practitioner
+    notes: >-
+      Open bug report filed 2019-09-06 against Celery 4.3.0 (milestone 6.1
+      unreleased as of retrieval). Describes workers unable to consume from a
+      noeviction broker at maxmemory because queue_declare pipelines LLEN under
+      OOM. Practitioner side of T7's documented-vs-practitioner conflict —
+      not vendor documentation. evict_probe on Celery 5.4.0 tests whether this
+      still reproduces.
+
+  - slug: redis-conf-maxmemory-7.2
+    title: redis.conf shipped with Redis 7.2
+    publisher: Redis Ltd
+    url: https://github.com/redis/redis/blob/7.2/redis.conf
+    version: Redis 7.2
+    retrieved_on: '2026-08-20'
+    source_type: vendor_doc
+    notes: >-
+      Shipped defaults for maxmemory (unset means no limit on 64-bit systems)
+      and maxmemory-policy (noeviction). Also carries maxmemory-samples (5),
+      list-max-listpack-size (-2 = 8 KB quicklist nodes), and the write-vs-read
+      OOM behaviour under noeviction. celery_probe uses redis:7-alpine.
+
+  - slug: redis-memory-usage-7.2
+    title: MEMORY USAGE — Redis command reference
+    publisher: Redis Ltd
+    url: https://redis.io/docs/latest/commands/memory-usage/
+    version: Redis 7.2.0 (64-bit jemalloc examples)
+    retrieved_on: '2026-08-20'
+    source_type: vendor_doc
+    notes: >-
+      Documents empty-string key overhead: MEMORY USAGE "" returns 56 bytes on
+      Redis 7.2.0 64-bit with jemalloc — pure administrative overhead before
+      payload. Floor input for broker key / small-value sizing; Celery queue
+      messages sit inside list elements, so this is key-overhead floor not
+      per-task bytes.
+
+  - slug: redis-key-eviction
+    title: Key eviction — Redis documentation
+    publisher: Redis Ltd
+    url: https://redis.io/docs/latest/develop/reference/eviction/
+    version: Redis Open Source (retrieved 2026-08-20; references redis.conf 7.4.0)
+    retrieved_on: '2026-08-20'
+    source_type: vendor_doc
+    notes: >-
+      Vendor eviction policy catalogue. States that volatile-* policies behave
+      like noeviction when no keys have an expire — the documented basis for
+      investigation 005's volatile-lru arm caveat. Also documents approximated
+      LRU via maxmemory-samples (example value 5) and that noeviction still
+      serves read-only commands.
+
+  - slug: redis-memory-optimization
+    title: Memory optimization — Redis documentation
+    publisher: Redis Ltd
+    url: https://redis.io/docs/latest/operate/oss_and_stack/management/optimization/memory-optimization/
+    version: Redis >= 7.0 / >= 7.2 sections
+    retrieved_on: '2026-08-20'
+    source_type: vendor_doc
+    notes: >-
+      Special encoding of small aggregates: up to 10× less memory, average 5×.
+      Ships Redis >= 7.0 listpack defaults (hash-max-listpack-entries 512,
+      hash-max-listpack-value 64, etc.). Peak-RSS vs used_memory provisioning
+      guidance (size for peak).
+
+  - slug: redis-faq-maxmemory
+    title: 'Is maxmemory the Maximum Value of Used Memory?'
+    publisher: Redis Ltd
+    url: https://redis.io/faq/doc/1jbxid5qq7/is-maxmemory-the-maximum-value-of-used-memory
+    version: Redis FAQ (updated 2024-04-18)
+    retrieved_on: '2026-08-20'
+    source_type: vendor_doc
+    notes: >-
+      Vendor FAQ: maxmemory is not an exact hard ceiling (commands can
+      temporarily exceed it before eviction). Conservative host headroom rule
+      of thumb: keep 20% free RAM beyond configured maxmemory. Sampling
+      description (5–10 candidate keys) aligns with maxmemory-samples.

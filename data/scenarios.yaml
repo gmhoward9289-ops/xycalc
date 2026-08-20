@@ -166,11 +166,12 @@ scenarios:
   - slug: redis.stub
     label: Redis
     disabled: true
-    note: Stub. No coefficients yet.
+    note: >-
+      Broker maxmemory investigation 005 — documented layer in corpus;
+      sizing model not proposed until sweep lands.
   - slug: celery.stub
     label: Celery
     disabled: true
     note: >-
-      Stub. Has a head start when its turn comes: ~/Claude/SCHEDULED-JOBS.md
-      already holds a Celery+Redis evaluation dated 2026-07-31 and the
-      conditions that would justify revisiting the decision.
+      Queue amplification (004) and broker maxmemory (005) harnesses built;
+      benchmark coefficients import from probe JSON.
