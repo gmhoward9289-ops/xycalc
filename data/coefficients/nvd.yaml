@@ -41,3 +41,63 @@ coefficients:
       Used when no explicit target_vuln_count is supplied and
       projection_years defaults to three. For other horizons, supply a
       target count or run single-year add_fraction manually.
+
+  # Annual publication counts — chart series, not model terms. Point values
+  # (lo=mode=hi) because they are counted totals from the cited reviews.
+
+  - slug: nvd.cves-published-2023
+    parameter: vuln.count
+    system: nvd
+    applies_to: CVE records published in 2023, excluding rejected
+    value: 28818
+    confidence: practitioner
+    source: jerrygamblin-2024-cve-review
+    quote: >-
+      We ended 2024 with 40,009 published CVEs, up over 38% from the 28,818
+      CVEs published in 2023.
+
+  - slug: nvd.cves-published-2024
+    parameter: vuln.count
+    system: nvd
+    applies_to: CVE records published in 2024, excluding rejected
+    value: 40009
+    confidence: practitioner
+    source: jerrygamblin-2024-cve-review
+    quote: We ended 2024 with 40,009 published CVEs, up over 38% from the 28,818 CVEs published in 2023.
+    notes: >-
+      Contemporaneous 2024 count. The 2025 review restates 2024 as 39,962
+      when computing the 20.6% YoY figure. This corpus keeps 40,009 as the
+      2024 bar and cites both reviews.
+
+  - slug: nvd.cves-published-2025
+    parameter: vuln.count
+    system: nvd
+    applies_to: CVE records published in 2025, excluding rejected
+    value: 48185
+    confidence: practitioner
+    source: jerrygamblin-2025-cve-review
+    quote: In 2025, 48,185 CVEs were published, a 20.6% increase from 2024’s 39,962.
+
+  - slug: nvd.cves-cumulative-through-2025
+    parameter: vuln.count
+    system: nvd
+    applies_to: Cumulative CVE records since 1999, through 2025, excluding rejected
+    value: 308920
+    confidence: practitioner
+    source: jerrygamblin-2025-cve-review
+    quote: The total number of CVEs since 1999 now stands at 308,920.
+
+  - slug: nvd.microsoft-cves-published-2025
+    parameter: vuln.count
+    system: nvd
+    applies_to: Microsoft as vendor, CVE records published in 2025, excluding rejected
+    value: 1255
+    confidence: practitioner
+    source: jerrygamblin-2025-cve-review
+    quote: >-
+      Top 5 Vendors in 2025 — Rank 2 Microsoft, CVE Count 1,255.
+    notes: >-
+      Vendor attribution from the same review as the NVD annual totals, so it
+      can sit on the same chart. 2023 and 2024 reviews do not publish a
+      matching Microsoft-as-vendor table; do not fill those years from Patch
+      Tuesday or BeyondTrust counts (different counting rules).

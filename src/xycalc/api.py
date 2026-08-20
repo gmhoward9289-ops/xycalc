@@ -21,11 +21,10 @@ from .model import (
     ModelError,
     build_instance_sizing_summary,
     chain_evaluate,
+    describe_scenarios,
     get_scenario,
     headroom,
-    load_scenarios,
     parse_bytes,
-    scenario_form_inputs,
     validation_status,
 )
 
@@ -166,67 +165,7 @@ def _serialise_instance_pick(pick: dict) -> dict:
 
 @app.get("/api/scenarios")
 def list_scenarios():
-    conn = _conn()
-    out = []
-    for s in load_scenarios():
-        entry = {
-            "slug": s["slug"],
-            "label": s["label"],
-            "summary": s.get("summary"),
-            "default": bool(s.get("default")),
-            "disabled": bool(s.get("disabled")),
-            "note": s.get("note"),
-            "see_also": s.get("see_also", []),
-            "extra_inputs": s.get("extra_inputs", []),
-        }
-        if not entry["disabled"]:
-            form_inputs = scenario_form_inputs(conn, s)
-            input_map = {i["key"]: i for i in form_inputs}
-            for extra in entry.get("extra_inputs", []):
-                input_map[extra["key"]] = extra
-            entry["inputs"] = form_inputs
-            sections = []
-            for sec in s.get("input_sections", []):
-                sections.append(
-                    {
-                        "title": sec["title"],
-                        "inputs": [
-                            input_map[k]
-                            for k in sec["keys"]
-                            if k in input_map
-                        ],
-                    }
-                )
-            if sections:
-                entry["input_sections"] = sections
-            first_model = next(
-                (
-                    st["model"]
-                    for st in s["steps"]
-                    if st.get("kind", "model") == "model"
-                ),
-                None,
-            )
-            if first_model:
-                m = Model.load(conn, first_model)
-                entry["question"] = m.question
-                entry["unit"] = m.output_unit
-            if s.get("slug") == "mongodb.size-to-instance":
-                entry["nvd_chart"] = {
-                    "annual": [
-                        {"year": 2023, "count": 28818},
-                        {"year": 2024, "count": 40009},
-                        {"year": 2025, "count": 48185},
-                    ],
-                    "cumulative_2025": 308920,
-                    "growth_pct": {"lo": 15, "mode": 21, "hi": 39},
-                    "source": "jerrygamblin-2025-cve-review",
-                    "source_url": (
-                        "https://jerrygamblin.com/2026/01/01/2025-cve-data-review/"
-                    ),
-                }
-        out.append(entry)
-    return {"scenarios": out}
+    return {"scenarios": describe_scenarios(_conn())}
 
 
 @app.post("/api/scenario")
