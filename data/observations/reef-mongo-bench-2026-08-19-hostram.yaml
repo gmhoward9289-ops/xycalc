@@ -1,0 +1,31 @@
+observations:
+- slug: reef-mongo-bench-2026-08-19-hostram-cache
+  parameter: cache.size_bytes
+  value: 16252928000
+  notes: >-
+    serverStatus().wiredTiger.cache['maximum bytes configured'] on a
+    default-configured instance (no wiredTigerCacheSizeGB override), empty
+    database. Reflects the default split from visible host RAM, not any
+    data volume.
+  system: mongodb
+  unit: bytes
+  workload: default-configured instance, empty database, idle
+  machine_class: WSL2 Ubuntu on reef (Ryzen, NVMe), no cache override
+  system_version: 7.0.40
+  observed_on: '2026-08-19'
+  source: obs-mongodb-reef-hostram-2026-08-19
+- slug: reef-mongo-bench-2026-08-19-hostram-ram
+  parameter: host.ram_bytes
+  value: 33579597824
+  notes: >-
+    db.hostInfo().system.memSizeMB * 1024 * 1024. This is the figure mongod
+    itself used to compute the default cache split, so it is the correct
+    denominator for validating the split formula (rather than the OS's own
+    free -b total, which differs by ~5 KB).
+  system: mongodb
+  unit: bytes
+  workload: default-configured instance, empty database, idle
+  machine_class: WSL2 Ubuntu on reef (Ryzen, NVMe), no cache override
+  system_version: 7.0.40
+  observed_on: '2026-08-19'
+  source: obs-mongodb-reef-hostram-2026-08-19

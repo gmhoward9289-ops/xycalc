@@ -552,7 +552,11 @@ def _add_model_flags(parser: argparse.ArgumentParser, db: Path | None) -> None:
             _flag(r["key"]),
             dest=r["key"],
             metavar=r["unit"].upper(),
-            help=r["label"],
+            # argparse's HelpFormatter treats help text as a %-format string
+            # (it substitutes %(default)s etc.), so a literal '%' from a
+            # label like "growth (%)" raises ValueError at parse time. Escape
+            # it here rather than banning '%' from every future label.
+            help=r["label"].replace("%", "%%"),
         )
     conn.close()
 

@@ -1,9 +1,15 @@
 # Benchmark harnesses
 
 This directory holds the repo's benchmark harnesses: `ticket_probe.sh` (thread
-concurrency against a throttled MongoDB) and `celery_probe/` (the same
-workload driven by a Celery fleet instead of raw threads). See each for its
-own README/comments.
+concurrency against a throttled MongoDB), `celery_probe/` (the same workload
+driven by a Celery fleet instead of raw threads), `mongodb_load.js` (seeds a
+collection sized to fit comfortably in cache, for validating the
+decompression/index terms), `mongodb_saturated_cache.sh` (seeds a collection
+deliberately larger than the configured cache, for validating the
+eviction-target coefficient under real pressure), and
+`mongodb_default_split.sh` (validates mongodb.host-ram's default cache-split
+formula against a host's actual RAM, no dataset needed). See each for its own
+README/comments.
 
 ## Before you believe a result
 

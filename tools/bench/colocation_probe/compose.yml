@@ -1,0 +1,84 @@
+# Mongo + Redis + ClickHouse + Celery, colocated on one host, measured rather
+# than narrated.
+#
+# docs/research/mongodb-vertical-scaling-r8.md section 7 states -- from
+# vendor docs, not from any measurement this repo has taken -- that none of
+# these four services is memory-polite by default, and that Percona
+# recommends capping WiredTiger to 50-70% of MONGO'S OWN SHARE of RAM rather
+# than 50-70% of total host RAM when neighbors are present. This harness
+# exists to turn that narrative guidance into an observation: what RSS does
+# each service actually hold, idle and under light concurrent load, when
+# none of the "practical caps" section's advice has been applied and every
+# service is left on its documented default?
+#
+#   cd tools/bench/colocation_probe && ./run.sh
+#
+# Deliberately NOT reproducing celery_probe's blkio throttle -- that harness
+# answers "what happens to storage latency," this one answers "how much RAM
+# does each service actually hold." Throttling disk here would only slow the
+# load phase down for no measurement benefit.
+
+name: xycalc-colocation-probe
+
+services:
+  mongo:
+    image: mongo:7
+    # Explicit rather than the auto-detected default, for the same reason
+    # mongodb.yaml's cache-minimum-bytes coefficient exists: container
+    # auto-detection has already been shown (2026-08-02, same coefficient) to
+    # size off the cgroup limit, which mem_limit below sets deliberately.
+    command: ["--wiredTigerCacheSizeGB", "${MONGO_CACHE_GB:-1}"]
+    mem_limit: ${MONGO_MEM:-2g}
+    memswap_limit: ${MONGO_MEM:-2g}
+
+  redis:
+    image: redis:7-alpine
+    # NOT setting maxmemory. The whole point is to observe the documented
+    # default (0 = unlimited on 64-bit) actually happening next to the other
+    # three services, not to preempt it.
+    mem_limit: ${REDIS_MEM:-2g}
+    memswap_limit: ${REDIS_MEM:-2g}
+
+  clickhouse:
+    image: clickhouse/clickhouse-server:24
+    # Left on its documented default (max_server_memory_usage_to_ram_ratio =
+    # 0.9) for the same reason. ClickHouse derives that 90% from what IT can
+    # see, which is the container's own cgroup limit below -- not the host's
+    # real RAM, and not what the other three services are also claiming.
+    mem_limit: ${CLICKHOUSE_MEM:-2g}
+    memswap_limit: ${CLICKHOUSE_MEM:-2g}
+    ulimits:
+      nofile:
+        soft: 262144
+        hard: 262144
+
+  worker:
+    build: ../celery_probe
+    command: >-
+      celery -A tasks worker
+      --loglevel=warning
+      --concurrency=${PROBE_CONCURRENCY:-4}
+      --without-gossip --without-mingle --without-heartbeat
+    environment:
+      PROBE_REDIS: redis://redis:6379/0
+      PROBE_MONGO: mongodb://mongo:27017
+      PROBE_DOCS: ${PROBE_DOCS:-200000}
+      PROBE_PREFETCH: 4
+      PROBE_ACKS_LATE: 1
+      PROBE_VISIBILITY_TIMEOUT: 30
+    depends_on: [redis, mongo]
+    mem_limit: ${WORKER_MEM:-1g}
+
+  driver:
+    build: ../celery_probe
+    command: ["python", "drive.py"]
+    environment:
+      PROBE_REDIS: redis://redis:6379/0
+      PROBE_MONGO: mongodb://mongo:27017
+      PROBE_DOCS: ${PROBE_DOCS:-200000}
+      PROBE_RATES: ${PROBE_RATES:-50}
+      PROBE_SECONDS: ${PROBE_SECONDS:-30}
+      PROBE_ACKS_LATE: 1
+      PROBE_VISIBILITY_TIMEOUT: 30
+    depends_on: [redis, mongo, worker]
+    profiles: ["driver"]

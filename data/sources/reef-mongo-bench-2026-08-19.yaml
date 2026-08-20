@@ -1,0 +1,50 @@
+sources:
+- slug: obs-mongodb-reef-bench-2026-08-19
+  title: MongoDB 7.0.40 db.stats() and wiredTiger.cache, saturated-cache synthetic collection
+  publisher: xycalc benchmark (reef)
+  retrieved_on: '2026-08-19'
+  source_type: benchmark
+  notes: >-
+    Harness: tools/bench/mongodb_saturated_cache.sh <dbpath> 8 20, which
+    reproduces this run exactly (cache_gb=8, target_gb=20).
+
+    MongoDB 7.0.40 under WSL2 Ubuntu on reef, wiredTigerCacheSizeGB pinned to
+    8 via mongod.conf, dbPath on a dedicated NVMe volume. Collection seeded to
+    ~971k documents (~19.5 GB dataSize, ~20.5 GB storageSize) — deliberately
+    well past the 8 GB cache, then a server-side aggregation
+    ($group/$strLenBytes over every document's payload field) forced a full
+    read of every document, taking 2m40s and driving over 1,000,000 page
+    reads and 685,000 evictions.
+
+    This is a SATURATED cache case: the data does not fit in the configured
+    cache, so resident bytes measure the cache ceiling under sustained
+    eviction pressure, not the database. It is not usable to validate
+    "predicted cache size vs. resident bytes" the way
+    obs-mongodb-swamplink-bench-2026-07-31 is (that case's cache held
+    everything; this one's cache holds a fraction by design) — see
+    docs/telemetry/mongodb.md's warning about saturated caches, and xy-observe's
+    guidance on comparing like with like.
+
+    What it DOES cleanly measure: whether resident cache content actually
+    settles at the documented eviction target (80%, mongodb.eviction-target-pct)
+    once the cache is under real, sustained pressure rather than idle.
+    Measured 6,919,173,972 bytes resident against 8,589,934,592 bytes
+    configured = 80.55% — 0.55 percentage points from the documented 80%.
+
+    Payload was near-random text (a shuffled character pool sliced per
+    document) to generate volume cheaply, so storageSize (20.54 GB) came in
+    slightly ABOVE dataSize (19.49 GB): snappy could not compress it, and
+    BSON/WiredTiger per-document overhead pushed the on-disk figure past the
+    logical one. This is a floor on compressibility, more extreme than
+    obs-mongodb-swamplink-bench-2026-07-31's 1.42x — not representative of
+    real collections, and not used to move the corpus's compression
+    coefficient.
+
+    No validation entry was added for this observation: the corpus's
+    validation table is keyed to a model's term output (model_id + at_term),
+    and no term in mongodb.wt-cache predicts "resident bytes given a fixed,
+    undersized configured cache" — that direction (configured cache to
+    residency fraction) isn't a question any current model term answers, only
+    the coefficient's own documented value. Recording the coefficient-level
+    comparison here in prose rather than forcing it into an at_term case that
+    would compare mismatched quantities.

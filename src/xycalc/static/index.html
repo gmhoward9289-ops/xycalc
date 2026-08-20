@@ -246,18 +246,23 @@ footer { margin-top: 3rem; padding-top: 1.25rem; border-top: 1px solid var(--lin
   align-items: stretch;
 }
 #scenario-inputs .field.compact {
+  position: relative;
   margin-bottom: 0;
-  display: grid;
-  grid-template-rows: 2.75em 1.2em auto;
-  gap: .1rem;
+  display: flex;
+  flex-direction: column;
+  gap: .2rem;
   height: 100%;
 }
+#scenario-inputs .field-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: .15rem .5rem;
+}
 #scenario-inputs .field.compact label {
-  grid-row: 1;
   font-size: .72rem; line-height: 1.25; margin: 0;
-  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
-  overflow: hidden;
-  align-self: start;
+  min-width: 0;
 }
 #scenario-inputs .field.compact label .opt {
   font-weight: 400; font-size: .65rem; text-transform: uppercase; letter-spacing: .04em;
@@ -273,36 +278,35 @@ footer { margin-top: 3rem; padding-top: 1.25rem; border-top: 1px solid var(--lin
   border-color: var(--warn-ink);
   outline: 1px solid color-mix(in srgb, var(--warn-ink) 45%, transparent);
 }
-#scenario-inputs .field.compact.field-missing .field-meta::after {
+#scenario-inputs .field.compact.field-missing .field-head::after {
   content: "required to run sizing";
-  display: block; font-size: .65rem; color: var(--warn-ink); margin-top: .1rem;
+  display: block; font-size: .65rem; color: var(--warn-ink); flex-basis: 100%;
 }
 .missing-jump {
   background: none; border: 0; padding: 0; font: inherit; font-size: inherit;
   color: var(--warn-ink); text-decoration: underline; cursor: pointer;
 }
-#scenario-inputs .field-meta {
-  grid-row: 2;
-  min-height: 1.2em;
-  display: flex;
-  align-items: center;
-}
 #scenario-inputs .field.compact input {
-  grid-row: 3;
   padding: .38rem .55rem; font-size: .88rem;
-  align-self: end;
+  width: 100%;
 }
 #scenario-inputs .field-help {
-  margin: 0; border: 0;
+  margin: 0; border: 0; flex: 0 0 auto;
 }
 #scenario-inputs .field-help > summary {
   list-style: none; display: inline-block; font-size: .65rem; color: var(--muted);
   cursor: pointer; text-decoration: underline; text-underline-offset: 2px;
+  white-space: nowrap;
 }
 #scenario-inputs .field-help > summary::-webkit-details-marker { display: none; }
 #scenario-inputs .field-help > summary::before { content: "? "; font-weight: 700; }
-#scenario-inputs .field-help .help { margin-top: .25rem; font-size: .72rem; line-height: 1.35; }
-#scenario-inputs .field-hint-spacer { display: block; width: 100%; height: 1em; }
+#scenario-inputs .field-help .help {
+  position: absolute; z-index: 2;
+  margin-top: .25rem; padding: .45rem .55rem;
+  max-width: 18rem; font-size: .72rem; line-height: 1.35;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 6px;
+  box-shadow: 0 4px 16px color-mix(in srgb, var(--ink) 12%, transparent);
+}
 #scenario-form-panel .question { font-size: .92rem; margin-bottom: .75rem; }
 #scenario-form-panel.panel { padding: 1rem 1.1rem; }
 .form-heading {
@@ -345,8 +349,6 @@ footer { margin-top: 3rem; padding-top: 1.25rem; border-top: 1px solid var(--lin
 @media (max-width: 42rem) {
   .nvd-layout { grid-template-columns: 1fr; }
   .input-grid { grid-template-columns: 1fr; }
-  #scenario-inputs .field.compact { grid-template-rows: auto 1.2em auto; }
-  #scenario-inputs .field.compact label { -webkit-line-clamp: unset; display: block; overflow: visible; }
 }
 </style>
 </head>
@@ -663,16 +665,17 @@ function renderScenarioInput(i) {
   const tag = i.required
     ? ` <span class="req-tag">required</span>`
     : ` <span class="opt">opt</span>`;
-  const meta = i.help ? `
+  const hint = i.help ? `
         <details class="field-help">
           <summary>hint</summary>
           <div class="help">${i.help}</div>
-        </details>`
-    : `<span class="field-hint-spacer" aria-hidden="true"></span>`;
+        </details>` : "";
   return `
     <div class="field compact${i.required ? " field-required" : ""}" data-key="${i.key}">
-      <label for="scn-in-${i.key}">${i.label}${tag}</label>
-      <div class="field-meta">${meta}</div>
+      <div class="field-head">
+        <label for="scn-in-${i.key}">${i.label}${tag}</label>
+        ${hint}
+      </div>
       <input id="scn-in-${i.key}" data-key="${i.key}" autocomplete="off"
              placeholder="${ph}" title="${i.label.replace(/"/g, "'")}"
              ${i.required ? 'aria-required="true"' : ""}>

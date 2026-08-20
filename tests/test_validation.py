@@ -47,6 +47,18 @@ def _case(corpus, **over):
     )
 
 
+def _clear_validation(corpus):
+    """Remove every shipped validation case. For tests that assert the
+    structural "no cases yet" behaviour itself, rather than a specific
+    model's current real-world status — which model has zero cases shifts
+    as real observations land, and these tests should not break every time
+    one does."""
+    shipped = corpus.data / "validation"
+    if shipped.is_dir():
+        for f in shipped.glob("*.yaml"):
+            f.unlink()
+
+
 def _status(db, slug="mongodb.wt-cache"):
     c = sqlite3.connect(db)
     try:
@@ -106,6 +118,7 @@ def test_predictions_are_recomputed_rather_than_stored(corpus, tmp_path):
 
 
 def test_a_model_with_no_cases_is_unvalidated(corpus, tmp_path):
+    _clear_validation(corpus)
     db = build(tmp_path / "v.db")
     assert not _status(db, "mongodb.host-ram")["validated"]
 
@@ -115,6 +128,7 @@ class TestGrading:
     green tick as "checked repeatedly and accurate"."""
 
     def test_no_cases_grades_none(self, corpus, tmp_path):
+        _clear_validation(corpus)
         db = build(tmp_path / "v.db")
         assert _status(db, "mongodb.host-ram")["grade"] == "none"
 

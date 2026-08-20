@@ -64,7 +64,9 @@ models:
         required: false
         help: >-
           Sum db.stats().indexSize across every database. Omitting it does not
-          make the answer smaller in reality, only in the output.
+          make the answer smaller in reality, only in the output — a database
+          with indexes and no figure for them gets an answer that is knowingly
+          too low.
       - key: snapshot_search_size
         label: Snapshot search footprint (collections loaded when searching)
         unit: bytes
@@ -74,6 +76,19 @@ models:
           into memory. Count it even when that data also appears in the live
           database total — searching snapshots can pull cold pages alongside
           live traffic.
+      - key: growth_buffer_pct
+        label: Capacity buffer for future growth (%)
+        unit: percent
+        required: false
+        help: >-
+          Optional. Provisioning margin for database growth over your
+          planning horizon: (1 + annual_growth_rate) ^ years - 1, as a
+          percent. Example: 25%/year growth over a 2-year horizon is
+          (1.25^2 - 1) x 100 = 56.25. Omitting it answers "what does today's
+          database need," not "what will it need by the time this hardware is
+          due for replacement" — see the capacity-buffer-default-pct note in
+          the output for a starting point if you don't have your own growth
+          curve yet.
 
     terms:
       - key: on_disk
@@ -192,6 +207,30 @@ models:
           and miss cache more often than indexed aggregation pipelines. If that
           describes your workload, treat the RAM and gp3 figures as a floor and
           plan one instance step — or more provisioned IOPS — above the mode.
+
+      - key: capacity_buffer
+        label: Capacity buffer for future growth
+        role: headroom
+        apply: add_fraction_from_input
+        input_key: growth_buffer_pct
+        optional: true
+        rationale: >-
+          Everything above answers "what does today's database need." A
+          number sized to today is already wrong the day the database grows,
+          and provisioning happens once for a multi-year horizon, not
+          continuously. Applied last, after the vendor-formula floor, so it
+          scales the full answer rather than only the decompressed bytes.
+
+      - key: capacity_buffer_default
+        label: Suggested default, if you don't have your own growth curve
+        role: constraint
+        apply: note
+        coefficient: mongodb.capacity-buffer-default-pct
+        rationale: >-
+          Not evaluated unless growth_buffer_pct is supplied. Recorded so
+          "how much buffer" has a citable starting point (25%/year for 2
+          years, banded 15-40%/year) instead of an arbitrary flat percentage
+          nobody can trace back to an assumption.
 
   - slug: mongodb.host-ram
     question: How much RAM does the host need to support a cache of this size?

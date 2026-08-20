@@ -1,0 +1,87 @@
+observations:
+- slug: reef-mongo-bench-2026-08-19-dataSize
+  parameter: storage.collection_bytes_uncompressed
+  value: 19489078666
+  notes: db.stats().dataSize, ~971k documents
+  system: mongodb
+  unit: bytes
+  workload: synthetic collection, near-random payload, well past configured cache size
+  machine_class: WSL2 Ubuntu on reef (Ryzen, NVMe), 8 GiB WT cache pinned
+  system_version: 7.0.40
+  observed_on: '2026-08-19'
+  source: obs-mongodb-reef-bench-2026-08-19
+- slug: reef-mongo-bench-2026-08-19-storageSize
+  parameter: storage.collection_bytes_on_disk
+  value: 20540813312
+  notes: db.stats().storageSize
+  system: mongodb
+  unit: bytes
+  workload: synthetic collection, near-random payload, well past configured cache size
+  machine_class: WSL2 Ubuntu on reef (Ryzen, NVMe), 8 GiB WT cache pinned
+  system_version: 7.0.40
+  observed_on: '2026-08-19'
+  source: obs-mongodb-reef-bench-2026-08-19
+- slug: reef-mongo-bench-2026-08-19-indexSize
+  parameter: storage.index_bytes_on_disk
+  value: 24731648
+  notes: db.stats().indexSize, one secondary index
+  system: mongodb
+  unit: bytes
+  workload: synthetic collection, near-random payload, well past configured cache size
+  machine_class: WSL2 Ubuntu on reef (Ryzen, NVMe), 8 GiB WT cache pinned
+  system_version: 7.0.40
+  observed_on: '2026-08-19'
+  source: obs-mongodb-reef-bench-2026-08-19
+- slug: reef-mongo-bench-2026-08-19-resident
+  parameter: cache.size_bytes
+  value: 6919173972
+  notes: >-
+    serverStatus().wiredTiger.cache['bytes currently in the cache'] after a
+    full server-side scan of every document. Cache was configured at
+    8,589,934,592 bytes (8 GiB); data on disk (20.5 GB) far exceeds it, so
+    this is a SATURATED cache reading — it measures the ceiling under
+    eviction pressure, not the database. Do not compare against
+    dataSize + indexSize the way the swamplink-2026-07-31 case does; that
+    comparison is only meaningful when the cache holds everything.
+  system: mongodb
+  unit: bytes
+  workload: synthetic collection, near-random payload, well past configured cache size
+  machine_class: WSL2 Ubuntu on reef (Ryzen, NVMe), 8 GiB WT cache pinned
+  system_version: 7.0.40
+  observed_on: '2026-08-19'
+  source: obs-mongodb-reef-bench-2026-08-19
+- slug: reef-mongo-bench-2026-08-19-eviction-target-actual
+  parameter: cache.eviction_target_pct
+  value: 80.55
+  notes: >-
+    Resident bytes (6,919,173,972) / configured max bytes (8,589,934,592)
+    under a genuinely saturated cache and sustained eviction (1,006,919 page
+    reads, 685,226 evictions during a 2m40s full scan). Compares directly to
+    mongodb.eviction-target-pct's documented value of 80 — 0.55 percentage
+    points off. This is the first empirical check of that coefficient; it was
+    previously documented-only (n=0 measured).
+  system: mongodb
+  unit: percent
+  workload: synthetic collection, near-random payload, well past configured cache size, under sustained eviction
+  machine_class: WSL2 Ubuntu on reef (Ryzen, NVMe), 8 GiB WT cache pinned
+  system_version: 7.0.40
+  observed_on: '2026-08-19'
+  source: obs-mongodb-reef-bench-2026-08-19
+- slug: reef-mongo-bench-2026-08-19-compression-ratio
+  parameter: storage.compression_ratio
+  value: 0.9488
+  notes: >-
+    dataSize / storageSize, measured. Below 1.0 — this payload EXPANDED on
+    disk rather than compressing: it is a shuffled character pool sliced per
+    document (high-entropy, snappy gets essentially no purchase), and
+    per-document BSON/WiredTiger overhead outweighs what little compression
+    there was. A floor below even the 1.42x seen in
+    obs-mongodb-swamplink-bench-2026-07-31 — not representative of real
+    collections, and not used to move the corpus's compression coefficient.
+  system: mongodb
+  unit: ratio
+  workload: synthetic collection, near-random payload, well past configured cache size
+  machine_class: WSL2 Ubuntu on reef (Ryzen, NVMe), 8 GiB WT cache pinned
+  system_version: 7.0.40
+  observed_on: '2026-08-19'
+  source: obs-mongodb-reef-bench-2026-08-19

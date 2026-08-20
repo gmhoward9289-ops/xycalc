@@ -336,6 +336,21 @@ class Model:
                 )
                 continue
 
+            if term.apply == "add_fraction_from_input":
+                v = supplied.get(term.input_key)
+                if v is None:
+                    if term.optional:
+                        steps.append(Step(term, "—", lo, mode, hi, True, "not supplied"))
+                        continue
+                    raise ModelError(f"{self.slug}: input '{term.input_key}' required")
+                # A caller-supplied percentage, not a cited fraction, so no
+                # band inversion: it is one number, and all three ends move
+                # together exactly as divide_by_input's scalar case does.
+                factor = 1 + v / 100
+                lo, mode, hi = lo * factor, mode * factor, hi * factor
+                steps.append(Step(term, f"+ {v:g}%", lo, mode, hi))
+                continue
+
             clo, cmode, chi = term.coeff_lo, term.coeff_mode, term.coeff_hi
 
             if term.apply == "multiply":

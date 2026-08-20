@@ -84,7 +84,11 @@ class TestWiredTigerCacheModel:
     def test_omitted_optional_input_is_reported_as_skipped(self, model):
         r = model.evaluate({"storage_size": "500GB"})
         skipped = [s for s in r.steps if s.skipped]
-        assert [s.term.key for s in skipped] == ["snapshot_search", "indexes"]
+        assert [s.term.key for s in skipped] == [
+            "snapshot_search",
+            "indexes",
+            "capacity_buffer",
+        ]
 
     def test_required_input_is_required(self, model):
         with pytest.raises(ModelError, match="required"):
@@ -139,11 +143,9 @@ class TestHeadroom:
 
 class TestValidation:
     def test_unvalidated_models_say_so(self, conn):
-        """host-ram has never been checked and must keep saying so. It cannot
-        be validated by the swamplink benchmark either, because that instance
-        ran with an explicitly pinned cache size rather than the default split
-        the model inverts."""
-        status = validation_status(conn, "mongodb.host-ram")
+        """ebs.iops-to-provision has no observation checked against it yet
+        and must keep saying so until one lands."""
+        status = validation_status(conn, "ebs.iops-to-provision")
         assert status["validated"] is False
         assert "unvalidated" in status["text"]
         assert "n=0" in status["text"]

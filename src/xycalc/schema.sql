@@ -193,6 +193,7 @@ CREATE TABLE model_term (
                         'input',                -- straight from the caller
                         'divide_by_input',      -- divide by a caller quantity
                         'multiply_by_input',    -- multiply by a caller quantity
+                        'add_fraction_from_input', -- percent, from the caller
                         'multiply',             -- value is a ratio >= 1
                         'divide_by_fraction',   -- value is a percent; /(v/100)
                         'add_bytes',            -- fixed addition
@@ -226,10 +227,16 @@ CREATE TABLE model_term (
     -- pipeline that can only divide by cited constants cannot express the one
     -- relationship that explains why a slow disk stops a database rather than
     -- merely slowing it down.
+    --
+    -- `add_fraction_from_input` is the same category for a different shape: a
+    -- planning assumption the CALLER owns (their own growth-rate x horizon
+    -- buffer), not a fact about MongoDB or AWS that this corpus could cite.
+    -- Forcing it through a coefficient would misrepresent someone's own
+    -- capacity-planning guess as a vendor-documented constant.
     CHECK (
-        (apply IN ('input', 'divide_by_input', 'multiply_by_input')
+        (apply IN ('input', 'divide_by_input', 'multiply_by_input', 'add_fraction_from_input')
             AND input_key IS NOT NULL AND coefficient_id IS NULL)
-        OR (apply NOT IN ('input', 'divide_by_input', 'multiply_by_input')
+        OR (apply NOT IN ('input', 'divide_by_input', 'multiply_by_input', 'add_fraction_from_input')
             AND coefficient_id IS NOT NULL)
     )
 );

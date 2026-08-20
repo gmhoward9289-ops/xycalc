@@ -65,7 +65,7 @@ class TestSizing:
         assert isinstance(body["validation"]["validated"], bool)
 
     def test_an_unchecked_model_still_says_so(self, client):
-        body = client.get("/api/why/mongodb.host-ram").json()
+        body = client.get("/api/why/ebs.iops-to-provision").json()
         assert body["validation"]["validated"] is False
         assert "unvalidated" in body["validation"]["text"]
 
@@ -79,7 +79,7 @@ class TestSizing:
 
     def test_constraints_come_back_even_though_they_do_not_compute(self, client):
         body = client.post("/api/sizing", json=SIZING).json()
-        assert len(body["constraints"]) == 4
+        assert len(body["constraints"]) == 5
 
     def test_the_reframe_is_part_of_the_answer(self, client):
         """For this model the reframe is most of the answer, so a client that
