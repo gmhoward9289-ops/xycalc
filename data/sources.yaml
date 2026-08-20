@@ -278,6 +278,19 @@ sources:
       Run io_crossover_smoke.sh for a quick check, io_crossover_probe.sh for the
       full Arm A/B harness on a Linux Docker host.
 
+  - slug: io-probe-reef-2026-08-20
+    title: "io_crossover smoke: reef C: volume (Windows fio 3.42)"
+    publisher: xycalc benchmark (reef)
+    url:
+    version: tools/bench/io_crossover_probe.py + run_reef_probe_windows.py
+    retrieved_on: '2026-08-20'
+    source_type: benchmark
+    notes: >-
+      Random read fio sweep on C:/Users/Owner/dev/xycalc/.probe-io-test.bin via
+      windowsaio, iodepth 32, 8 s per block size. Device WDC WDS240G1G0A-00SS50;
+      Windows BusType reported SATA. Plateaus derived from 4–8 KiB IOPS and
+      128–256 KiB throughput when strict find_plateaus() returned empty.
+
   - slug: obs-mongodb-colocation-probe-reef-2026-08-19
     title: "colocation_probe: Mongo+Redis+ClickHouse+Celery, three-phase RSS"
     publisher: xycalc project (benchmark harness, committed)

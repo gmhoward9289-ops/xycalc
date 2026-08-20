@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import platform
 import statistics
 import subprocess
 import sys
@@ -71,13 +72,15 @@ def run_fio(
     iodepth: int,
 ) -> dict[str, Any]:
     bs = f"{int(bs_kib)}k" if bs_kib == int(bs_kib) else f"{bs_kib}k"
+    engine = "windowsaio" if platform.system() == "Windows" else "libaio"
+    filename = Path(test_file).as_posix() if platform.system() == "Windows" else str(Path(test_file))
     cmd = [
         "fio",
         "--name=probe",
-        f"--filename={test_file}",
+        f"--filename={filename}",
         "--rw=randread",
         "--direct=1",
-        "--ioengine=libaio",
+        f"--ioengine={engine}",
         f"--iodepth={iodepth}",
         f"--bs={bs}",
         f"--runtime={runtime}",
@@ -85,10 +88,20 @@ def run_fio(
         "--group_reporting",
         "--output-format=json",
     ]
+    if platform.system() == "Windows":
+        cmd.append("--thread")
     proc = subprocess.run(cmd, capture_output=True, text=True)
     if proc.returncode != 0:
         raise RuntimeError(proc.stderr.strip() or proc.stdout.strip() or "fio failed")
-    return json.loads(proc.stdout)
+    payload = proc.stdout.strip()
+    if not payload:
+        raise RuntimeError(proc.stderr.strip() or "fio produced no JSON on stdout")
+    if not payload.startswith("{"):
+        start = payload.find("{")
+        if start < 0:
+            raise RuntimeError(payload[:500] or "fio stdout had no JSON object")
+        payload = payload[start:]
+    return json.loads(payload)
 
 
 def parse_fio(raw: dict[str, Any], bs_kib: float, iodepth: int) -> Point:

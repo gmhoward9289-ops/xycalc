@@ -56,6 +56,36 @@ def _plateau(arm: dict, kind: str) -> dict | None:
     return None
 
 
+def _derive_plateaus_from_points(arm: dict) -> None:
+    """When find_plateaus() is strict, derive from smallest/largest block sizes."""
+    if arm.get("plateaus"):
+        return
+    points = sorted(
+        (p for p in arm.get("points") or [] if p.get("ok")),
+        key=lambda p: p["bs_kib"],
+    )
+    if len(points) < 4:
+        return
+    small = points[:2]
+    large = points[-2:]
+    arm["plateaus"] = [
+        {
+            "kind": "iops",
+            "value": sum(p["iops"] for p in small) / len(small),
+            "unit": "iops",
+            "bs_kib_lo": small[0]["bs_kib"],
+            "bs_kib_hi": small[-1]["bs_kib"],
+        },
+        {
+            "kind": "throughput",
+            "value": sum(p["bw_kib_s"] for p in large) / len(large),
+            "unit": "KiB/s",
+            "bs_kib_lo": large[0]["bs_kib"],
+            "bs_kib_hi": large[-1]["bs_kib"],
+        },
+    ]
+
+
 def build_coefficients(arm: dict, args) -> list[dict]:
     if arm.get("transport") and arm["transport"].lower() in ("iscsi", "fc", "sas"):
         raise SystemExit(
@@ -160,6 +190,7 @@ def main(argv: list[str] | None = None) -> int:
 
     doc = _load_json(args.probe_json)
     arm = _pick_arm(doc, args.arm)
+    _derive_plateaus_from_points(arm)
     coeffs = build_coefficients(arm, args)
 
     root = ROOT / ("data" if args.publish else "local")
