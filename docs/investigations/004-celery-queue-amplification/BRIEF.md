@@ -26,15 +26,21 @@ A queue removes the bound. Three consequences, none visible in 003:
 1. **Backlog grows without limit** when arrivals exceed the ceiling. The smoke
    run showed 200 tasks/s against a fleet managing 158/s reaching depth 478 in
    twelve seconds, with nothing to stop it.
-2. **Drain time outlives the stall.** The storage blip ends; the backlog does
-   not. This is the term that turns two minutes of trouble into twenty.
-3. **The broker adds load during the stall.** Redis redelivers anything
+2. **Drain time outlives the arrival window under sustained throttle.** The
+   harness never lifts the blkio cap mid-run, so `drainSeconds` is how long the
+   backlog takes to clear while the disk stays bad — not recovery after a stall
+   ends. Still the term that turns a short overload into a long outage on that
+   disk; post-recovery drain would need a mid-run throttle lift (see FINDINGS).
+3. **The broker can add load during the stall — only with late ack.** With
+   `task_acks_late` (this probe's default), Redis redelivers anything
    unacknowledged within `visibility_timeout`. A stall makes tasks slow, which
    is precisely when they cross that threshold — so duplication arrives at the
    worst possible moment. Same shape as the eviction feedback loop in 001.
+   Ack-before-execute makes redelivery structurally impossible; a zero
+   duplicate count in that mode proves nothing about load.
 
-If (3) is significant, it is the most important thing in this investigation:
-a system that responds to overload by generating more load.
+If (3) is significant under late ack, it is the most important thing in this
+investigation: a system that responds to overload by generating more load.
 
 ---
 

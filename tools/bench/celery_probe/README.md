@@ -24,17 +24,21 @@ A queue has no such property, and three things follow.
 bound. The smoke run above shows it: at 200 tasks/s against a fleet managing
 158/s, depth reached 478 in twelve seconds. Nothing recovers on its own.
 
-**Drain time.** The stall ends; the backlog does not. `drainSeconds` measures
-how long the fleet takes to work off what accumulated, and it is the number
-that turns a two-minute storage blip into a twenty-minute outage.
+**Drain time.** Arrivals stop; the blkio throttle does not. `drainSeconds`
+measures how long the fleet takes to clear the backlog **while MongoDB is still
+throttled** — not recovery after a stall ends. The compose file never lifts the
+device cap mid-run, so this is "drain under a sustained bad disk," still the
+number that turns a short overload into a long outage on that disk.
 
-**Redelivery.** The Redis broker redelivers any task unacknowledged within
-`visibility_timeout`. A storage stall makes tasks slow — which is exactly when
-they cross that threshold. The broker then adds load, in duplicate, at the
-worst possible moment: positive feedback, the same shape as the eviction loop
-in investigation 001. `duplicateExecutions` counts it directly, by incrementing
-a per-task-id counter on every execution. A count above one is not a retry; the
-application never asked for one.
+**Redelivery.** With `task_acks_late` (this harness defaults it on), the Redis
+broker redelivers any task unacknowledged within `visibility_timeout`. A storage
+stall makes tasks slow — which is exactly when they cross that threshold. The
+broker then adds load, in duplicate, at the worst possible moment: positive
+feedback, the same shape as the eviction loop in investigation 001.
+`duplicateExecutions` counts it directly, by incrementing a per-task-id counter
+on every execution. A count above one is not a retry; the application never
+asked for one. With ack-before-execute, redelivery is structurally impossible —
+a clean zero then says nothing about load.
 
 ## Knobs
 
@@ -45,16 +49,16 @@ configuration does to a database under stress.
 |---|---|---|
 | `PROBE_CONCURRENCY` | 8 | worker processes. Prefork gives each its own MongoDB pool, so connections are workers × pool size |
 | `PROBE_PREFETCH` | 4 | tasks reserved per slot. Reserved tasks are off the queue but not running, so **queue depth understates the backlog** |
-| `PROBE_ACKS_LATE` | 0 | ack after execution instead of before. Changes what a redelivery costs |
-| `PROBE_VISIBILITY_TIMEOUT` | 30 | seconds before the broker redelivers. Lower it to provoke duplication deliberately |
+| `PROBE_ACKS_LATE` | 1 | ack after execution (required for any redelivery arm). Set `0` only as a control — that mode cannot produce duplicates |
+| `PROBE_VISIBILITY_TIMEOUT` | 30 | seconds before the broker redelivers. Only meaningful with `PROBE_ACKS_LATE=1` |
 | `PROBE_RATES` | 25,50,100,200,400 | arrival rates to sweep, tasks/second |
 | `PROBE_SECONDS` | 30 | load duration per rate |
 | `PROBE_DOCS` | 1500000 | dataset size. **Do not lower it to save time** — see below |
 
 ## The guards, and why they exist
 
-Two earlier harnesses in this repo produced clean, plausible tables that
-measured nothing at all. Both failure modes are guarded here:
+Earlier harnesses in this repo produced clean, plausible tables that measured
+nothing at all. The failure modes are guarded here:
 
 - **The working set must exceed the cache.** The driver refuses to run below
   2× oversubscription. A dataset that fits means reads never reach the
@@ -64,6 +68,11 @@ measured nothing at all. Both failure modes are guarded here:
   `mem_limit` bounds its *page cache*, not just its heap — without that the
   host serves the reads from its own RAM and the block-IO throttle never
   engages.
+- **Zero duplicates with early ack is vacuous.** If `acksLate` is false and
+  `duplicateExecutions` is zero, the driver prints a WARNING and sets
+  `acksLateVacuousZeroDuplicates` in the JSON. That zero is guaranteed by
+  configuration, not by load — the broker already forgot the task before it
+  ran.
 
 ## Host requirements
 

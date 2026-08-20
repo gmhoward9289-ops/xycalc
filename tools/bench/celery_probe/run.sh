@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # Run the Celery probe end to end and print its JSON.
 #
-#   ./run.sh                                  # defaults
-#   PROBE_ACKS_LATE=1 ./run.sh                # ack after execution
-#   PROBE_VISIBILITY_TIMEOUT=5 ./run.sh       # provoke redelivery deliberately
+#   ./run.sh                                  # defaults (acks_late=1)
+#   PROBE_ACKS_LATE=0 ./run.sh                # control: early ack (vacuous for redelivery)
+#   PROBE_VISIBILITY_TIMEOUT=5 ./run.sh       # shorter redelivery window (needs acks_late=1)
 #   PROBE_SECONDS=10 PROBE_DOCS=800000 PROBE_RATES=50,200 ./run.sh   # smoke
 set -euo pipefail
 cd "$(dirname "$0")"
