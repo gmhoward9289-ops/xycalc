@@ -32,6 +32,7 @@ from .model import (
     DEFAULT_INSTANCE_CEILING,
     Model,
     ModelError,
+    build_instance_sizing_summary,
     chain_evaluate,
     format_quantity,
     get_scenario,
@@ -39,6 +40,7 @@ from .model import (
     load_instance_catalog,
     load_scenarios,
     parse_bytes,
+    scenario_form_inputs,
     select_instance,
     validation_status,
 )
@@ -302,12 +304,11 @@ def cmd_scenario(args) -> int:
         )
         return 2
 
-    first = scenario["steps"][0]
     values: dict = {}
-    if first.get("kind", "model") == "model":
-        m = Model.load(conn, first["model"])
-        values = {i["key"]: getattr(args, i["key"], None) for i in m.inputs}
-        values = {k: v for k, v in values.items() if v is not None}
+    for inp in scenario_form_inputs(conn, scenario):
+        v = getattr(args, inp["key"], None)
+        if v is not None:
+            values[inp["key"]] = v
 
     try:
         available = parse_bytes(args.available) if args.available else None
@@ -327,6 +328,16 @@ def cmd_scenario(args) -> int:
         print(f"\n{BAR}")
         if s.kind == "model":
             print(f"STEP {i} — {'chained from the step above' if s.chained else 'your input'}")
+            if s.assumed_inputs:
+                assumed = ", ".join(
+                    f"{k}={v:g}" if isinstance(v, (int, float)) else f"{k}={v}"
+                    for k, v in s.assumed_inputs.items()
+                )
+                print(
+                    f"  assumed            {assumed} "
+                    "(not measured — peak-second IOPS still applied so a "
+                    "microburst cannot stall storage tickets)"
+                )
             _print_breakdown(s.result, s.model)
             _print_constraints(s.result)
             _print_validation(conn, s.model.slug)
@@ -337,6 +348,23 @@ def cmd_scenario(args) -> int:
                 print(f"  VERDICT  {h['verdict']}")
             _print_reframe(s.model)
             prev_unit = s.result.unit
+        elif s.gp3_spec is not None:
+            print(f"STEP {i} — gp3 volume baseline and ceilings")
+            spec = s.gp3_spec
+            print(f"  volume             {spec['volume_gib']:,.1f} GiB")
+            print(f"  baseline IOPS      {spec['baseline_iops']:,.0f}")
+            print(f"  max provisionable  {spec['max_provisionable_iops']:,.0f} IOPS")
+            print(
+                f"  throughput         {spec['baseline_throughput_mibps']:,.0f}–"
+                f"{spec['max_throughput_mibps']:,.0f} MiB/s (baseline–max)"
+            )
+            if spec.get("instance_ebs_bandwidth_gbps") is not None:
+                print(
+                    f"  this pick's EBS    {spec['instance_name']} "
+                    f"{spec['instance_ebs_bandwidth_gbps']:g} Gbps "
+                    f"({spec['instance_ebs_throughput_mibps']:,.0f} MiB/s) — "
+                    f"usable throughput {spec['usable_throughput_mibps']:,.0f} MiB/s"
+                )
         else:
             print(f"STEP {i} — smallest AWS instance covering the band above")
             pick = s.instance_pick
@@ -358,6 +386,11 @@ def cmd_scenario(args) -> int:
                 print(
                     f"  {label:<10} {spec.name:<24} {_fmt(spec.ram_bytes, prev_unit)} RAM"
                     + (f", {spec.vcpu:g} vCPU" if spec.vcpu else "")
+                    + (
+                        f", EBS {spec.ebs_bandwidth_gbps:g} Gbps"
+                        if spec.ebs_bandwidth_gbps
+                        else ""
+                    )
                     + f"  (+{_fmt(headroom_bytes, prev_unit)} headroom)"
                 )
             if pick["exceeds_pool"]:
@@ -366,11 +399,53 @@ def cmd_scenario(args) -> int:
                     "decided for sizing above that yet. Custom sizing, not a recommendation."
                 )
 
+    summary = build_instance_sizing_summary(steps, values)
+    if summary:
+        print(f"\n{BAR}")
+        print("  SIZING SUMMARY")
+        if ram := summary.get("ram"):
+            print(
+                f"  RAM                {_fmt(ram['lo'], ram['unit'])} – "
+                f"{_fmt(ram['hi'], ram['unit'])}  (mode {_fmt(ram['mode'], ram['unit'])})"
+            )
+        if cpu := summary.get("cpu"):
+            print(
+                f"  vCPU               {cpu['lo']} – {cpu['hi']}  "
+                f"(mode {cpu['mode']}, instance {cpu['instance_mode']})"
+            )
+        if disk := summary.get("disk"):
+            line = (
+                f"  gp3 disk           {disk['volume_gib']:,.1f} GiB; "
+                f"{disk['baseline_iops']:,.0f} included IOPS; "
+                f"volume cap {disk['max_provisionable_iops']:,.0f} IOPS"
+            )
+            if disk.get("provisioned_iops"):
+                p = disk["provisioned_iops"]
+                src = (
+                    "assumed included mean"
+                    if disk.get("provisioned_iops_assumed_mean")
+                    else "measured mean"
+                )
+                line += (
+                    f"; peak-second {p['lo']:,.0f}–{p['hi']:,.0f} "
+                    f"(mode {p['mode']:,.0f}, {src})"
+                )
+            if disk.get("instance_ebs_bandwidth_gbps") is not None:
+                line += (
+                    f"; {disk['instance_name']} EBS "
+                    f"{disk['instance_ebs_bandwidth_gbps']:g} Gbps"
+                )
+            print(line)
+
     if scenario.get("see_also"):
         print(f"\n{BAR}")
         print("  SEE ALSO")
         for sa in scenario["see_also"]:
-            print(f"    · {sa['scenario']}")
+            if sa.get("url"):
+                print(f"    · {sa.get('label') or sa['url']}")
+                print(f"        {sa['url']}")
+            elif sa.get("scenario"):
+                print(f"    · {sa['scenario']}")
             for line in _wrap(sa["reason"], 64):
                 print(f"        {line}")
 

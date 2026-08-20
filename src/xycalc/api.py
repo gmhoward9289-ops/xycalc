@@ -19,11 +19,13 @@ from .db import connect
 from .model import (
     Model,
     ModelError,
+    build_instance_sizing_summary,
     chain_evaluate,
     get_scenario,
     headroom,
     load_scenarios,
     parse_bytes,
+    scenario_form_inputs,
     validation_status,
 )
 
@@ -143,6 +145,7 @@ def _serialise_instance_spec(spec) -> dict | None:
         "name": spec.name,
         "ram_bytes": spec.ram_bytes,
         "vcpu": spec.vcpu,
+        "ebs_bandwidth_gbps": spec.ebs_bandwidth_gbps,
         "source_title": spec.source_title,
         "source_url": spec.source_url,
     }
@@ -170,22 +173,58 @@ def list_scenarios():
             "slug": s["slug"],
             "label": s["label"],
             "summary": s.get("summary"),
+            "default": bool(s.get("default")),
             "disabled": bool(s.get("disabled")),
             "note": s.get("note"),
             "see_also": s.get("see_also", []),
+            "extra_inputs": s.get("extra_inputs", []),
         }
         if not entry["disabled"]:
-            # The form only ever needs the FIRST step's inputs: every later
-            # step's inputs the caller could set are fed from the previous
-            # step's band instead (that is what makes it a chain). A model
-            # loaded here purely to read its `inputs` list, never evaluated.
-            first = s["steps"][0]
-            entry["question"] = None
-            if first.get("kind", "model") == "model":
-                m = Model.load(conn, first["model"])
+            form_inputs = scenario_form_inputs(conn, s)
+            input_map = {i["key"]: i for i in form_inputs}
+            for extra in entry.get("extra_inputs", []):
+                input_map[extra["key"]] = extra
+            entry["inputs"] = form_inputs
+            sections = []
+            for sec in s.get("input_sections", []):
+                sections.append(
+                    {
+                        "title": sec["title"],
+                        "inputs": [
+                            input_map[k]
+                            for k in sec["keys"]
+                            if k in input_map
+                        ],
+                    }
+                )
+            if sections:
+                entry["input_sections"] = sections
+            first_model = next(
+                (
+                    st["model"]
+                    for st in s["steps"]
+                    if st.get("kind", "model") == "model"
+                ),
+                None,
+            )
+            if first_model:
+                m = Model.load(conn, first_model)
                 entry["question"] = m.question
-                entry["inputs"] = m.inputs
                 entry["unit"] = m.output_unit
+            if s.get("slug") == "mongodb.size-to-instance":
+                entry["nvd_chart"] = {
+                    "annual": [
+                        {"year": 2023, "count": 28818},
+                        {"year": 2024, "count": 40009},
+                        {"year": 2025, "count": 48185},
+                    ],
+                    "cumulative_2025": 308920,
+                    "growth_pct": {"lo": 15, "mode": 21, "hi": 39},
+                    "source": "jerrygamblin-2025-cve-review",
+                    "source_url": (
+                        "https://jerrygamblin.com/2026/01/01/2025-cve-data-review/"
+                    ),
+                }
         out.append(entry)
     return {"scenarios": out}
 
@@ -212,16 +251,30 @@ def post_scenario(payload: dict):
             step_body["chained"] = s.chained
             if s.headroom is not None:
                 step_body["headroom"] = s.headroom
+            if s.assumed_inputs:
+                step_body["assumed_inputs"] = s.assumed_inputs
             body_steps.append({"kind": "model", **step_body})
         else:
-            body_steps.append(
-                {
-                    "kind": "lookup",
-                    "lookup": s.slug,
-                    "chained": True,
-                    "pick": _serialise_instance_pick(s.instance_pick),
-                }
-            )
+            if s.gp3_spec is not None:
+                body_steps.append(
+                    {
+                        "kind": "lookup",
+                        "lookup": s.slug,
+                        "chained": False,
+                        "gp3": s.gp3_spec,
+                    }
+                )
+            else:
+                body_steps.append(
+                    {
+                        "kind": "lookup",
+                        "lookup": s.slug,
+                        "chained": True,
+                        "pick": _serialise_instance_pick(s.instance_pick),
+                    }
+                )
+
+    summary = build_instance_sizing_summary(steps, payload.get("inputs", {}))
 
     return {
         "scenario": scenario["slug"],
@@ -229,6 +282,7 @@ def post_scenario(payload: dict):
         "summary": scenario.get("summary"),
         "see_also": scenario.get("see_also", []),
         "steps": body_steps,
+        "sizing_summary": summary if summary else None,
     }
 
 

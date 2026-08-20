@@ -25,7 +25,11 @@ models:
       booleans evaluated inside the minute and exist precisely for this. If
       they read 0, you do not have this problem and this model has nothing to
       tell you. If they read 1, you have it, and the only question left is how
-      big the peak is.
+      big the peak is. AWS's own loop is the same: raise provisioned IOPS, or
+      independently gp3 throughput, until those checks stay at 0 —
+      https://repost.aws/knowledge-center/ebs-troubleshoot-performance-issues-ec2
+      If InstanceEBSIOPSExceededCheck or InstanceEBSThroughputExceededCheck is
+      1, the volume is not the ceiling; the instance is.
 
       This model answers that question with a coefficient we made up. Its band
       spans a factor of 6.7 because peak-to-mean is a property of your workload

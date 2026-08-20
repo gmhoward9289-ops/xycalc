@@ -180,6 +180,7 @@ class TestEbs:
         ).fetchone()["reframe"]
         assert "VolumeIOPSExceededCheck" in reframe
         assert "iostat" in reframe
+        assert "ebs-troubleshoot-performance-issues-ec2" in reframe
 
     def test_gp2_and_gp3_figures_are_not_interchangeable(self, conn):
         """gp3 has no burst bucket. A figure carried across the two would be

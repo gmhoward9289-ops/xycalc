@@ -130,11 +130,22 @@ const XY = (() => {
     for (const term of model.terms) {
       if (term.role === "constraint") { constraints.push(term); continue; }
 
+      let skipReason = null;
+      if (term.when_input && supplied[term.when_input] === undefined) {
+        skipReason = "'" + term.when_input + "' not supplied";
+      } else if (term.unless_input && supplied[term.unless_input] !== undefined) {
+        skipReason = "'" + term.unless_input + "' supplied";
+      }
+      if (skipReason) {
+        steps.push({ term, contribution: "—", lo, mode, hi, skipped: true, skip_reason: skipReason });
+        continue;
+      }
+
       const inUnit = declaredUnits[term.input_key] || term.unit || model.output_unit;
       const push = (contribution) =>
         steps.push({ term, contribution, lo, mode, hi, skipped: false, skip_reason: null });
 
-      if (term.apply === "input" || term.apply === "divide_by_input" || term.apply === "add_fraction_from_input") {
+      if (term.apply === "input" || term.apply === "divide_by_input" || term.apply === "multiply_by_input" || term.apply === "add_fraction_from_input") {
         const v = supplied[term.input_key];
         if (v === undefined) {
           if (term.optional) {
@@ -158,6 +169,15 @@ const XY = (() => {
           // lo/mode/hi inverts -- see divide_by_fraction below.
           lo /= v; mode /= v; hi /= v;
           push("÷ " + formatQuantity(v, inUnit));
+        } else if (term.apply === "multiply_by_input") {
+          if (!v) {
+            throw new ModelError(
+              model.slug + ": '" + term.input_key + "' cannot be zero — " +
+              "multiplying by it would zero the answer"
+            );
+          }
+          lo *= v; mode *= v; hi *= v;
+          push("x " + formatQuantity(v, inUnit));
         } else {
           // add_fraction_from_input: a caller-supplied percentage, not a
           // cited fraction -- same "one value, no band inversion" reasoning

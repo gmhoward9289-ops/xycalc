@@ -1,0 +1,91 @@
+# NVD-driven storage projection — anchor today's bytes-per-record, then
+# scale by either an explicit target count or compound CVE growth.
+
+models:
+  - slug: nvd.storage-from-vuln-growth
+    question: How large will my vulnerability database grow as NVD/CVE counts rise?
+    system: nvd
+    output: storage.collection_bytes_on_disk
+
+    summary: >-
+      Projects on-disk collection storage from measured db.stats().storageSize
+      today and either an explicit future record count or a three-year
+      compound growth band estimated from recent CVE publication rates.
+
+    notes: >-
+      Two paths, never both:
+
+      - target_vuln_count set: storage = baseline_storage × (target ÷ baseline)
+      - otherwise: storage = baseline_storage × nvd.cve-growth-3yr-multiplier
+
+      projection_years is documented as a three-year default matching
+      nvd.cve-growth-3yr-multiplier. For a one-year horizon, run the model
+      standalone with add_fraction using nvd.cve-yoy-growth-pct, or compute a
+      target count from baseline × (1 + growth/100).
+
+    inputs:
+      - key: baseline_vuln_count
+        label: Vulnerability/CVE records stored today
+        unit: count
+        required: true
+        help: >-
+          Count of vulnerability records your database stores now — the
+          denominator for bytes-per-record.
+      - key: baseline_storage_size
+        label: Measured collection storageSize today
+        unit: bytes
+        required: true
+        help: >-
+          db.stats().storageSize across the vulnerability collections —
+          compressed on-disk bytes, not dataSize.
+      - key: target_vuln_count
+        label: Target record count (overrides growth projection)
+        unit: count
+        required: false
+        help: >-
+          If set, project storage linearly from today's bytes-per-record to
+          this count instead of applying the three-year compound growth
+          multiplier (2023–2025 CVE publication rates).
+
+    terms:
+      - key: anchor_storage
+        label: Measured collection storage today
+        role: floor
+        apply: input
+        input_key: baseline_storage_size
+        rationale: >-
+          The measured anchor. Every projection starts from what is on disk
+          now, not from a vendor guess about bytes per CVE.
+
+      - key: per_vuln_bytes
+        label: Bytes per record today
+        role: amplifier
+        apply: divide_by_input
+        input_key: baseline_vuln_count
+        when_input: target_vuln_count
+        rationale: >-
+          baseline_storage ÷ baseline_vuln_count — the measured bytes per
+          stored vulnerability record. Only needed when scaling to an explicit
+          target count.
+
+      - key: target_projection
+        label: Scale to target record count
+        role: amplifier
+        apply: multiply_by_input
+        input_key: target_vuln_count
+        when_input: target_vuln_count
+        rationale: >-
+          Multiply bytes-per-record by the target count. Equivalent to
+          baseline_storage × (target ÷ baseline).
+
+      - key: compound_growth
+        label: Three-year compound CVE growth
+        role: amplifier
+        apply: multiply
+        coefficient: nvd.cve-growth-3yr-multiplier
+        unless_input: target_vuln_count
+        rationale: >-
+          When no target count is supplied, scale today's storage by a
+          compound growth band estimated from 2023–2025 CVE publication
+          rates. This is approximate — supply target_vuln_count when you
+          have a firmer forecast.

@@ -32,6 +32,19 @@ parameters:
       index prefix compression survives into the cache while collection block
       compression does not.
 
+  - slug: vuln.count
+    label: Vulnerability record count
+    unit: count
+    dimension: count
+    notes: >-
+      Count of vulnerability records stored — may track NVD CVEs, enriched
+      documents, or a subset depending on the deployment.
+
+  - slug: vuln.yoy_growth_pct
+    label: Year-over-year vulnerability publication growth
+    unit: percent
+    dimension: percent
+
   - slug: storage.compression_ratio
     label: Block compression ratio (uncompressed ÷ compressed)
     unit: ratio
@@ -197,3 +210,21 @@ parameters:
       smallest instance that fits a given requirement. vCPU is informational,
       not a selection criterion, unless a future model adds a CPU-bound
       sizing question.
+
+  - slug: instance.ebs_bandwidth_gbps
+    label: Maximum EBS bandwidth
+    unit: Gbps
+    dimension: bytes_per_second
+    notes: >-
+      The instance's own EBS pipe, separate from a gp3 volume's 80,000 IOPS /
+      2,000 MiB/s catalog ceiling. A volume provisioned to the catalog max is
+      still throttled if this number is smaller — InstanceEBSIOPSExceededCheck
+      / the EBS bandwidth column on the instance-types page, not the volume.
+
+  - slug: vuln.compound_growth_multiplier
+    label: Compound CVE-count growth multiplier
+    unit: ratio
+    dimension: ratio
+    notes: >-
+      (1 + YoY growth/100)^years — precomputed bands for multi-year storage
+      projection when the model engine cannot exponentiate in one step.

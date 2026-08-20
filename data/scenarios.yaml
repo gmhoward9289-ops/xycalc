@@ -10,21 +10,81 @@
 # band-end, and never collapses to a point before that. See model.py's
 # `chain_evaluate()` docstring for why that is the only honest way to do it.
 #
+# `extra_inputs` are collected on the form but do not enter model arithmetic
+# unless a step names them. Use them for "what you have today" comparisons and
+# optional measurements that gate an extra step (`when_input`).
+#
+# `input_sections` group the form in the UI. Keys must match declared model
+# inputs for steps that are not fed from a previous band.
+#
 # `see_also` is prose, not another step, for exactly the case it names below:
 # a real connection exists (cache misses become reads) but no coefficient in
 # this corpus turns one into the other, so the UI must not pretend it can.
 
 scenarios:
   - slug: mongodb.size-to-instance
-    label: My MongoDB's size on disk
+    label: MongoDB instance sizing
+    default: true
     summary: >-
-      From the two numbers db.stats() already gives you, walk to the
-      WiredTiger cache that would hold the whole database, the host RAM that
-      cache implies at MongoDB's default split, and the smallest r8i instance
-      that covers it -- all three with the band intact.
+      Project collection size from vulnerability record growth, add indexes and
+      snapshot search footprint, compare to what you run today. Outputs total
+      RAM, CPU, and gp3 disk IOPS/throughput — adjust inputs to move sizing.
+    input_sections:
+      - title: Project database size (NVD-driven)
+        keys:
+          - baseline_vuln_count
+          - baseline_storage_size
+          - target_vuln_count
+      - title: MongoDB footprint
+        keys:
+          - index_size
+          - snapshot_search_size
+      - title: Current node (optional)
+        keys:
+          - current_ram
+          - current_vcpu
+          - average_iops
+          - current_disk_throughput
+          - current_disk_iops
+    extra_inputs:
+      - key: current_ram
+        label: Current node RAM
+        unit: bytes
+        required: false
+        help: >-
+          Optional. Compared against required host RAM in the summary.
+      - key: current_vcpu
+        label: Current node vCPU
+        unit: vcpu
+        required: false
+        help: Optional. Compared against the r8i pick in the summary.
+      - key: current_disk_iops
+        label: Current gp3 provisioned IOPS
+        unit: iops
+        required: false
+        help: Optional. Compared against gp3 baseline and provisioned figures.
+      - key: current_disk_throughput
+        label: Current gp3 provisioned throughput
+        unit: MiB/s
+        required: false
+        help: Optional. Compared against the 125 MiB/s gp3 baseline.
+      - key: average_iops
+        label: Measured average IOPS (CloudWatch minute mean)
+        unit: iops
+        required: false
+        help: >-
+          Optional. CloudWatch minute mean (VolumeAvgIOPS). EBS throttles on
+          the peak second, so this figure is raised by the microburst band
+          (×1.5–10) to keep a burst from stalling MongoDB storage tickets.
+          If omitted, gp3's included 3,000 IOPS is used as the assumed mean
+          — paste a measurement to replace the guess.
     steps:
       - kind: model
+        model: nvd.storage-from-vuln-growth
+      - kind: model
         model: mongodb.wt-cache
+        feed:
+          storage_size: previous
       - kind: model
         model: mongodb.host-ram
         feed:
@@ -33,12 +93,29 @@ scenarios:
         lookup: instance_select
         family: r8i
         feed: previous
+      - kind: lookup
+        lookup: gp3_spec
+        sum_inputs:
+          - index_size
+          - snapshot_search_size
+        sum_model: nvd.storage-from-vuln-growth
+      - kind: model
+        model: ebs.iops-to-provision
+        defaults_from_coefficient:
+          average_iops: ebs.gp3-baseline-iops
     see_also:
+      - url: https://repost.aws/knowledge-center/ebs-troubleshoot-performance-issues-ec2
+        label: AWS — raise IOPS or throughput until exceeded checks stay at 0
+        reason: >-
+          If VolumeIOPSExceededCheck or VolumeThroughputExceededCheck is 1,
+          increase provisioned IOPS (and independently, gp3 throughput) until
+          the checks read 0. Instance-level exceeded checks mean a bigger
+          instance, not more volume IOPS.
       - scenario: ebs.microburst
         reason: >-
-          Every page that does not fit in cache becomes a read, and reads
-          become the EBS question -- but no coefficient here turns a cache
-          size into an IOPS figure. That needs its own measurement.
+          The minute mean (measured or the included 3,000) is not the number
+          EBS throttles on. Peak-second IOPS is, and a throttle contends for
+          MongoDB tickets. iostat -x 1 under load replaces the ×1.5–10 guess.
 
   - slug: ebs.microburst
     label: My EBS volume's average IOPS
@@ -49,6 +126,14 @@ scenarios:
     steps:
       - kind: model
         model: ebs.iops-to-provision
+    see_also:
+      - url: https://repost.aws/knowledge-center/ebs-troubleshoot-performance-issues-ec2
+        label: AWS — raise IOPS or throughput until exceeded checks stay at 0
+        reason: >-
+          If VolumeIOPSExceededCheck or VolumeThroughputExceededCheck is 1,
+          increase provisioned IOPS (and independently, gp3 throughput) until
+          the checks read 0. Instance-level exceeded checks mean a bigger
+          instance, not more volume IOPS.
 
   - slug: clickhouse.stub
     label: ClickHouse
@@ -69,5 +154,5 @@ scenarios:
     label: NVMe SSD (direct-attached)
     disabled: true
     note: >-
-      Stub. Exists mainly as the comparison arm for EBS -- "how much worse is
+      Stub. Exists mainly as the comparison arm for EBS — "how much worse is
       network storage" is only answerable against a local baseline.
