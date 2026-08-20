@@ -167,11 +167,14 @@ scenarios:
     label: Redis
     disabled: true
     note: >-
-      Broker maxmemory investigation 005 — documented layer in corpus;
-      sizing model not proposed until sweep lands.
-  - slug: celery.stub
-    label: Celery
-    disabled: true
-    note: >-
-      Queue amplification (004) and broker maxmemory (005) harnesses built;
-      benchmark coefficients import from probe JSON.
+      Investigation 005 maxmemory/eviction coefficients in corpus; no sizing
+      scenario yet.
+  - slug: celery.queue-amplification
+    label: Celery queue under a storage stall
+    summary: >-
+      How much worse recovery gets when MongoDB is I/O-starved and Celery keeps
+      accepting work — measured backlog, completion ceiling, and drain time from
+      investigation 004.
+    steps:
+      - kind: model
+        model: celery.queue-amplification
