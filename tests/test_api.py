@@ -1,6 +1,6 @@
-"""The HTTP surface.
+﻿"""The HTTP surface.
 
-The contract worth testing is not that it returns a number — it is that it
+The contract worth testing is not that it returns a number â€” it is that it
 cannot return a number *without* the things that say how much to trust it.
 """
 
@@ -57,7 +57,7 @@ class TestSizing:
     def test_validation_status_is_never_omitted(self, client):
         """A response without it would read as a validated answer to anything
         that forgot to check. Asserts presence and substance, not a particular
-        verdict — the verdict moves as observations land, and a test pinned to
+        verdict â€” the verdict moves as observations land, and a test pinned to
         `unvalidated` would have to be edited every time the corpus improves."""
         body = client.post("/api/sizing", json=SIZING).json()
         assert "validation" in body
@@ -79,11 +79,11 @@ class TestSizing:
 
     def test_constraints_come_back_even_though_they_do_not_compute(self, client):
         body = client.post("/api/sizing", json=SIZING).json()
-        assert len(body["constraints"]) == 3
+        assert len(body["constraints"]) == 4
 
     def test_the_reframe_is_part_of_the_answer(self, client):
         """For this model the reframe is most of the answer, so a client that
-        renders only `answer` is rendering the wrong thing — but it has to be
+        renders only `answer` is rendering the wrong thing â€” but it has to be
         able to get it."""
         body = client.post("/api/sizing", json=SIZING).json()
         assert "Avoid increasing" in body["reframe"]

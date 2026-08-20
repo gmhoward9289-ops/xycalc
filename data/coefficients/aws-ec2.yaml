@@ -208,6 +208,98 @@ coefficients:
     source: aws-ec2-instance-types-r8i
     quote: "r8i.96xlarge | 384 vCPU | 3,072 GiB"
 
+  # -- r8i EBS bandwidth (Gbps). This is the instance pipe, not the gp3
+  # volume catalog. r8i.large through r8i.8xlarge share "Up to 10" / "10";
+  # only larger sizes raise it. 1 Gbps = 125 MiB/s.
+  - slug: aws.r8i.large.ebs-bandwidth-gbps
+    parameter: instance.ebs_bandwidth_gbps
+    system: aws-ec2
+    applies_to: r8i.large, AWS EC2, 2026
+    value: 10
+    confidence: documented
+    source: aws-ec2-instance-types-r8i
+    quote: "r8i.large | 2 vCPU | 16 GiB | EBS-only | Network Up to 12.5 Gbps | EBS bandwidth Up to 10 Gbps"
+  - slug: aws.r8i.xlarge.ebs-bandwidth-gbps
+    parameter: instance.ebs_bandwidth_gbps
+    system: aws-ec2
+    applies_to: r8i.xlarge, AWS EC2, 2026
+    value: 10
+    confidence: documented
+    source: aws-ec2-instance-types-r8i
+    quote: "r8i.xlarge | 4 vCPU | 32 GiB | EBS-only | Network Up to 12.5 Gbps | EBS bandwidth Up to 10 Gbps"
+  - slug: aws.r8i.2xlarge.ebs-bandwidth-gbps
+    parameter: instance.ebs_bandwidth_gbps
+    system: aws-ec2
+    applies_to: r8i.2xlarge, AWS EC2, 2026
+    value: 10
+    confidence: documented
+    source: aws-ec2-instance-types-r8i
+    quote: "r8i.2xlarge | 8 vCPU | 64 GiB | EBS-only | Network Up to 15 Gbps | EBS bandwidth Up to 10 Gbps"
+  - slug: aws.r8i.4xlarge.ebs-bandwidth-gbps
+    parameter: instance.ebs_bandwidth_gbps
+    system: aws-ec2
+    applies_to: r8i.4xlarge, AWS EC2, 2026
+    value: 10
+    confidence: documented
+    source: aws-ec2-instance-types-r8i
+    quote: "r8i.4xlarge | 16 vCPU | 128 GiB | EBS-only | Network Up to 15 Gbps | EBS bandwidth Up to 10 Gbps"
+  - slug: aws.r8i.8xlarge.ebs-bandwidth-gbps
+    parameter: instance.ebs_bandwidth_gbps
+    system: aws-ec2
+    applies_to: r8i.8xlarge, AWS EC2, 2026
+    value: 10
+    confidence: documented
+    source: aws-ec2-instance-types-r8i
+    quote: "r8i.8xlarge | 32 vCPU | 256 GiB | EBS-only | Network 15 Gbps | EBS bandwidth 10 Gbps"
+  - slug: aws.r8i.12xlarge.ebs-bandwidth-gbps
+    parameter: instance.ebs_bandwidth_gbps
+    system: aws-ec2
+    applies_to: r8i.12xlarge, AWS EC2, 2026
+    value: 15
+    confidence: documented
+    source: aws-ec2-instance-types-r8i
+    quote: "r8i.12xlarge | 48 vCPU | 384 GiB | EBS-only | Network 22.5 Gbps | EBS bandwidth 15 Gbps"
+  - slug: aws.r8i.16xlarge.ebs-bandwidth-gbps
+    parameter: instance.ebs_bandwidth_gbps
+    system: aws-ec2
+    applies_to: r8i.16xlarge, AWS EC2, 2026
+    value: 20
+    confidence: documented
+    source: aws-ec2-instance-types-r8i
+    quote: "r8i.16xlarge | 64 vCPU | 512 GiB | EBS-only | Network 30 Gbps | EBS bandwidth 20 Gbps"
+  - slug: aws.r8i.24xlarge.ebs-bandwidth-gbps
+    parameter: instance.ebs_bandwidth_gbps
+    system: aws-ec2
+    applies_to: r8i.24xlarge, AWS EC2, 2026
+    value: 30
+    confidence: documented
+    source: aws-ec2-instance-types-r8i
+    quote: "r8i.24xlarge | 96 vCPU | 768 GiB | EBS-only | Network 40 Gbps | EBS bandwidth 30 Gbps"
+  - slug: aws.r8i.32xlarge.ebs-bandwidth-gbps
+    parameter: instance.ebs_bandwidth_gbps
+    system: aws-ec2
+    applies_to: r8i.32xlarge, AWS EC2, 2026
+    value: 40
+    confidence: documented
+    source: aws-ec2-instance-types-r8i
+    quote: "r8i.32xlarge | 128 vCPU | 1,024 GiB | EBS-only | Network 50 Gbps | EBS bandwidth 40 Gbps"
+  - slug: aws.r8i.48xlarge.ebs-bandwidth-gbps
+    parameter: instance.ebs_bandwidth_gbps
+    system: aws-ec2
+    applies_to: r8i.48xlarge, AWS EC2, 2026
+    value: 60
+    confidence: documented
+    source: aws-ec2-instance-types-r8i
+    quote: "r8i.48xlarge | 192 vCPU | 1,536 GiB | EBS-only | Network 75 Gbps | EBS bandwidth 60 Gbps"
+  - slug: aws.r8i.96xlarge.ebs-bandwidth-gbps
+    parameter: instance.ebs_bandwidth_gbps
+    system: aws-ec2
+    applies_to: r8i.96xlarge, AWS EC2, 2026
+    value: 80
+    confidence: documented
+    source: aws-ec2-instance-types-r8i
+    quote: "r8i.96xlarge | 384 vCPU | 3,072 GiB | EBS-only | Network 100 Gbps | EBS bandwidth 80 Gbps"
+
   # -- U7i family: deliberately NOT populated yet.
   #
   # r8i.96xlarge (3,072 GiB) is the current ceiling of what this catalog can

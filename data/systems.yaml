@@ -12,6 +12,14 @@ systems:
       The first subject, chosen because its sizing question has a well
       documented answer that contradicts how the question is usually asked.
 
+  - slug: nvd
+    label: NVD / CVE publication
+    category: data
+    notes: >-
+      Industry vulnerability disclosure counts. Used to project record growth
+      before MongoDB instance sizing — bytes/record still comes from your
+      measured database.
+
   - slug: ebs
     label: Amazon EBS
     category: storage

@@ -259,7 +259,7 @@ class Builder:
                 for i, term in enumerate(row.get("terms", [])):
                     tctx = f"{ctx}/{term.get('key', '?')}"
                     apply = term["apply"]
-                    if apply in ("input", "divide_by_input"):
+                    if apply in ("input", "divide_by_input", "multiply_by_input"):
                         if term["input_key"] not in input_keys:
                             raise BuildError(
                                 f"{tctx}: reads input '{term['input_key']}', "
@@ -283,6 +283,8 @@ class Builder:
                         input_key=term.get("input_key"),
                         coefficient_id=coeff_id,
                         optional=1 if term.get("optional") else 0,
+                        when_input=term.get("when_input"),
+                        unless_input=term.get("unless_input"),
                         rationale=term["rationale"],
                         sequence=i,
                     )

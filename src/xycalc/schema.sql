@@ -78,7 +78,7 @@ CREATE TABLE system (
     slug            TEXT    NOT NULL UNIQUE,   -- mongodb, ebs, clickhouse
     label           TEXT    NOT NULL,
     category        TEXT    NOT NULL CHECK (category IN (
-                        'database', 'storage', 'cache', 'queue', 'hardware'
+                        'database', 'storage', 'cache', 'queue', 'hardware', 'data'
                     )),
     notes           TEXT
 );
@@ -192,6 +192,7 @@ CREATE TABLE model_term (
     apply           TEXT    NOT NULL CHECK (apply IN (
                         'input',                -- straight from the caller
                         'divide_by_input',      -- divide by a caller quantity
+                        'multiply_by_input',    -- multiply by a caller quantity
                         'multiply',             -- value is a ratio >= 1
                         'divide_by_fraction',   -- value is a percent; /(v/100)
                         'add_bytes',            -- fixed addition
@@ -203,6 +204,8 @@ CREATE TABLE model_term (
     input_key       TEXT,           -- for apply='input'
     coefficient_id  INTEGER REFERENCES coefficient(id),
     optional        INTEGER NOT NULL DEFAULT 0,
+    when_input      TEXT,           -- skip unless this input was supplied
+    unless_input    TEXT,           -- skip when this input was supplied
     rationale       TEXT    NOT NULL,   -- why this term exists at all
     sequence        INTEGER NOT NULL,
 
@@ -224,9 +227,9 @@ CREATE TABLE model_term (
     -- relationship that explains why a slow disk stops a database rather than
     -- merely slowing it down.
     CHECK (
-        (apply IN ('input', 'divide_by_input')
+        (apply IN ('input', 'divide_by_input', 'multiply_by_input')
             AND input_key IS NOT NULL AND coefficient_id IS NULL)
-        OR (apply NOT IN ('input', 'divide_by_input')
+        OR (apply NOT IN ('input', 'divide_by_input', 'multiply_by_input')
             AND coefficient_id IS NOT NULL)
     )
 );

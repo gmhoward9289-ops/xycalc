@@ -6,15 +6,15 @@
 
 models:
   - slug: mongodb.wt-cache
-    question: How large does my WiredTiger cache need to be to hold the whole database?
+    question: How much RAM must MongoDB hold for my total data footprint?
     system: mongodb
     output: cache.size_bytes
 
     summary: >-
-      Walks the on-disk size of a MongoDB database up to the cache size that
-      would hold all of it resident: decompress it, add the indexes, then make
-      room for the fact that WiredTiger works to keep the cache at 80% rather
-      than 100%.
+      Walks total on-disk collection data (all databases), optional snapshot
+      search footprint, and indexes up to the WiredTiger cache that would hold
+      all of it resident: decompress, add indexes, then make room for WiredTiger
+      keeping the cache at 80% rather than 100%.
 
     reframe: >-
       The number this produces is usually an argument against doing it.
@@ -51,31 +51,51 @@ models:
 
     inputs:
       - key: storage_size
-        label: Collection bytes on disk (db.stats().storageSize)
+        label: Total collection data on disk — all databases
         unit: bytes
         required: true
         help: >-
-          The COMPRESSED size of collection data on disk. Not dataSize, which
-          is already uncompressed, and not totalSize, which includes indexes
-          that this model adds separately.
+          Sum db.stats().storageSize across every database — compressed
+          collection bytes only. Not dataSize (already uncompressed) and not
+          totalSize (includes indexes, added separately below).
       - key: index_size
-        label: Index bytes on disk (db.stats().indexSize)
+        label: Total index bytes on disk — all databases
         unit: bytes
         required: false
         help: >-
-          Optional. Omitting it does not make the answer smaller in reality,
-          only in the output — a database with indexes and no figure for them
-          gets an answer that is knowingly too low.
+          Sum db.stats().indexSize across every database. Omitting it does not
+          make the answer smaller in reality, only in the output.
+      - key: snapshot_search_size
+        label: Snapshot search footprint (collections loaded when searching)
+        unit: bytes
+        required: false
+        help: >-
+          Compressed on-disk bytes of collections your snapshot search loads
+          into memory. Count it even when that data also appears in the live
+          database total — searching snapshots can pull cold pages alongside
+          live traffic.
 
     terms:
       - key: on_disk
-        label: Collection data on disk
+        label: Live collection data on disk
         role: floor
         apply: input
         input_key: storage_size
         rationale: >-
           The irreducible starting point. Everything else in this model is a
           reason the cache must be bigger than this, never smaller.
+
+      - key: snapshot_search
+        label: Snapshot search collections
+        role: floor
+        apply: input
+        input_key: snapshot_search_size
+        optional: true
+        rationale: >-
+          Snapshot search reads the same compressed on-disk format as live
+          collections and expands into cache the same way. Size it separately
+          when search traffic loads collections beyond what steady-state queries
+          keep hot.
 
       - key: decompression
         label: Decompression into cache
@@ -159,6 +179,19 @@ models:
           raising it. The remaining RAM is the filesystem cache, which holds
           the same data compressed and therefore more of it. Read the answer
           above against this before acting on it.
+
+      - key: scan_heavy_workload
+        label: COLSCAN, relationship queries, and non-aggregation pipelines
+        role: constraint
+        apply: note
+        coefficient: mongodb.eviction-trigger-pct
+        rationale: >-
+          This model sizes from bytes on disk, not from query shape. Heavy
+          relationship queries ($lookup outside aggregation pipelines), ad-hoc
+          find() scans, and plans dominated by COLLSCAN keep more pages resident
+          and miss cache more often than indexed aggregation pipelines. If that
+          describes your workload, treat the RAM and gp3 figures as a floor and
+          plan one instance step — or more provisioned IOPS — above the mode.
 
   - slug: mongodb.host-ram
     question: How much RAM does the host need to support a cache of this size?

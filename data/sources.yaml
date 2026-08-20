@@ -114,6 +114,20 @@ sources:
       writes are merged and count as one. An application's operation count is
       not the volume's.
 
+  - slug: aws-repost-ebs-troubleshoot-performance
+    title: How do I troubleshoot Amazon EBS performance issues with my Amazon EC2 instance?
+    publisher: Amazon Web Services
+    url: https://repost.aws/knowledge-center/ebs-troubleshoot-performance-issues-ec2
+    retrieved_on: '2026-08-20'
+    source_type: vendor_doc
+    notes: >-
+      The operational loop this corpus's IOPS band is a guess at: if
+      VolumeIOPSExceededCheck or VolumeThroughputExceededCheck is 1, increase
+      provisioned IOPS (and independently, gp3 throughput) until the checks
+      read 0. InstanceEBSIOPSExceededCheck / InstanceEBSThroughputExceededCheck
+      mean the instance pipe is the ceiling — raise the instance, not the
+      volume. AWS Official, updated within three months of retrieval.
+
   - slug: aws-ebs-general-purpose-ssd
     title: Amazon EBS General Purpose SSD volumes (gp2 and gp3)
     publisher: Amazon Web Services
@@ -206,3 +220,25 @@ sources:
       family supersedes, which are deliberately NOT catalogued here (several
       of their specific capacity/pricing figures failed independent
       verification during research).
+
+  - slug: jerrygamblin-2025-cve-review
+    title: 2025 CVE Data Review
+    publisher: Jerry Gamblin
+    url: https://jerrygamblin.com/2026/01/01/2025-cve-data-review/
+    retrieved_on: '2026-08-20'
+    source_type: practitioner
+    notes: >-
+      Annual CVE publication statistics. 48,185 CVEs published in 2025, up
+      20.6% year-over-year from 40,009 in 2024. 308,920 cumulative CVEs since
+      1999 per the same review.
+
+  - slug: jerrygamblin-2024-cve-review
+    title: 2024 CVE Data Review
+    publisher: Jerry Gamblin
+    url: https://jerrygamblin.com/2025/01/01/2024-cve-data-review/
+    retrieved_on: '2026-08-20'
+    source_type: practitioner
+    notes: >-
+      Annual CVE publication statistics. 40,009 CVEs published in 2024, up
+      38.8% year-over-year from 28,830 in 2023. Alternate post:
+      https://jgamblin.com/2025/01/05/2024-cve-data-review/

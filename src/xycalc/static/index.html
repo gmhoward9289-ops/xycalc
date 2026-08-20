@@ -182,6 +182,172 @@ footer { margin-top: 3rem; padding-top: 1.25rem; border-top: 1px solid var(--lin
 }
 .see-also a { color: var(--accent); cursor: pointer; text-decoration: underline; background: none; border: 0; padding: 0; font: inherit; }
 .worst-grade { font-size: .78rem; color: var(--warn-ink); margin-top: .4rem; }
+
+/* -- sizing summary -- */
+.sizing-summary { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 5%, var(--panel)); }
+#scenario-summary { margin-bottom: .85rem; }
+.sizing-summary h2 { margin-top: 0; color: var(--accent); }
+.summary-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+  gap: 1rem; margin-top: .75rem;
+}
+.summary-metric { border: 1px solid var(--line); border-radius: 6px; padding: .75rem; background: var(--panel); }
+.summary-metric .kicker { font-size: .68rem; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); font-weight: 700; }
+.summary-metric .primary { font-family: var(--mono); font-size: 1.35rem; font-weight: 600; margin: .25rem 0; line-height: 1.15; }
+.summary-metric .sub { font-family: var(--mono); font-size: .78rem; color: var(--muted); }
+.summary-metric .compare { font-size: .78rem; margin-top: .35rem; color: var(--muted); }
+.summary-metric .compare strong { color: var(--ink); }
+.summary-metric .metric-bandbar { margin: .35rem 0 .15rem; height: 4px; }
+.summary-metric .metric-bandbar .mark { height: 10px; top: -3px; }
+.summary-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: .35rem .75rem; margin-bottom: .5rem; }
+.summary-head h2 { margin: 0; }
+.summary-validation {
+  font-size: .68rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em;
+  padding: .2rem .45rem; border-radius: 4px; border: 1px solid var(--warn-line);
+  color: var(--warn-ink); background: var(--warn-bg);
+}
+.summary-validation.reasonable { border-color: var(--accent); color: var(--accent); background: transparent; }
+.summary-lede { font-size: .82rem; color: var(--muted); margin: 0 0 .65rem; line-height: 1.4; }
+.compare-meter {
+  height: 5px; background: var(--line); border-radius: 3px; margin-top: .35rem; position: relative; overflow: hidden;
+}
+.compare-meter .fill {
+  position: absolute; left: 0; top: 0; bottom: 0; background: var(--accent); opacity: .65; border-radius: 3px;
+}
+.compare-meter .need-mark {
+  position: absolute; top: -2px; width: 2px; height: 9px; background: var(--amplifier);
+}
+.cascade-wrap { margin-top: .85rem; }
+.cascade-wrap > summary {
+  cursor: pointer; font-size: .78rem; font-weight: 600; color: var(--muted);
+  padding: .55rem .7rem; border: 1px solid var(--line); border-radius: 6px;
+  background: var(--panel); list-style: none;
+}
+.cascade-wrap > summary::-webkit-details-marker { display: none; }
+.cascade-wrap[open] > summary { border-bottom-left-radius: 0; border-bottom-right-radius: 0; border-bottom-color: transparent; }
+.cascade-wrap .cascade-inner { border: 1px solid var(--line); border-top: 0; border-radius: 0 0 6px 6px; padding-top: .25rem; }
+.instance-verdict { font-size: .82rem; color: var(--muted); margin-top: .65rem; line-height: 1.4; }
+
+/* -- NVD chart -- */
+.nvd-fill { width: 100%; background: var(--accent); opacity: .55; border-radius: 4px 4px 0 0; min-height: 4px; }
+.nvd-bar { flex: 1; display: flex; flex-direction: column; align-items: center; height: 100%; justify-content: flex-end; }
+.nvd-bar .year, .nvd-bar .count { font-family: var(--mono); color: var(--muted); }
+
+.input-section { margin-bottom: .85rem; padding-bottom: .65rem; border-bottom: 1px dashed var(--line); }
+.input-section:last-child { border-bottom: 0; margin-bottom: 0; padding-bottom: 0; }
+.input-section h3 {
+  font-size: .72rem; letter-spacing: .04em;
+  color: var(--muted); margin: 0 0 .45rem; font-weight: 700;
+}
+.input-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: .55rem .75rem;
+  align-items: stretch;
+}
+#scenario-inputs .field.compact {
+  margin-bottom: 0;
+  display: grid;
+  grid-template-rows: 2.75em 1.2em auto;
+  gap: .1rem;
+  height: 100%;
+}
+#scenario-inputs .field.compact label {
+  grid-row: 1;
+  font-size: .72rem; line-height: 1.25; margin: 0;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+  overflow: hidden;
+  align-self: start;
+}
+#scenario-inputs .field.compact label .opt {
+  font-weight: 400; font-size: .65rem; text-transform: uppercase; letter-spacing: .04em;
+  color: var(--muted);
+}
+#scenario-inputs .field.compact label .req-tag {
+  font-weight: 700; font-size: .65rem; text-transform: uppercase; letter-spacing: .04em;
+  color: var(--accent);
+}
+#scenario-inputs .field.compact.field-missing label { color: var(--warn-ink); }
+#scenario-inputs .field.compact.field-missing label .req-tag { color: var(--warn-ink); }
+#scenario-inputs .field.compact.field-missing input {
+  border-color: var(--warn-ink);
+  outline: 1px solid color-mix(in srgb, var(--warn-ink) 45%, transparent);
+}
+#scenario-inputs .field.compact.field-missing .field-meta::after {
+  content: "required to run sizing";
+  display: block; font-size: .65rem; color: var(--warn-ink); margin-top: .1rem;
+}
+.missing-jump {
+  background: none; border: 0; padding: 0; font: inherit; font-size: inherit;
+  color: var(--warn-ink); text-decoration: underline; cursor: pointer;
+}
+#scenario-inputs .field-meta {
+  grid-row: 2;
+  min-height: 1.2em;
+  display: flex;
+  align-items: center;
+}
+#scenario-inputs .field.compact input {
+  grid-row: 3;
+  padding: .38rem .55rem; font-size: .88rem;
+  align-self: end;
+}
+#scenario-inputs .field-help {
+  margin: 0; border: 0;
+}
+#scenario-inputs .field-help > summary {
+  list-style: none; display: inline-block; font-size: .65rem; color: var(--muted);
+  cursor: pointer; text-decoration: underline; text-underline-offset: 2px;
+}
+#scenario-inputs .field-help > summary::-webkit-details-marker { display: none; }
+#scenario-inputs .field-help > summary::before { content: "? "; font-weight: 700; }
+#scenario-inputs .field-help .help { margin-top: .25rem; font-size: .72rem; line-height: 1.35; }
+#scenario-inputs .field-hint-spacer { display: block; width: 100%; height: 1em; }
+#scenario-form-panel .question { font-size: .92rem; margin-bottom: .75rem; }
+#scenario-form-panel.panel { padding: 1rem 1.1rem; }
+.form-heading {
+  font-size: .72rem; letter-spacing: .04em;
+  color: var(--muted); margin: 0 0 .65rem; font-weight: 700;
+}
+.recalc-bar {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+  gap: .5rem .75rem; margin-top: .65rem; padding-top: .65rem; border-top: 1px dashed var(--line);
+}
+.recalc-status { font-size: .78rem; color: var(--muted); margin: 0; flex: 1 1 12rem; }
+.recalc-status.stale { color: var(--warn-ink); }
+.recalc-status.busy { color: var(--accent); }
+.recalc-status.ok { color: var(--accent); }
+#scn-recalc { padding: .45rem 1rem; font-size: .85rem; white-space: nowrap; }
+#scn-recalc:disabled { opacity: .55; cursor: not-allowed; filter: none; }
+.sizing-summary.flash { animation: summary-flash .7s ease; }
+@keyframes summary-flash {
+  0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 35%, transparent); }
+  100% { box-shadow: none; }
+}
+
+/* -- NVD chart (compact) -- */
+.nvd-panel.panel { padding: .85rem 1rem; margin-bottom: .85rem; }
+.nvd-panel h2 { margin: 0 0 .35rem; font-size: .72rem; }
+.nvd-layout { display: grid; grid-template-columns: minmax(10rem, 1fr) minmax(12rem, 1.4fr); gap: .75rem 1rem; align-items: end; }
+.nvd-bars { display: flex; align-items: flex-end; gap: .45rem; height: 5.5rem; margin: 0; }
+.nvd-bar .year { font-size: .68rem; margin-top: .25rem; }
+.nvd-bar .count { font-size: .62rem; }
+.nvd-side { display: flex; flex-direction: column; gap: .45rem; min-width: 0; }
+.nvd-meta { font-size: .72rem; color: var(--muted); margin: 0; line-height: 1.35; }
+.nvd-actions { display: flex; flex-wrap: wrap; gap: .35rem; }
+.nvd-actions button.secondary {
+  background: var(--panel); color: var(--accent); border: 1px solid var(--line);
+}
+.nvd-actions button.secondary:hover { border-color: var(--accent); filter: none; }
+@media (max-width: 52rem) {
+  .input-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 42rem) {
+  .nvd-layout { grid-template-columns: 1fr; }
+  .input-grid { grid-template-columns: 1fr; }
+  #scenario-inputs .field.compact { grid-template-rows: auto 1.2em auto; }
+  #scenario-inputs .field.compact label { -webkit-line-clamp: unset; display: block; overflow: visible; }
+}
 </style>
 </head>
 <body>
@@ -209,19 +375,22 @@ footer { margin-top: 3rem; padding-top: 1.25rem; border-top: 1px solid var(--lin
     <div class="scenario-list" id="scenario-picker"></div>
   </div>
 
-  <div class="panel" id="scenario-form-panel" hidden>
-    <p class="question" id="scn-question"></p>
-    <div id="scenario-inputs"></div>
-    <div class="field">
-      <label for="scn-available">RAM you already have
-        <span class="help" style="display:inline">optional — turns the last card into a headroom check</span></label>
-      <input id="scn-available" placeholder="e.g. 256GB" autocomplete="off">
-    </div>
-    <button id="scn-go">Calculate</button>
-    <p id="scn-error" class="error" hidden></p>
-  </div>
+  <div id="scenario-workspace" hidden>
+    <div id="scenario-summary"></div>
 
-  <div id="scenario-cascade" class="cascade"></div>
+    <div class="panel" id="scenario-form-panel">
+      <h2 class="form-heading">Your specs</h2>
+      <div id="scenario-nvd-chart"></div>
+      <div id="scenario-inputs"></div>
+      <div class="recalc-bar">
+        <p class="recalc-status" id="scn-recalc-status">Fill required fields — sizing updates as you type.</p>
+        <button type="button" id="scn-recalc">Update sizing</button>
+      </div>
+      <p id="scn-error" class="error" hidden></p>
+    </div>
+
+    <div id="scenario-cascade" class="cascade"></div>
+  </div>
 </div>
 
 <!-- ========================== SINGLE QUESTION TAB ========================== -->
@@ -256,6 +425,8 @@ const $ = (id) => document.getElementById(id);
 let MODELS = [];
 let SCENARIOS = [];
 let currentScenario = null;
+let scenarioCalcDirty = false;
+let scenarioCalcBusy = false;
 
 function fmtBytes(n) {
   const units = [["TB", 1e12], ["GB", 1e9], ["MB", 1e6]];
@@ -274,6 +445,31 @@ const fmt = (n, unit) =>
     : n.toLocaleString(undefined, {maximumFractionDigits: 2}) + " " + unit;
 
 const VALIDATION_LABEL = {none: "Unvalidated", thin: "Thinly validated", reasonable: "Validated"};
+const VALIDATION_SHORT = {none: "unvalidated", thin: "thinly validated", reasonable: "validated"};
+
+function bandBarHtml(lo, mode, hi, compact) {
+  const spread = hi - lo;
+  if (!(spread > 0)) return "";
+  const mark = ((mode - lo) / spread * 100).toFixed(1);
+  const cls = compact ? "bandbar metric-bandbar" : "bandbar";
+  return `
+    <div class="${cls}">
+      <div class="fill" style="left:0%;right:0%"></div>
+      <div class="mark" style="left:${mark}%"></div>
+    </div>`;
+}
+
+function compareMeterHtml(current, need) {
+  if (current == null || need == null || need <= 0) return "";
+  const pct = Math.min(100, (current / need) * 100);
+  const over = current > need;
+  return `
+    <div class="compare-meter" title="You: ${fmtBytes(current)} · need (mode): ${fmtBytes(need)}">
+      <div class="fill" style="width:${pct}%${over ? ";background:var(--amplifier)" : ""}"></div>
+      <div class="need-mark" style="left:100%"></div>
+    </div>
+    <div class="compare">${over ? "Above mode estimate" : "Below mode estimate"} — you <strong>${fmtBytes(current)}</strong></div>`;
+}
 
 // ---------------------------------------------------------------------------
 // tabs
@@ -290,6 +486,11 @@ function setTab(name) {
 // shared card renderer -- one model's answer, whether reached by typing into
 // the single-question form or by a scenario chaining a band into it.
 // ---------------------------------------------------------------------------
+
+function linkify(text) {
+  return text.replace(/https:\/\/[^\s<]+/g, url =>
+    `<a href="${url}" target="_blank" rel="noopener">${url}</a>`);
+}
 
 function renderAnswerCard(d) {
   const u = d.unit;
@@ -364,7 +565,7 @@ function renderAnswerCard(d) {
     <details>
       <summary>read this before acting on the number</summary>
       <div class="reframe" style="margin-top:.6rem;border-left:none;padding-left:0">
-        ${d.reframe.trim().split(/\n\s*\n/).map(p => `<p>${p.replace(/\s+/g, " ")}</p>`).join("")}
+        ${d.reframe.trim().split(/\n\s*\n/).map(p => `<p>${linkify(p.replace(/\s+/g, " "))}</p>`).join("")}
       </div>
     </details>` : "";
 
@@ -443,15 +644,283 @@ async function calculateSingle() {
 // scenario tab -- put in what you measured once, watch it cascade
 // ---------------------------------------------------------------------------
 
+const SCENARIO_DEFAULTS = {
+  "mongodb.size-to-instance": {
+    baseline_vuln_count: "250000",
+    baseline_storage_size: "100GB",
+    target_vuln_count: "280000",
+    index_size: "40GB",
+    snapshot_search_size: "80GB",
+  },
+};
+
+function renderScenarioInput(i) {
+  const ph = i.unit === "bytes" ? "e.g. 500GB"
+    : i.unit === "count" ? "e.g. 250000"
+    : i.unit === "iops" ? "e.g. 3000"
+    : i.unit === "MiB/s" ? "e.g. 125"
+    : i.unit;
+  const tag = i.required
+    ? ` <span class="req-tag">required</span>`
+    : ` <span class="opt">opt</span>`;
+  const meta = i.help ? `
+        <details class="field-help">
+          <summary>hint</summary>
+          <div class="help">${i.help}</div>
+        </details>`
+    : `<span class="field-hint-spacer" aria-hidden="true"></span>`;
+  return `
+    <div class="field compact${i.required ? " field-required" : ""}" data-key="${i.key}">
+      <label for="scn-in-${i.key}">${i.label}${tag}</label>
+      <div class="field-meta">${meta}</div>
+      <input id="scn-in-${i.key}" data-key="${i.key}" autocomplete="off"
+             placeholder="${ph}" title="${i.label.replace(/"/g, "'")}"
+             ${i.required ? 'aria-required="true"' : ""}>
+    </div>`;
+}
+
+function inputMeta(key) {
+  return currentScenario?.inputs.find(i => i.key === key);
+}
+
+function missingRequiredKeys() {
+  if (!currentScenario) return [];
+  return currentScenario.inputs
+    .filter(i => i.required)
+    .filter(i => {
+      const el = $(`scn-in-${i.key}`);
+      return !el || !el.value.trim();
+    })
+    .map(i => i.key);
+}
+
+function clearMissingFieldMarks() {
+  document.querySelectorAll("#scenario-inputs .field-missing").forEach(el => {
+    el.classList.remove("field-missing");
+    const inp = el.querySelector("input");
+    if (inp) inp.removeAttribute("aria-invalid");
+  });
+}
+
+function markMissingFields(keys, scroll) {
+  clearMissingFieldMarks();
+  keys.forEach(key => {
+    const field = document.querySelector(`#scenario-inputs .field[data-key="${key}"]`);
+    const inp = $(`scn-in-${key}`);
+    if (field) field.classList.add("field-missing");
+    if (inp) inp.setAttribute("aria-invalid", "true");
+  });
+  if (scroll && keys.length) {
+    const first = document.querySelector(`#scenario-inputs .field[data-key="${keys[0]}"]`);
+    first?.scrollIntoView({behavior: "smooth", block: "center"});
+    $(`scn-in-${keys[0]}`)?.focus();
+  }
+}
+
+function wireMissingJumpHandlers() {
+  document.querySelectorAll(".missing-jump").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const key = btn.dataset.key;
+      markMissingFields([key], true);
+    });
+  });
+}
+
+function setMissingRecalcStatus(keys, scroll) {
+  markMissingFields(keys, scroll);
+  const labels = keys.map(k => inputMeta(k)?.label || k);
+  const jumps = keys.map(k => {
+    const label = inputMeta(k)?.label || k;
+    return `<button type="button" class="missing-jump" data-key="${k}">${label}</button>`;
+  }).join(keys.length > 1 ? " · " : "");
+  const el = $("scn-recalc-status");
+  if (el) {
+    el.className = "recalc-status stale";
+    el.innerHTML = keys.length === 1
+      ? `Missing required field — ${jumps}`
+      : `Missing ${keys.length} required fields — ${jumps}`;
+    wireMissingJumpHandlers();
+  }
+}
+
+function wireScenarioInputs() {
+  document.querySelectorAll("#scenario-inputs input").forEach(el => {
+    let t;
+    const markDirty = () => {
+      scenarioCalcDirty = true;
+      setRecalcStatus("stale", "Inputs changed — update sizing or keep typing (auto-updates in a moment).");
+    };
+    el.addEventListener("input", () => {
+      if (el.value.trim()) {
+        el.closest(".field")?.classList.remove("field-missing");
+        el.removeAttribute("aria-invalid");
+      }
+      markDirty();
+      clearTimeout(t);
+      t = setTimeout(maybeAutoCalculate, 400);
+    });
+    el.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") { e.preventDefault(); calculateScenario(false); }
+    });
+  });
+}
+
+function renderNvdChart(chart) {
+  if (!chart) return "";
+  const max = Math.max(...chart.annual.map(a => a.count));
+  const bars = chart.annual.map(a => {
+    const pct = (a.count / max * 100).toFixed(1);
+    return `<div class="nvd-bar" title="${a.count.toLocaleString()} CVEs published">
+      <div class="nvd-fill" style="height:${pct}%"></div>
+      <span class="year">${a.year}</span>
+      <span class="count">${(a.count / 1000).toFixed(1)}k</span>
+    </div>`;
+  }).join("");
+  const g = chart.growth_pct;
+  return `
+    <div class="panel nvd-panel">
+      <h2>CVE publication growth</h2>
+      <div class="nvd-layout">
+        <div class="nvd-bars">${bars}</div>
+        <div class="nvd-side">
+          <p class="nvd-meta">
+            Cumulative through 2025: <strong>${chart.cumulative_2025.toLocaleString()}</strong>.
+            YoY band when target is blank: <strong>${g.lo}–${g.mode}–${g.hi}%</strong>.
+          </p>
+          <div class="nvd-actions">
+            <button type="button" class="secondary" id="nvd-use-growth">Growth band</button>
+            <button type="button" class="secondary" id="nvd-use-cumulative">→ ${chart.cumulative_2025.toLocaleString()}</button>
+            <button type="button" class="secondary" id="nvd-use-2025">→ +${chart.annual.at(-1).count.toLocaleString()}</button>
+          </div>
+        </div>
+      </div>
+    </div>`;
+}
+
+function bindNvdChartActions(chart) {
+  const touch = () => {
+    scenarioCalcDirty = true;
+    setRecalcStatus("stale", "Inputs changed — update sizing or keep typing (auto-updates in a moment).");
+  };
+  $("nvd-use-growth")?.addEventListener("click", () => {
+    const el = $("scn-in-target_vuln_count");
+    if (el) { el.value = ""; touch(); maybeAutoCalculate(); }
+  });
+  $("nvd-use-cumulative")?.addEventListener("click", () => {
+    const el = $("scn-in-target_vuln_count");
+    if (el) { el.value = String(chart.cumulative_2025); touch(); maybeAutoCalculate(); }
+  });
+  $("nvd-use-2025")?.addEventListener("click", () => {
+    const base = $("scn-in-baseline_vuln_count");
+    const el = $("scn-in-target_vuln_count");
+    if (base && el && base.value.trim()) {
+      const b = parseFloat(base.value.replace(/,/g, ""));
+      if (!Number.isNaN(b)) {
+        el.value = String(Math.round(b + chart.annual.at(-1).count));
+        touch();
+        maybeAutoCalculate();
+      }
+    }
+  });
+}
+
+function renderSizingSummary(s, meta = {}) {
+  if (!s) return "";
+  const metrics = [];
+  const worst = meta.worstGrade;
+  const valChip = worst ? `
+    <span class="summary-validation ${worst}">${VALIDATION_LABEL[worst]}</span>` : "";
+
+  if (s.ram) {
+    const cur = s.current?.ram;
+    const cmp = cur ? compareMeterHtml(cur, s.ram.mode) : "";
+    metrics.push(`
+      <div class="summary-metric">
+        <div class="kicker">Host RAM</div>
+        <div class="primary">${fmt(s.ram.mode, s.ram.unit)}</div>
+        ${bandBarHtml(s.ram.lo, s.ram.mode, s.ram.hi, true)}
+        <div class="sub">${fmt(s.ram.lo, s.ram.unit)} – ${fmt(s.ram.hi, s.ram.unit)}</div>
+        ${cmp}
+      </div>`);
+  }
+
+  if (s.cpu) {
+    const cur = s.current?.vcpu;
+    const cmp = cur != null && s.cpu.mode != null
+      ? `<div class="compare">You run <strong>${cur} vCPU</strong>${cur < s.cpu.mode ? " — below mode pick" : cur > (s.cpu.hi ?? s.cpu.mode) ? " — above high band" : ""}</div>`
+      : "";
+    const instLine = s.cpu.instance_mode
+      ? s.cpu.instance_mode
+      : `<span style="color:var(--amplifier)">custom sizing</span>`;
+    metrics.push(`
+      <div class="summary-metric">
+        <div class="kicker">CPU (r8i pick)</div>
+        <div class="primary">${instLine}</div>
+        <div class="sub">${s.cpu.mode != null ? s.cpu.mode + " vCPU mode" : "over pool ceiling"}
+          · ${s.cpu.lo ?? "?"}–${s.cpu.hi ?? "?"} vCPU band</div>
+        ${cmp}
+      </div>`);
+  }
+
+  if (s.disk) {
+    const d = s.disk;
+    const prov = d.provisioned_iops
+      ? `<div class="sub">Peak-second ${d.provisioned_iops.lo.toLocaleString()}–${d.provisioned_iops.hi.toLocaleString()} IOPS
+          (mode ${d.provisioned_iops.mode.toLocaleString()}${d.provisioned_iops_assumed_mean ? ", from included 3,000 mean" : ", from measured average"})</div>`
+      : "";
+    const instEbs = d.instance_ebs_bandwidth_gbps != null
+      ? `<div class="sub">${d.instance_name} EBS ${d.instance_ebs_bandwidth_gbps} Gbps
+          (${Math.round(d.usable_throughput_mibps).toLocaleString()} MiB/s usable on this pick)</div>`
+      : "";
+    const curIops = s.current?.disk_iops;
+    const curTp = s.current?.disk_throughput_mibps;
+    let cmp = "";
+    if (curIops != null) cmp += `<div class="compare">Disk IOPS today: <strong>${curIops.toLocaleString()}</strong></div>`;
+    if (curTp != null) cmp += `<div class="compare">Throughput today: <strong>${curTp} MiB/s</strong></div>`;
+    metrics.push(`
+      <div class="summary-metric">
+        <div class="kicker">gp3 disk</div>
+        <div class="primary">${Math.round(d.volume_gib).toLocaleString()} GiB</div>
+        <div class="sub">${d.baseline_iops.toLocaleString()} IOPS incl · ${d.baseline_throughput_mibps} MiB/s</div>
+        ${instEbs}${prov}${cmp}
+      </div>`);
+  }
+
+  if (!metrics.length) return "";
+  const lede = meta.lede ? `<p class="summary-lede">${meta.lede}</p>` : "";
+  return `
+    <div class="panel sizing-summary" id="sizing-summary-panel">
+      <div class="summary-head">
+        <h2>What you need</h2>
+        ${valChip}
+      </div>
+      ${lede}
+      <div class="summary-grid">${metrics.join("")}</div>
+    </div>`;
+}
+
+function renderSummaryPlaceholder() {
+  return "";
+}
+
+function setRecalcStatus(state, text) {
+  const el = $("scn-recalc-status");
+  const btn = $("scn-recalc");
+  if (!el) return;
+  el.className = "recalc-status" + (state ? " " + state : "");
+  el.textContent = text;
+  if (btn) btn.disabled = scenarioCalcBusy || (state === "ok" && !scenarioCalcDirty);
+}
+
 async function bootScenario() {
   const r = await fetch("/api/scenarios");
   SCENARIOS = (await r.json()).scenarios;
   $("scenario-picker").innerHTML = SCENARIOS.map(s => `
     <label class="scenario-opt ${s.disabled ? "disabled" : ""}" data-slug="${s.slug}"
-           title="${s.disabled ? s.note.replace(/"/g, "&quot;") : ""}">
+           title="${s.disabled ? (s.note || "").replace(/"/g, "&quot;") : ""}">
       <input type="radio" name="scenario" value="${s.slug}" ${s.disabled ? "disabled" : ""}>
       <span>
-        <div class="label">${s.label}</div>
+        <div class="label">${s.label}${s.default ? " <span class='help' style='display:inline'>(default)</span>" : ""}</div>
         <div class="sub">${s.disabled ? s.note : (s.summary || "")}</div>
       </span>
     </label>`).join("");
@@ -459,7 +928,13 @@ async function bootScenario() {
   document.querySelectorAll(".scenario-opt input[type=radio]").forEach(el => {
     el.addEventListener("change", () => selectScenario(el.value));
   });
-  $("scn-go").addEventListener("click", () => calculateScenario(false));
+  $("scn-recalc")?.addEventListener("click", () => calculateScenario(false));
+
+  const def = SCENARIOS.find(s => s.default && !s.disabled) || SCENARIOS.find(s => !s.disabled);
+  if (def) {
+    const radio = document.querySelector(`.scenario-opt input[value="${def.slug}"]`);
+    if (radio) { radio.checked = true; selectScenario(def.slug); }
+  }
 }
 
 function selectScenario(slug) {
@@ -467,29 +942,42 @@ function selectScenario(slug) {
   document.querySelectorAll(".scenario-opt").forEach(el =>
     el.classList.toggle("selected", el.dataset.slug === slug));
 
-  $("scn-question").textContent = currentScenario.question || "";
-  $("scenario-inputs").innerHTML = currentScenario.inputs.map(i => `
-    <div class="field">
-      <label for="scn-in-${i.key}">${i.label}${i.required ? "" : " <span class='help' style='display:inline'>optional</span>"}</label>
-      <input id="scn-in-${i.key}" data-key="${i.key}" autocomplete="off"
-             placeholder="${i.unit === "bytes" ? "e.g. 500GB" : i.unit}">
-      ${i.help ? `<div class="help">${i.help}</div>` : ""}
-    </div>`).join("");
+  const chartHtml = renderNvdChart(currentScenario.nvd_chart);
+  $("scenario-nvd-chart").innerHTML = chartHtml;
+  if (currentScenario.nvd_chart) bindNvdChartActions(currentScenario.nvd_chart);
 
-  document.querySelectorAll("#scenario-inputs input").forEach(el => {
-    let t;
-    el.addEventListener("input", () => {
-      clearTimeout(t);
-      t = setTimeout(maybeAutoCalculate, 300);
-    });
-  });
+  let inputsHtml = "";
+  if (currentScenario.input_sections?.length) {
+    inputsHtml = currentScenario.input_sections.map(sec => `
+      <div class="input-section">
+        <h3>${sec.title}</h3>
+        <div class="input-grid">${sec.inputs.map(renderScenarioInput).join("")}</div>
+      </div>`).join("");
+  } else {
+    inputsHtml = `<div class="input-grid">${currentScenario.inputs.map(renderScenarioInput).join("")}</div>`;
+  }
+  $("scenario-inputs").innerHTML = inputsHtml;
 
-  $("scenario-form-panel").hidden = false;
+  const defaults = SCENARIO_DEFAULTS[slug] || {};
+  for (const [key, val] of Object.entries(defaults)) {
+    const el = $(`scn-in-${key}`);
+    if (el && !el.value) el.value = val;
+  }
+
+  wireScenarioInputs();
+  $("scenario-workspace").hidden = false;
+  $("scenario-summary").innerHTML = renderSummaryPlaceholder();
   $("scenario-cascade").innerHTML = "";
   $("scn-error").hidden = true;
+  clearMissingFieldMarks();
+  scenarioCalcDirty = false;
+  scenarioCalcBusy = false;
+  setRecalcStatus("", "Fill required fields — sizing updates as you type.");
+  maybeAutoCalculate();
 }
 
 function maybeAutoCalculate() {
+  if (!currentScenario) return;
   const required = currentScenario.inputs.filter(i => i.required).map(i => i.key);
   const filled = required.every(k => {
     const el = $(`scn-in-${k}`);
@@ -500,15 +988,20 @@ function maybeAutoCalculate() {
 
 async function calculateScenario(auto) {
   if (!currentScenario) return;
+  const missing = missingRequiredKeys();
+  if (missing.length) {
+    setMissingRecalcStatus(missing, !auto);
+    return;
+  }
+  clearMissingFieldMarks();
   const inputs = {};
   document.querySelectorAll("#scenario-inputs input").forEach(el => {
     if (el.value.trim()) inputs[el.dataset.key] = el.value.trim();
   });
   const body = {scenario: currentScenario.slug, inputs};
-  const avail = $("scn-available").value.trim();
-  if (avail) body.available = avail;
 
-  const wasEmpty = $("scenario-cascade").innerHTML.trim() === "";
+  scenarioCalcBusy = true;
+  setRecalcStatus("busy", auto ? "Recalculating…" : "Updating sizing…");
 
   $("scn-error").hidden = true;
   const r = await fetch("/api/scenario", {
@@ -517,13 +1010,37 @@ async function calculateScenario(auto) {
     body: JSON.stringify(body)
   });
   const data = await r.json();
+  scenarioCalcBusy = false;
+
   if (!r.ok) {
     $("scn-error").textContent = data.detail || "something went wrong";
     $("scn-error").hidden = false;
-    $("scenario-cascade").innerHTML = "";
+    $("scenario-summary").innerHTML = renderSummaryPlaceholder();
+    if (!auto) $("scenario-cascade").innerHTML = "";
+    setRecalcStatus("stale", "Fix the error above and update sizing.");
     return;
   }
-  renderCascade(data, wasEmpty || !auto);
+  scenarioCalcDirty = false;
+  renderCascade(data, !auto);
+  setRecalcStatus("ok", "Up to date — change any field to recalculate.");
+}
+
+function renderGp3Card(step, n) {
+  const g = step.gp3;
+  return `
+    <div class="panel card">
+      <div class="step-kicker">Step ${n} · gp3 volume baseline</div>
+      <table><tbody>
+        <tr><td>Volume size</td><td class="num">${fmtBytes(g.volume_bytes)} (${g.volume_gib.toFixed(1)} GiB)</td></tr>
+        <tr><td>Included IOPS</td><td class="num">${g.baseline_iops.toLocaleString()}</td></tr>
+        <tr><td>Max provisionable IOPS</td><td class="num">${Math.round(g.max_provisionable_iops).toLocaleString()}</td></tr>
+        <tr><td>Included throughput</td><td class="num">${g.baseline_throughput_mibps} MiB/s</td></tr>
+        <tr><td>Volume max throughput</td><td class="num">${g.max_throughput_mibps} MiB/s</td></tr>
+        ${g.instance_ebs_bandwidth_gbps != null ? `
+        <tr><td>${g.instance_name} EBS pipe</td><td class="num">${g.instance_ebs_bandwidth_gbps} Gbps (${Math.round(g.instance_ebs_throughput_mibps).toLocaleString()} MiB/s)</td></tr>
+        <tr><td>Usable on this pick</td><td class="num">${Math.round(g.usable_throughput_mibps).toLocaleString()} MiB/s</td></tr>` : ""}
+      </tbody></table>
+    </div>`;
 }
 
 function renderInstanceCard(step, n) {
@@ -537,7 +1054,7 @@ function renderInstanceCard(step, n) {
       const hd = spec.ram_bytes - need;
       return `<tr>
         <td>${label}</td>
-        <td class="name">${spec.name} <span class="help" style="display:inline">${spec.vcpu ? spec.vcpu + " vCPU" : ""}</span></td>
+        <td class="name">${spec.name} <span class="help" style="display:inline">${spec.vcpu ? spec.vcpu + " vCPU" : ""}${spec.ebs_bandwidth_gbps ? " · EBS " + spec.ebs_bandwidth_gbps + " Gbps" : ""}</span></td>
         <td class="num">${fmtBytes(spec.ram_bytes)}<div class="help">+${fmtBytes(hd)} headroom</div></td>
       </tr>`;
     }).join("");
@@ -546,43 +1063,90 @@ function renderInstanceCard(step, n) {
     <div class="pool-note">The high end of the band exceeds this pool. No family is decided
       for sizing above that yet — this is a placeholder, not a recommendation.</div>` : "";
 
+  const lo = step.pick.pick_lo?.name;
+  const hi = step.pick.pick_hi?.name;
+  const verdict = (lo && hi && lo !== hi)
+    ? `<p class="instance-verdict"><strong>${lo}</strong> fits if the estimate is optimistic; <strong>${hi}</strong> fits regardless.</p>`
+    : "";
+
   return `
     <div class="panel card">
       <div class="step-kicker">Step ${n} · smallest instance covering the band above</div>
       <table class="instance-pick-table"><tbody>${rows}</tbody></table>
-      ${poolNote}
+      ${verdict}${poolNote}
     </div>`;
 }
 
 function renderCascade(data, scroll) {
   const worst = { none: 0, thin: 1, reasonable: 2 };
   let worstGrade = null;
+
+  data.steps.forEach(step => {
+    if (step.kind !== "model" || !step.validation) return;
+    if (worstGrade === null || worst[step.validation.grade] < worst[worstGrade]) {
+      worstGrade = step.validation.grade;
+    }
+  });
+
+  const nvd = data.steps.find(s => s.model === "nvd.storage-from-vuln-growth");
+  let lede = "";
+  if (nvd?.answer) {
+    const a = nvd.answer;
+    lede = `Vulnerability collections grow to <strong>${fmt(a.mode, nvd.unit)}</strong> (band ${fmt(a.lo, nvd.unit)}–${fmt(a.hi, nvd.unit)}) before indexes and snapshot search are added.`;
+  }
+
+  const summaryHtml = renderSizingSummary(data.sizing_summary, {worstGrade, lede})
+    || renderSummaryPlaceholder();
+  $("scenario-summary").innerHTML = summaryHtml;
+  const panel = $("sizing-summary-panel");
+  if (panel) {
+    panel.classList.remove("flash");
+    void panel.offsetWidth;
+    panel.classList.add("flash");
+  }
+
   const parts = [];
+  const modelCount = data.steps.filter(s => s.kind === "model").length;
 
   data.steps.forEach((step, i) => {
     if (step.kind === "lookup") {
-      parts.push(renderInstanceCard(step, i + 1));
+      if (step.gp3) {
+        parts.push(renderGp3Card(step, i + 1));
+      } else if (step.pick) {
+        parts.push(renderInstanceCard(step, i + 1));
+      }
       return;
-    }
-    if (worstGrade === null || worst[step.validation.grade] < worst[worstGrade]) {
-      worstGrade = step.validation.grade;
     }
     parts.push(`
       <div class="panel card">
         <div class="step-kicker">Step ${i + 1}</div>
         <p class="question">${step.question}</p>
         ${step.chained ? `<div class="chained-note">input: the band from the step above, not typed in</div>` : ""}
+        ${step.assumed_inputs && step.assumed_inputs.average_iops != null ? `<div class="chained-note">minute mean assumed as gp3's included 3,000 IOPS (not measured). Peak seconds are still raised ×1.5–10 so a microburst cannot stall MongoDB storage tickets. Paste CloudWatch VolumeAvgIOPS to replace. AWS: <a href="https://repost.aws/knowledge-center/ebs-troubleshoot-performance-issues-ec2" target="_blank" rel="noopener">raise IOPS or throughput until exceeded checks stay at 0</a>.</div>` : ""}
         ${renderAnswerCard(step)}
       </div>`);
     if (i < data.steps.length - 1) parts.push(`<div class="chain-arrow">band flows down — all three ends, never just the mode</div>`);
   });
 
-  const seeAlso = (data.see_also || []).map(sa => `
+  const seeAlso = (data.see_also || []).map(sa => {
+    const action = sa.url
+      ? `<a href="${sa.url}" target="_blank" rel="noopener">${sa.label || sa.url}</a>`
+      : `<button class="see-also-link" data-target="${sa.scenario}">Go to that scenario →</button>`;
+    return `
     <div class="panel see-also">
-      ${sa.reason} <button class="see-also-link" data-target="${sa.scenario}">Go to that scenario →</button>
-    </div>`).join("");
+      ${sa.reason} ${action}
+    </div>`;
+  }).join("");
 
-  $("scenario-cascade").innerHTML = parts.join("") + seeAlso;
+  const chainLabel = worstGrade
+    ? `Show the math · ${modelCount} models · chain is ${VALIDATION_SHORT[worstGrade]}`
+    : `Show the math · ${data.steps.length} steps`;
+
+  $("scenario-cascade").innerHTML = `
+    <details class="cascade-wrap">
+      <summary>${chainLabel}</summary>
+      <div class="cascade-inner">${parts.join("")}${seeAlso}</div>
+    </details>`;
   document.querySelectorAll(".see-also-link").forEach(btn => {
     btn.addEventListener("click", () => {
       const radio = document.querySelector(`.scenario-opt input[value="${btn.dataset.target}"]`);
@@ -590,7 +1154,7 @@ function renderCascade(data, scroll) {
       $("scenario-form-panel").scrollIntoView({behavior: "smooth", block: "start"});
     });
   });
-  if (scroll) $("scenario-cascade").scrollIntoView({behavior: "smooth", block: "start"});
+  if (scroll) $("scenario-summary").scrollIntoView({behavior: "smooth", block: "start"});
 }
 
 // ---------------------------------------------------------------------------

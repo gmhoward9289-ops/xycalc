@@ -63,6 +63,8 @@ def _term_dict(t) -> dict:
         "apply": t.apply,
         "input_key": t.input_key,
         "optional": t.optional,
+        "when_input": t.when_input,
+        "unless_input": t.unless_input,
         "rationale": t.rationale,
         "coefficient": t.coefficient,
         "coeff_lo": t.coeff_lo,

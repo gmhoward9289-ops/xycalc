@@ -1,0 +1,43 @@
+# NVD / CVE publication growth coefficients.
+#
+# Bands are estimates from 2023–2025 publication rates cited in Jerry
+# Gamblin's annual CVE reviews. They are not a forecast — they bracket how
+# fast the corpus has been growing recently.
+
+coefficients:
+  - slug: nvd.cve-yoy-growth-pct
+    parameter: vuln.yoy_growth_pct
+    system: nvd
+    applies_to: CVE publication rate, 2023–2025
+    value_lo: 15
+    value_mode: 21
+    value_hi: 39
+    confidence: practitioner
+    source: jerrygamblin-2025-cve-review
+    quote: >-
+      48,185 CVEs were published in 2025, a 20.6% increase from the 40,009
+      CVEs published in 2024.
+    notes: >-
+      Mode sits near the 2024→2025 rate (20.6%). Lo/hi bracket the 2023→2024
+      spike (38.8%) and a softer continuation. Carried for single-year
+      add_fraction projections; the storage model defaults to the compound
+      multiplier below for a three-year horizon.
+
+  - slug: nvd.cve-growth-3yr-multiplier
+    parameter: vuln.compound_growth_multiplier
+    system: nvd
+    applies_to: >-
+      Compound growth over three years at ~21% YoY CVE publication rate
+    value_lo: 1.5
+    value_mode: 2.0
+    value_hi: 2.5
+    confidence: practitioner
+    source: jerrygamblin-2025-cve-review
+    quote: >-
+      48,185 CVEs were published in 2025, a 20.6% increase from the 40,009
+      CVEs published in 2024.
+    notes: >-
+      Approximate (1 + growth/100)^3 bands: 15%→1.52, 21%→1.77, 39%→2.68.
+      Used when no explicit target_vuln_count is supplied and
+      projection_years defaults to three. For other horizons, supply a
+      target count or run single-year add_fraction manually.

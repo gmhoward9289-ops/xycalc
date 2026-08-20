@@ -1,4 +1,4 @@
-"""The arithmetic, and the one place it is easy to get backwards."""
+﻿"""The arithmetic, and the one place it is easy to get backwards."""
 
 from __future__ import annotations
 
@@ -60,7 +60,7 @@ class TestWiredTigerCacheModel:
         so the top of the band must come from the bottom of the fraction.
 
         Getting this backwards produces a band that is wrong in the reassuring
-        direction, which is the dangerous one — so it is asserted against the
+        direction, which is the dangerous one â€” so it is asserted against the
         arithmetic rather than against a stored expectation.
 
         lo: 500 x 1.5 = 750, + 40 = 790, / 0.80 = 987.5
@@ -84,7 +84,7 @@ class TestWiredTigerCacheModel:
     def test_omitted_optional_input_is_reported_as_skipped(self, model):
         r = model.evaluate({"storage_size": "500GB"})
         skipped = [s for s in r.steps if s.skipped]
-        assert [s.term.key for s in skipped] == ["indexes"]
+        assert [s.term.key for s in skipped] == ["snapshot_search", "indexes"]
 
     def test_required_input_is_required(self, model):
         with pytest.raises(ModelError, match="required"):
@@ -167,7 +167,7 @@ def test_format_bytes_reads_like_a_person_wrote_it():
 def test_format_bytes_rounds_half_away_from_zero_like_the_web_ui():
     """1.25 TB is what this corpus's first worked example produces at the
     decompression step. Python's default format rounds half to EVEN and would
-    render it "1.2 TB", while the browser's toLocaleString renders "1.3 TB" —
+    render it "1.2 TB", while the browser's toLocaleString renders "1.3 TB" â€”
     the same figure, two answers, on two surfaces of one project."""
     assert format_bytes(1.25e12) == "1.3 TB"
     assert format_bytes(1.35e12) == "1.4 TB"
@@ -197,7 +197,7 @@ class TestUnitRendering:
 
 
 class TestTicketCeiling:
-    """Investigation 003. Little's law against MongoDB's admission control —
+    """Investigation 003. Little's law against MongoDB's admission control â€”
     the model that explains a cliff rather than sizing a system."""
 
     @pytest.fixture
@@ -244,7 +244,7 @@ class TestTicketCeiling:
 
     def test_dividing_by_an_input_does_not_invert_the_band(self, model):
         """A caller-supplied scalar has one value, so all three ends move
-        together — unlike dividing by a coefficient FRACTION, which inverts."""
+        together â€” unlike dividing by a coefficient FRACTION, which inverts."""
         r = model.evaluate({"storage_latency_seconds": 0.1, "tickets": 128})
         assert r.lo == r.mode == r.hi
 
@@ -255,8 +255,56 @@ class TestTicketCeiling:
         assert "cliff" in model.reframe
 
 
+class TestNvdStorageModel:
+    @pytest.fixture
+    def model(self, conn):
+        return Model.load(conn, "nvd.storage-from-vuln-growth")
+
+    def test_target_count_scales_linearly_from_measured_rate(self, model):
+        """100k records at 500 GB → 150k records at 750 GB."""
+        r = model.evaluate(
+            {
+                "baseline_vuln_count": 100_000,
+                "baseline_storage_size": "500GB",
+                "target_vuln_count": 150_000,
+            }
+        )
+        assert r.mode == pytest.approx(750 * 1000**3)
+
+    def test_growth_path_multiplies_baseline_storage(self, model):
+        r = model.evaluate(
+            {
+                "baseline_vuln_count": 100_000,
+                "baseline_storage_size": "500GB",
+            }
+        )
+        assert r.mode == pytest.approx(1000 * 1000**3)
+
+    def test_target_path_skips_compound_growth_term(self, model):
+        r = model.evaluate(
+            {
+                "baseline_vuln_count": 100_000,
+                "baseline_storage_size": "500GB",
+                "target_vuln_count": 150_000,
+            }
+        )
+        skipped = [s.term.key for s in r.steps if s.skipped]
+        assert "compound_growth" in skipped
+
+    def test_growth_path_skips_target_terms(self, model):
+        r = model.evaluate(
+            {
+                "baseline_vuln_count": 100_000,
+                "baseline_storage_size": "500GB",
+            }
+        )
+        skipped = [s.term.key for s in r.steps if s.skipped]
+        assert "per_vuln_bytes" in skipped
+        assert "target_projection" in skipped
+
+
 class TestBounds:
-    """floor_at / cap_at — the first non-monotonic apply modes.
+    """floor_at / cap_at â€” the first non-monotonic apply modes.
 
     Every other mode only pushes the running total one way. Vendors write
     limits as max() and min() constantly, and without these the model can print

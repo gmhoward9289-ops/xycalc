@@ -116,6 +116,8 @@ class Term:
     apply: str
     input_key: str | None
     optional: bool
+    when_input: str | None
+    unless_input: str | None
     rationale: str
     # Null for input terms, which take their value from the caller.
     coefficient: str | None
@@ -207,6 +209,8 @@ class Model:
                 apply=r["apply"],
                 input_key=r["input_key"],
                 optional=bool(r["optional"]),
+                when_input=r["when_input"],
+                unless_input=r["unless_input"],
                 rationale=r["rationale"],
                 coefficient=r["coeff_slug"],
                 coeff_lo=r["value_lo"],
@@ -222,7 +226,7 @@ class Model:
             )
             for r in conn.execute(
                 "SELECT t.key, t.label, t.role, t.apply, t.input_key, t.optional, "
-                "       t.rationale, "
+                "       t.when_input, t.unless_input, t.rationale, "
                 "       c.slug AS coeff_slug, c.value_lo, c.value_mode, c.value_hi, "
                 "       c.confidence, c.applies_to, c.quote, "
                 "       p.unit, "
@@ -268,6 +272,13 @@ class Model:
                 constraints.append(term)
                 continue
 
+            skip_reason = self._term_skip_reason(term, supplied)
+            if skip_reason:
+                steps.append(
+                    Step(term, "—", lo, mode, hi, True, skip_reason)
+                )
+                continue
+
             in_unit = declared_units.get(term.input_key) or term.unit or self.output_unit
 
             if term.apply == "input":
@@ -304,6 +315,24 @@ class Model:
                 lo, mode, hi = lo / v, mode / v, hi / v
                 steps.append(
                     Step(term, f"÷ {format_quantity(v, in_unit)}", lo, mode, hi)
+                )
+                continue
+
+            if term.apply == "multiply_by_input":
+                v = supplied.get(term.input_key)
+                if v is None:
+                    if term.optional:
+                        steps.append(Step(term, "—", lo, mode, hi, True, "not supplied"))
+                        continue
+                    raise ModelError(f"{self.slug}: input '{term.input_key}' required")
+                if not v:
+                    raise ModelError(
+                        f"{self.slug}: '{term.input_key}' cannot be zero — "
+                        f"multiplying by it would zero the answer"
+                    )
+                lo, mode, hi = lo * v, mode * v, hi * v
+                steps.append(
+                    Step(term, f"x {format_quantity(v, in_unit)}", lo, mode, hi)
                 )
                 continue
 
@@ -385,6 +414,14 @@ class Model:
             out[key] = parse_bytes(raw) if spec["unit"] == "bytes" else float(raw)
         return out
 
+    @staticmethod
+    def _term_skip_reason(term: Term, supplied: dict) -> str | None:
+        if term.when_input and term.when_input not in supplied:
+            return f"'{term.when_input}' not supplied"
+        if term.unless_input and term.unless_input in supplied:
+            return f"'{term.unless_input}' supplied"
+        return None
+
 
 def headroom(result: Result, available: float) -> dict:
     """How much margin is left, and what it means.
@@ -425,6 +462,7 @@ class InstanceSpec:
                              # shows for the same coefficient.
     ram_bytes: float
     vcpu: float | None
+    ebs_bandwidth_gbps: float | None
     source_title: str
     source_url: str | None
 
@@ -463,6 +501,8 @@ def load_instance_catalog(
             entry["ram_bytes"] = r["value_mode"]
         elif r["param_slug"] == "instance.vcpu_count":
             entry["vcpu"] = r["value_mode"]
+        elif r["param_slug"] == "instance.ebs_bandwidth_gbps":
+            entry["ebs_bandwidth_gbps"] = r["value_mode"]
 
     return sorted(
         (
@@ -470,6 +510,7 @@ def load_instance_catalog(
                 name=name,
                 ram_bytes=e["ram_bytes"],
                 vcpu=e.get("vcpu"),
+                ebs_bandwidth_gbps=e.get("ebs_bandwidth_gbps"),
                 source_title=e["source_title"],
                 source_url=e["source_url"],
             )
@@ -573,6 +614,59 @@ def get_scenario(slug: str) -> dict:
     raise ModelError(f"no scenario '{slug}'. Available: {', '.join(known) or '(none)'}")
 
 
+def scenario_form_inputs(conn: sqlite3.Connection, scenario: dict) -> list[dict]:
+    """Inputs the scenario form should collect.
+
+    Every model step whose inputs are not fed from a previous step's band,
+    plus any scenario-level extra_inputs. Duplicates are dropped in step order.
+    """
+    fed: set[str] = set()
+    for step in scenario.get("steps", []):
+        if step.get("kind", "model") != "model":
+            continue
+        for key, source in (step.get("feed") or {}).items():
+            if source == "previous":
+                fed.add(key)
+
+    seen: set[str] = set()
+    out: list[dict] = []
+
+    form_models = scenario.get("form_models")
+    if form_models:
+        for entry in form_models:
+            if isinstance(entry, str):
+                slug, only = entry, None
+            else:
+                slug, only = entry["model"], entry.get("inputs")
+            model = Model.load(conn, slug)
+            for inp in model.inputs:
+                if inp["key"] in fed or inp["key"] in seen:
+                    continue
+                if only is not None and inp["key"] not in only:
+                    continue
+                seen.add(inp["key"])
+                out.append(inp)
+    else:
+        for step in scenario.get("steps", []):
+            if step.get("kind", "model") != "model":
+                continue
+            model = Model.load(conn, step["model"])
+            skip_form = set(step.get("defaults_from_coefficient") or {})
+            skip_form.update(step.get("defaults") or {})
+            for inp in model.inputs:
+                if inp["key"] in fed or inp["key"] in seen or inp["key"] in skip_form:
+                    continue
+                seen.add(inp["key"])
+                out.append(inp)
+
+    for inp in scenario.get("extra_inputs", []):
+        if inp["key"] in seen:
+            continue
+        seen.add(inp["key"])
+        out.append(inp)
+    return out
+
+
 @dataclass
 class ScenarioStepResult:
     """One step of a chain, with enough attached to render exactly what a
@@ -587,7 +681,148 @@ class ScenarioStepResult:
     model: "Model | None" = None
     result: Result | None = None
     instance_pick: dict | None = None
+    gp3_spec: dict | None = None
     headroom: dict | None = None
+    assumed_inputs: dict | None = None
+
+
+def gp3_volume_spec(volume_bytes: float) -> dict:
+    """gp3 baseline and provisionable ceilings for a volume size.
+
+    Figures match the documented coefficients in data/coefficients/ebs.yaml:
+    3,000 IOPS and 125 MiB/s included; up to 80,000 IOPS at 500 per GiB of
+    volume; up to 2,000 MiB/s throughput. EBS sizes volumes in GiB.
+    """
+    gib = volume_bytes / (1024**3)
+    max_iops = min(80_000.0, 500.0 * gib)
+    return {
+        "volume_bytes": volume_bytes,
+        "volume_gib": gib,
+        "baseline_iops": 3000.0,
+        "max_provisionable_iops": max_iops,
+        "baseline_throughput_mibps": 125.0,
+        "max_throughput_mibps": 2000.0,
+    }
+
+
+def _attach_instance_ebs(spec: dict, instance: InstanceSpec | None) -> dict:
+    """Qualify gp3 catalog ceilings against the RAM pick's own EBS pipe.
+
+    80,000 IOPS / 2,000 MiB/s is what one gp3 volume can be configured for.
+    r8i.large's published EBS bandwidth is 10 Gbps (1,250 MiB/s) — the
+    volume catalog number is only reachable on a larger size.
+    """
+    if instance is None:
+        return spec
+    spec = dict(spec)
+    spec["instance_name"] = instance.name
+    if instance.ebs_bandwidth_gbps is None:
+        return spec
+    spec["instance_ebs_bandwidth_gbps"] = instance.ebs_bandwidth_gbps
+    spec["instance_ebs_throughput_mibps"] = instance.ebs_bandwidth_gbps * 125.0
+    spec["usable_throughput_mibps"] = min(
+        spec["max_throughput_mibps"], spec["instance_ebs_throughput_mibps"]
+    )
+    return spec
+
+
+def _sum_scenario_bytes(inputs: dict, keys: list[str]) -> float:
+    total = 0.0
+    for key in keys:
+        raw = inputs.get(key)
+        if raw is None or raw == "":
+            continue
+        total += parse_bytes(raw)
+    return total
+
+
+def build_instance_sizing_summary(
+    steps: list[ScenarioStepResult], inputs: dict
+) -> dict:
+    """Roll RAM, CPU, and gp3 disk into one panel for the instance-sizing scenario."""
+    host: ScenarioStepResult | None = None
+    inst: ScenarioStepResult | None = None
+    gp3: ScenarioStepResult | None = None
+    ebs: ScenarioStepResult | None = None
+    for s in steps:
+        if s.kind == "model" and s.slug == "mongodb.host-ram":
+            host = s
+        elif s.kind == "lookup" and s.gp3_spec is not None:
+            gp3 = s
+        elif s.kind == "lookup" and s.instance_pick is not None:
+            inst = s
+        elif s.kind == "model" and s.slug == "ebs.iops-to-provision":
+            ebs = s
+
+    summary: dict = {}
+    if host and host.result:
+        r = host.result
+        summary["ram"] = {
+            "lo": r.lo,
+            "mode": r.mode,
+            "hi": r.hi,
+            "unit": r.unit,
+        }
+
+    if inst and inst.instance_pick:
+        pick = inst.instance_pick
+
+        def vcpu(spec) -> float | None:
+            return None if spec is None else spec.vcpu
+
+        summary["cpu"] = {
+            "lo": vcpu(pick["pick_lo"]),
+            "mode": vcpu(pick["pick_mode"]),
+            "hi": vcpu(pick["pick_hi"]),
+            "unit": "vcpu",
+            "instance_lo": None if pick["pick_lo"] is None else pick["pick_lo"].name,
+            "instance_mode": None if pick["pick_mode"] is None else pick["pick_mode"].name,
+            "instance_hi": None if pick["pick_hi"] is None else pick["pick_hi"].name,
+        }
+
+    if gp3 and gp3.gp3_spec:
+        spec = gp3.gp3_spec
+        disk = {
+            "volume_gib": spec["volume_gib"],
+            "baseline_iops": spec["baseline_iops"],
+            "max_provisionable_iops": spec["max_provisionable_iops"],
+            "baseline_throughput_mibps": spec["baseline_throughput_mibps"],
+            "max_throughput_mibps": spec["max_throughput_mibps"],
+        }
+        if ebs and ebs.result:
+            disk["provisioned_iops"] = {
+                "lo": ebs.result.lo,
+                "mode": ebs.result.mode,
+                "hi": ebs.result.hi,
+            }
+            disk["provisioned_iops_assumed_mean"] = bool(
+                ebs.assumed_inputs and "average_iops" in ebs.assumed_inputs
+            )
+        if spec.get("instance_name"):
+            disk["instance_name"] = spec["instance_name"]
+        if spec.get("instance_ebs_bandwidth_gbps") is not None:
+            disk["instance_ebs_bandwidth_gbps"] = spec["instance_ebs_bandwidth_gbps"]
+            disk["usable_throughput_mibps"] = spec.get("usable_throughput_mibps")
+        summary["disk"] = disk
+
+    current: dict = {}
+    for key, out_key in (
+        ("current_ram", "ram"),
+        ("current_vcpu", "vcpu"),
+        ("current_disk_iops", "disk_iops"),
+        ("current_disk_throughput", "disk_throughput_mibps"),
+    ):
+        raw = inputs.get(key)
+        if raw is None or raw == "":
+            continue
+        if out_key == "ram":
+            current[out_key] = parse_bytes(raw)
+        else:
+            current[out_key] = float(raw)
+    if current:
+        summary["current"] = current
+
+    return summary
 
 
 def chain_evaluate(
@@ -616,22 +851,59 @@ def chain_evaluate(
     """
     out: list[ScenarioStepResult] = []
     previous: Result | None = None
+    model_results: dict[str, Result] = {}
+    supplied = dict(inputs)
 
-    # Headroom is reported against the last MODEL step, not the last step
-    # overall -- a scenario that ends in an instance-select lookup (a name,
-    # not a band) has nothing for `available` to be measured against there.
-    model_steps = [s for s in scenario["steps"] if s.get("kind", "model") == "model"]
-    last_model_step = model_steps[-1] if model_steps else None
+    def _fill_defaults(step: dict) -> dict:
+        assumed: dict = {}
+        for key, raw in (step.get("defaults") or {}).items():
+            if supplied.get(key) in (None, ""):
+                supplied[key] = raw
+                assumed[key] = raw
+        for key, slug in (step.get("defaults_from_coefficient") or {}).items():
+            if supplied.get(key) not in (None, ""):
+                continue
+            row = conn.execute(
+                "SELECT value_mode FROM coefficient WHERE slug = ?", (slug,)
+            ).fetchone()
+            if row is None:
+                raise ModelError(
+                    f"{step.get('model', step.get('lookup'))}: "
+                    f"default coefficient '{slug}' is not in the corpus"
+                )
+            supplied[key] = row[0]
+            assumed[key] = row[0]
+        return assumed
+
+    # Headroom is reported against the last bytes-output MODEL step, not the
+    # last step overall — a scenario that ends in instance-select or an IOPS
+    # model has nothing for `available` RAM to be measured against there.
+    last_bytes_step = None
+    for s in scenario["steps"]:
+        if s.get("kind", "model") != "model":
+            continue
+        when = s.get("when_input")
+        if when and not supplied.get(when) and when not in (s.get("defaults") or {}) and when not in (s.get("defaults_from_coefficient") or {}):
+            continue
+        if Model.load(conn, s["model"]).output_unit == "bytes":
+            last_bytes_step = s
 
     for step in scenario["steps"]:
         kind = step.get("kind", "model")
 
+        when = step.get("when_input")
+        if when and not supplied.get(when):
+            continue
+
         if kind == "model":
+            assumed = _fill_defaults(step)
             model = Model.load(conn, step["model"])
             feed = step.get("feed") or {}
 
             if not feed:
-                composed = model.evaluate(inputs)
+                own_keys = {i["key"] for i in model.inputs}
+                scoped = {k: v for k, v in supplied.items() if k in own_keys}
+                composed = model.evaluate(scoped)
             else:
                 if previous is None:
                     raise ModelError(
@@ -646,7 +918,7 @@ def chain_evaluate(
                 own_keys = {i["key"] for i in model.inputs}
 
                 def _run(band_value: float) -> Result:
-                    merged = {k: v for k, v in inputs.items() if k in own_keys}
+                    merged = {k: v for k, v in supplied.items() if k in own_keys}
                     merged.update({k: band_value for k in fed_keys})
                     return model.evaluate(merged)
 
@@ -675,15 +947,48 @@ def chain_evaluate(
                 chained=bool(feed),
                 model=model,
                 result=composed,
+                assumed_inputs=assumed or None,
             )
-            if available is not None and step is last_model_step:
+            if available is not None and step is last_bytes_step:
                 step_result.headroom = headroom(composed, available)
             out.append(step_result)
             previous = composed
+            model_results[model.slug] = composed
 
         elif kind == "lookup":
-            if step.get("lookup") != "instance_select":
-                raise ModelError(f"unknown lookup kind '{step.get('lookup')}'")
+            lookup = step.get("lookup")
+            if lookup == "gp3_spec":
+                keys = step.get("sum_inputs") or ["storage_size"]
+                total = _sum_scenario_bytes(supplied, keys)
+                sum_model = step.get("sum_model")
+                if sum_model:
+                    prior = model_results.get(sum_model)
+                    if prior is None:
+                        raise ModelError(
+                            f"gp3_spec: sum_model '{sum_model}' has not run yet"
+                        )
+                    total += prior.mode
+                if total <= 0:
+                    raise ModelError(
+                        "gp3_spec: need at least one on-disk size input "
+                        f"among {', '.join(keys)}"
+                    )
+                inst = next((s for s in reversed(out) if s.instance_pick), None)
+                mode_inst = None
+                if inst and inst.instance_pick:
+                    mode_inst = inst.instance_pick.get("pick_mode")
+                out.append(
+                    ScenarioStepResult(
+                        kind="lookup",
+                        slug="ebs.gp3-spec",
+                        chained=False,
+                        gp3_spec=_attach_instance_ebs(gp3_volume_spec(total), mode_inst),
+                    )
+                )
+                continue
+
+            if lookup != "instance_select":
+                raise ModelError(f"unknown lookup kind '{lookup}'")
             if previous is None:
                 raise ModelError("instance_select: no previous step's band to pick against")
             catalog = load_instance_catalog(conn, "aws-ec2")
