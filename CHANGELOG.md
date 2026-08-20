@@ -1,15 +1,12 @@
 # Changelog
 
-All notable **tool/package** changes are listed here. Corpus-only updates move
-`corpus_digest` on the exported page without a version bump — see
-[docs/VERSIONING.md](docs/VERSIONING.md).
+All notable changes to the **xycalc tool** (not the corpus) are recorded here.
+Corpus identity is `corpus_digest` on the exported page. See `docs/VERSIONING.md`.
 
-## 0.1.0 — 2026-08-20
+## 0.1.0
 
-Established baseline.
+Baseline release establishing normal package versioning.
 
-- Cited corpus with build-time gates (sources, `applies_to`, validation grades)
-- CLI sizing / why / audit
-- Static calculator export with in-browser golden-vector self-check
-- Scenario chaining and instance catalog in the export blob
-- Provenance footer: package version, corpus digest, and export git SHA
+- Single-source version from `pyproject.toml`
+- Export provenance: `xycalc_version` + `xycalc_git` + `corpus_digest`
+- Versioning policy documented in `docs/VERSIONING.md`

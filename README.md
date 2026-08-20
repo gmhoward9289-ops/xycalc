@@ -24,9 +24,6 @@ And one guarantee it makes by admission rather than by refusal:
    on every single invocation. That is the normal state of a new model. What
    would not be normal is leaving it unsaid.
 
-Versioning policy (tool semver, export SHA, bump ladder):
-[docs/VERSIONING.md](docs/VERSIONING.md) · [CHANGELOG.md](CHANGELOG.md)
-
 ## Quick start
 
 Questions, ideas, or a real measurement to share? →
@@ -177,6 +174,9 @@ public corpus and says so on every build.
 If a figure has no source, the figure does not ship. That is the whole point.
 
 ## Status
+
+Package versioning and the calculator's `exported by xycalc …` stamp:
+[`docs/VERSIONING.md`](docs/VERSIONING.md).
 
 Four models across three investigations, which turned out to be one failure
 told in three parts:

@@ -17,8 +17,9 @@ Footer shape:
 N models · corpus <digest> · exported by xycalc 0.1.0 · <sha>
 ```
 
-Deploy-on-`main` stays. Same `0.1.0` with a different digest and/or SHA is
-expected and visible.
+Deploy-on-`main` continues. Same `0.1.0` with a different digest and/or SHA is
+expected and visible — digest and SHA move without a version bump when only
+corpus or deploy identity changes.
 
 ## Single source of truth
 
@@ -28,7 +29,7 @@ expected and visible.
 - **Export blob** sets `xycalc_version` from `__version__` and `xycalc_git` from
   `GITHUB_SHA` (CI) or `git rev-parse HEAD`, else `"unknown"`
 
-## Bump ladder
+## Bump ladder (strict)
 
 | Bump | When |
 | --- | --- |
@@ -39,12 +40,18 @@ expected and visible.
 
 ## Cutting a release
 
-1. Bump `[project].version` in `pyproject.toml` per the ladder above.
-2. Add a `CHANGELOG.md` section for the release.
+1. Bump `[project].version` in `pyproject.toml` when the ladder says so.
+2. Update `CHANGELOG.md` with a section for the release.
 3. Merge to `main`, export the calculator, deploy as usual.
-4. Create an **annotated** git tag `vX.Y.Z`.
-5. Publish a **GitHub Release** for that tag with notes linking `CHANGELOG.md` and
-   this file. State that corpus identity is `corpus_digest` and deploy identity
-   is `xycalc_git`.
+4. Create an annotated tag: `git tag -a vX.Y.Z -m "xycalc vX.Y.Z"`.
+5. Publish a GitHub Release: `gh release create vX.Y.Z` with notes linking this
+   file and `CHANGELOG.md`. State that corpus identity is `corpus_digest` and
+   deploy identity is `xycalc_git`.
 
-release-please and PyPI publish are out of scope for now.
+## Out of scope (for now)
+
+This workflow does **not** include:
+
+- release-please / conventional-commit automation
+- PyPI publish
+- deploy-only-from-tags (deploy-on-`main` stays)
