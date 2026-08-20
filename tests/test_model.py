@@ -139,11 +139,9 @@ class TestHeadroom:
 
 class TestValidation:
     def test_unvalidated_models_say_so(self, conn):
-        """host-ram has never been checked and must keep saying so. It cannot
-        be validated by the swamplink benchmark either, because that instance
-        ran with an explicitly pinned cache size rather than the default split
-        the model inverts."""
-        status = validation_status(conn, "mongodb.host-ram")
+        """ebs.iops-to-provision has no observation checked against it yet
+        and must keep saying so until one lands."""
+        status = validation_status(conn, "ebs.iops-to-provision")
         assert status["validated"] is False
         assert "unvalidated" in status["text"]
         assert "n=0" in status["text"]
