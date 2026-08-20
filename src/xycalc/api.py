@@ -15,6 +15,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
+from . import __version__
 from .db import connect
 from .model import (
     Model,
@@ -33,7 +34,7 @@ STATIC = Path(__file__).parent / "static"
 app = FastAPI(
     title="xycalc",
     description="How much X does it take to run Y?",
-    version="0.1.0",
+    version=__version__,
 )
 
 

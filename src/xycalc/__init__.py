@@ -5,4 +5,6 @@ the versions it applies to, and every model says how much reality it has been
 checked against.
 """
 
-__version__ = "0.1.0"
+from .version import package_version
+
+__version__ = package_version()
