@@ -487,6 +487,12 @@ const fmt = (n, unit) =>
     ? n.toLocaleString(undefined, {maximumFractionDigits: 0}) + " " + unit
     : n.toLocaleString(undefined, {maximumFractionDigits: 2}) + " " + unit;
 
+function esc(s) {
+  return String(s ?? "").replace(/[&<>"']/g, (c) => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+  })[c]);
+}
+
 const VALIDATION_LABEL = {none: "Unvalidated", thin: "Thinly validated", reasonable: "Validated"};
 const VALIDATION_SHORT = {none: "unvalidated", thin: "thinly validated", reasonable: "validated"};
 
@@ -992,6 +998,40 @@ function renderSizingSummary(s, meta = {}) {
     </div>`;
 }
 
+function renderCitationSummary(data) {
+  const modelSteps = (data.steps || []).filter((st) => st.kind === "model" && st.answer);
+  if (!modelSteps.length) return "";
+  const primary = modelSteps[0];
+  const floor = (primary.steps || []).find((t) => t.role === "floor" && !t.skipped);
+  const kicker = floor ? floor.label : (primary.model || "Result");
+  const constraints = (primary.constraints || []).slice(0, 4).map((c) => `
+      <div class="summary-metric">
+        <div class="kicker">${esc(c.label)}</div>
+        <div class="primary">${esc(fmt(c.value, c.unit))}</div>
+        ${c.rationale ? `<div class="sub">${esc(c.rationale)}</div>` : ""}
+      </div>`).join("");
+  return `
+    <div class="panel sizing-summary" id="sizing-summary-panel">
+      <div class="summary-head"><h2>What the measurement says</h2></div>
+      <p class="summary-lede">No inputs — this scenario cites a fixed corpus finding. A formula with your offered rate is not modeled yet.</p>
+      <div class="summary-grid">
+        <div class="summary-metric">
+          <div class="kicker">${esc(kicker)}</div>
+          <div class="primary">${esc(fmt(primary.answer.mode, primary.unit))}</div>
+          <div class="sub">band ${esc(fmt(primary.answer.lo, primary.unit))} – ${esc(fmt(primary.answer.hi, primary.unit))}</div>
+        </div>
+        ${constraints}
+      </div>
+    </div>`;
+}
+
+function scenarioInputCount(s) {
+  if (s.input_sections?.length) {
+    return s.input_sections.reduce((n, sec) => n + (sec.inputs || []).length, 0);
+  }
+  return (s.inputs || []).length;
+}
+
 function renderSummaryPlaceholder() {
   return "";
 }
@@ -1103,6 +1143,15 @@ function selectScenario(slug) {
   setRecalcStatus("", "Fill required fields — sizing updates as you type.");
 
   try {
+    const hasInputs = scenarioInputCount(currentScenario) > 0;
+    $("scenario-form-panel").hidden = !hasInputs;
+    if (!hasInputs) {
+      $("scenario-nvd-chart").innerHTML = "";
+      $("scenario-inputs").innerHTML = "";
+      setRecalcStatus("ok", "Citation scenario — no fields to edit yet.");
+      maybeAutoCalculate();
+      return;
+    }
     const chartHtml = renderNvdChart(currentScenario.nvd_chart);
     $("scenario-nvd-chart").innerHTML = chartHtml;
     if (currentScenario.nvd_chart) bindNvdChartActions(currentScenario.nvd_chart);
@@ -1259,8 +1308,8 @@ function funnelHtml(data) {
 
 function renderCascade(data, opts) {
   const scroll = opts === true || (opts && opts.scroll);
-  const openMath = (opts === true || (opts && opts.openMath)) && !openedMathOnce;
-  if (openMath) openedMathOnce = true;
+  // openMath decided after we know whether this is a citation-only scenario
+  let openMath = (opts === true || (opts && opts.openMath)) && !openedMathOnce;
 
   const worst = { none: 0, thin: 1, reasonable: 2 };
   let worstGrade = null;
@@ -1279,9 +1328,11 @@ function renderCascade(data, opts) {
     lede = `Vulnerability collections grow to <strong>${fmt(a.mode, nvd.unit)}</strong> (band ${fmt(a.lo, nvd.unit)}–${fmt(a.hi, nvd.unit)}) before indexes and snapshot search are added.`;
   }
 
-  const summaryHtml = renderSizingSummary(data.sizing_summary, {worstGrade, lede, funnel: funnelHtml(data)})
-    || renderSummaryPlaceholder();
+  const sizingHtml = renderSizingSummary(data.sizing_summary, {worstGrade, lede, funnel: funnelHtml(data)});
+  const citationHtml = sizingHtml ? "" : renderCitationSummary(data);
+  const summaryHtml = sizingHtml || citationHtml || renderSummaryPlaceholder();
   $("scenario-summary").innerHTML = summaryHtml;
+  const forceOpenMath = !!citationHtml;
   const panel = $("sizing-summary-panel");
   if (panel) {
     panel.classList.remove("flash");
@@ -1326,8 +1377,11 @@ function renderCascade(data, opts) {
     ? `Show the math · ${modelCount} models · chain is ${VALIDATION_SHORT[worstGrade]}`
     : `Show the math · ${data.steps.length} steps`;
 
+  const detailsOpen = forceOpenMath || openMath;
+  if (detailsOpen) openedMathOnce = true;
+
   $("scenario-cascade").innerHTML = `
-    <details class="cascade-wrap"${openMath ? " open" : ""}>
+    <details class="cascade-wrap"${detailsOpen ? " open" : ""}>
       <summary>${chainLabel}</summary>
       <div class="cascade-inner">${parts.join("")}${seeAlso}</div>
     </details>`;

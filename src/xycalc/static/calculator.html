@@ -570,6 +570,33 @@ function renderNvdChart(chart) {
     </div></div>`;
 }
 
+function scenarioInputCount(s) {
+  if (s.input_sections && s.input_sections.length) {
+    return s.input_sections.reduce((n, sec) => n + (sec.inputs || []).length, 0);
+  }
+  return (s.inputs || []).length;
+}
+
+function renderCitationSummary(data) {
+  const modelSteps = (data.steps || []).filter((st) => st.kind === "model" && st.answer);
+  if (!modelSteps.length) return "";
+  const primary = modelSteps[0];
+  const floor = (primary.steps || []).find((t) => t.role === "floor" && !t.skipped);
+  const kicker = floor ? floor.label : (primary.model || "Result");
+  const constraints = (primary.constraints || []).slice(0, 4).map((c) => `
+      <div class="summary-metric"><div class="kicker">${esc(c.label)}</div>
+      <div class="primary">${esc(fmt(c.value, c.unit))}</div>
+      ${c.rationale ? `<div class="help">${esc(c.rationale)}</div>` : ""}</div>`).join("");
+  return `<div class="panel sizing-summary"><h2>What the measurement says</h2>
+    <p class="help">No inputs — this scenario cites a fixed corpus finding. A formula with your offered rate is not modeled yet.</p>
+    <div class="summary-grid">
+      <div class="summary-metric"><div class="kicker">${esc(kicker)}</div>
+        <div class="primary">${esc(fmt(primary.answer.mode, primary.unit))}</div>
+        <div class="help">band ${esc(fmt(primary.answer.lo, primary.unit))} – ${esc(fmt(primary.answer.hi, primary.unit))}</div>
+      </div>${constraints}
+    </div></div>`;
+}
+
 function selectScenario(slug) {
   const s = (CORPUS.scenarios || []).find((x) => x.slug === slug);
   if (!s || s.disabled) return;
@@ -584,7 +611,14 @@ function selectScenario(slug) {
   openedMathOnce = false;
 
   try {
-    $("scenario-nvd-chart").innerHTML = renderNvdChart(currentScenario.nvd_chart);
+    const hasInputs = scenarioInputCount(currentScenario) > 0;
+    $("scenario-form-panel").hidden = !hasInputs;
+    $("scenario-nvd-chart").innerHTML = hasInputs ? renderNvdChart(currentScenario.nvd_chart) : "";
+    if (!hasInputs) {
+      $("scenario-inputs").innerHTML = "";
+      maybeAuto();
+      return;
+    }
     const fields = (currentScenario.input_sections || []).map((sec) => `
       <div class="input-section"><h3>${esc(sec.title)}</h3>
       <div class="input-grid">${(sec.inputs || []).map((i) => `
@@ -658,9 +692,13 @@ function calculateScenario(auto) {
     const funnel = funnelRows.length > 1 ? funnelRows.map((st) => `<div class="funnel-row"><div>${esc(st.model)}</div>
       <div class="funnel-track"><span style="width:${(st.answer.mode / fmax * 100).toFixed(1)}%"></span></div>
       <div>${esc(fmt(st.answer.mode, st.unit))}</div></div>`).join("") : "";
-    $("scenario-summary").innerHTML = `<div class="panel sizing-summary"><h2>What you need</h2>
-      <div class="summary-grid">${instSizing}${perf}${size}</div>${funnel}</div>`;
-    const open = !auto && !openedMathOnce;
+    const sizingBlock = (instSizing || perf || size)
+      ? `<div class="panel sizing-summary"><h2>What you need</h2>
+      <div class="summary-grid">${instSizing}${perf}${size}</div>${funnel}</div>`
+      : renderCitationSummary(data);
+    $("scenario-summary").innerHTML = sizingBlock;
+    const citationOnly = !(instSizing || perf || size) && !!sizingBlock;
+    const open = citationOnly || (!auto && !openedMathOnce);
     if (open) openedMathOnce = true;
     $("scenario-cascade").innerHTML = `<details class="cascade-wrap"${open ? " open" : ""}>
       <summary>Show the math · ${data.steps.length} steps</summary>
@@ -674,7 +712,9 @@ function calculateScenario(auto) {
             ? `<div class="panel">Step ${i + 1}: gp3 ${st.gp3.volume_gib.toFixed(1)} GiB · ${st.gp3.baseline_iops} IOPS included</div>`
             : "") .join("")}
     </details>`;
-    $("scn-recalc-status").textContent = "Up to date — change any field to recalculate.";
+    $("scn-recalc-status").textContent = citationOnly
+      ? "Citation scenario — no fields to edit yet."
+      : "Up to date — change any field to recalculate.";
     if (!auto) $("scenario-summary").scrollIntoView({behavior: "smooth", block: "start"});
   } catch (e) {
     $("scn-error").hidden = false;
