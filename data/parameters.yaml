@@ -91,6 +91,32 @@ parameters:
     unit: bytes
     dimension: bytes
 
+  - slug: host.container_rss_bytes
+    label: Container RSS (docker stats MemUsage)
+    unit: bytes
+    dimension: bytes
+    notes: >-
+      What a container's memory controller counts against it, per `docker
+      stats` — total process RSS, not any single subsystem's configured
+      budget. For MongoDB this is WiredTiger cache contents PLUS connection
+      buffers, driver overhead and everything else mongod holds — deliberately
+      a different parameter from cache.size_bytes, which mongodb.wt-cache
+      predicts. Comparing this against that model's output would be exactly
+      the "wrong quantity" mistake docs/telemetry warns about; this parameter
+      exists for the colocation-footprint question, not for validating
+      wt-cache.
+
+  - slug: host.capacity_buffer_pct
+    label: Capacity buffer for future growth (%)
+    unit: percent
+    dimension: percent
+    notes: >-
+      A caller-supplied planning margin, not a MongoDB or AWS fact — the
+      compounded effect of expected database growth over a planning horizon,
+      e.g. (1 + annual_growth)^years - 1. Deliberately an input rather than a
+      coefficient: xycalc has no basis to assert anyone's growth rate, only to
+      apply whichever one the caller supplies.
+
   # -- block storage ------------------------------------------------------
   - slug: io.iops
     label: I/O operations per second

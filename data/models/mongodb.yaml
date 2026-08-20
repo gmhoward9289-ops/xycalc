@@ -66,6 +66,19 @@ models:
           Optional. Omitting it does not make the answer smaller in reality,
           only in the output — a database with indexes and no figure for them
           gets an answer that is knowingly too low.
+      - key: growth_buffer_pct
+        label: Capacity buffer for future growth (%)
+        unit: percent
+        required: false
+        help: >-
+          Optional. Provisioning margin for database growth over your
+          planning horizon: (1 + annual_growth_rate) ^ years - 1, as a
+          percent. Example: 25%/year growth over a 2-year horizon is
+          (1.25^2 - 1) x 100 = 56.25. Omitting it answers "what does today's
+          database need," not "what will it need by the time this hardware is
+          due for replacement" — see the capacity-buffer-default-pct note in
+          the output for a starting point if you don't have your own growth
+          curve yet.
 
     terms:
       - key: on_disk
@@ -159,6 +172,30 @@ models:
           raising it. The remaining RAM is the filesystem cache, which holds
           the same data compressed and therefore more of it. Read the answer
           above against this before acting on it.
+
+      - key: capacity_buffer
+        label: Capacity buffer for future growth
+        role: headroom
+        apply: add_fraction_from_input
+        input_key: growth_buffer_pct
+        optional: true
+        rationale: >-
+          Everything above answers "what does today's database need." A
+          number sized to today is already wrong the day the database grows,
+          and provisioning happens once for a multi-year horizon, not
+          continuously. Applied last, after the vendor-formula floor, so it
+          scales the full answer rather than only the decompressed bytes.
+
+      - key: capacity_buffer_default
+        label: Suggested default, if you don't have your own growth curve
+        role: constraint
+        apply: note
+        coefficient: mongodb.capacity-buffer-default-pct
+        rationale: >-
+          Not evaluated unless growth_buffer_pct is supplied. Recorded so
+          "how much buffer" has a citable starting point (25%/year for 2
+          years, banded 15-40%/year) instead of an arbitrary flat percentage
+          nobody can trace back to an assumption.
 
   - slug: mongodb.host-ram
     question: How much RAM does the host need to support a cache of this size?

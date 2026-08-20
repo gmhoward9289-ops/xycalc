@@ -1,0 +1,47 @@
+observations:
+  # -- mongod container RSS across three phases, colocated with Redis,
+  #    ClickHouse and a Celery worker on one host. See
+  #    tools/bench/colocation_probe/README.md for what question this answers
+  #    and data/parameters.yaml's host.container_rss_bytes for why this is
+  #    NOT a validation case for mongodb.wt-cache (different quantity). --
+  - slug: reef-colocation-probe-2026-08-19-mongo-idle
+    system: mongodb
+    parameter: host.container_rss_bytes
+    value: 76610355
+    unit: bytes
+    workload: idle -- containers started, no data loaded yet, colocated with redis/clickhouse/celery
+    machine_class: reef -- Ryzen, 64GB RAM host, WSL2 VM capped 31.3GiB, mongo mem_limit 2g, --wiredTigerCacheSizeGB 1
+    system_version: mongo:7 (Docker Hub tag)
+    observed_on: '2026-08-19'
+    source: obs-mongodb-colocation-probe-reef-2026-08-19
+    notes: docker stats MemUsage, 73.06MiB reported.
+
+  - slug: reef-colocation-probe-2026-08-19-mongo-loaded
+    system: mongodb
+    parameter: host.container_rss_bytes
+    value: 277464269
+    unit: bytes
+    workload: 200,000-doc synthetic events collection resident (dataSize 145MB), no concurrent traffic, colocated
+    machine_class: reef -- Ryzen, 64GB RAM host, WSL2 VM capped 31.3GiB, mongo mem_limit 2g, --wiredTigerCacheSizeGB 1
+    system_version: mongo:7 (Docker Hub tag)
+    observed_on: '2026-08-19'
+    source: obs-mongodb-colocation-probe-reef-2026-08-19
+    notes: docker stats MemUsage, 264.6MiB reported.
+
+  - slug: reef-colocation-probe-2026-08-19-mongo-under-load
+    system: mongodb
+    parameter: host.container_rss_bytes
+    value: 474620313
+    unit: bytes
+    workload: same dataset, under 50,000 concurrent point lookups + a colocated ClickHouse scan, ~2-4s window, CPU 119.56%
+    machine_class: reef -- Ryzen, 64GB RAM host, WSL2 VM capped 31.3GiB, mongo mem_limit 2g, --wiredTigerCacheSizeGB 1
+    system_version: mongo:7 (Docker Hub tag)
+    observed_on: '2026-08-19'
+    source: obs-mongodb-colocation-probe-reef-2026-08-19
+    notes: >-
+      docker stats MemUsage, 452.6MiB reported. Nearly 2x the loaded-phase
+      figure despite a dataset far smaller than the configured 1GB cache --
+      the jump is connection/working-memory overhead under concurrency, not
+      more data becoming resident. Single most useful number from this run:
+      idle-to-under-load RSS is not a small multiplier even well below the
+      cache ceiling.

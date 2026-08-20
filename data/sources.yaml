@@ -206,3 +206,53 @@ sources:
       family supersedes, which are deliberately NOT catalogued here (several
       of their specific capacity/pricing figures failed independent
       verification during research).
+
+  - slug: xycalc-capacity-planning-default
+    title: "Planning default: 25%/year database growth, 2-year provisioning horizon"
+    publisher: xycalc project (not a vendor figure)
+    url:
+    version:
+    retrieved_on: '2026-08-19'
+    source_type: estimate
+    notes: >-
+      OUR OWN PLANNING ASSUMPTION, not read off any MongoDB or AWS page —
+      recorded so the default that ships with the `growth_buffer_pct` input
+      has a citable origin instead of being tribal knowledge. 25%/year is a
+      generic aggressive-but-plausible SaaS/product database growth rate; a
+      2-year horizon is a common hardware-refresh/reservation-commitment
+      cycle. Neither is universal. Anyone with their own growth curve should
+      pass their own number to `--growth-buffer-pct` and ignore this default
+      entirely — it exists only for the case where nobody has a better one
+      yet.
+
+  - slug: obs-mongodb-colocation-probe-reef-2026-08-19
+    title: "colocation_probe: Mongo+Redis+ClickHouse+Celery, three-phase RSS"
+    publisher: xycalc project (benchmark harness, committed)
+    url:
+    version: tools/bench/colocation_probe (harness), results.json
+    retrieved_on: '2026-08-19'
+    source_type: benchmark
+    notes: >-
+      Harness: tools/bench/colocation_probe/ (compose.yml, clickhouse_load.sql,
+      sample.py, run.sh), full docker-stats output in that directory's
+      results.json. Docker Desktop 29.7.2 / Compose v5.4.0 on reef (Ryzen,
+      64 GB RAM, Windows 11, WSL2 VM capped at 31.3 GiB). Mongo container:
+      --wiredTigerCacheSizeGB 1, mem_limit 2g. 200,000-document synthetic
+      events collection (dataSize 145 MB) loaded via celery_probe's own
+      drive.py load(). ClickHouse: 3,000,000-row generated table via
+      clickhouse_load.sql. Redis and the Celery worker left on documented
+      defaults throughout.
+
+      The "under load" phase deliberately did NOT use celery_probe's driver —
+      that script correctly refuses to run below 2x cache oversubscription
+      (145 MB dataSize vs 1 GB cache = 0.1x), a guard built for investigation
+      003's storage-stall question, not this one. Substituted instead: 50,000
+      concurrent mongosh point lookups by account_id plus one ClickHouse
+      GROUP BY scan, run for roughly 2-4 seconds while docker stats sampled.
+      mongo's CPU% (119.56%) during that sample confirms real concurrent
+      work, not an idle read.
+
+      Small-scale by design -- this measures per-service RSS *shape* across
+      idle/loaded/under-load, not a production-scale colocation footprint.
+      n=1, one host, one run. See results.json in the same directory for the
+      full docker-stats output at each phase.

@@ -84,7 +84,7 @@ class TestWiredTigerCacheModel:
     def test_omitted_optional_input_is_reported_as_skipped(self, model):
         r = model.evaluate({"storage_size": "500GB"})
         skipped = [s for s in r.steps if s.skipped]
-        assert [s.term.key for s in skipped] == ["indexes"]
+        assert [s.term.key for s in skipped] == ["indexes", "capacity_buffer"]
 
     def test_required_input_is_required(self, model):
         with pytest.raises(ModelError, match="required"):
