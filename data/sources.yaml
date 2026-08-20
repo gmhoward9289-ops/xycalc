@@ -425,3 +425,74 @@ sources:
       temporarily exceed it before eviction). Conservative host headroom rule
       of thumb: keep 20% free RAM beyond configured maxmemory. Sampling
       description (5–10 candidate keys) aligns with maxmemory-samples.
+
+  # -- MongoDB GridFS / BSON / PyMongo / refs (enrichment 2026-08-20) -------
+  - slug: mongodb-manual-gridfs
+    title: GridFS for Self-Managed Deployments
+    publisher: MongoDB, Inc.
+    url: https://www.mongodb.com/docs/manual/core/gridfs/
+    version: MongoDB 8.3 manual (Current)
+    retrieved_on: '2026-08-20'
+    source_type: vendor_doc
+    notes: >-
+      Default chunk size (255 KiB), BSON 16 MiB document ceiling that GridFS
+      exists to bypass, when-to-use / when-not-to-use guidance (no atomic whole-
+      file update; prefer BinData in a single document below 16 MiB). Two-
+      collection layout (fs.files / fs.chunks). No published per-chunk wire
+      overhead constant beyond the chunkSize field itself — chunk count is
+      ceil(length / chunkSize).
+
+  - slug: mongodb-gridfs-spec
+    title: GridFS Spec (MongoDB driver specifications)
+    publisher: MongoDB, Inc.
+    url: https://github.com/mongodb/specifications/blob/master/source/gridfs/gridfs-spec.md
+    version: specifications master (retrieved 2026-08-20)
+    retrieved_on: '2026-08-20'
+    source_type: vendor_doc
+    notes: >-
+      Canonical driver contract for GridFSBucketOptions.chunkSizeBytes default
+      255 KiB. Design rationale: 255 KiB data so the whole chunk document fits
+      a 256 KiB MMAPv1 padding slot; WiredTiger does not need that optimisation
+      but drivers still avoid power-of-two chunk sizes. Ground truth when the
+      manual and a driver disagree on defaults.
+
+  - slug: pymongo-connection-pools
+    title: Connection Pools — PyMongo Driver
+    publisher: MongoDB, Inc.
+    url: https://www.mongodb.com/docs/languages/python/pymongo-driver/current/connect/connection-options/connection-pools/
+    version: PyMongo current docs (retrieved 2026-08-20)
+    retrieved_on: '2026-08-20'
+    source_type: vendor_doc
+    notes: >-
+      Driver-side concurrency floor for sizing: maxPoolSize default 100,
+      maxConnecting default 2, minPoolSize default 0, connectTimeoutMS default
+      20000. Multiplies against Celery/worker process counts — N processes ×
+      maxPoolSize is the connection demand mongod sees, distinct from WiredTiger
+      ticket concurrency. Per-connection server RAM remains uncited (telemetry
+      gap already named in docs/telemetry/mongodb.md).
+
+  - slug: mongodb-manual-bson-types
+    title: BSON Types
+    publisher: MongoDB, Inc.
+    url: https://www.mongodb.com/docs/manual/reference/bson-types/
+    version: MongoDB 8.3 manual (Current)
+    retrieved_on: '2026-08-20'
+    source_type: vendor_doc
+    notes: >-
+      ObjectId is 12 bytes — the storage floor for a manual foreign-key field
+      that stores another document's _id. DBRef and $lookup costs are not
+      published as constants here; this page only sizes the identifier itself.
+
+  - slug: mongodb-manual-database-references
+    title: Database References
+    publisher: MongoDB, Inc.
+    url: https://www.mongodb.com/docs/manual/reference/database-references/
+    version: MongoDB 8.3 manual (Current)
+    retrieved_on: '2026-08-20'
+    source_type: vendor_doc
+    notes: >-
+      Manual references vs DBRefs. Vendor preference: unless you have a
+      compelling reason, use manual references. DBRefs add $ref/$id/optional
+      $db fields and still require application (or driver-helper) resolution —
+      not automatic. $lookup / $graphLookup are the join stages for normalised
+      data; this page does not publish a latency or memory multiplier for them.

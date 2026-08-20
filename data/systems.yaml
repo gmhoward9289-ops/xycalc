@@ -11,6 +11,11 @@ systems:
     notes: >-
       The first subject, chosen because its sizing question has a well
       documented answer that contradicts how the question is usually asked.
+      Cache/eviction/tickets models land first; 2026-08-20 enrichment adds
+      GridFS chunk defaults, BSON 16 MiB / ObjectId 12 B floors, PyMongo pool
+      defaults, and the 8.2+ cacheSizePct 80% vertical-growth ceiling — no
+      GridFS or $lookup latency model yet (vendor publishes defaults and
+      guidance, not join cost curves).
 
   - slug: nvd
     label: NVD / CVE publication

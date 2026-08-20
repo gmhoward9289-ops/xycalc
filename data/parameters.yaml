@@ -341,6 +341,87 @@ parameters:
     unit: percent
     dimension: percent
 
+  # -- MongoDB GridFS / BSON / PyMongo / schema refs ----------------------
+  - slug: storage.bson_max_document_bytes
+    label: Maximum BSON document size
+    unit: bytes
+    dimension: bytes
+    notes: >-
+      Hard server limit on a single document. Below this, BinData in one
+      document can replace GridFS; at or above it, GridFS (or external object
+      storage) is required.
+
+  - slug: storage.gridfs_chunk_size_bytes
+    label: GridFS default chunk size
+    unit: bytes
+    dimension: bytes
+    notes: >-
+      Default size of each fs.chunks.data payload except the last chunk.
+      Chunk count for a file is ceil(length / chunkSize); last chunk is
+      shorter. Does not include BSON field overhead around the Binary.
+
+  - slug: storage.gridfs_mmapv1_padding_slot_bytes
+    label: Historical MMAPv1 padding slot GridFS chunk docs targeted
+    unit: bytes
+    dimension: bytes
+    notes: >-
+      Spec rationale only: 255 KiB of chunk data aimed to keep the whole chunk
+      document inside a 256 KiB MMAPv1 allocation. WiredTiger does not use
+      that padding model; retained so the 255-not-256 choice stays citable.
+
+  - slug: storage.objectid_bytes
+    label: BSON ObjectId size
+    unit: bytes
+    dimension: bytes
+    notes: >-
+      Payload size of an ObjectId value — floor for a manual foreign-key field
+      that stores another document's _id. Field name and BSON type tag add
+      more; this is the identifier alone.
+
+  - slug: schema.prefer_manual_refs_over_dbref
+    label: Vendor prefers manual refs over DBRefs (0/1)
+    unit: count
+    dimension: count
+    notes: >-
+      Encoded 1 = MongoDB documents say use manual references unless you have
+      a compelling reason for DBRefs. Not a sizing multiplier — a documented
+      preference that still leaves $lookup cost unquantified.
+
+  - slug: driver.max_pool_size
+    label: Driver maxPoolSize default
+    unit: connections
+    dimension: count
+    notes: >-
+      Maximum concurrent connections a single MongoClient pool maintains.
+      Client-side; multiplies by process count for server connection demand.
+
+  - slug: driver.min_pool_size
+    label: Driver minPoolSize default
+    unit: connections
+    dimension: count
+
+  - slug: driver.max_connecting
+    label: Driver maxConnecting default
+    unit: connections
+    dimension: count
+    notes: >-
+      Concurrent connection establishments per pool. Low defaults throttle
+      connection storms; raising speeds checkout under cold start.
+
+  - slug: driver.connect_timeout_ms
+    label: Driver connectTimeoutMS default
+    unit: milliseconds
+    dimension: seconds
+
+  - slug: host.cache_size_pct_ceiling
+    label: Max wiredTigerCacheSizePct of available memory
+    unit: percent
+    dimension: percent
+    notes: >-
+      MongoDB 8.2+ percentage cache knob ceiling. Distinct from the default
+      50%-of-(RAM-1GB) formula — this is the hard upper bound when using
+      cacheSizePct for vertical growth.
+
   # -- AWS EC2 instance catalog -------------------------------------------
   - slug: instance.vcpu_count
     label: vCPU count
