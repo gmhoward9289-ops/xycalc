@@ -59,6 +59,8 @@ question.
 
 ```bash
 xycalc models                    # what can be answered, and how well
+xycalc scenarios                 # list scenario chains (multi-model sizing flows)
+xycalc scenario <slug> [flags]   # run a declared scenario end-to-end
 xycalc sizing   <model> [flags]  # how much do I need?
 xycalc headroom <model> --available 256GB [flags]   # how much margin is left?
 xycalc why      <model>          # the citation chain behind every term
@@ -68,8 +70,8 @@ xycalc gui                       # the calculator, served locally
 xycalc export --out page.html    # the calculator as one static file
 ```
 
-Flags for `sizing` and `headroom` are generated from each model's declared
-inputs, so **a new model is YAML, never code**.
+Flags for `sizing`, `headroom`, and `scenario` are generated from each model's
+(or scenario's) declared inputs, so **a new model is YAML, never code**.
 
 ## The calculator
 

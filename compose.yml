@@ -6,6 +6,12 @@
 #     ssh -N -L 8105:127.0.0.1:8105 swamplink
 #     open http://127.0.0.1:8105
 #
+# NOTE: this compose file references `build: .` but there is no Dockerfile at
+# the repo root (the swamplink server image is maintained out-of-band). For
+# local dev use `pip install -e ".[dev,gui]"` and `xycalc gui` instead.
+# Do not run `docker compose up` here unless you add a root Dockerfile or
+# point `build` at an existing one under tools/bench/.
+#
 # The same shape as the Ollama forward on COOPER, and for the same reason:
 # binding a service to the wildcard to "fix" connectivity is how an internal
 # tool becomes an internet-facing one.
