@@ -421,20 +421,10 @@ const fmt = XY.formatQuantity;
 const esc = (s) => String(s == null ? "" : s)
   .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 
-// -- the gate ---------------------------------------------------------------
-// Before anything renders, re-run the vectors Python computed at export time.
-// A mismatch means this file's arithmetic and the corpus have drifted, and the
-// only safe output is no output.
-const FAILURES = XY.checkGolden(CORPUS);
-if (FAILURES.length) {
-  $("selfcheck").hidden = false;
-  $("app").hidden = true;
-  $("selfcheck-detail").textContent = FAILURES
-    .map((f) => f.vector.model + " " + JSON.stringify(f.vector.inputs) + "\n  " + f.reason)
-    .join("\n");
-} else {
-  boot();
-}
+// -- boot is gated at the bottom of this IIFE --------------------------------
+// Must run after every `let`/`const` below. Calling boot() up here used to
+// hit the TDZ on `currentScenario` and leave the scenario form permanently
+// hidden (radio checked, workspace never opened).
 
 function boot() {
   $("provenance").textContent =
@@ -1011,6 +1001,22 @@ function ticks(lo, hi, log, count) {
   const step = stepMul * mag;
   for (let v = Math.ceil(lo / step) * step; v <= hi; v += step) out.push(v);
   return out;
+}
+
+// -- the gate ---------------------------------------------------------------
+// Before anything renders, re-run the vectors Python computed at export time.
+// A mismatch means this file's arithmetic and the corpus have drifted, and the
+// only safe output is no output. Kept at the end so boot() cannot race the
+// `let` bindings it assigns into.
+const FAILURES = XY.checkGolden(CORPUS);
+if (FAILURES.length) {
+  $("selfcheck").hidden = false;
+  $("app").hidden = true;
+  $("selfcheck-detail").textContent = FAILURES
+    .map((f) => f.vector.model + " " + JSON.stringify(f.vector.inputs) + "\n  " + f.reason)
+    .join("\n");
+} else {
+  boot();
 }
 })();
 </script>
