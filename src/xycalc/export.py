@@ -20,10 +20,11 @@ checked in three overlapping places, on purpose:
   * a reader can open the file and read them.
 
 The vectors come off a fixed ladder rather than being sampled, so the export is
-deterministic: same corpus, byte-identical output. No timestamp is written into
-the file for the same reason -- a build artifact that differs on every run
-cannot be diffed, and "what changed" is the question anyone re-exporting is
-actually asking.
+deterministic: the same blob dict yields byte-identical HTML. No timestamp is
+written into the file for the same reason -- a build artifact that differs on
+every run cannot be diffed, and "what changed" is the question anyone
+re-exporting is actually asking. `xycalc_git` records which commit produced the
+blob, so two exports of the same corpus from different commits differ on purpose.
 """
 
 from __future__ import annotations
@@ -37,6 +38,7 @@ from pathlib import Path
 
 from . import __version__
 from .db import connect
+from .version import git_identity
 from .model import (
     Model,
     ModelError,
@@ -222,6 +224,7 @@ def corpus_blob(conn: sqlite3.Connection) -> dict:
         )
     blob = {
         "xycalc_version": __version__,
+        "xycalc_git": git_identity(),
         "models": models,
         "golden": golden,
         "scenarios": describe_scenarios(conn),

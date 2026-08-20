@@ -193,3 +193,33 @@ def test_render_always_emits_lf(blob):
     Python a CRLF template, and without normalising, re-exporting on a
     different machine produces a whole-file diff that says nothing changed."""
     assert "\r" not in render(blob)
+
+
+def test_blob_carries_xycalc_version_and_git(monkeypatch, conn):
+    monkeypatch.setenv("GITHUB_SHA", "deadbeefcafebabe")
+    from xycalc import __version__
+
+    b = corpus_blob(conn)
+    assert b["xycalc_version"] == __version__
+    assert b["xycalc_git"] == "deadbee"
+
+
+def test_rendered_page_embeds_git_identity(monkeypatch, conn):
+    monkeypatch.setenv("GITHUB_SHA", "feedface00000000")
+
+    b = corpus_blob(conn)
+    html = render(b)
+    assert b["xycalc_git"] == "feedfac"
+    compact = html.replace(" ", "")
+    from xycalc import __version__
+
+    assert '"xycalc_git":"feedfac"' in compact
+    assert f'"xycalc_version":"{__version__}"' in compact
+
+
+def test_calculator_template_prints_git_in_provenance():
+    from xycalc.export import TEMPLATE
+
+    text = TEMPLATE.read_text(encoding="utf-8")
+    assert "CORPUS.xycalc_git" in text
+    assert "exported by xycalc" in text

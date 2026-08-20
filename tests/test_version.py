@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 
 import xycalc
-from xycalc.version import package_version
+from xycalc.version import git_identity, package_version
 
 
 SEMVER = re.compile(r"^\d+\.\d+\.\d+$")
@@ -26,3 +26,18 @@ def test_no_hardcoded_version_literal_in_init_source():
     src = Path(xycalc.__file__).read_text(encoding="utf-8")
     assert '__version__ = "' not in src
     assert "__version__ = '" not in src
+
+
+def test_git_identity_prefers_github_sha(monkeypatch):
+    monkeypatch.setenv("GITHUB_SHA", "abcdef0123456789")
+    assert git_identity() == "abcdef0"
+
+
+def test_git_identity_unknown_when_git_fails(monkeypatch):
+    monkeypatch.delenv("GITHUB_SHA", raising=False)
+
+    def boom(*a, **k):
+        raise OSError("no git")
+
+    monkeypatch.setattr("xycalc.version.subprocess.run", boom)
+    assert git_identity() == "unknown"

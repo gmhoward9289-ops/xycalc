@@ -430,7 +430,8 @@ const esc = (s) => String(s == null ? "" : s)
 function boot() {
   $("provenance").textContent =
     CORPUS.models.length + " models · corpus " + CORPUS.corpus_digest +
-    " · exported by xycalc " + CORPUS.xycalc_version;
+    " · exported by xycalc " + CORPUS.xycalc_version +
+    " · " + CORPUS.xycalc_git;
   $("model").innerHTML = MODELS.map((m) => `<option value="${esc(m.slug)}">${esc(m.question)}</option>`).join("");
   renderInputs();
   $("model").addEventListener("change", renderInputs);
