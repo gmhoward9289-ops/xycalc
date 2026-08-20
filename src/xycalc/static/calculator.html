@@ -192,9 +192,12 @@ blockquote { margin: .4rem 0 0; padding-left: .7rem; border-left: 2px solid var(
 .scroll { overflow-x: auto; }
 .error { color: #b3261e; font-family: var(--mono); font-size: .85rem; }
 footer { margin-top: 3rem; padding-top: 1.25rem; border-top: 1px solid var(--line); font-size: .78rem; color: var(--muted); }
+footer p { margin: 0 0 .65rem; }
+footer p:last-of-type { margin-bottom: .85rem; }
 footer code { font-family: var(--mono); }
-footer .family { display: flex; flex-wrap: wrap; gap: .35rem 1.2rem; margin-top: .85rem; }
-footer .family a { color: var(--muted); }
+footer .family { display: flex; flex-wrap: wrap; gap: 1.2rem; margin-top: .85rem; }
+footer .family a { color: var(--muted); text-decoration: none; }
+footer .family a:hover { color: var(--accent); text-decoration: underline; }
 .tabs { display: flex; gap: .35rem; margin-bottom: 1.25rem; }
 .tab {
   background: transparent; color: var(--muted); border: 1px solid var(--line);
@@ -211,6 +214,20 @@ footer .family a { color: var(--muted); }
 .scenario-opt .label { font-weight: 600; font-size: .92rem; }
 .scenario-opt .sub { font-size: .8rem; color: var(--muted); margin-top: .1rem; }
 .scenario-opt.disabled { opacity: .55; cursor: not-allowed; }
+.scenario-opt.stub { cursor: default; opacity: .65; }
+.scenario-opt.stub:hover { border-color: var(--line); }
+.scenario-opt.stub.selected { border-color: var(--muted); }
+.stub-badge {
+  flex-shrink: 0; margin-top: .15rem;
+  font-size: .62rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em;
+  color: var(--muted); border: 1px solid var(--line); border-radius: 3px; padding: .12rem .35rem;
+}
+.stub-notice {
+  background: var(--panel); border: 1px solid var(--line); border-radius: 8px;
+  padding: 1rem 1.1rem; margin-bottom: 1.5rem;
+}
+.stub-notice h3 { margin: 0 0 .45rem; font-size: .95rem; }
+.stub-notice p { margin: 0; color: var(--muted); font-size: .85rem; line-height: 1.5; }
 .scenario-opt.selected { border-color: var(--accent); }
 .input-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .55rem .75rem; }
 .input-section h3 { font-size: .72rem; letter-spacing: .04em; color: var(--muted); margin: 0 0 .45rem; }
@@ -273,6 +290,7 @@ svg.nvd-chart { width: 100%; height: auto; display: block; }
     <label>What do you know?</label>
     <div class="scenario-list" id="scenario-picker"></div>
   </div>
+  <div id="scenario-stub-notice" class="stub-notice" hidden></div>
   <div id="scenario-workspace" hidden>
     <div id="scenario-summary"></div>
     <div class="panel" id="scenario-form-panel">
@@ -378,7 +396,6 @@ svg.nvd-chart { width: 100%; height: auto; display: block; }
   </div>
 </div>
 </div>
-</div>
 
 <footer>
   <p>Code Apache-2.0 · corpus CC BY 4.0 · <span id="provenance"></span></p>
@@ -461,18 +478,47 @@ let currentScenario = null;
 let scenarioCalcDirty = false;
 let openedMathOnce = false;
 
-function bootScenario() {
-  const scenarios = CORPUS.scenarios || [];
-  $("scenario-picker").innerHTML = scenarios.map((s) => `
-    <label class="scenario-opt ${s.disabled ? "disabled" : ""}" data-slug="${esc(s.slug)}">
-      <input type="radio" name="scenario" value="${esc(s.slug)}" ${s.disabled ? "disabled" : ""}>
+function renderScenarioOption(s) {
+  if (s.disabled) {
+    return `<div class="scenario-opt stub disabled" data-slug="${esc(s.slug)}" role="note">
+      <span class="stub-badge">Not modeled</span>
+      <span>
+        <div class="label">${esc(s.label)}</div>
+        <div class="sub">${esc(s.note || "")}</div>
+      </span>
+    </div>`;
+  }
+  return `<label class="scenario-opt" data-slug="${esc(s.slug)}">
+      <input type="radio" name="scenario" value="${esc(s.slug)}">
       <span>
         <div class="label">${esc(s.label)}${s.default ? " <span class='help' style='display:inline'>(default)</span>" : ""}</div>
-        <div class="sub">${esc(s.disabled ? s.note : (s.summary || ""))}</div>
+        <div class="sub">${esc(s.summary || "")}</div>
       </span>
-    </label>`).join("");
+    </label>`;
+}
+
+function showStubNotice(slug) {
+  const s = (CORPUS.scenarios || []).find((x) => x.slug === slug);
+  if (!s?.disabled) return;
+  document.querySelectorAll(".scenario-opt").forEach((el) => {
+    el.classList.toggle("selected", el.dataset.slug === slug && el.classList.contains("stub"));
+  });
+  document.querySelectorAll(".scenario-opt input[type=radio]").forEach((el) => { el.checked = false; });
+  $("scenario-workspace").hidden = true;
+  $("scenario-stub-notice").innerHTML = `
+    <h3>${esc(s.label)} — not modeled yet</h3>
+    <p>${esc(s.note || "No coefficients in the corpus yet.")} Pick a scenario above that is not marked <strong>Not modeled</strong>.</p>`;
+  $("scenario-stub-notice").hidden = false;
+}
+
+function bootScenario() {
+  const scenarios = CORPUS.scenarios || [];
+  $("scenario-picker").innerHTML = scenarios.map(renderScenarioOption).join("");
   document.querySelectorAll(".scenario-opt input[type=radio]").forEach((el) => {
     el.addEventListener("change", () => selectScenario(el.value));
+  });
+  document.querySelectorAll(".scenario-opt.stub").forEach((el) => {
+    el.addEventListener("click", () => showStubNotice(el.dataset.slug));
   });
   $("scn-recalc").addEventListener("click", () => calculateScenario(false));
   const def = scenarios.find((s) => s.default && !s.disabled) || scenarios.find((s) => !s.disabled);
@@ -510,9 +556,12 @@ function renderNvdChart(chart) {
 }
 
 function selectScenario(slug) {
-  currentScenario = (CORPUS.scenarios || []).find((s) => s.slug === slug);
+  const s = (CORPUS.scenarios || []).find((x) => x.slug === slug);
+  if (!s || s.disabled) return;
+  currentScenario = s;
+  $("scenario-stub-notice").hidden = true;
   document.querySelectorAll(".scenario-opt").forEach((el) =>
-    el.classList.toggle("selected", el.dataset.slug === slug));
+    el.classList.toggle("selected", el.dataset.slug === slug && !el.classList.contains("stub")));
   $("scenario-nvd-chart").innerHTML = renderNvdChart(currentScenario.nvd_chart);
   const fields = (currentScenario.input_sections || []).map((sec) => `
     <div class="input-section"><h3>${esc(sec.title)}</h3>

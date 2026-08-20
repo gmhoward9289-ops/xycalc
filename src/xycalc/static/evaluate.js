@@ -492,6 +492,7 @@ const XY = (() => {
   function chainEvaluate(corpus, scenarioSlug, inputs) {
     const scenario = (corpus.scenarios || []).find((s) => s.slug === scenarioSlug);
     if (!scenario) throw new ModelError("no scenario '" + scenarioSlug + "'");
+    if (scenario.disabled) throw new ModelError(scenarioSlug + ": not yet modeled");
     const bySlug = {};
     for (const m of corpus.models) bySlug[m.slug] = m;
     const catalog = corpus.instance_catalog || [];

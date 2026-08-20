@@ -96,6 +96,23 @@ button:hover { filter: brightness(1.1); }
 .scenario-opt .sub { font-size: .8rem; color: var(--muted); margin-top: .1rem; }
 .scenario-opt.disabled { opacity: .55; cursor: not-allowed; }
 .scenario-opt.disabled:hover { border-color: var(--line); }
+.scenario-opt.stub { cursor: default; opacity: .65; }
+.scenario-opt.stub:hover { border-color: var(--line); }
+.scenario-opt.stub.selected {
+  border-color: var(--muted);
+  background: color-mix(in srgb, var(--muted) 8%, transparent);
+}
+.stub-badge {
+  flex-shrink: 0; margin-top: .15rem;
+  font-size: .62rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em;
+  color: var(--muted); border: 1px solid var(--line); border-radius: 3px; padding: .12rem .35rem;
+}
+.stub-notice {
+  background: var(--panel); border: 1px solid var(--line); border-radius: 8px;
+  padding: 1rem 1.1rem; margin-bottom: 1.5rem; font-size: .9rem;
+}
+.stub-notice h3 { margin: 0 0 .45rem; font-size: .95rem; }
+.stub-notice p { margin: 0; color: var(--muted); font-size: .85rem; line-height: 1.5; }
 .scenario-opt.selected { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 6%, transparent); }
 
 /* -- answer -- */
@@ -155,8 +172,9 @@ blockquote { margin: .4rem 0 0; padding-left: .7rem; border-left: 2px solid var(
 .scroll { overflow-x: auto; }
 .error { color: #b3261e; font-family: var(--mono); font-size: .85rem; }
 footer { margin-top: 3rem; padding-top: 1.25rem; border-top: 1px solid var(--line); font-size: .78rem; color: var(--muted); }
-footer .family { display: flex; flex-wrap: wrap; gap: .35rem 1.2rem; margin-top: .85rem; }
-footer .family a { color: var(--muted); }
+footer .family { display: flex; flex-wrap: wrap; gap: 1.2rem; margin-top: .85rem; }
+footer .family a { color: var(--muted); text-decoration: none; }
+footer .family a:hover { color: var(--accent); text-decoration: underline; }
 [hidden] { display: none !important; }
 
 /* -- cascade (scenario view) -- */
@@ -386,6 +404,8 @@ svg.nvd-chart { width: 100%; height: auto; display: block; }
     <label>What do you know?</label>
     <div class="scenario-list" id="scenario-picker"></div>
   </div>
+
+  <div id="scenario-stub-notice" class="stub-notice" hidden></div>
 
   <div id="scenario-workspace" hidden>
     <div id="scenario-summary"></div>
@@ -704,12 +724,12 @@ function renderScenarioInput(i) {
 }
 
 function inputMeta(key) {
-  return currentScenario?.inputs.find(i => i.key === key);
+  return (currentScenario?.inputs || []).find(i => i.key === key);
 }
 
 function missingRequiredKeys() {
   if (!currentScenario) return [];
-  return currentScenario.inputs
+  return (currentScenario.inputs || [])
     .filter(i => i.required)
     .filter(i => {
       const el = $(`scn-in-${i.key}`);
@@ -974,21 +994,49 @@ function setRecalcStatus(state, text) {
   if (btn) btn.disabled = scenarioCalcBusy || (state === "ok" && !scenarioCalcDirty);
 }
 
+function renderScenarioOption(s) {
+  if (s.disabled) {
+    return `<div class="scenario-opt stub disabled" data-slug="${s.slug}" role="note">
+      <span class="stub-badge">Not modeled</span>
+      <span>
+        <div class="label">${s.label}</div>
+        <div class="sub">${s.note || ""}</div>
+      </span>
+    </div>`;
+  }
+  return `<label class="scenario-opt" data-slug="${s.slug}">
+      <input type="radio" name="scenario" value="${s.slug}">
+      <span>
+        <div class="label">${s.label}${s.default ? " <span class='help' style='display:inline'>(default)</span>" : ""}</div>
+        <div class="sub">${s.summary || ""}</div>
+      </span>
+    </label>`;
+}
+
+function showStubNotice(slug) {
+  const s = SCENARIOS.find(x => x.slug === slug);
+  if (!s?.disabled) return;
+  document.querySelectorAll(".scenario-opt").forEach(el => {
+    el.classList.toggle("selected", el.dataset.slug === slug && el.classList.contains("stub"));
+  });
+  document.querySelectorAll(".scenario-opt input[type=radio]").forEach(el => { el.checked = false; });
+  $("scenario-workspace").hidden = true;
+  $("scenario-stub-notice").innerHTML = `
+    <h3>${s.label} — not modeled yet</h3>
+    <p>${s.note || "No coefficients in the corpus yet."} Pick a scenario above that is not marked <strong>Not modeled</strong>.</p>`;
+  $("scenario-stub-notice").hidden = false;
+}
+
 async function bootScenario() {
   const r = await fetch("/api/scenarios");
   SCENARIOS = (await r.json()).scenarios;
-  $("scenario-picker").innerHTML = SCENARIOS.map(s => `
-    <label class="scenario-opt ${s.disabled ? "disabled" : ""}" data-slug="${s.slug}"
-           title="${s.disabled ? (s.note || "").replace(/"/g, "&quot;") : ""}">
-      <input type="radio" name="scenario" value="${s.slug}" ${s.disabled ? "disabled" : ""}>
-      <span>
-        <div class="label">${s.label}${s.default ? " <span class='help' style='display:inline'>(default)</span>" : ""}</div>
-        <div class="sub">${s.disabled ? s.note : (s.summary || "")}</div>
-      </span>
-    </label>`).join("");
+  $("scenario-picker").innerHTML = SCENARIOS.map(renderScenarioOption).join("");
 
   document.querySelectorAll(".scenario-opt input[type=radio]").forEach(el => {
     el.addEventListener("change", () => selectScenario(el.value));
+  });
+  document.querySelectorAll(".scenario-opt.stub").forEach(el => {
+    el.addEventListener("click", () => showStubNotice(el.dataset.slug));
   });
   $("scn-recalc")?.addEventListener("click", () => calculateScenario(false));
 
@@ -1000,9 +1048,12 @@ async function bootScenario() {
 }
 
 function selectScenario(slug) {
-  currentScenario = SCENARIOS.find(s => s.slug === slug);
+  const s = SCENARIOS.find(x => x.slug === slug);
+  if (!s || s.disabled) return;
+  currentScenario = s;
+  $("scenario-stub-notice").hidden = true;
   document.querySelectorAll(".scenario-opt").forEach(el =>
-    el.classList.toggle("selected", el.dataset.slug === slug));
+    el.classList.toggle("selected", el.dataset.slug === slug && !el.classList.contains("stub")));
 
   const chartHtml = renderNvdChart(currentScenario.nvd_chart);
   $("scenario-nvd-chart").innerHTML = chartHtml;
@@ -1016,7 +1067,7 @@ function selectScenario(slug) {
         <div class="input-grid">${sec.inputs.map(renderScenarioInput).join("")}</div>
       </div>`).join("");
   } else {
-    inputsHtml = `<div class="input-grid">${currentScenario.inputs.map(renderScenarioInput).join("")}</div>`;
+    inputsHtml = `<div class="input-grid">${(currentScenario.inputs || []).map(renderScenarioInput).join("")}</div>`;
   }
   $("scenario-inputs").innerHTML = inputsHtml;
 
@@ -1046,7 +1097,7 @@ function selectScenario(slug) {
 
 function maybeAutoCalculate() {
   if (!currentScenario) return;
-  const required = currentScenario.inputs.filter(i => i.required).map(i => i.key);
+  const required = (currentScenario.inputs || []).filter(i => i.required).map(i => i.key);
   const filled = required.every(k => {
     const el = $(`scn-in-${k}`);
     return el && el.value.trim();
