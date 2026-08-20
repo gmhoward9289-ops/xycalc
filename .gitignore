@@ -16,6 +16,9 @@ dist/
 build/
 .probe-io-test.bin
 
+# Local bench scratch (sweep logs, downloaded JSON, etc.). Not corpus data.
+tmp/
+
 .DS_Store
 
 # Research working directories. Fetched documents are large and are re-fetchable;
