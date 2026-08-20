@@ -193,6 +193,47 @@ blockquote { margin: .4rem 0 0; padding-left: .7rem; border-left: 2px solid var(
 .error { color: #b3261e; font-family: var(--mono); font-size: .85rem; }
 footer { margin-top: 3rem; padding-top: 1.25rem; border-top: 1px solid var(--line); font-size: .78rem; color: var(--muted); }
 footer code { font-family: var(--mono); }
+footer .family { display: flex; flex-wrap: wrap; gap: .35rem 1.2rem; margin-top: .85rem; }
+footer .family a { color: var(--muted); }
+.tabs { display: flex; gap: .35rem; margin-bottom: 1.25rem; }
+.tab {
+  background: transparent; color: var(--muted); border: 1px solid var(--line);
+  padding: .4rem .9rem; font-size: .85rem; font-weight: 600; cursor: pointer;
+}
+.tab.active { color: var(--accent); border-color: var(--accent); }
+.scenario-list { display: flex; flex-direction: column; gap: .5rem; }
+.scenario-opt {
+  display: flex; gap: .6rem; align-items: flex-start;
+  border: 1px solid var(--line); border-radius: 6px; padding: .65rem .75rem; cursor: pointer;
+}
+.scenario-opt:hover { border-color: var(--accent); }
+.scenario-opt input[type=radio] { width: auto; margin: .2rem 0 0; accent-color: var(--accent); }
+.scenario-opt .label { font-weight: 600; font-size: .92rem; }
+.scenario-opt .sub { font-size: .8rem; color: var(--muted); margin-top: .1rem; }
+.scenario-opt.disabled { opacity: .55; cursor: not-allowed; }
+.scenario-opt.selected { border-color: var(--accent); }
+.input-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .55rem .75rem; }
+.input-section h3 { font-size: .72rem; letter-spacing: .04em; color: var(--muted); margin: 0 0 .45rem; }
+.recalc-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .5rem; margin-top: .65rem; padding-top: .65rem; border-top: 1px dashed var(--line); }
+.recalc-status { font-size: .78rem; color: var(--muted); margin: 0; }
+.sizing-summary { border-color: var(--accent); }
+.summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr)); gap: 1rem; margin-top: .75rem; }
+.summary-metric { border: 1px solid var(--line); border-radius: 6px; padding: .75rem; }
+.summary-metric .primary { font-family: var(--mono); font-size: 1.25rem; font-weight: 600; }
+.nvd-layout { display: grid; grid-template-columns: minmax(14rem, 1.3fr) minmax(12rem, 1fr); gap: .75rem; }
+svg.nvd-chart { width: 100%; height: auto; display: block; }
+.nvd-chart .axis line { stroke: var(--line); }
+.nvd-chart .axis text, .nvd-chart .legend, .nvd-chart .axis-title { fill: var(--muted); font-size: 10px; }
+.nvd-chart .nvd-line { fill: none; stroke: var(--accent); stroke-width: 2; }
+.nvd-chart .nvd-dot { fill: var(--accent); }
+.nvd-chart .ms-dot { fill: var(--amplifier); }
+.nvd-meta { font-size: .72rem; color: var(--muted); }
+.funnel-row { display: grid; grid-template-columns: 8.5rem 1fr auto; gap: .45rem; align-items: center; margin-top: .35rem; }
+.funnel-track { height: 8px; background: var(--line); border-radius: 4px; overflow: hidden; }
+.funnel-track span { display: block; height: 100%; background: var(--accent); opacity: .5; }
+.cascade-wrap { margin-top: .85rem; }
+.form-heading { font-size: .72rem; letter-spacing: .04em; color: var(--muted); margin: 0 0 .65rem; font-weight: 700; }
+@media (max-width: 42rem) { .input-grid, .nvd-layout { grid-template-columns: 1fr; } }
 [hidden] { display: none !important; }
 </style>
 </head>
@@ -222,6 +263,33 @@ footer code { font-family: var(--mono); }
 </div>
 
 <div id="app">
+<div class="tabs">
+  <button class="tab active" id="tab-btn-scenario" data-tab="scenario">Scenario</button>
+  <button class="tab" id="tab-btn-single" data-tab="single">Single question</button>
+</div>
+
+<div id="tab-scenario">
+  <div class="panel">
+    <label>What do you know?</label>
+    <div class="scenario-list" id="scenario-picker"></div>
+  </div>
+  <div id="scenario-workspace" hidden>
+    <div id="scenario-summary"></div>
+    <div class="panel" id="scenario-form-panel">
+      <h2 class="form-heading">Your specs</h2>
+      <div id="scenario-nvd-chart"></div>
+      <div id="scenario-inputs"></div>
+      <div class="recalc-bar">
+        <p class="recalc-status" id="scn-recalc-status">Fill required fields — sizing updates as you type.</p>
+        <button type="button" id="scn-recalc">Update sizing</button>
+      </div>
+      <p id="scn-error" class="error" hidden></p>
+    </div>
+    <div id="scenario-cascade"></div>
+  </div>
+</div>
+
+<div id="tab-single" hidden>
 <div class="panel">
   <div class="field">
     <label for="model">Question</label>
@@ -307,6 +375,8 @@ footer code { font-family: var(--mono); }
     <h2>Read this before acting on the number</h2>
     <div id="reframe"></div>
   </div>
+  </div>
+</div>
 </div>
 </div>
 
@@ -315,6 +385,7 @@ footer code { font-family: var(--mono); }
   <p>Everything above is computed in your browser from a corpus compiled at export
   time. Nothing is sent anywhere. <code>xycalc why &lt;model&gt;</code> prints the same
   citation chain in a terminal.</p>
+  <!--__XYCALC_FAMILY_STRIP__-->
 </footer>
 
 </div>
@@ -359,12 +430,165 @@ function boot() {
   $("sweep").addEventListener("change", drawChart);
   $("ylin").addEventListener("click", () => setScale("linear"));
   $("ylog").addEventListener("click", () => setScale("log"));
-  // Enter in any field calculates, because a sizing question is a one-key
-  // interaction and reaching for the mouse to re-run it is friction nobody
-  // needs.
+  document.querySelectorAll(".tab").forEach((btn) =>
+    btn.addEventListener("click", () => setTab(btn.dataset.tab)));
   document.addEventListener("keydown", (e) => {
-    if (e.key === "Enter" && e.target.tagName === "INPUT") calculate();
+    if (e.key === "Enter" && e.target.tagName === "INPUT") {
+      if (!$("tab-single").hidden) calculate();
+      else calculateScenario(false);
+    }
   });
+  bootScenario();
+}
+
+function setTab(name) {
+  $("tab-scenario").hidden = name !== "scenario";
+  $("tab-single").hidden = name !== "single";
+  $("tab-btn-scenario").classList.toggle("active", name === "scenario");
+  $("tab-btn-single").classList.toggle("active", name === "single");
+}
+
+const SCENARIO_DEFAULTS = {
+  "mongodb.size-to-instance": {
+    baseline_vuln_count: "250000",
+    baseline_storage_size: "100GB",
+    target_vuln_count: "280000",
+    index_size: "40GB",
+    snapshot_search_size: "80GB",
+  },
+};
+let currentScenario = null;
+let scenarioCalcDirty = false;
+let openedMathOnce = false;
+
+function bootScenario() {
+  const scenarios = CORPUS.scenarios || [];
+  $("scenario-picker").innerHTML = scenarios.map((s) => `
+    <label class="scenario-opt ${s.disabled ? "disabled" : ""}" data-slug="${esc(s.slug)}">
+      <input type="radio" name="scenario" value="${esc(s.slug)}" ${s.disabled ? "disabled" : ""}>
+      <span>
+        <div class="label">${esc(s.label)}${s.default ? " <span class='help' style='display:inline'>(default)</span>" : ""}</div>
+        <div class="sub">${esc(s.disabled ? s.note : (s.summary || ""))}</div>
+      </span>
+    </label>`).join("");
+  document.querySelectorAll(".scenario-opt input[type=radio]").forEach((el) => {
+    el.addEventListener("change", () => selectScenario(el.value));
+  });
+  $("scn-recalc").addEventListener("click", () => calculateScenario(false));
+  const def = scenarios.find((s) => s.default && !s.disabled) || scenarios.find((s) => !s.disabled);
+  if (def) {
+    const radio = document.querySelector(`.scenario-opt input[value="${def.slug}"]`);
+    if (radio) { radio.checked = true; selectScenario(def.slug); }
+  }
+}
+
+function renderNvdChart(chart) {
+  if (!chart) return "";
+  const years = chart.annual;
+  const W = 420, H = 168, L = 52, R = 10, T = 18, B = 40;
+  const iw = W - L - R, ih = H - T - B;
+  const nvdMax = Math.max(...years.map((a) => a.count));
+  const yMax = nvdMax * 1.15;
+  const xAt = (i) => L + (years.length === 1 ? iw / 2 : (i / (years.length - 1)) * iw);
+  const yAt = (v) => T + ih * (1 - v / yMax);
+  const nvdPath = years.map((a, i) => `${i ? "L" : "M"}${xAt(i).toFixed(1)} ${yAt(a.count).toFixed(1)}`).join(" ");
+  const dots = years.map((a, i) => `<circle class="nvd-dot" cx="${xAt(i).toFixed(1)}" cy="${yAt(a.count).toFixed(1)}" r="3.5"></circle>`).join("");
+  const ms = years.map((a, i) => a.microsoft != null ? `<circle class="ms-dot" cx="${xAt(i).toFixed(1)}" cy="${yAt(a.microsoft).toFixed(1)}" r="4"></circle>` : "").join("");
+  const xLabels = years.map((a, i) => `<text x="${xAt(i).toFixed(1)}" y="${H - 18}" text-anchor="middle">${a.year}</text>`).join("");
+  const g = chart.growth_pct;
+  const src = chart.source_url ? `<a href="${esc(chart.source_url)}" target="_blank" rel="noopener">${esc(chart.source)}</a>` : esc(chart.source);
+  return `<div class="panel nvd-panel"><h2>CVE publication growth</h2>
+    <div class="nvd-layout">
+      <svg class="nvd-chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="CVEs published per year">
+        <g class="axis">${xLabels}<text class="axis-title" x="12" y="${T + ih / 2}" text-anchor="middle" transform="rotate(-90 12 ${T + ih / 2})">CVEs published per year</text></g>
+        <path class="nvd-line" d="${nvdPath}"></path>${dots}${ms}
+      </svg>
+      <p class="nvd-meta">Cumulative through 2025: <strong>${chart.cumulative_2025.toLocaleString()}</strong>.
+        YoY band: <strong>${g.lo}–${g.mode}–${g.hi}%</strong>. Source: ${src}.
+        ${chart.microsoft_note ? esc(chart.microsoft_note) : ""}</p>
+    </div></div>`;
+}
+
+function selectScenario(slug) {
+  currentScenario = (CORPUS.scenarios || []).find((s) => s.slug === slug);
+  document.querySelectorAll(".scenario-opt").forEach((el) =>
+    el.classList.toggle("selected", el.dataset.slug === slug));
+  $("scenario-nvd-chart").innerHTML = renderNvdChart(currentScenario.nvd_chart);
+  const fields = (currentScenario.input_sections || []).map((sec) => `
+    <div class="input-section"><h3>${esc(sec.title)}</h3>
+    <div class="input-grid">${sec.inputs.map((i) => `
+      <div class="field"><label for="scn-in-${esc(i.key)}">${esc(i.label)}</label>
+      <input id="scn-in-${esc(i.key)}" data-key="${esc(i.key)}" placeholder="${i.unit === "bytes" ? "e.g. 500GB" : i.unit}"></div>`).join("")}
+    </div></div>`).join("")
+    || `<div class="input-grid">${(currentScenario.inputs || []).map((i) => `
+      <div class="field"><label>${esc(i.label)}</label>
+      <input id="scn-in-${esc(i.key)}" data-key="${esc(i.key)}"></div>`).join("")}</div>`;
+  $("scenario-inputs").innerHTML = fields;
+  const defaults = SCENARIO_DEFAULTS[slug] || {};
+  for (const key of Object.keys(defaults)) {
+    const el = $(`scn-in-${key}`);
+    if (el && !el.value) el.value = defaults[key];
+  }
+  document.querySelectorAll("#scenario-inputs input").forEach((el) => {
+    el.addEventListener("input", () => { scenarioCalcDirty = true; maybeAuto(); });
+  });
+  $("scenario-workspace").hidden = false;
+  openedMathOnce = false;
+  maybeAuto();
+}
+
+function maybeAuto() {
+  if (!currentScenario) return;
+  const missing = (currentScenario.inputs || []).filter((i) => i.required).some((i) => {
+    const el = $(`scn-in-${i.key}`);
+    return !el || !el.value.trim();
+  });
+  if (!missing) calculateScenario(true);
+}
+
+function calculateScenario(auto) {
+  if (!currentScenario) return;
+  const inputs = {};
+  document.querySelectorAll("#scenario-inputs input").forEach((el) => {
+    if (el.value.trim()) inputs[el.dataset.key] = el.value.trim();
+  });
+  try {
+    const data = XY.chainEvaluate(CORPUS, currentScenario.slug, inputs);
+    $("scn-error").hidden = true;
+    const s = data.sizing_summary || {};
+    const ram = s.ram ? `<div class="summary-metric"><div>Host RAM</div><div class="primary">${esc(fmt(s.ram.mode, s.ram.unit))}</div>
+      <div class="help">${esc(fmt(s.ram.lo, s.ram.unit))} – ${esc(fmt(s.ram.hi, s.ram.unit))}</div></div>` : "";
+    const cpu = s.cpu ? `<div class="summary-metric"><div>CPU (r8i pick)</div><div class="primary">${esc(s.cpu.instance_mode || "custom")}</div></div>` : "";
+    const disk = s.disk ? `<div class="summary-metric"><div>gp3 disk</div><div class="primary">${Math.round(s.disk.volume_gib).toLocaleString()} GiB</div></div>` : "";
+    const funnelRows = ["nvd.storage-from-vuln-growth", "mongodb.wt-cache", "mongodb.host-ram"]
+      .map((slug) => data.steps.find((st) => st.model === slug))
+      .filter((st) => st && st.answer);
+    const fmax = Math.max(0, ...funnelRows.map((st) => st.answer.hi));
+    const funnel = funnelRows.length > 1 ? funnelRows.map((st) => `<div class="funnel-row"><div>${esc(st.model)}</div>
+      <div class="funnel-track"><span style="width:${(st.answer.mode / fmax * 100).toFixed(1)}%"></span></div>
+      <div>${esc(fmt(st.answer.mode, st.unit))}</div></div>`).join("") : "";
+    $("scenario-summary").innerHTML = `<div class="panel sizing-summary"><h2>What you need</h2>
+      <div class="summary-grid">${ram}${cpu}${disk}</div>${funnel}</div>`;
+    const open = !auto && !openedMathOnce;
+    if (open) openedMathOnce = true;
+    $("scenario-cascade").innerHTML = `<details class="cascade-wrap"${open ? " open" : ""}>
+      <summary>Show the math · ${data.steps.length} steps</summary>
+      ${data.steps.map((st, i) => st.kind === "model"
+        ? `<div class="panel"><div class="help">Step ${i + 1}</div><p>${esc(st.question)}</p>
+           <div class="answer"><div class="value">${esc(fmt(st.answer.mode, st.unit))}</div>
+           <div class="band">band ${esc(fmt(st.answer.lo, st.unit))} – ${esc(fmt(st.answer.hi, st.unit))}</div></div></div>`
+        : st.pick
+          ? `<div class="panel">Step ${i + 1}: ${esc((st.pick.pick_mode && st.pick.pick_mode.name) || "custom sizing")}</div>`
+          : st.gp3
+            ? `<div class="panel">Step ${i + 1}: gp3 ${st.gp3.volume_gib.toFixed(1)} GiB · ${st.gp3.baseline_iops} IOPS included</div>`
+            : "") .join("")}
+    </details>`;
+    $("scn-recalc-status").textContent = "Up to date — change any field to recalculate.";
+    if (!auto) $("scenario-summary").scrollIntoView({behavior: "smooth", block: "start"});
+  } catch (e) {
+    $("scn-error").hidden = false;
+    $("scn-error").textContent = e.message;
+  }
 }
 
 function current() { return MODELS.find((m) => m.slug === $("model").value); }

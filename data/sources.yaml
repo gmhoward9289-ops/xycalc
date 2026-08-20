@@ -228,20 +228,23 @@ sources:
     retrieved_on: '2026-08-20'
     source_type: practitioner
     notes: >-
-      Annual CVE publication statistics. 48,185 CVEs published in 2025, up
-      20.6% year-over-year from 40,009 in 2024. 308,920 cumulative CVEs since
-      1999 per the same review.
+      Annual CVE publication statistics. 48,185 CVEs published in 2025, a
+      20.6% increase from a restated 39,962 in 2024 (the contemporaneous 2024
+      review counted 40,009). 308,920 cumulative CVEs since 1999. Top vendors
+      table: Linux 5,687, Microsoft 1,255, Adobe 829. Rejected CVEs excluded.
 
   - slug: jerrygamblin-2024-cve-review
     title: 2024 CVE Data Review
     publisher: Jerry Gamblin
-    url: https://jerrygamblin.com/2025/01/01/2024-cve-data-review/
+    url: https://jgamblin.com/2025/01/05/2024-cve-data-review/
     retrieved_on: '2026-08-20'
     source_type: practitioner
     notes: >-
       Annual CVE publication statistics. 40,009 CVEs published in 2024, up
-      38.8% year-over-year from 28,830 in 2023. Alternate post:
-      https://jgamblin.com/2025/01/05/2024-cve-data-review/
+      over 38% from the 28,818 CVEs published in 2023. The 2024 review does
+      not publish a Microsoft-as-vendor table comparable to the 2025 review
+      (CNA table only). Alternate URL that 404s as of 2026-08-20:
+      https://jerrygamblin.com/2025/01/01/2024-cve-data-review/
 
   - slug: xycalc-capacity-planning-default
     title: "Planning default: 25%/year database growth, 2-year provisioning horizon"

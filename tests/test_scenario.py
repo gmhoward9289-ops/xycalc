@@ -155,3 +155,15 @@ class TestScenarioApi:
         assert body["sizing_summary"]["disk"]["provisioned_iops"]["mode"] == pytest.approx(9000.0)
         kb = next(sa for sa in body["see_also"] if sa.get("url"))
         assert "ebs-troubleshoot-performance-issues-ec2" in kb["url"]
+
+    def test_nvd_chart_is_cited_from_the_corpus(self, api_client):
+        body = api_client.get("/api/scenarios").json()
+        inst = next(s for s in body["scenarios"] if s["slug"] == "mongodb.size-to-instance")
+        chart = inst["nvd_chart"]
+        by_year = {row["year"]: row for row in chart["annual"]}
+        assert by_year[2023]["count"] == 28818
+        assert by_year[2024]["count"] == 40009
+        assert by_year[2025]["count"] == 48185
+        assert by_year[2025]["microsoft"] == 1255
+        assert "microsoft" not in by_year[2023]
+        assert chart["source"] == "jerrygamblin-2025-cve-review"
