@@ -473,6 +473,10 @@ const SCENARIO_DEFAULTS = {
     index_size: "40GB",
     snapshot_search_size: "80GB",
   },
+  "storage.ebs-vs-nvme-at-io-size": {
+    io_size_kib: "64",
+    provisioned_iops: "3000",
+  },
 };
 let currentScenario = null;
 let scenarioCalcDirty = false;
@@ -511,25 +515,44 @@ function showStubNotice(slug) {
   $("scenario-stub-notice").hidden = false;
 }
 
-function bootScenario() {
-  const scenarios = CORPUS.scenarios || [];
-  $("scenario-picker").innerHTML = scenarios.map(renderScenarioOption).join("");
-  document.querySelectorAll(".scenario-opt input[type=radio]").forEach((el) => {
-    el.addEventListener("change", () => selectScenario(el.value));
+function scenarioRadio(slug) {
+  return document.querySelector(
+    `.scenario-opt input[type=radio][value="${CSS.escape(slug)}"]`
+  );
+}
+
+function wireScenarioPicker() {
+  document.querySelectorAll(".scenario-opt:not(.stub):not(.disabled)").forEach((el) => {
+    el.addEventListener("click", () => {
+      const slug = el.dataset.slug;
+      if (!slug) return;
+      const radio = scenarioRadio(slug);
+      if (radio) radio.checked = true;
+      selectScenario(slug);
+    });
   });
   document.querySelectorAll(".scenario-opt.stub").forEach((el) => {
     el.addEventListener("click", () => showStubNotice(el.dataset.slug));
   });
+}
+
+function bootScenario() {
+  const scenarios = CORPUS.scenarios || [];
+  $("scenario-picker").innerHTML = scenarios.map(renderScenarioOption).join("");
+  wireScenarioPicker();
   $("scn-recalc").addEventListener("click", () => calculateScenario(false));
   const def = scenarios.find((s) => s.default && !s.disabled) || scenarios.find((s) => !s.disabled);
-  if (def) {
-    const radio = document.querySelector(`.scenario-opt input[value="${def.slug}"]`);
-    if (radio) { radio.checked = true; selectScenario(def.slug); }
-  }
+  if (def) pickScenario(def.slug);
+}
+
+function pickScenario(slug) {
+  const radio = scenarioRadio(slug);
+  if (radio) radio.checked = true;
+  selectScenario(slug);
 }
 
 function renderNvdChart(chart) {
-  if (!chart) return "";
+  if (!chart?.annual?.length) return "";
   const years = chart.annual;
   const W = 420, H = 168, L = 52, R = 10, T = 18, B = 40;
   const iw = W - L - R, ih = H - T - B;
@@ -562,28 +585,40 @@ function selectScenario(slug) {
   $("scenario-stub-notice").hidden = true;
   document.querySelectorAll(".scenario-opt").forEach((el) =>
     el.classList.toggle("selected", el.dataset.slug === slug && !el.classList.contains("stub")));
-  $("scenario-nvd-chart").innerHTML = renderNvdChart(currentScenario.nvd_chart);
-  const fields = (currentScenario.input_sections || []).map((sec) => `
-    <div class="input-section"><h3>${esc(sec.title)}</h3>
-    <div class="input-grid">${sec.inputs.map((i) => `
-      <div class="field"><label for="scn-in-${esc(i.key)}">${esc(i.label)}</label>
-      <input id="scn-in-${esc(i.key)}" data-key="${esc(i.key)}" placeholder="${i.unit === "bytes" ? "e.g. 500GB" : i.unit}"></div>`).join("")}
-    </div></div>`).join("")
-    || `<div class="input-grid">${(currentScenario.inputs || []).map((i) => `
-      <div class="field"><label>${esc(i.label)}</label>
-      <input id="scn-in-${esc(i.key)}" data-key="${esc(i.key)}"></div>`).join("")}</div>`;
-  $("scenario-inputs").innerHTML = fields;
-  const defaults = SCENARIO_DEFAULTS[slug] || {};
-  for (const key of Object.keys(defaults)) {
-    const el = $(`scn-in-${key}`);
-    if (el && !el.value) el.value = defaults[key];
-  }
-  document.querySelectorAll("#scenario-inputs input").forEach((el) => {
-    el.addEventListener("input", () => { scenarioCalcDirty = true; maybeAuto(); });
-  });
   $("scenario-workspace").hidden = false;
+  $("scenario-summary").innerHTML = "";
+  $("scenario-cascade").innerHTML = "";
+  $("scn-error").hidden = true;
   openedMathOnce = false;
-  maybeAuto();
+
+  try {
+    $("scenario-nvd-chart").innerHTML = renderNvdChart(currentScenario.nvd_chart);
+    const fields = (currentScenario.input_sections || []).map((sec) => `
+      <div class="input-section"><h3>${esc(sec.title)}</h3>
+      <div class="input-grid">${(sec.inputs || []).map((i) => `
+        <div class="field"><label for="scn-in-${esc(i.key)}">${esc(i.label)}</label>
+        <input id="scn-in-${esc(i.key)}" data-key="${esc(i.key)}" placeholder="${i.unit === "bytes" ? "e.g. 500GB" : i.unit}"></div>`).join("")}
+      </div></div>`).join("")
+      || `<div class="input-grid">${(currentScenario.inputs || []).map((i) => `
+        <div class="field"><label for="scn-in-${esc(i.key)}">${esc(i.label)}</label>
+        <input id="scn-in-${esc(i.key)}" data-key="${esc(i.key)}" placeholder="${i.unit === "bytes" ? "e.g. 500GB" : esc(i.unit)}"></div>`).join("")}</div>`;
+    $("scenario-inputs").innerHTML = fields;
+    const defaults = SCENARIO_DEFAULTS[slug] || {};
+    for (const key of Object.keys(defaults)) {
+      const el = $(`scn-in-${key}`);
+      if (el && !el.value) el.value = defaults[key];
+    }
+    document.querySelectorAll("#scenario-inputs input").forEach((el) => {
+      el.addEventListener("input", () => { scenarioCalcDirty = true; maybeAuto(); });
+    });
+    $("scn-recalc-status").textContent = "Fill required fields — sizing updates as you type.";
+    maybeAuto();
+  } catch (err) {
+    $("scenario-inputs").innerHTML = "";
+    $("scenario-nvd-chart").innerHTML = "";
+    $("scn-error").textContent = err.message || "could not build the scenario form";
+    $("scn-error").hidden = false;
+  }
 }
 
 function maybeAuto() {

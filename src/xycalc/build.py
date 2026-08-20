@@ -271,6 +271,18 @@ class Builder:
                                 f"which the model does not declare"
                             )
                         coeff_id = None
+                    elif apply == "cap_at_throughput":
+                        if term.get("input_key") not in input_keys:
+                            raise BuildError(
+                                f"{tctx}: cap_at_throughput needs input "
+                                f"'{term.get('input_key')}', which is not declared"
+                            )
+                        coeff_id = self._ref(
+                            "coefficient",
+                            self.coefficient,
+                            term["coefficient"],
+                            tctx,
+                        )
                     else:
                         coeff_id = self._ref(
                             "coefficient",

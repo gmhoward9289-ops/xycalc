@@ -110,11 +110,12 @@ models:
         apply: note
         coefficient: ebs.gp3-max-throughput
         rationale: >-
-          At the 256 KiB maximum operation size, 2,000 MiB/s is only 8,000
-          operations. A large sequential workload can exhaust throughput at a
-          tenth of the volume's provisionable IOPS while its IOPS graph looks
-          healthy, so check VolumeThroughputExceededCheck alongside the IOPS
-          one.
+          Throughput and IOPS cross at block sizes far below the 256 KiB maximum
+          operation size. On baseline gp3 (3,000 IOPS / 125 MiB/s) the crossover
+          is ≈43 KiB; at the throughput-cap corner (10,500 IOPS / 2,000 MiB/s)
+          it is ≈195 KiB — still below 256 KiB. Large I/O can therefore exhaust
+          throughput while IOPS graphs look healthy; check
+          VolumeThroughputExceededCheck alongside the IOPS one.
 
       - key: io_accounting
         label: The volume does not count operations the way your application does
@@ -148,3 +149,64 @@ models:
           The exceeded-checks resolve to one second. Below one second, only the
           NVMe detailed performance statistics see anything at all. Knowing
           which tier your evidence came from decides what it is evidence of.
+
+  - slug: ebs.gp3-iops-at-io-size
+    question: How many gp3 read IOPS can I sustain at my I/O size?
+    system: ebs
+    output: io.iops
+
+    summary: >-
+      Takes provisioned gp3 IOPS and a block size, then returns the lower of
+      that IOPS figure and what your provisioned throughput allows at that size.
+
+    notes: >-
+      Uses included baseline throughput (125 MiB/s) unless you also provision
+      more — a separate throughput input is not modeled yet. Random-read shaped;
+      EBS merges sequential writes and splits large ops differently.
+
+    inputs:
+      - key: io_size_kib
+        label: Read I/O size EBS counts
+        unit: KiB
+        required: true
+        help: >-
+          Size EBS charges as one operation, capped at 256 KiB for SSD volumes.
+          Guest iostat counts differ — see the io_accounting constraint on
+          ebs.iops-to-provision.
+      - key: provisioned_iops
+        label: Provisioned gp3 IOPS
+        unit: iops
+        required: false
+        default: 3000
+        help: >-
+          Defaults to gp3's included 3,000 IOPS. Raise if you have provisioned
+          more on the volume.
+
+    terms:
+      - key: provisioned
+        label: Provisioned IOPS
+        role: floor
+        apply: input
+        input_key: provisioned_iops
+        rationale: >-
+          The IOPS figure you bought (or the 3,000 gp3 includes by default).
+
+      - key: throughput_cap
+        label: Throughput limit at this I/O size
+        role: amplifier
+        apply: cap_at_throughput
+        coefficient: ebs.gp3-baseline-throughput
+        input_key: io_size_kib
+        rationale: >-
+          gp3 baseline throughput (125 MiB/s included) converted to an IOPS
+          ceiling at this block size. Above the crossover, MiB/s binds first.
+
+      - key: baseline_crossover
+        label: Baseline gp3 crossover size
+        role: constraint
+        apply: note
+        coefficient: ebs.gp3-baseline-io-crossover-kib
+        rationale: >-
+          Where baseline 3,000 IOPS and 125 MiB/s cross — about 43 KiB, not
+          256 KiB. If your I/O size is above this, throughput may bind before
+          IOPS even on an unprovisioned volume.

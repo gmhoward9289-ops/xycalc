@@ -52,8 +52,9 @@ systems:
     label: NVMe SSD (direct-attached)
     category: hardware
     notes: >-
-      Stub. Exists mainly as the comparison arm for EBS — "how much worse is
-      network storage" is only answerable against a local baseline.
+      Local baseline for the EBS comparison. Coefficients ship as planning
+      bands until io_crossover_probe measured plateaus replace them on confirmed
+      local hardware.
 
   - slug: aws-ec2
     label: AWS EC2 (memory-optimized instance types)

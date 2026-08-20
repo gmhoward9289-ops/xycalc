@@ -1,0 +1,61 @@
+models:
+  - slug: nvme-ssd.random-read-at-io-size
+    question: How many random read IOPS can local NVMe sustain at my I/O size?
+    system: nvme-ssd
+    output: io.iops
+
+    summary: >-
+      Takes a block size and returns the lower of the device's random-read IOPS
+      ceiling and what its throughput ceiling allows at that size — the same
+      min(IOPS, MiB/s × 1024 ÷ KiB/op) crossover EBS uses, applied to a
+      direct-attached baseline instead of gp3.
+
+    reframe: >-
+      Network storage comparisons only mean something against a local baseline
+      measured the same way. This model uses planning bands until you replace
+      them with fio plateaus from your own box (tools/bench/io_crossover_probe).
+
+    notes: >-
+      Random reads only — sequential I/O merges on many devices and answers a
+      different question. Queue depth matters: the coefficients assume depth
+      high enough to saturate the device; shallow queues under-report the ceiling.
+
+    inputs:
+      - key: io_size_kib
+        label: Random read I/O size
+        unit: KiB
+        required: true
+        help: >-
+          Block size your workload issues — MongoDB/WiredTiger pages are often
+          4–32 KiB; larger scans move toward the throughput-bound region faster.
+
+    terms:
+      - key: iops_ceiling
+        label: Random read IOPS ceiling
+        role: floor
+        apply: set_from_coefficient
+        coefficient: nvme-ssd.max-random-read-iops
+        rationale: >-
+          The flat-IOPS region below the crossover — from manufacturer spec or,
+          better, from fio at small block sizes once measured on your hardware.
+
+      - key: throughput_crossover
+        label: Throughput limit at this I/O size
+        role: amplifier
+        apply: cap_at_throughput
+        coefficient: nvme-ssd.max-throughput-mibps
+        input_key: io_size_kib
+        rationale: >-
+          Above the crossover, MiB/s is the binding ceiling and IOPS falls as
+          block size grows. Same arithmetic as gp3's throughput wall, different
+          coefficients.
+
+      - key: crossover_note
+        label: Where the two ceilings cross on this band
+        role: constraint
+        apply: note
+        coefficient: nvme-ssd.max-throughput-mibps
+        rationale: >-
+          Crossover KiB ≈ (throughput_mode × 1024) ÷ iops_mode with the
+          planning coefficients above — replace both with measured plateaus
+          before treating the knee as fact.

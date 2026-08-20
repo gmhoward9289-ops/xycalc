@@ -387,6 +387,41 @@ class Model:
                 if lo == hi:
                     contribution += " (band collapsed)"
 
+            elif term.apply == "set_from_coefficient":
+                lo, mode, hi = clo, cmode, chi
+                contribution = f"= {format_quantity(cmode, in_unit)}" + (
+                    f" ({format_quantity(clo, in_unit)}–{format_quantity(chi, in_unit)})"
+                    if clo != chi
+                    else ""
+                )
+
+            elif term.apply == "cap_at_throughput":
+                io_size = supplied.get(term.input_key)
+                if io_size is None:
+                    raise ModelError(
+                        f"{self.slug}: input '{term.input_key}' required for "
+                        f"throughput crossover"
+                    )
+                if not io_size:
+                    raise ModelError(
+                        f"{self.slug}: '{term.input_key}' cannot be zero — "
+                        f"throughput crossover is undefined"
+                    )
+                cap_lo = clo * 1024 / io_size
+                cap_mode = cmode * 1024 / io_size
+                cap_hi = chi * 1024 / io_size
+                lo, mode, hi = (
+                    min(lo, cap_lo),
+                    min(mode, cap_mode),
+                    min(hi, cap_hi),
+                )
+                contribution = (
+                    f"≤ {format_quantity(cap_mode, in_unit)} "
+                    f"({cmode:g} MiB/s ÷ {io_size:g} KiB/op)"
+                )
+                if lo == hi:
+                    contribution += " (band collapsed)"
+
             elif term.apply == "add_fraction":
                 lo, mode, hi = (
                     lo * (1 + clo / 100),

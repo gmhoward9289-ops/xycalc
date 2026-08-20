@@ -1,0 +1,39 @@
+# Direct-attached NVMe baseline — issue #17.
+#
+# These are planning placeholders until io_crossover_probe runs on hardware
+# whose transport is confirmed local (see tools/bench/io_crossover_probe.py).
+# Replace with measured rows from the probe JSON via import_io_probe.py.
+
+coefficients:
+  - slug: nvme-ssd.max-random-read-iops
+    parameter: io.iops
+    system: nvme-ssd
+    applies_to: >-
+      Consumer PCIe NVMe planning band until a measured probe replaces it
+      (2026-08-20)
+    value_lo: 50000
+    value_mode: 100000
+    value_hi: 250000
+    confidence: estimate
+    source: xycalc-nvme-planning-default
+    notes: >-
+      OUR PLANNING BAND, not a measurement of your disk. Random 4 KiB read
+      IOPS at queue depth 32 on a typical PCIe3 x4 NVMe sits in this range;
+      run tools/bench/io_crossover_smoke.sh on confirmed local NVMe and import
+      the plateaus to replace this row.
+
+  - slug: nvme-ssd.max-throughput-mibps
+    parameter: io.throughput_mibps
+    system: nvme-ssd
+    applies_to: >-
+      Consumer PCIe NVMe planning band until a measured probe replaces it
+      (2026-08-20)
+    value_lo: 1500
+    value_mode: 3000
+    value_hi: 3500
+    confidence: estimate
+    source: xycalc-nvme-planning-default
+    notes: >-
+      OUR PLANNING BAND for sequential/random-read throughput plateaus above
+      the I/O-size crossover. PCIe3 x4 is the usual ceiling; PCIe4 drives can
+      exceed the high end — which is why this stays an estimate until measured.

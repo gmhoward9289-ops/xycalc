@@ -695,6 +695,10 @@ const SCENARIO_DEFAULTS = {
     index_size: "40GB",
     snapshot_search_size: "80GB",
   },
+  "storage.ebs-vs-nvme-at-io-size": {
+    io_size_kib: "64",
+    provisioned_iops: "3000",
+  },
 };
 
 function renderScenarioInput(i) {
@@ -810,7 +814,7 @@ function wireScenarioInputs() {
 }
 
 function renderNvdChart(chart) {
-  if (!chart) return "";
+  if (!chart?.annual?.length) return "";
   const years = chart.annual;
   const W = 420, H = 168, L = 52, R = 10, T = 18, B = 40;
   const iw = W - L - R, ih = H - T - B;
@@ -1027,24 +1031,51 @@ function showStubNotice(slug) {
   $("scenario-stub-notice").hidden = false;
 }
 
-async function bootScenario() {
-  const r = await fetch("/api/scenarios");
-  SCENARIOS = (await r.json()).scenarios;
-  $("scenario-picker").innerHTML = SCENARIOS.map(renderScenarioOption).join("");
+function scenarioRadio(slug) {
+  return document.querySelector(
+    `.scenario-opt input[type=radio][value="${CSS.escape(slug)}"]`
+  );
+}
 
-  document.querySelectorAll(".scenario-opt input[type=radio]").forEach(el => {
-    el.addEventListener("change", () => selectScenario(el.value));
+function wireScenarioPicker() {
+  document.querySelectorAll(".scenario-opt:not(.stub):not(.disabled)").forEach(el => {
+    el.addEventListener("click", () => {
+      const slug = el.dataset.slug;
+      if (!slug) return;
+      const radio = scenarioRadio(slug);
+      if (radio) radio.checked = true;
+      selectScenario(slug);
+    });
   });
   document.querySelectorAll(".scenario-opt.stub").forEach(el => {
     el.addEventListener("click", () => showStubNotice(el.dataset.slug));
   });
-  $("scn-recalc")?.addEventListener("click", () => calculateScenario(false));
+}
 
-  const def = SCENARIOS.find(s => s.default && !s.disabled) || SCENARIOS.find(s => !s.disabled);
-  if (def) {
-    const radio = document.querySelector(`.scenario-opt input[value="${def.slug}"]`);
-    if (radio) { radio.checked = true; selectScenario(def.slug); }
+async function bootScenario() {
+  $("scn-error").hidden = true;
+  try {
+    const r = await fetch("/api/scenarios");
+    if (!r.ok) throw new Error("could not load scenarios (" + r.status + ")");
+    const data = await r.json();
+    SCENARIOS = data.scenarios || [];
+    if (!SCENARIOS.length) throw new Error("no scenarios returned from /api/scenarios");
+    $("scenario-picker").innerHTML = SCENARIOS.map(renderScenarioOption).join("");
+    wireScenarioPicker();
+    $("scn-recalc")?.addEventListener("click", () => calculateScenario(false));
+
+    const def = SCENARIOS.find(s => s.default && !s.disabled) || SCENARIOS.find(s => !s.disabled);
+    if (def) pickScenario(def.slug);
+  } catch (err) {
+    $("scenario-picker").innerHTML =
+      `<p class="error">${err.message || "could not load scenarios"}</p>`;
   }
+}
+
+function pickScenario(slug) {
+  const radio = scenarioRadio(slug);
+  if (radio) radio.checked = true;
+  selectScenario(slug);
 }
 
 function selectScenario(slug) {
@@ -1054,30 +1085,6 @@ function selectScenario(slug) {
   $("scenario-stub-notice").hidden = true;
   document.querySelectorAll(".scenario-opt").forEach(el =>
     el.classList.toggle("selected", el.dataset.slug === slug && !el.classList.contains("stub")));
-
-  const chartHtml = renderNvdChart(currentScenario.nvd_chart);
-  $("scenario-nvd-chart").innerHTML = chartHtml;
-  if (currentScenario.nvd_chart) bindNvdChartActions(currentScenario.nvd_chart);
-
-  let inputsHtml = "";
-  if (currentScenario.input_sections?.length) {
-    inputsHtml = currentScenario.input_sections.map(sec => `
-      <div class="input-section">
-        <h3>${sec.title}</h3>
-        <div class="input-grid">${sec.inputs.map(renderScenarioInput).join("")}</div>
-      </div>`).join("");
-  } else {
-    inputsHtml = `<div class="input-grid">${(currentScenario.inputs || []).map(renderScenarioInput).join("")}</div>`;
-  }
-  $("scenario-inputs").innerHTML = inputsHtml;
-
-  const defaults = SCENARIO_DEFAULTS[slug] || {};
-  for (const [key, val] of Object.entries(defaults)) {
-    const el = $(`scn-in-${key}`);
-    if (el && !el.value) el.value = val;
-  }
-
-  wireScenarioInputs();
   $("scenario-workspace").hidden = false;
   $("scenario-summary").innerHTML = renderSummaryPlaceholder();
   $("scenario-cascade").innerHTML = "";
@@ -1086,13 +1093,40 @@ function selectScenario(slug) {
   scenarioCalcDirty = false;
   scenarioCalcBusy = false;
   openedMathOnce = false;
-  $("scenario-cascade").innerHTML = "";
-  $("scn-error").hidden = true;
-  clearMissingFieldMarks();
-  scenarioCalcDirty = false;
-  scenarioCalcBusy = false;
   setRecalcStatus("", "Fill required fields — sizing updates as you type.");
-  maybeAutoCalculate();
+
+  try {
+    const chartHtml = renderNvdChart(currentScenario.nvd_chart);
+    $("scenario-nvd-chart").innerHTML = chartHtml;
+    if (currentScenario.nvd_chart) bindNvdChartActions(currentScenario.nvd_chart);
+
+    let inputsHtml = "";
+    if (currentScenario.input_sections?.length) {
+      inputsHtml = currentScenario.input_sections.map(sec => `
+        <div class="input-section">
+          <h3>${sec.title}</h3>
+          <div class="input-grid">${(sec.inputs || []).map(renderScenarioInput).join("")}</div>
+        </div>`).join("");
+    } else {
+      inputsHtml = `<div class="input-grid">${(currentScenario.inputs || []).map(renderScenarioInput).join("")}</div>`;
+    }
+    $("scenario-inputs").innerHTML = inputsHtml;
+
+    const defaults = SCENARIO_DEFAULTS[slug] || {};
+    for (const [key, val] of Object.entries(defaults)) {
+      const el = $(`scn-in-${key}`);
+      if (el && !el.value) el.value = val;
+    }
+
+    wireScenarioInputs();
+    maybeAutoCalculate();
+  } catch (err) {
+    $("scenario-inputs").innerHTML = "";
+    $("scenario-nvd-chart").innerHTML = "";
+    $("scn-error").textContent = err.message || "could not build the scenario form";
+    $("scn-error").hidden = false;
+    setRecalcStatus("stale", "Fix the error above, then pick the scenario again.");
+  }
 }
 
 function maybeAutoCalculate() {
@@ -1292,8 +1326,7 @@ function renderCascade(data, opts) {
     </details>`;
   document.querySelectorAll(".see-also-link").forEach(btn => {
     btn.addEventListener("click", () => {
-      const radio = document.querySelector(`.scenario-opt input[value="${btn.dataset.target}"]`);
-      if (radio) { radio.checked = true; selectScenario(btn.dataset.target); }
+      pickScenario(btn.dataset.target);
       $("scenario-form-panel").scrollIntoView({behavior: "smooth", block: "start"});
     });
   });

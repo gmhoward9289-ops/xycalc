@@ -222,6 +222,29 @@ const XY = (() => {
         }
         if (lo === hi) contribution += " (band collapsed)";
 
+      } else if (term.apply === "set_from_coefficient") {
+        lo = clo; mode = cmode; hi = chi;
+        contribution = "= " + formatQuantity(cmode, inUnit) +
+          (clo !== chi ? " (" + formatQuantity(clo, inUnit) + "–" + formatQuantity(chi, inUnit) + ")" : "");
+
+      } else if (term.apply === "cap_at_throughput") {
+        const ioSize = supplied[term.input_key];
+        if (ioSize === undefined) {
+          throw new ModelError(model.slug + ": input '" + term.input_key + "' required for throughput crossover");
+        }
+        if (!ioSize) {
+          throw new ModelError(
+            model.slug + ": '" + term.input_key + "' cannot be zero — throughput crossover is undefined"
+          );
+        }
+        const capLo = clo * 1024 / ioSize;
+        const capMode = cmode * 1024 / ioSize;
+        const capHi = chi * 1024 / ioSize;
+        lo = Math.min(lo, capLo); mode = Math.min(mode, capMode); hi = Math.min(hi, capHi);
+        contribution = "≤ " + formatQuantity(capMode, inUnit) +
+          " (" + formatG(cmode) + " MiB/s ÷ " + formatG(ioSize) + " KiB/op)";
+        if (lo === hi) contribution += " (band collapsed)";
+
       } else if (term.apply === "add_fraction") {
         lo *= (1 + clo / 100); mode *= (1 + cmode / 100); hi *= (1 + chi / 100);
         contribution = "+ " + formatG(cmode) + "%";

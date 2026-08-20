@@ -264,6 +264,20 @@ sources:
       entirely — it exists only for the case where nobody has a better one
       yet.
 
+  - slug: xycalc-nvme-planning-default
+    title: "Planning band: consumer PCIe NVMe until measured probe"
+    publisher: xycalc project (not a vendor figure)
+    url:
+    version:
+    retrieved_on: '2026-08-20'
+    source_type: estimate
+    notes: >-
+      OUR PLANNING BAND for nvme-ssd.max-random-read-iops and
+      nvme-ssd.max-throughput-mibps until tools/bench/io_crossover_probe.py
+      produces measured plateaus on hardware whose transport is confirmed local.
+      Run io_crossover_smoke.sh for a quick check, io_crossover_probe.sh for the
+      full Arm A/B harness on a Linux Docker host.
+
   - slug: obs-mongodb-colocation-probe-reef-2026-08-19
     title: "colocation_probe: Mongo+Redis+ClickHouse+Celery, three-phase RSS"
     publisher: xycalc project (benchmark harness, committed)

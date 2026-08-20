@@ -188,3 +188,18 @@ coefficients:
       volumes are still gp2 and because its burst-credit exhaustion is a
       completely different failure from microbursting — slow, visible in
       averages, and it has a metric (BurstBalance) that gp3 does not.
+
+  - slug: ebs.gp3-baseline-io-crossover-kib
+    parameter: io.io_size_crossover_kib
+    system: ebs
+    applies_to: EBS gp3 baseline (3,000 IOPS / 125 MiB/s included), 2026-08-20
+    value: 42.6666666667
+    confidence: documented
+    source: aws-ebs-general-purpose-ssd
+    quote: >-
+      Derived from this source's baseline gp3 figures (125 MiB/s throughput and
+      3,000 IOPS, each quoted separately in this file) — AWS does not state the
+      crossover size outright.
+    notes: >-
+      125 MiB/s × 1024 ÷ 3,000 IOPS ≈ 42.7 KiB. The 256 KiB SSD max-op-size
+      bounds sweep range, it does not predict this knee.

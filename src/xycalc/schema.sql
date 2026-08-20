@@ -200,6 +200,8 @@ CREATE TABLE model_term (
                         'add_fraction',         -- percent of the running total
                         'floor_at',             -- never below this coefficient
                         'cap_at',               -- never above this coefficient
+                        'set_from_coefficient', -- seed running total from coeff
+                        'cap_at_throughput',    -- min(running, tp_mibps*1024/io_kib)
                         'note'                  -- constraints; no arithmetic
                     )),
     input_key       TEXT,           -- for apply='input'
@@ -236,7 +238,12 @@ CREATE TABLE model_term (
     CHECK (
         (apply IN ('input', 'divide_by_input', 'multiply_by_input', 'add_fraction_from_input')
             AND input_key IS NOT NULL AND coefficient_id IS NULL)
-        OR (apply NOT IN ('input', 'divide_by_input', 'multiply_by_input', 'add_fraction_from_input')
+        OR (apply = 'cap_at_throughput'
+            AND input_key IS NOT NULL AND coefficient_id IS NOT NULL)
+        OR (apply NOT IN (
+                'input', 'divide_by_input', 'multiply_by_input',
+                'add_fraction_from_input', 'cap_at_throughput'
+            )
             AND coefficient_id IS NOT NULL)
     )
 );

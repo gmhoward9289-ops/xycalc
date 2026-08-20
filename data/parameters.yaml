@@ -154,6 +154,16 @@ parameters:
     unit: KiB
     dimension: bytes
 
+  - slug: io.io_size_crossover_kib
+    label: I/O size where throughput binds before IOPS
+    unit: KiB
+    dimension: bytes
+    notes: >-
+      At block sizes above this, a device is limited by MiB/s rather than
+      operations per second. Derived from min(iops_ceiling, throughput_mibps ×
+      1024 ÷ io_size_kib) — distinct from io.max_io_size_kib, which is a hard
+      cap on operation size, not where the two ceilings cross.
+
   - slug: io.throughput_mibps
     label: Volume throughput
     unit: MiB/s

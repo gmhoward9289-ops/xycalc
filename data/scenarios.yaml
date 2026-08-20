@@ -135,6 +135,30 @@ scenarios:
           the checks read 0. Instance-level exceeded checks mean a bigger
           instance, not more volume IOPS.
 
+  - slug: storage.ebs-vs-nvme-at-io-size
+    label: EBS gp3 vs local NVMe at my I/O size
+    summary: >-
+      Compare effective random-read IOPS at your block size between gp3's
+      provisioned ceilings and a direct-attached NVMe baseline — the comparison
+      arm the corpus kept empty until issue #17.
+    input_sections:
+      - title: Workload shape
+        keys:
+          - io_size_kib
+          - provisioned_iops
+    steps:
+      - kind: model
+        model: ebs.gp3-iops-at-io-size
+      - kind: model
+        model: nvme-ssd.random-read-at-io-size
+    see_also:
+      - url: https://repost.aws/knowledge-center/ebs-troubleshoot-performance-issues-ec2
+        label: AWS — raise IOPS or throughput until exceeded checks stay at 0
+        reason: >-
+          If the EBS card binds below the NVMe card, the gap is real — but only
+          after VolumeIOPSExceededCheck / VolumeThroughputExceededCheck say you
+          are actually hitting a volume limit rather than an instance pipe.
+
   - slug: clickhouse.stub
     label: ClickHouse
     disabled: true
@@ -150,9 +174,3 @@ scenarios:
       Stub. Has a head start when its turn comes: ~/Claude/SCHEDULED-JOBS.md
       already holds a Celery+Redis evaluation dated 2026-07-31 and the
       conditions that would justify revisiting the decision.
-  - slug: nvme-ssd.stub
-    label: NVMe SSD (direct-attached)
-    disabled: true
-    note: >-
-      Stub. Exists mainly as the comparison arm for EBS — "how much worse is
-      network storage" is only answerable against a local baseline.
