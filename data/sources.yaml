@@ -309,3 +309,36 @@ sources:
       idle/loaded/under-load, not a production-scale colocation footprint.
       n=1, one host, one run. See results.json in the same directory for the
       full docker-stats output at each phase.
+
+  - slug: celery-optimizing-guide-5.4
+    title: Optimizing — Celery 5.4.0 documentation
+    publisher: Celery Project
+    url: https://docs.celeryq.dev/en/v5.4.0/userguide/optimizing.html
+    version: Celery 5.4.0
+    retrieved_on: '2026-08-20'
+    source_type: vendor_doc
+    notes: >-
+      Prefetch limits section — documents worker_prefetch_multiplier ×
+      concurrency as the reserved-task formula.
+
+  - slug: celery-configuration-defaults-5.4
+    title: celery.app.defaults — Celery 5.4.0
+    publisher: Celery Project
+    url: https://docs.celeryq.dev/en/v5.4.0/_modules/celery/app/defaults.html
+    version: Celery 5.4.0
+    retrieved_on: '2026-08-20'
+    source_type: source_code
+    notes: >-
+      Built-in default values shipped with Celery 5.4.0, including
+      worker_prefetch_multiplier and task_acks_late.
+
+  - slug: celery-redis-broker-5.4
+    title: Using Redis — Celery 5.4.0 documentation
+    publisher: Celery Project
+    url: https://docs.celeryq.dev/en/v5.4.0/getting-started/backends-and-brokers/redis.html
+    version: Celery 5.4.0
+    retrieved_on: '2026-08-20'
+    source_type: vendor_doc
+    notes: >-
+      Redis broker visibility timeout default (1 hour) and broker_transport_options
+      configuration surface.

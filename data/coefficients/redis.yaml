@@ -1,0 +1,20 @@
+# Redis coefficients referenced by Celery broker documentation.
+#
+# Celery is the consumer; Redis is the broker. Visibility timeout is configured
+# through Celery's broker_transport_options, but the default is stated on
+# Celery's Redis broker page for Celery 5.4.0.
+
+coefficients:
+  - slug: redis.broker-visibility-timeout-default-seconds
+    parameter: broker.visibility_timeout_seconds
+    system: redis
+    applies_to: Celery 5.4.0 using Redis as broker (Celery transport default)
+    value: 3600
+    confidence: documented
+    source: celery-redis-broker-5.4
+    quote: >-
+      The default visibility timeout for Redis is 1 hour.
+    notes: >-
+      Set via broker_transport_options visibility_timeout. The celery_probe
+      harness overrides this (PROBE_VISIBILITY_TIMEOUT, default 30s) to make
+      redelivery observable within bench windows — not Redis's own default.

@@ -38,15 +38,18 @@ systems:
   - slug: redis
     label: Redis
     category: cache
-    notes: Stub. No coefficients yet.
+    notes: >-
+      Celery broker coefficients start here (visibility timeout default via
+      Celery 5.4 docs). Maxmemory eviction characterisation is still open
+      (issue #15).
 
   - slug: celery
     label: Celery
     category: queue
     notes: >-
-      Stub. Has a head start when its turn comes: ~/Claude/SCHEDULED-JOBS.md
-      already holds a Celery+Redis evaluation dated 2026-07-31 and the
-      conditions that would justify revisiting the decision.
+      Documented prefetch and ack defaults (Celery 5.4.0) plus benchmark
+      observations from tools/bench/celery_probe/ via import_celery_probe.py.
+      Queue-depth and redelivery coefficients land from investigation 004 sweeps.
 
   - slug: nvme-ssd
     label: NVMe SSD (direct-attached)

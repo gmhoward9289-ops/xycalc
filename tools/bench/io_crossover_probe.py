@@ -290,7 +290,7 @@ def main() -> int:
     )
 
     print("===JSON===", file=sys.stderr)
-    print(json.dumps(asdict(result), indent=2))
+    print(json.dumps(asdict(result), indent=2), file=sys.stderr)
     return 0
 
 

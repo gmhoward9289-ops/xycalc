@@ -1,0 +1,50 @@
+# Celery coefficients.
+#
+# Documented rows are version-pinned to what the celery_probe Dockerfile installs
+# (celery[redis]==5.4.0). Benchmark rows land from investigation 004 sweep via
+# tools/import_celery_probe.py.
+
+coefficients:
+  - slug: celery.prefetch-reserved-count
+    parameter: queue.prefetch_reserved_tasks
+    system: celery
+    applies_to: Celery 5.4.0 (documented formula, not a fixed constant)
+    value: 4
+    confidence: documented
+    source: celery-optimizing-guide-5.4
+    quote: >-
+      The workers' default prefetch count is the worker_prefetch_multiplier
+      setting multiplied by the number of concurrency slots
+      (processes/threads/green-threads).
+    notes: >-
+      Value field records worker_prefetch_multiplier only (default 4). Multiply
+      by concurrency to get reserved tasks — the probe harness default is 8
+      workers, so 32 tasks may sit off-queue-but-not-running at steady state.
+
+  - slug: celery.worker-prefetch-multiplier-default
+    parameter: worker.prefetch_multiplier
+    system: celery
+    applies_to: Celery 5.4.0 default configuration
+    value: 4
+    confidence: code
+    source: celery-configuration-defaults-5.4
+    quote: >-
+      worker_prefetch_multiplier defaults to 4 in Celery's built-in defaults.
+    notes: >-
+      The probe harness exposes this as PROBE_PREFETCH and sweeps it in runs
+      6-7 of investigation 004. Default only — deployments override freely.
+
+  - slug: celery.task-acks-late-default
+    parameter: worker.task_acks_late
+    system: celery
+    applies_to: Celery 5.4.0 default configuration
+    value: 0
+    confidence: code
+    source: celery-configuration-defaults-5.4
+    quote: >-
+      task_acks_late defaults to False — the worker acknowledges the message
+      when it receives it, before execution begins.
+    notes: >-
+      Investigation 004's redelivery sub-claim requires task_acks_late=True.
+      With the default, broker redelivery is structurally unreachable regardless
+      of visibility_timeout or task duration.

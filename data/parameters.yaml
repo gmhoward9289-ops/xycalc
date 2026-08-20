@@ -208,6 +208,47 @@ parameters:
     unit: seconds
     dimension: seconds
 
+  # -- Celery / Redis broker ---------------------------------------------
+  - slug: queue.prefetch_reserved_tasks
+    label: Tasks reserved off-queue per worker (prefetch × concurrency)
+    unit: tasks
+    dimension: count
+
+  - slug: worker.prefetch_multiplier
+    label: Worker prefetch multiplier
+    unit: count
+    dimension: count
+
+  - slug: worker.task_acks_late
+    label: Acknowledge tasks after execution (0/1)
+    unit: count
+    dimension: count
+
+  - slug: broker.visibility_timeout_seconds
+    label: Broker visibility timeout
+    unit: seconds
+    dimension: seconds
+
+  - slug: queue.completion_rate_ceiling_ops_s
+    label: Fleet completion rate ceiling under stall
+    unit: ops/s
+    dimension: iops
+
+  - slug: queue.backlog_depth_max
+    label: Peak broker queue depth during load
+    unit: tasks
+    dimension: count
+
+  - slug: queue.drain_seconds
+    label: Seconds to drain backlog after arrivals stop
+    unit: seconds
+    dimension: seconds
+
+  - slug: queue.duplicate_rate_pct
+    label: Broker redelivery duplicate execution rate
+    unit: percent
+    dimension: percent
+
   # -- AWS EC2 instance catalog -------------------------------------------
   - slug: instance.vcpu_count
     label: vCPU count

@@ -138,7 +138,7 @@ class TestModels:
 
 
 class TestStubs:
-    @pytest.mark.parametrize("slug", ["clickhouse", "redis", "celery"])
+    @pytest.mark.parametrize("slug", ["clickhouse"])
     def test_deferred_systems_exist_and_are_honestly_empty(self, conn, slug):
         """Named so the roadmap is visible, empty so nothing reads as
         researched when it is not."""
