@@ -83,6 +83,34 @@ most. That is a hypothesis, not a finding.
 Both are gaps in the corpus rather than gaps in the telemetry. Named here so
 the omission is visible.
 
+## GridFS and large binaries
+
+| Series | Unit | Status | Why |
+|---|---|---|---|
+| `db.fs.files.stats().count` / `size` / `storageSize` | count / bytes | `obtainable` | Metadata collection footprint — usually small vs chunks. |
+| `db.fs.chunks.stats().count` / `size` / `storageSize` / `avgObjSize` | count / bytes | `obtainable` | Chunk payload + BSON overhead in aggregate. Compare `avgObjSize` to the documented 255 KiB default (261,120 B data field) to see custom chunk sizes or compression effects. |
+| `files.length` vs `files.chunkSize` | bytes | `obtainable` | Per-file: expected chunk count is `ceil(length / chunkSize)`. |
+
+**What the corpus already holds.** Default chunk size, 16 MiB BSON ceiling, and the 256 KiB MMAPv1 padding rationale are documented coefficients — no GridFS storage model yet, because vendor docs do not publish a fixed per-chunk overhead constant beyond the payload size.
+
+## PyMongo / driver connection demand
+
+| Series | Unit | Status | Why |
+|---|---|---|---|
+| `connections.current` / `connections.available` | count | `obtainable` | Server view of what pools opened. Compare to `processes × maxPoolSize`. |
+| Client `maxPoolSize` / `minPoolSize` / `maxConnecting` | count | `obtainable` (app config) | Defaults now cited (100 / 0 / 2). Config, not a mongosh metric. |
+
+## Foreign fields / `$lookup`
+
+No purpose-built server counter isolates "$lookup cost" as a single number. Proxies:
+
+| Series | Unit | Status | Why |
+|---|---|---|---|
+| Aggregation `$lookup` stage explain / profiler | ms | `obtainable` | Per-query latency under a fixed workload — manufacturable, not a vendor constant. |
+| `db.serverStatus().metrics.commands.aggregate` | count | `obtainable` | Volume, not join cost. |
+
+Corpus holds ObjectId = 12 B and "prefer manual refs over DBRefs"; it does **not** hold a `$lookup` latency multiplier — none is published.
+
 ## What would validate the models today
 
 The cheapest useful case needs no load generator — just a database small enough

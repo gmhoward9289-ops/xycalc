@@ -300,3 +300,168 @@ coefficients:
       instead of being an unexplained 35% (or any other number) baked into
       code. Never evaluated automatically; surfaced only as a note alongside
       the model's answer.
+
+  # -- GridFS / BSON document ceiling (enrichment 2026-08-20) -------------
+  - slug: mongodb.bson-max-document-bytes
+    parameter: storage.bson_max_document_bytes
+    system: mongodb
+    applies_to: MongoDB BSON document size limit (manual through 8.3)
+    value: 16777216
+    confidence: documented
+    source: mongodb-manual-gridfs
+    quote: >-
+      GridFS is a specification for storing and retrieving files that exceed
+      the BSON-document size limit of 16 MiB.
+    notes: >-
+      16 MiB = 16 × 1024 × 1024. The branch point between "store BinData in
+      one document" and "use GridFS (or object storage)". Not a soft
+      recommendation — documents above this are rejected.
+
+  - slug: mongodb.gridfs-chunk-size-bytes
+    parameter: storage.gridfs_chunk_size_bytes
+    system: mongodb
+    applies_to: GridFS default across conforming drivers (spec + manual 8.3)
+    value: 261120
+    confidence: documented
+    source: mongodb-manual-gridfs
+    quote: >-
+      By default, GridFS uses a chunk size of 255 KiB; that is, GridFS divides
+      a file into chunks of 255 KiB with the exception of the last chunk.
+    notes: >-
+      255 × 1024 = 261,120 bytes. Configurable per file / GridFSBucket.
+      Storage floor for a file of length L is roughly ceil(L / 261120) chunk
+      documents plus one files metadata document — vendor does not publish a
+      fixed per-chunk BSON overhead constant beyond this payload size.
+
+  - slug: mongodb.gridfs-mmapv1-padding-slot-bytes
+    parameter: storage.gridfs_mmapv1_padding_slot_bytes
+    system: mongodb
+    applies_to: GridFS spec design rationale (MMAPv1-era; still shapes default)
+    value: 262144
+    confidence: documented
+    source: mongodb-gridfs-spec
+    quote: >-
+      When the "data" field of a chunk is limited to 255 KiB, it ensures that
+      the whole chunk document (the chunk data along with an `_id` and other
+      information) will fit into a 256 KiB section of memory, making the best
+      use of the provided padding.
+    notes: >-
+      256 KiB = 262,144. Explains why the default is 255 KiB rather than 256.
+      Spec explicitly says WiredTiger does not need this padding optimisation;
+      the default remains for driver uniformity. Not an operational WiredTiger
+      cache coefficient.
+
+  # -- Foreign / related fields -------------------------------------------
+  - slug: mongodb.objectid-bytes
+    parameter: storage.objectid_bytes
+    system: mongodb
+    applies_to: BSON ObjectId type (manual through 8.3)
+    value: 12
+    confidence: documented
+    source: mongodb-manual-bson-types
+    quote: >-
+      ObjectId values are 12 bytes in length, consisting of: A 4-byte
+      timestamp, representing the ObjectId's creation, measured in seconds
+      since the Unix epoch.
+    notes: >-
+      Floor for a manual reference field that stores another document's _id.
+      A DBRef carries $ref / $id / optional $db on top of this and still needs
+      a second query (or $lookup) to resolve — no vendor latency multiplier
+      published for that second hop.
+
+  - slug: mongodb.prefer-manual-refs-over-dbref
+    parameter: schema.prefer_manual_refs_over_dbref
+    system: mongodb
+    applies_to: MongoDB database-references guidance (manual through 8.3)
+    value: 1
+    confidence: documented
+    source: mongodb-manual-database-references
+    quote: >-
+      Unless you have a compelling reason to use DBRefs, use manual references
+      instead.
+    notes: >-
+      Encoded 1 = vendor prefers manual refs. Qualitative schema guidance,
+      not a sizing amplifier. $lookup remains the documented join for
+      normalised models; reduce-lookup antipattern docs say frequent $lookup
+      is slow vs embedding, without a numeric factor this corpus can cite.
+
+  # -- PyMongo / driver pool defaults -------------------------------------
+  - slug: mongodb.pymongo-max-pool-size
+    parameter: driver.max_pool_size
+    system: mongodb
+    applies_to: PyMongo MongoClient connection pool default (docs 2026-08-20)
+    value: 100
+    confidence: documented
+    source: pymongo-connection-pools
+    quote: >-
+      maxPoolSize — The maximum number of concurrent connections that the pool
+      maintains. If the maximum pool size is reached, further requests wait
+      until a connection becomes available. Default: 100
+    notes: >-
+      Per MongoClient. Celery prefork with N child processes and one client
+      each implies up to N × 100 connections toward mongod — orthogonal to
+      WiredTiger ticket concurrency (128/dynamic). Does not size per-connection
+      server RAM (still uncited).
+
+  - slug: mongodb.pymongo-min-pool-size
+    parameter: driver.min_pool_size
+    system: mongodb
+    applies_to: PyMongo MongoClient connection pool default (docs 2026-08-20)
+    value: 0
+    confidence: documented
+    source: pymongo-connection-pools
+    quote: >-
+      minPoolSize — The minimum number of concurrent connections that the pool
+      maintains. If the number of open connections falls below this value due
+      to network errors, PyMongo attempts to create new connections to maintain
+      this minimum. Default: 0
+
+  - slug: mongodb.pymongo-max-connecting
+    parameter: driver.max_connecting
+    system: mongodb
+    applies_to: PyMongo MongoClient connection pool default (docs 2026-08-20)
+    value: 2
+    confidence: documented
+    source: pymongo-connection-pools
+    quote: >-
+      maxConnecting — The maximum number of connections that each pool can
+      establish concurrently. If this limit is reached, further requests wait
+      until a connection is established or another in-use connection is checked
+      back into the pool. Default: 2
+    notes: >-
+      Connection-string options manual also defaults maxConnecting to 2 and
+      warns that raising it speeds establishment but increases connection-storm
+      risk. Client-side throttle, not a server ticket.
+
+  - slug: mongodb.pymongo-connect-timeout-ms
+    parameter: driver.connect_timeout_ms
+    system: mongodb
+    applies_to: PyMongo MongoClient connection pool default (docs 2026-08-20)
+    value: 20000
+    confidence: documented
+    source: pymongo-connection-pools
+    quote: >-
+      connectTimeoutMS — The time that PyMongo waits when establishing a new
+      connection before timing out. Default: 20000
+
+  # -- Vertical growth: percentage cache ceiling (MongoDB 8.2+) -----------
+  - slug: mongodb.cache-size-pct-ceiling
+    parameter: host.cache_size_pct_ceiling
+    system: mongodb
+    applies_to: MongoDB >=8.2 wiredTigerCacheSizePct / cacheSizePct
+    value: 80
+    confidence: documented
+    source: mongodb-manual-wiredtiger
+    quote: >-
+      Avoid increasing the WiredTiger internal cache size above its default
+      value. If your case requires to do so, you can use --wiredTigerCacheSizePct
+      to account for changes in memory due to vertical. You must specify a
+      percentage of up to 80% of available memory.
+    notes: >-
+      Vertical-growth knob, not a replacement for the default 50%-of-(RAM-1GB)
+      formula. Vendor still says avoid raising the cache above default; the
+      percentage form exists so the cache tracks host RAM when the instance
+      grows. Calculated values still clamp to the 0.256 GB minimum branch.
+      Colocation (multiple mongod / Redis / ClickHouse on one box) still
+      requires decreasing the share — see docs/research/mongodb-vertical-scaling-r8.md
+      and T11; no measured colocation-share coefficient yet.
