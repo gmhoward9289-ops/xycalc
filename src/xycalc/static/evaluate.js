@@ -275,11 +275,6 @@ const XY = (() => {
         continue;
       }
       for (const end of ["lo", "mode", "hi"]) {
-        // Relative tolerance, not equality: Python and V8 both use IEEE 754
-        // doubles and the operations run in the same order, so this should be
-        // exact -- but pinning to the last bit would turn a harmless
-        // re-association into a red page. 1e-12 is far tighter than any
-        // difference that could change a rendered figure.
         const a = got[end], b = g[end];
         const tol = Math.max(Math.abs(b), 1) * 1e-12;
         if (!(Math.abs(a - b) <= tol)) {
@@ -294,7 +289,361 @@ const XY = (() => {
         }
       }
     }
+    for (const g of corpus.scenario_golden || []) {
+      let got;
+      try {
+        got = chainEvaluate(corpus, g.scenario, g.inputs);
+      } catch (e) {
+        failures.push({ vector: g, reason: "chain threw: " + e.message });
+        continue;
+      }
+      if (got.steps.length !== g.steps.length) {
+        failures.push({
+          vector: g,
+          reason: "chain step count js " + got.steps.length + " vs python " + g.steps.length,
+        });
+        continue;
+      }
+      for (let i = 0; i < g.steps.length; i++) {
+        const a = got.steps[i], b = g.steps[i];
+        if (a.kind !== b.kind || a.slug !== b.slug) {
+          failures.push({ vector: g, reason: "step " + i + ": js " + a.kind + "/" + a.slug + " vs python " + b.kind + "/" + b.slug });
+          continue;
+        }
+        for (const end of ["lo", "mode", "hi"]) {
+          if (b[end] === undefined) continue;
+          const tol = Math.max(Math.abs(b[end]), 1) * 1e-12;
+          if (!(Math.abs(a[end] - b[end]) <= tol)) {
+            failures.push({ vector: g, reason: a.slug + " " + end + ": js " + a[end] + " vs python " + b[end] });
+          }
+        }
+        if (b.pick_mode !== undefined && a.pick_mode !== b.pick_mode) {
+          failures.push({ vector: g, reason: a.slug + " pick_mode: js " + a.pick_mode + " vs python " + b.pick_mode });
+        }
+        if (b.volume_gib !== undefined) {
+          const tol = Math.max(Math.abs(b.volume_gib), 1) * 1e-12;
+          if (!(Math.abs(a.volume_gib - b.volume_gib) <= tol)) {
+            failures.push({ vector: g, reason: a.slug + " volume_gib: js " + a.volume_gib + " vs python " + b.volume_gib });
+          }
+        }
+      }
+    }
     return failures;
+  }
+
+  function gp3VolumeSpec(volumeBytes) {
+    const gib = volumeBytes / (1024 ** 3);
+    const maxIops = Math.min(80000, 500 * gib);
+    return {
+      volume_bytes: volumeBytes,
+      volume_gib: gib,
+      baseline_iops: 3000,
+      max_provisionable_iops: maxIops,
+      baseline_throughput_mibps: 125,
+      max_throughput_mibps: 2000,
+    };
+  }
+
+  function attachInstanceEbs(spec, instance) {
+    if (!instance) return spec;
+    const out = Object.assign({}, spec);
+    out.instance_name = instance.name;
+    if (instance.ebs_bandwidth_gbps == null) return out;
+    out.instance_ebs_bandwidth_gbps = instance.ebs_bandwidth_gbps;
+    out.instance_ebs_throughput_mibps = instance.ebs_bandwidth_gbps * 125;
+    out.usable_throughput_mibps = Math.min(out.max_throughput_mibps, out.instance_ebs_throughput_mibps);
+    return out;
+  }
+
+  function selectInstance(result, catalog, family, ceilingBytes) {
+    let pool = catalog.filter((i) => !family || i.name.toLowerCase().indexOf(family.toLowerCase()) === 0);
+    if (!pool.length) throw new ModelError("no instances in catalog matching family '" + family + "'");
+    if (ceilingBytes != null) {
+      pool = pool.filter((i) => i.ram_bytes <= ceilingBytes);
+      if (!pool.length) {
+        throw new ModelError("ceiling " + ceilingBytes + " bytes excludes every instance matching family '" + family + "'");
+      }
+    }
+    const pick = (need) => {
+      const fits = pool.filter((i) => i.ram_bytes >= need);
+      if (!fits.length) return null;
+      return fits.reduce((a, b) => (a.ram_bytes < b.ram_bytes ? a : b));
+    };
+    const largest = pool.reduce((a, b) => (a.ram_bytes > b.ram_bytes ? a : b));
+    return {
+      required_lo: result.lo,
+      required_mode: result.mode,
+      required_hi: result.hi,
+      pick_lo: pick(result.lo),
+      pick_mode: pick(result.mode),
+      pick_hi: pick(result.hi),
+      largest_in_pool: largest,
+      exceeds_pool: result.hi > largest.ram_bytes,
+    };
+  }
+
+  function sumScenarioBytes(inputs, keys) {
+    let total = 0;
+    for (const key of keys) {
+      const raw = inputs[key];
+      if (raw === undefined || raw === null || raw === "") continue;
+      total += parseBytes(raw);
+    }
+    return total;
+  }
+
+  function presentModel(model, result) {
+    return {
+      kind: "model",
+      slug: model.slug,
+      model: model.slug,
+      question: model.question,
+      unit: result.unit,
+      answer: { lo: result.lo, mode: result.mode, hi: result.hi },
+      inputs: result.inputs,
+      steps: result.steps.map((s) => ({
+        key: s.term.key,
+        label: s.term.label,
+        role: s.term.role,
+        contribution: s.contribution,
+        running: { lo: s.lo, mode: s.mode, hi: s.hi },
+        skipped: s.skipped,
+        skip_reason: s.skip_reason,
+        rationale: s.term.rationale,
+        coefficient: s.term.coefficient,
+        confidence: s.term.confidence,
+        applies_to: s.term.applies_to,
+        source: s.term.source,
+        source_title: s.term.source_title,
+        source_url: s.term.source_url,
+        quote: s.term.quote,
+      })),
+      constraints: result.constraints.map((t) => ({
+        key: t.key,
+        label: t.label,
+        value: t.coeff_mode,
+        unit: t.unit,
+        rationale: t.rationale,
+        source: t.source,
+        source_url: t.source_url,
+      })),
+      validation: model.validation,
+      reframe: model.reframe,
+    };
+  }
+
+  function buildInstanceSizingSummary(presented, inputs) {
+    const summary = {};
+    let host, inst, gp3, ebs;
+    for (const s of presented) {
+      if (s.kind === "model" && s.model === "mongodb.host-ram") host = s;
+      else if (s.kind === "lookup" && s.gp3) gp3 = s;
+      else if (s.kind === "lookup" && s.pick) inst = s;
+      else if (s.kind === "model" && s.model === "ebs.iops-to-provision") ebs = s;
+    }
+    if (host && host.answer) {
+      summary.ram = { lo: host.answer.lo, mode: host.answer.mode, hi: host.answer.hi, unit: host.unit };
+    }
+    if (inst && inst.pick) {
+      const pick = inst.pick;
+      const vcpu = (spec) => (spec == null ? null : spec.vcpu);
+      summary.cpu = {
+        lo: vcpu(pick.pick_lo),
+        mode: vcpu(pick.pick_mode),
+        hi: vcpu(pick.pick_hi),
+        unit: "vcpu",
+        instance_lo: pick.pick_lo && pick.pick_lo.name,
+        instance_mode: pick.pick_mode && pick.pick_mode.name,
+        instance_hi: pick.pick_hi && pick.pick_hi.name,
+      };
+    }
+    if (gp3 && gp3.gp3) {
+      const spec = gp3.gp3;
+      const disk = {
+        volume_gib: spec.volume_gib,
+        baseline_iops: spec.baseline_iops,
+        max_provisionable_iops: spec.max_provisionable_iops,
+        baseline_throughput_mibps: spec.baseline_throughput_mibps,
+        max_throughput_mibps: spec.max_throughput_mibps,
+      };
+      if (ebs && ebs.answer) {
+        disk.provisioned_iops = { lo: ebs.answer.lo, mode: ebs.answer.mode, hi: ebs.answer.hi };
+        disk.provisioned_iops_assumed_mean = !!(ebs.assumed_inputs && ebs.assumed_inputs.average_iops != null);
+      }
+      if (spec.instance_name) disk.instance_name = spec.instance_name;
+      if (spec.instance_ebs_bandwidth_gbps != null) {
+        disk.instance_ebs_bandwidth_gbps = spec.instance_ebs_bandwidth_gbps;
+        disk.usable_throughput_mibps = spec.usable_throughput_mibps;
+      }
+      summary.disk = disk;
+    }
+    const current = {};
+    if (inputs.current_ram) current.ram = parseBytes(inputs.current_ram);
+    if (inputs.current_vcpu) current.vcpu = parseFloat(inputs.current_vcpu);
+    if (inputs.current_disk_iops) current.disk_iops = parseFloat(inputs.current_disk_iops);
+    if (inputs.current_disk_throughput) current.disk_throughput_mibps = parseFloat(inputs.current_disk_throughput);
+    if (Object.keys(current).length) summary.current = current;
+    return summary;
+  }
+
+  // Mirrors model.py::chain_evaluate. Lookups (instance catalog, gp3 catalog
+  // numbers) are data in the export blob, not a third implementation of the
+  // arithmetic — the golden scenario vector still pins the composed bands.
+  function chainEvaluate(corpus, scenarioSlug, inputs) {
+    const scenario = (corpus.scenarios || []).find((s) => s.slug === scenarioSlug);
+    if (!scenario) throw new ModelError("no scenario '" + scenarioSlug + "'");
+    const bySlug = {};
+    for (const m of corpus.models) bySlug[m.slug] = m;
+    const catalog = corpus.instance_catalog || [];
+    const coeffMode = corpus.coefficient_mode || {};
+    const ceiling = corpus.default_instance_ceiling_bytes;
+    const supplied = Object.assign({}, inputs);
+    const out = [];
+    const modelResults = {};
+    let previous = null;
+
+    const fillDefaults = (step) => {
+      const assumed = {};
+      const defaults = step.defaults || {};
+      for (const key of Object.keys(defaults)) {
+        if (supplied[key] === undefined || supplied[key] === null || supplied[key] === "") {
+          supplied[key] = defaults[key];
+          assumed[key] = defaults[key];
+        }
+      }
+      const fromCoeff = step.defaults_from_coefficient || {};
+      for (const key of Object.keys(fromCoeff)) {
+        if (supplied[key] !== undefined && supplied[key] !== null && supplied[key] !== "") continue;
+        const slug = fromCoeff[key];
+        if (!(slug in coeffMode)) {
+          throw new ModelError((step.model || step.lookup) + ": default coefficient '" + slug + "' is not in the corpus");
+        }
+        supplied[key] = coeffMode[slug];
+        assumed[key] = coeffMode[slug];
+      }
+      return assumed;
+    };
+
+    let lastBytesStep = null;
+    for (const s of scenario.steps) {
+      if ((s.kind || "model") !== "model") continue;
+      const when = s.when_input;
+      if (when && !supplied[when] && !(s.defaults && when in s.defaults) && !(s.defaults_from_coefficient && when in s.defaults_from_coefficient)) {
+        continue;
+      }
+      const model = bySlug[s.model];
+      if (model && model.output_unit === "bytes") lastBytesStep = s;
+    }
+
+    for (const step of scenario.steps) {
+      const kind = step.kind || "model";
+      const when = step.when_input;
+      if (when && !supplied[when]) continue;
+
+      if (kind === "model") {
+        const assumed = fillDefaults(step);
+        const model = bySlug[step.model];
+        if (!model) throw new ModelError("no model '" + step.model + "' in corpus");
+        const feed = step.feed || {};
+        const ownKeys = {};
+        for (const i of model.inputs) ownKeys[i.key] = true;
+        let composed;
+        if (!Object.keys(feed).length) {
+          const scoped = {};
+          for (const k of Object.keys(supplied)) if (ownKeys[k]) scoped[k] = supplied[k];
+          composed = evaluate(model, scoped);
+        } else {
+          if (!previous) throw new ModelError(step.model + ": feed references 'previous' but this is the first step");
+          const fedKeys = Object.keys(feed).filter((k) => feed[k] === "previous");
+          const run = (bandValue) => {
+            const merged = {};
+            for (const k of Object.keys(supplied)) if (ownKeys[k]) merged[k] = supplied[k];
+            for (const k of fedKeys) merged[k] = bandValue;
+            return evaluate(model, merged);
+          };
+          const rLo = run(previous.lo), rMode = run(previous.mode), rHi = run(previous.hi);
+          if (!(rLo.lo <= rMode.mode && rMode.mode <= rHi.hi)) {
+            throw new ModelError(
+              step.model + ": chained band inverted (lo=" + rLo.lo + ", mode=" + rMode.mode + ", hi=" + rHi.hi + ") -- refusing to report a band that would read as more confident than it is"
+            );
+          }
+          composed = {
+            model: model.slug,
+            lo: rLo.lo,
+            mode: rMode.mode,
+            hi: rHi.hi,
+            unit: rMode.unit,
+            steps: rMode.steps,
+            constraints: rMode.constraints,
+            inputs: rMode.inputs,
+          };
+        }
+        const presented = presentModel(model, composed);
+        presented.chained = !!Object.keys(feed).length;
+        if (Object.keys(assumed).length) presented.assumed_inputs = assumed;
+        presented.lo = composed.lo;
+        presented.mode = composed.mode;
+        presented.hi = composed.hi;
+        out.push(presented);
+        previous = composed;
+        modelResults[model.slug] = composed;
+      } else if (kind === "lookup") {
+        const lookup = step.lookup;
+        if (lookup === "gp3_spec") {
+          const keys = step.sum_inputs || ["storage_size"];
+          let total = sumScenarioBytes(supplied, keys);
+          if (step.sum_model) {
+            const prior = modelResults[step.sum_model];
+            if (!prior) throw new ModelError("gp3_spec: sum_model '" + step.sum_model + "' has not run yet");
+            total += prior.mode;
+          }
+          if (total <= 0) {
+            throw new ModelError("gp3_spec: need at least one on-disk size input among " + keys.join(", "));
+          }
+          let modeInst = null;
+          for (let i = out.length - 1; i >= 0; i--) {
+            if (out[i].pick && out[i].pick.pick_mode) { modeInst = out[i].pick.pick_mode; break; }
+          }
+          const spec = attachInstanceEbs(gp3VolumeSpec(total), modeInst);
+          out.push({
+            kind: "lookup",
+            slug: "ebs.gp3-spec",
+            lookup: "ebs.gp3-spec",
+            chained: false,
+            gp3: spec,
+            volume_gib: spec.volume_gib,
+            baseline_iops: spec.baseline_iops,
+          });
+          continue;
+        }
+        if (lookup !== "instance_select") throw new ModelError("unknown lookup kind '" + lookup + "'");
+        if (!previous) throw new ModelError("instance_select: no previous step's band to pick against");
+        const pick = selectInstance(previous, catalog, step.family, ceiling === 0 ? null : ceiling);
+        out.push({
+          kind: "lookup",
+          slug: "aws-ec2.instance-select",
+          lookup: "aws-ec2.instance-select",
+          chained: true,
+          pick: pick,
+          pick_mode: pick.pick_mode ? pick.pick_mode.name : null,
+          lo: previous.lo,
+          mode: previous.mode,
+          hi: previous.hi,
+        });
+      } else {
+        throw new ModelError("unknown scenario step kind '" + kind + "'");
+      }
+    }
+
+    const presented = out;
+    return {
+      scenario: scenario.slug,
+      label: scenario.label,
+      summary: scenario.summary,
+      see_also: scenario.see_also || [],
+      steps: presented,
+      sizing_summary: buildInstanceSizingSummary(presented, inputs),
+    };
   }
 
   return {
@@ -306,6 +655,7 @@ const XY = (() => {
     evaluate: evaluate,
     headroom: headroom,
     checkGolden: checkGolden,
+    chainEvaluate: chainEvaluate,
   };
 })();
 

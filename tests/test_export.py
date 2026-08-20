@@ -145,9 +145,21 @@ def test_render_is_deterministic(blob):
 
 def test_render_substitutes_every_placeholder(blob):
     html = render(blob)
-    for marker in ("__XYCALC_CORPUS_JSON__", "__XYCALC_EVALUATE_JS__", "__XYCALC_CRUMB__"):
+    for marker in ("__XYCALC_CORPUS_JSON__", "__XYCALC_EVALUATE_JS__", "__XYCALC_CRUMB__", "__XYCALC_FAMILY_STRIP__"):
         assert marker not in html
     assert "XY.checkGolden" in html, "the page shipped without its self-check"
+    assert "XY.chainEvaluate" in html, "the page shipped without scenario arithmetic"
+    assert "xycalc · a swamplink research property" in html
+
+
+def test_export_blob_carries_scenario_chain(blob):
+    slugs = {s["slug"] for s in blob["scenarios"]}
+    assert "mongodb.size-to-instance" in slugs
+    inst = next(s for s in blob["scenarios"] if s["slug"] == "mongodb.size-to-instance")
+    assert inst["nvd_chart"]["annual"][0]["count"] == 28818
+    assert inst["nvd_chart"]["annual"][2]["microsoft"] == 1255
+    assert blob["instance_catalog"]
+    assert blob["scenario_golden"]
 
 
 def test_closing_script_tags_in_the_corpus_cannot_escape(blob):

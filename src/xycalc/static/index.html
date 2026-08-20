@@ -155,6 +155,8 @@ blockquote { margin: .4rem 0 0; padding-left: .7rem; border-left: 2px solid var(
 .scroll { overflow-x: auto; }
 .error { color: #b3261e; font-family: var(--mono); font-size: .85rem; }
 footer { margin-top: 3rem; padding-top: 1.25rem; border-top: 1px solid var(--line); font-size: .78rem; color: var(--muted); }
+footer .family { display: flex; flex-wrap: wrap; gap: .35rem 1.2rem; margin-top: .85rem; }
+footer .family a { color: var(--muted); }
 [hidden] { display: none !important; }
 
 /* -- cascade (scenario view) -- */
@@ -229,9 +231,30 @@ footer { margin-top: 3rem; padding-top: 1.25rem; border-top: 1px solid var(--lin
 .instance-verdict { font-size: .82rem; color: var(--muted); margin-top: .65rem; line-height: 1.4; }
 
 /* -- NVD chart -- */
-.nvd-fill { width: 100%; background: var(--accent); opacity: .55; border-radius: 4px 4px 0 0; min-height: 4px; }
-.nvd-bar { flex: 1; display: flex; flex-direction: column; align-items: center; height: 100%; justify-content: flex-end; }
-.nvd-bar .year, .nvd-bar .count { font-family: var(--mono); color: var(--muted); }
+.nvd-panel.panel { padding: .85rem 1rem; margin-bottom: .85rem; }
+.nvd-panel h2 { margin: 0 0 .35rem; font-size: .72rem; }
+.nvd-layout { display: grid; grid-template-columns: minmax(14rem, 1.3fr) minmax(12rem, 1fr); gap: .75rem 1rem; align-items: start; }
+svg.nvd-chart { width: 100%; height: auto; display: block; }
+.nvd-chart .axis line { stroke: var(--line); }
+.nvd-chart .axis text { fill: var(--muted); font-family: var(--mono); font-size: 10px; }
+.nvd-chart .axis-title { fill: var(--muted); font-family: var(--sans); font-size: 10px; }
+.nvd-chart .nvd-line { fill: none; stroke: var(--accent); stroke-width: 2; }
+.nvd-chart .nvd-dot { fill: var(--accent); }
+.nvd-chart .ms-dot { fill: var(--amplifier); }
+.nvd-chart .legend { font-family: var(--sans); font-size: 10px; fill: var(--muted); }
+.nvd-side { display: flex; flex-direction: column; gap: .45rem; min-width: 0; }
+.nvd-meta { font-size: .72rem; color: var(--muted); margin: 0; line-height: 1.35; }
+.nvd-actions { display: flex; flex-wrap: wrap; gap: .35rem; }
+.nvd-actions button.secondary {
+  background: var(--panel); color: var(--accent); border: 1px solid var(--line);
+}
+.nvd-actions button.secondary:hover { border-color: var(--accent); filter: none; }
+.funnel { margin: .65rem 0 0; display: flex; flex-direction: column; gap: .35rem; }
+.funnel-row { display: grid; grid-template-columns: 8.5rem 1fr auto; gap: .45rem; align-items: center; }
+.funnel-row .k { font-size: .68rem; color: var(--muted); }
+.funnel-row .v { font-family: var(--mono); font-size: .72rem; color: var(--muted); }
+.funnel-track { height: 8px; background: var(--line); border-radius: 4px; overflow: hidden; }
+.funnel-track span { display: block; height: 100%; background: var(--accent); opacity: .5; border-radius: 4px; min-width: 2px; }
 
 .input-section { margin-bottom: .85rem; padding-bottom: .65rem; border-bottom: 1px dashed var(--line); }
 .input-section:last-child { border-bottom: 0; margin-bottom: 0; padding-bottom: 0; }
@@ -329,25 +352,12 @@ footer { margin-top: 3rem; padding-top: 1.25rem; border-top: 1px solid var(--lin
   100% { box-shadow: none; }
 }
 
-/* -- NVD chart (compact) -- */
-.nvd-panel.panel { padding: .85rem 1rem; margin-bottom: .85rem; }
-.nvd-panel h2 { margin: 0 0 .35rem; font-size: .72rem; }
-.nvd-layout { display: grid; grid-template-columns: minmax(10rem, 1fr) minmax(12rem, 1.4fr); gap: .75rem 1rem; align-items: end; }
-.nvd-bars { display: flex; align-items: flex-end; gap: .45rem; height: 5.5rem; margin: 0; }
-.nvd-bar .year { font-size: .68rem; margin-top: .25rem; }
-.nvd-bar .count { font-size: .62rem; }
-.nvd-side { display: flex; flex-direction: column; gap: .45rem; min-width: 0; }
-.nvd-meta { font-size: .72rem; color: var(--muted); margin: 0; line-height: 1.35; }
-.nvd-actions { display: flex; flex-wrap: wrap; gap: .35rem; }
-.nvd-actions button.secondary {
-  background: var(--panel); color: var(--accent); border: 1px solid var(--line);
-}
-.nvd-actions button.secondary:hover { border-color: var(--accent); filter: none; }
 @media (max-width: 52rem) {
   .input-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media (max-width: 42rem) {
   .nvd-layout { grid-template-columns: 1fr; }
+  .funnel-row { grid-template-columns: 1fr; }
   .input-grid { grid-template-columns: 1fr; }
 }
 </style>
@@ -418,6 +428,16 @@ footer { margin-top: 3rem; padding-top: 1.25rem; border-top: 1px solid var(--lin
   Code Apache-2.0 · corpus CC BY 4.0 ·
   <code>xycalc why &lt;model&gt;</code> prints a citation chain in a terminal ·
   <code>xycalc scenario &lt;slug&gt;</code> prints a cascade in a terminal.
+  <div class="family">
+    <span>xycalc · a swamplink research property</span>
+    <a href="https://swamplink.com/">swamplink.com</a>
+    <a href="https://wings.swamplink.com/">wings — the chicken one</a>
+    <a href="https://foundation.swamplink.com/">foundation</a>
+    <a href="https://swamplink.com/data/plates/">plates — the surveillance one</a>
+    <a href="https://swamplink.com/data/trust/">ai trust</a>
+    <a href="https://swamplink.com/data/policy/">data policy</a>
+    <a href="https://blog.swamplink.com/">the blog</a>
+  </div>
 </footer>
 
 </div>
@@ -429,6 +449,7 @@ let SCENARIOS = [];
 let currentScenario = null;
 let scenarioCalcDirty = false;
 let scenarioCalcBusy = false;
+let openedMathOnce = false;
 
 function fmtBytes(n) {
   const units = [["TB", 1e12], ["GB", 1e9], ["MB", 1e6]];
@@ -770,25 +791,61 @@ function wireScenarioInputs() {
 
 function renderNvdChart(chart) {
   if (!chart) return "";
-  const max = Math.max(...chart.annual.map(a => a.count));
-  const bars = chart.annual.map(a => {
-    const pct = (a.count / max * 100).toFixed(1);
-    return `<div class="nvd-bar" title="${a.count.toLocaleString()} CVEs published">
-      <div class="nvd-fill" style="height:${pct}%"></div>
-      <span class="year">${a.year}</span>
-      <span class="count">${(a.count / 1000).toFixed(1)}k</span>
-    </div>`;
+  const years = chart.annual;
+  const W = 420, H = 168, L = 52, R = 10, T = 18, B = 40;
+  const iw = W - L - R, ih = H - T - B;
+  const nvdMax = Math.max(...years.map(a => a.count));
+  const yMax = nvdMax * 1.15;
+  const xAt = (i) => L + (years.length === 1 ? iw / 2 : (i / (years.length - 1)) * iw);
+  const yAt = (v) => T + ih * (1 - v / yMax);
+  const nvdPath = years.map((a, i) => `${i ? "L" : "M"}${xAt(i).toFixed(1)} ${yAt(a.count).toFixed(1)}`).join(" ");
+  const yTicks = [0, Math.round(nvdMax / 2 / 1000) * 1000, nvdMax].filter((v, i, arr) => arr.indexOf(v) === i);
+  const msPts = years.map((a, i) => a.microsoft != null ? { i, v: a.microsoft, year: a.year } : null).filter(Boolean);
+  const axis = yTicks.map(v => {
+    const y = yAt(v).toFixed(1);
+    return `<line x1="${L}" x2="${W - R}" y1="${y}" y2="${y}"></line>
+      <text x="${L - 6}" y="${y}" text-anchor="end" dominant-baseline="middle">${(v / 1000).toFixed(0)}k</text>`;
   }).join("");
+  const xLabels = years.map((a, i) =>
+    `<text x="${xAt(i).toFixed(1)}" y="${H - 18}" text-anchor="middle">${a.year}</text>`
+  ).join("");
+  const dots = years.map((a, i) =>
+    `<circle class="nvd-dot" cx="${xAt(i).toFixed(1)}" cy="${yAt(a.count).toFixed(1)}" r="3.5">
+      <title>${a.year}: ${a.count.toLocaleString()} CVEs published</title></circle>`
+  ).join("");
+  const msMarks = msPts.map(p =>
+    `<circle class="ms-dot" cx="${xAt(p.i).toFixed(1)}" cy="${yAt(p.v).toFixed(1)}" r="4">
+      <title>Microsoft ${p.year}: ${p.v.toLocaleString()} CVEs</title></circle>`
+  ).join("");
+  const legend = `<text class="legend" x="${L}" y="12">NVD all vendors</text>
+    ${msPts.length ? `<circle class="ms-dot" cx="${L + 118}" cy="8" r="3"></circle>
+    <text class="legend" x="${L + 126}" y="12">Microsoft ${msPts.map(p => p.year).join(", ")}</text>` : ""}`;
   const g = chart.growth_pct;
+  const src = chart.source_url
+    ? `<a href="${chart.source_url}" target="_blank" rel="noopener">${chart.source}</a>`
+    : chart.source;
   return `
     <div class="panel nvd-panel">
       <h2>CVE publication growth</h2>
       <div class="nvd-layout">
-        <div class="nvd-bars">${bars}</div>
+        <svg class="nvd-chart" viewBox="0 0 ${W} ${H}" role="img"
+             aria-label="CVEs published per year, ${years[0].year} to ${years.at(-1).year}">
+          <g class="axis">
+            ${axis}
+            ${xLabels}
+            <text class="axis-title" x="12" y="${T + ih / 2}" text-anchor="middle"
+                  transform="rotate(-90 12 ${T + ih / 2})">CVEs published per year</text>
+          </g>
+          ${legend}
+          <path class="nvd-line" d="${nvdPath}"></path>
+          ${dots}${msMarks}
+        </svg>
         <div class="nvd-side">
           <p class="nvd-meta">
             Cumulative through 2025: <strong>${chart.cumulative_2025.toLocaleString()}</strong>.
             YoY band when target is blank: <strong>${g.lo}–${g.mode}–${g.hi}%</strong>.
+            Source: ${src}.
+            ${chart.microsoft_note ? `<span>${chart.microsoft_note}</span>` : ""}
           </p>
           <div class="nvd-actions">
             <button type="button" class="secondary" id="nvd-use-growth">Growth band</button>
@@ -891,6 +948,7 @@ function renderSizingSummary(s, meta = {}) {
 
   if (!metrics.length) return "";
   const lede = meta.lede ? `<p class="summary-lede">${meta.lede}</p>` : "";
+  const funnel = meta.funnel || "";
   return `
     <div class="panel sizing-summary" id="sizing-summary-panel">
       <div class="summary-head">
@@ -899,6 +957,7 @@ function renderSizingSummary(s, meta = {}) {
       </div>
       ${lede}
       <div class="summary-grid">${metrics.join("")}</div>
+      ${funnel}
     </div>`;
 }
 
@@ -975,6 +1034,12 @@ function selectScenario(slug) {
   clearMissingFieldMarks();
   scenarioCalcDirty = false;
   scenarioCalcBusy = false;
+  openedMathOnce = false;
+  $("scenario-cascade").innerHTML = "";
+  $("scn-error").hidden = true;
+  clearMissingFieldMarks();
+  scenarioCalcDirty = false;
+  scenarioCalcBusy = false;
   setRecalcStatus("", "Fill required fields — sizing updates as you type.");
   maybeAutoCalculate();
 }
@@ -1024,7 +1089,7 @@ async function calculateScenario(auto) {
     return;
   }
   scenarioCalcDirty = false;
-  renderCascade(data, !auto);
+  renderCascade(data, {scroll: !auto, openMath: !auto});
   setRecalcStatus("ok", "Up to date — change any field to recalculate.");
 }
 
@@ -1080,7 +1145,31 @@ function renderInstanceCard(step, n) {
     </div>`;
 }
 
-function renderCascade(data, scroll) {
+function funnelHtml(data) {
+  const pick = (slug) => data.steps.find(s => s.model === slug);
+  const rows = [
+    ["Projected storage", pick("nvd.storage-from-vuln-growth")],
+    ["WiredTiger cache", pick("mongodb.wt-cache")],
+    ["Host RAM", pick("mongodb.host-ram")],
+  ].filter(([, s]) => s && s.answer);
+  if (rows.length < 2) return "";
+  const max = Math.max(...rows.map(([, s]) => s.answer.hi));
+  const body = rows.map(([label, s]) => {
+    const pct = Math.max(4, (s.answer.mode / max) * 100);
+    return `<div class="funnel-row">
+      <div class="k">${label}</div>
+      <div class="funnel-track"><span style="width:${pct.toFixed(1)}%"></span></div>
+      <div class="v">${fmt(s.answer.lo, s.unit)} – ${fmt(s.answer.hi, s.unit)}</div>
+    </div>`;
+  }).join("");
+  return `<div class="funnel">${body}</div>`;
+}
+
+function renderCascade(data, opts) {
+  const scroll = opts === true || (opts && opts.scroll);
+  const openMath = (opts === true || (opts && opts.openMath)) && !openedMathOnce;
+  if (openMath) openedMathOnce = true;
+
   const worst = { none: 0, thin: 1, reasonable: 2 };
   let worstGrade = null;
 
@@ -1098,7 +1187,7 @@ function renderCascade(data, scroll) {
     lede = `Vulnerability collections grow to <strong>${fmt(a.mode, nvd.unit)}</strong> (band ${fmt(a.lo, nvd.unit)}–${fmt(a.hi, nvd.unit)}) before indexes and snapshot search are added.`;
   }
 
-  const summaryHtml = renderSizingSummary(data.sizing_summary, {worstGrade, lede})
+  const summaryHtml = renderSizingSummary(data.sizing_summary, {worstGrade, lede, funnel: funnelHtml(data)})
     || renderSummaryPlaceholder();
   $("scenario-summary").innerHTML = summaryHtml;
   const panel = $("sizing-summary-panel");
@@ -1146,7 +1235,7 @@ function renderCascade(data, scroll) {
     : `Show the math · ${data.steps.length} steps`;
 
   $("scenario-cascade").innerHTML = `
-    <details class="cascade-wrap">
+    <details class="cascade-wrap"${openMath ? " open" : ""}>
       <summary>${chainLabel}</summary>
       <div class="cascade-inner">${parts.join("")}${seeAlso}</div>
     </details>`;

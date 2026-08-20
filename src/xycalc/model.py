@@ -629,6 +629,115 @@ def get_scenario(slug: str) -> dict:
     raise ModelError(f"no scenario '{slug}'. Available: {', '.join(known) or '(none)'}")
 
 
+def _coeff_chart_row(conn: sqlite3.Connection, slug: str) -> sqlite3.Row | None:
+    conn.row_factory = sqlite3.Row
+    return conn.execute(
+        "SELECT c.slug, c.value_lo, c.value_mode, c.value_hi, "
+        "       s.slug AS source, s.url AS source_url "
+        "FROM coefficient c JOIN source s ON s.id = c.source_id "
+        "WHERE c.slug = ?",
+        (slug,),
+    ).fetchone()
+
+
+def nvd_publication_chart(conn: sqlite3.Connection) -> dict | None:
+    """Cited annual CVE counts for the instance-sizing chart.
+
+    Returns None if the corpus is missing any of the NVD annual rows — the
+    UI then omits the chart rather than inventing a series.
+    """
+    annual = []
+    for year in (2023, 2024, 2025):
+        row = _coeff_chart_row(conn, f"nvd.cves-published-{year}")
+        if row is None:
+            return None
+        point = {"year": year, "count": int(row["value_mode"])}
+        vendor = _coeff_chart_row(conn, f"nvd.microsoft-cves-published-{year}")
+        if vendor is not None:
+            point["microsoft"] = int(vendor["value_mode"])
+            point["microsoft_source"] = vendor["source"]
+            point["microsoft_source_url"] = vendor["source_url"]
+        annual.append(point)
+    growth = _coeff_chart_row(conn, "nvd.cve-yoy-growth-pct")
+    cumulative = _coeff_chart_row(conn, "nvd.cves-cumulative-through-2025")
+    latest = _coeff_chart_row(conn, "nvd.cves-published-2025")
+    if not (growth and cumulative and latest):
+        return None
+    return {
+        "annual": annual,
+        "cumulative_2025": int(cumulative["value_mode"]),
+        "growth_pct": {
+            "lo": growth["value_lo"],
+            "mode": growth["value_mode"],
+            "hi": growth["value_hi"],
+        },
+        "source": latest["source"],
+        "source_url": latest["source_url"],
+        "microsoft_note": (
+            "Microsoft is plotted only for years Jerry Gamblin's reviews "
+            "publish a vendor table (2025: 1,255). The 2023–2024 reviews do "
+            "not; Patch Tuesday and BeyondTrust totals count different things "
+            "and are not mixed in."
+        ),
+    }
+
+
+def describe_scenarios(conn: sqlite3.Connection) -> list[dict]:
+    """The scenario picker payload — shared by the live API and the static export."""
+    out = []
+    for s in load_scenarios():
+        entry = {
+            "slug": s["slug"],
+            "label": s["label"],
+            "summary": s.get("summary"),
+            "default": bool(s.get("default")),
+            "disabled": bool(s.get("disabled")),
+            "note": s.get("note"),
+            "see_also": s.get("see_also", []),
+            "extra_inputs": s.get("extra_inputs", []),
+            "steps": s.get("steps", []),
+            "input_sections": s.get("input_sections", []),
+        }
+        if not entry["disabled"]:
+            form_inputs = scenario_form_inputs(conn, s)
+            input_map = {i["key"]: i for i in form_inputs}
+            for extra in entry.get("extra_inputs", []):
+                input_map[extra["key"]] = extra
+            entry["inputs"] = form_inputs
+            sections = []
+            for sec in s.get("input_sections", []):
+                sections.append(
+                    {
+                        "title": sec["title"],
+                        "inputs": [
+                            input_map[k]
+                            for k in sec["keys"]
+                            if k in input_map
+                        ],
+                    }
+                )
+            if sections:
+                entry["input_sections"] = sections
+            first_model = next(
+                (
+                    st["model"]
+                    for st in s["steps"]
+                    if st.get("kind", "model") == "model"
+                ),
+                None,
+            )
+            if first_model:
+                m = Model.load(conn, first_model)
+                entry["question"] = m.question
+                entry["unit"] = m.output_unit
+            if s.get("slug") == "mongodb.size-to-instance":
+                chart = nvd_publication_chart(conn)
+                if chart:
+                    entry["nvd_chart"] = chart
+        out.append(entry)
+    return out
+
+
 def scenario_form_inputs(conn: sqlite3.Connection, scenario: dict) -> list[dict]:
     """Inputs the scenario form should collect.
 

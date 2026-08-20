@@ -37,11 +37,32 @@ from pathlib import Path
 
 from . import __version__
 from .db import connect
-from .model import Model, ModelError, validation_status
+from .model import (
+    Model,
+    ModelError,
+    chain_evaluate,
+    describe_scenarios,
+    get_scenario,
+    load_instance_catalog,
+    parse_bytes,
+    validation_status,
+    DEFAULT_INSTANCE_CEILING,
+)
 
 STATIC = Path(__file__).parent / "static"
 TEMPLATE = STATIC / "calculator.html"
 EVALUATE_JS = STATIC / "evaluate.js"
+
+FAMILY_STRIP = """<div class="family">
+    <span>xycalc · a swamplink research property</span>
+    <a href="https://swamplink.com/">swamplink.com</a>
+    <a href="https://wings.swamplink.com/">wings — the chicken one</a>
+    <a href="https://foundation.swamplink.com/">foundation</a>
+    <a href="https://swamplink.com/data/plates/">plates — the surveillance one</a>
+    <a href="https://swamplink.com/data/trust/">ai trust</a>
+    <a href="https://swamplink.com/data/policy/">data policy</a>
+    <a href="https://blog.swamplink.com/">the blog</a>
+  </div>"""
 
 # The ladder golden vectors are drawn from. Four magnitudes rather than one,
 # because the interesting arithmetic is at the ends: `floor_at` binds only on
@@ -49,6 +70,17 @@ EVALUATE_JS = STATIC / "evaluate.js"
 # "realistic" sizes would exercise none of it.
 BYTE_LADDER = [1e8, 1e10, 5e11, 1e13]
 SCALAR_LADDER = [1.0, 10.0, 100.0, 1000.0]
+
+# Fixed inputs for the JS chain_evaluate self-check. Same set the live GUI
+# prefills for MongoDB instance sizing, so a divergence shows up on the
+# default path rather than a synthetic corner.
+SCENARIO_GOLDEN_INPUTS = {
+    "baseline_vuln_count": "250000",
+    "baseline_storage_size": "100GB",
+    "target_vuln_count": "280000",
+    "index_size": "40GB",
+    "snapshot_search_size": "80GB",
+}
 
 
 class ExportError(Exception):
@@ -146,6 +178,37 @@ def golden_vectors(conn: sqlite3.Connection, slug: str) -> list[dict]:
     return out
 
 
+def scenario_golden_vectors(conn: sqlite3.Connection) -> list[dict]:
+    """What Python's chain_evaluate produced, for the JS port to be held to."""
+    out = []
+    for listed in describe_scenarios(conn):
+        if listed.get("disabled") or listed["slug"] != "mongodb.size-to-instance":
+            continue
+        steps = chain_evaluate(conn, get_scenario(listed["slug"]), SCENARIO_GOLDEN_INPUTS)
+        packed = []
+        for st in steps:
+            item = {"kind": st.kind, "slug": st.slug}
+            if st.result is not None:
+                item["lo"] = st.result.lo
+                item["mode"] = st.result.mode
+                item["hi"] = st.result.hi
+            if st.instance_pick:
+                mode = st.instance_pick.get("pick_mode")
+                item["pick_mode"] = None if mode is None else mode.name
+            if st.gp3_spec:
+                item["volume_gib"] = st.gp3_spec["volume_gib"]
+                item["baseline_iops"] = st.gp3_spec["baseline_iops"]
+            packed.append(item)
+        out.append(
+            {
+                "scenario": listed["slug"],
+                "inputs": SCENARIO_GOLDEN_INPUTS,
+                "steps": packed,
+            }
+        )
+    return out
+
+
 def corpus_blob(conn: sqlite3.Connection) -> dict:
     slugs = Model.all(conn)
     models = [_model_dict(conn, s) for s in slugs]
@@ -161,6 +224,24 @@ def corpus_blob(conn: sqlite3.Connection) -> dict:
         "xycalc_version": __version__,
         "models": models,
         "golden": golden,
+        "scenarios": describe_scenarios(conn),
+        "instance_catalog": [
+            {
+                "name": i.name,
+                "ram_bytes": i.ram_bytes,
+                "vcpu": i.vcpu,
+                "ebs_bandwidth_gbps": i.ebs_bandwidth_gbps,
+                "source_title": i.source_title,
+                "source_url": i.source_url,
+            }
+            for i in load_instance_catalog(conn)
+        ],
+        "coefficient_mode": {
+            row[0]: row[1]
+            for row in conn.execute("SELECT slug, value_mode FROM coefficient")
+        },
+        "default_instance_ceiling_bytes": parse_bytes(DEFAULT_INSTANCE_CEILING),
+        "scenario_golden": scenario_golden_vectors(conn),
     }
     # A short digest of the corpus itself (not the vectors), so a reader can
     # tell two exported pages apart without diffing 100 KB of JSON.
@@ -182,7 +263,13 @@ def render(blob: dict, crumb: str | None = None) -> str:
     html = template.replace("/*__XYCALC_CORPUS_JSON__*/", payload)
     html = html.replace("/*__XYCALC_EVALUATE_JS__*/", js)
     html = html.replace("<!--__XYCALC_CRUMB__-->", crumb or "")
-    for marker in ("__XYCALC_CORPUS_JSON__", "__XYCALC_EVALUATE_JS__", "__XYCALC_CRUMB__"):
+    html = html.replace("<!--__XYCALC_FAMILY_STRIP__-->", FAMILY_STRIP)
+    for marker in (
+        "__XYCALC_CORPUS_JSON__",
+        "__XYCALC_EVALUATE_JS__",
+        "__XYCALC_CRUMB__",
+        "__XYCALC_FAMILY_STRIP__",
+    ):
         if marker in html:
             raise ExportError(f"template placeholder {marker} was not substituted")
     # LF, always. Git hands a Windows checkout CRLF template sources, so
