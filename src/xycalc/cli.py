@@ -30,7 +30,12 @@ from pathlib import Path
 from . import audit as audit_mod
 from . import build as build_mod
 from .db import connect
-from .ingest import IngestError, format_extraction, write_observation_files
+from .ingest import (
+    IngestError,
+    format_extraction,
+    is_published_corpus_path,
+    write_observation_files,
+)
 from .model import (
     DEFAULT_INSTANCE_CEILING,
     Model,
@@ -556,6 +561,21 @@ def cmd_ingest(args) -> int:
     emit_dest = args.emit_observation
     if emit_dest is not None:
         emit_dest = str(emit_dest)
+    if (
+        emit_dest
+        and emit_dest != "-"
+        and is_published_corpus_path(emit_dest)
+        and not args.force_corpus
+    ):
+        print(
+            "error: refusing to write under data/ (the published corpus that "
+            "xycalc.build compiles). Default ingest writes nothing. Pass "
+            "--emit-observation a path outside data/, or --force-corpus "
+            "if you really mean to write candidate YAML into the published "
+            "tree.",
+            file=sys.stderr,
+        )
+        return 2
 
     conn = connect(args.db)
     try:

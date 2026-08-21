@@ -320,6 +320,7 @@ class TestCli:
         )
         assert rc == 2, out
         assert "refusing to write under data/" in err
+        assert "ANSWER" not in out
         assert not src.exists()
         assert not obs.exists()
 
