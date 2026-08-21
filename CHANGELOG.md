@@ -10,11 +10,14 @@ Corpus identity is `corpus_digest` on the exported page. See `docs/VERSIONING.md
   a 0-in-band model.
 - `xycalc ingest` accepts MongoDB `db.stats()` / `serverStatus` JSON (file or
   stdin), prints the fields it mapped versus ignored, and runs `mongodb.wt-cache`
-  on the extracted inputs. `--emit-observation` writes a ready-to-PR YAML
-  skeleton with `TODO` for provenance that cannot be derived — never a
-  fabricated source. MCP tool `ingest_dbstats` (not `import_metrics`) exposes
-  the same paste path. An ingested paste is a candidate, not a cited or
-  validated fact.
+  when `storage_size` is in the extracted inputs (including `storageSize: 0`).
+  A paste is stats-shaped if it has any of `storageSize` / `dataSize` /
+  `indexSize` — not only the pair `storageSize`+`dataSize`. `--emit-observation`
+  writes candidate YAML; destinations under `data/` are refused unless
+  `--force-corpus`. Default ingest writes nothing. MCP `ingest_dbstats` never
+  writes files. Provenance that cannot be derived is `TODO` (including
+  `source_type`); tag/slug do not stamp today's date when `observed_on` is
+  unknown. An ingested paste is a candidate, not a cited or validated fact.
 - MCP tool `import_metrics` plus `tools/import_metrics_export.py` — Grafana
   Explore CSV, Prometheus query JSON / OpenMetrics, and Coralogix metrics JSON
   → `local/` observations (history for validation)

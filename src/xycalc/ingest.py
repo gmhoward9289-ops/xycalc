@@ -6,15 +6,19 @@ actually consume, (2) a sizing run on those fields, and (3) optionally a
 YAML skeleton they can finish into a PR.
 
 Honesty: an ingested paste is a **candidate**, not a cited fact and not a
-validation. Nothing here writes into the corpus. Provenance that cannot be
-derived from the paste is emitted as ``TODO``, never as plausible filler.
+validation. Default ingest writes nothing. ``--emit-observation`` writes
+candidate YAML in corpus layout (``sources/`` + ``observations/``); paths
+under the published tree ``data/`` are refused unless ``--force-corpus``.
+MCP ``ingest_dbstats`` never writes files. Provenance that cannot be derived
+from the paste is ``TODO`` or omitted — never ``source_type: measured`` and
+never today's calendar date stamped into tag/slug/source id.
 """
 
 from __future__ import annotations
 
 import json
 from dataclasses import dataclass, field
-from datetime import date
+from pathlib import Path
 from typing import Any
 
 import yaml
@@ -74,13 +78,17 @@ def corpus_mapping(field: str) -> dict[str, str]:
     return hit
 
 _OBS_HEADER = """\
-# Candidate observation skeleton from `xycalc ingest`.
+# CANDIDATE observation skeleton from `xycalc ingest`.
 # This paste is NOT a cited corpus fact and has NOT been validated.
 # Fill every TODO before opening a PR. Split the two lists into:
 #   data/sources/<tag>.yaml         ← sources:
 #   data/observations/<tag>.yaml    ← observations:
 # Then: xycalc build && xycalc audit
+# Writing under data/ is refused unless --force-corpus.
 """
+
+# Published corpus compiled by xycalc.build (not local/).
+PUBLISHED_CORPUS = Path(__file__).resolve().parents[2] / "data"
 
 
 class IngestError(Exception):
@@ -209,8 +217,17 @@ def parse_metrics(raw: Any) -> dict:
     raise IngestError(f"cannot read metrics from {type(raw).__name__}")
 
 
+_STATS_KEYS = ("storageSize", "dataSize", "indexSize")
+
+
 def _looks_like_stats(d: dict) -> bool:
-    return isinstance(d, dict) and "storageSize" in d and "dataSize" in d
+    """A db.stats()-shaped object. Any of the three size fields is enough.
+
+    Requiring storageSize AND dataSize was a false gate: the wt-cache inputs
+    are storageSize and indexSize, and a mongod-shaped paste with storageSize
+    but no dataSize was classified as serverStatus and the sizes were ignored.
+    """
+    return isinstance(d, dict) and any(k in d for k in _STATS_KEYS)
 
 
 def _looks_like_cache(d: dict) -> bool:
@@ -254,7 +271,9 @@ def _find_server_status(dump: dict) -> tuple[dict, str]:
         inner = dump.get(key)
         if isinstance(inner, dict):
             return inner, key
-    if _looks_like_server_status(dump) and not _looks_like_stats(dump):
+    # A paste may be both: process=mongod plus storageSize. Do not hide the
+    # serverStatus region just because the object also looks like stats.
+    if _looks_like_server_status(dump):
         return dump, ""
     return {}, ""
 
@@ -297,8 +316,9 @@ def extract_mongodb(dump: dict) -> Extraction:
     if not stats and not cache and not ss:
         raise IngestError(
             "paste does not look like db.stats() or serverStatus JSON. "
-            "Expected storageSize/dataSize, wiredTiger.cache, or a wrapper "
-            "with `stats` / `cache` / `serverStatus` keys."
+            "Expected storageSize, dataSize, and/or indexSize, "
+            "wiredTiger.cache, or a wrapper with `stats` / `cache` / "
+            "`serverStatus` keys."
         )
 
     version, version_path = _find_version(dump, ss)
@@ -370,7 +390,11 @@ def extract_mongodb(dump: dict) -> Extraction:
                     "path": _prefix(stats_path, key),
                 }
             )
-        if ext.data_size and ext.storage_size:
+        if (
+            ext.data_size is not None
+            and ext.storage_size is not None
+            and ext.storage_size != 0
+        ):
             ratio = round(ext.data_size / ext.storage_size, 3)
             hit = corpus_mapping("dataSize/storageSize")
             ext.observations.append(
@@ -487,7 +511,8 @@ def extract_mongodb(dump: dict) -> Extraction:
                         ignored.append(_prefix(f"{ss_path}.wiredTiger", key))
 
     ext.ignored = sorted(ignored)
-    if not ext.model_inputs.get("storage_size"):
+    # `not value` is wrong here: storageSize 0 is present, not missing.
+    if "storage_size" not in ext.model_inputs:
         ext.warnings.append(
             "no storageSize in the paste — mongodb.wt-cache cannot run. "
             "Include db.stats() (scale 1) or a wrapper with a `stats` key."
@@ -506,16 +531,22 @@ def observation_skeleton(
 ) -> dict:
     """YAML-ready dict. Missing provenance is ``TODO``, never invented.
 
-    ``source_type`` defaults to ``measured`` only when the paste itself is
-    live metrics; callers who know it was a harness should pass
-    ``benchmark``. Dates, publisher, workload, and machine class are not
-    guessed.
+    ``source_type`` is ``TODO`` unless the caller passes ``measured`` or
+    ``benchmark``. A paste is not evidence of which. Dates, publisher,
+    workload, machine class, and today's calendar are not guessed into
+    tag/slug/source id.
     """
     when = ext.observed_on or TODO
     version = ext.version or TODO
-    slug_when = ext.observed_on or date.today().isoformat()
-    tag = (tag or f"ingest-{ext.db_name or 'mongodb'}-{slug_when}").replace(" ", "-")
+    db_bit = (ext.db_name or "mongodb").replace(" ", "-")
+    if tag:
+        tag = tag.replace(" ", "-")
+    elif ext.observed_on:
+        tag = f"ingest-{db_bit}-{ext.observed_on}"
+    else:
+        tag = f"ingest-{db_bit}"
     source_slug = f"obs-mongodb-{tag}"
+    resolved_source_type = source_type or TODO
 
     # Title describes the instrument, not a fake paper. Publisher is who
     # ran it — unknown unless the caller said.
@@ -528,15 +559,15 @@ def observation_skeleton(
         ),
         "publisher": publisher or TODO,
         "retrieved_on": when if when != TODO else TODO,
-        "source_type": source_type or "measured",
+        "source_type": resolved_source_type,
         "notes": (
             "CANDIDATE from `xycalc ingest`. Not yet cited in the published "
             "corpus and not a validation of any model. Fill every TODO "
-            "(publisher, workload, machine_class, and any missing date/"
-            "version) before opening a PR. "
+            "(publisher, workload, machine_class, source_type, and any "
+            "missing date/version) before opening a PR. "
             f"MongoDB version in the paste: {version}. "
-            "source_type is `measured` for a running system; change to "
-            "`benchmark` if a committed harness produced the dump."
+            "source_type is TODO until you set `measured` (a running "
+            "system) or `benchmark` (a committed harness)."
         ),
     }
     if ext.version:
@@ -603,21 +634,46 @@ def render_observation_yaml(skeleton: dict) -> str:
     return _OBS_HEADER + body
 
 
-def write_observation_files(skeleton: dict, dest: Any) -> list[Any]:
+def is_published_corpus_path(dest: Any) -> bool:
+    """True if dest is the published ``data/`` tree ``xycalc.build`` compiles."""
+    if dest in (None, "-", Path("-")):
+        return False
+    path = Path(dest).expanduser().resolve()
+    corpus = PUBLISHED_CORPUS.resolve()
+    if path == corpus:
+        return True
+    try:
+        path.relative_to(corpus)
+        return True
+    except ValueError:
+        return False
+
+
+def write_observation_files(
+    skeleton: dict, dest: Any, *, force_corpus: bool = False
+) -> list[Any]:
     """Write sources + observations YAML. ``dest`` is a directory or a file.
 
     A directory gets the two-file layout a PR actually needs. A file (or
-    ``-``) gets the combined document.
+    ``-``) gets the combined document. Destinations under the published
+    corpus ``data/`` are refused unless ``force_corpus`` is true. Every
+    written file carries the CANDIDATE header.
     """
-    from pathlib import Path
-
     yaml_text = render_observation_yaml(skeleton)
     if dest in (None, "-", Path("-")):
         return []
+    if is_published_corpus_path(dest) and not force_corpus:
+        raise IngestError(
+            "refusing to write under data/ (the published corpus that "
+            "xycalc.build compiles). Default ingest writes nothing. Pass "
+            "--emit-observation a path outside data/, or --force-corpus "
+            "if you really mean to write candidate YAML into the published "
+            "tree."
+        )
     path = Path(dest)
     written = []
     # A .yaml file is the combined document; anything else is the two-file
-    # layout a PR actually needs (data/sources + data/observations).
+    # layout a PR actually needs (sources/ + observations/).
     if path.suffix.lower() in {".yaml", ".yml"}:
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(yaml_text, encoding="utf-8")
@@ -629,11 +685,13 @@ def write_observation_files(skeleton: dict, dest: Any) -> list[Any]:
     src.parent.mkdir(parents=True, exist_ok=True)
     obs.parent.mkdir(parents=True, exist_ok=True)
     src.write_text(
-        yaml.safe_dump({"sources": skeleton["sources"]}, sort_keys=False),
+        _OBS_HEADER
+        + yaml.safe_dump({"sources": skeleton["sources"]}, sort_keys=False),
         encoding="utf-8",
     )
     obs.write_text(
-        yaml.safe_dump(
+        _OBS_HEADER
+        + yaml.safe_dump(
             {"observations": skeleton["observations"]}, sort_keys=False
         ),
         encoding="utf-8",

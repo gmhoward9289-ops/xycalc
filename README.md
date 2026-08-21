@@ -69,6 +69,7 @@ xycalc scenario <slug> [flags]   # run a declared scenario end-to-end
 xycalc sizing   <model> [flags]  # how much do I need?
 xycalc headroom <model> --available 256GB [flags]   # how much margin is left?
 xycalc why      <model>          # the citation chain behind every term
+xycalc ingest   dump.json        # paste db.stats()/serverStatus → model inputs
 xycalc build                     # compile the YAML corpus into SQLite
 xycalc audit                     # the gates
 xycalc gui                       # the calculator, served locally
@@ -88,7 +89,8 @@ pip install -e ".[mcp]"
 ```
 
 Entry point `xycalc-mcp` or `python -m xycalc` (stdio). Tools: `list_models`,
-`sizing`, `headroom`, `scenario`, `why`, `import_metrics`. Every sizing result
+`sizing`, `headroom`, `scenario`, `why`, `import_metrics`, `ingest_dbstats`.
+Every sizing result
 carries the lo/mode/hi band, unit-labeled steps, per-term sources/quotes/versions,
 the verbatim validation grade, and `corpus_digest`. Unvalidated models say
 `unvalidated (n=0)` in the result; omitting that would read as a validated answer.
