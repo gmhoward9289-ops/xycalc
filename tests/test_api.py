@@ -108,6 +108,29 @@ class TestSizing:
         )
         assert r.status_code == 422
 
+    def test_malformed_numeric_size_is_422_not_500(self, client):
+        r = client.post(
+            "/api/sizing",
+            json={"model": "mongodb.wt-cache", "inputs": {"storage_size": "1.2.3GB"}},
+        )
+        assert r.status_code == 422
+
+    def test_unreadable_scalar_is_422_not_500(self, client):
+        r = client.post(
+            "/api/sizing",
+            json={
+                "model": "ebs.iops-to-provision",
+                "inputs": {"average_iops": "abc"},
+            },
+        )
+        assert r.status_code == 422
+
+    def test_non_string_available_is_422_not_500(self, client):
+        r = client.post(
+            "/api/sizing", json={**SIZING, "available": ["4TB"]}
+        )
+        assert r.status_code == 422
+
 
 class TestWhy:
     def test_returns_the_citation_chain_without_running_the_model(self, client):

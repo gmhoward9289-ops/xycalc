@@ -134,8 +134,12 @@ def post_sizing(payload: dict):
     available = payload.get("available")
     if available:
         try:
+            if isinstance(available, bool) or not isinstance(
+                available, (str, int, float)
+            ):
+                raise ModelError(f"cannot read a size from {available!r}")
             body["headroom"] = headroom(result, parse_bytes(available))
-        except ModelError as e:
+        except (ModelError, TypeError, ValueError) as e:
             raise HTTPException(status_code=422, detail=str(e))
     return body
 
