@@ -246,8 +246,10 @@ bare-metal catalogs are still stubs (named in `data/systems.yaml`).
 
 `mongodb.wt-cache` is **thinly validated (n=2, both within band, mean abs
 error 28.5%)** — still too few to generalise; compression remains the largest
-error term. `mongodb.host-ram` is **thinly validated (n=2, mean abs error
-0.3%)**. Everything else prints **unvalidated (n=0)** on every invocation.
+error term. `mongodb.host-ram` is **thinly validated (n=3, 0 within band, mean
+abs error 0.8%)** — the cases are self-consistent default-split round-trips
+and none landed inside the (point) predicted band, so it cannot wear the
+Validated badge. Everything else prints **unvalidated (n=0)** on every invocation.
 The EBS provision model is honest about something worse than n=0: its peak-to-
 mean amplifier is a guess of ours with a band spanning a factor of 6.7.
 Fifteen minutes with `iostat -x 1` replaces it with a fact. The ticket model's

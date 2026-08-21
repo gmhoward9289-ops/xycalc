@@ -1275,7 +1275,9 @@ def chain_evaluate(
 # Below these, a model has been checked but not enough to lean on. The
 # thresholds are ours, not anyone's standard, and they are deliberately
 # unflattering: one case from one machine is an anecdote, and an average error
-# of a quarter is not a sizing tool, it is a direction.
+# of a quarter is not a sizing tool, it is a direction. Zero hits inside the
+# predicted band is not a pass either — a tight self-consistent formula can
+# post a tiny MAE while every observation misses the band.
 THIN_CASES = 3
 THIN_ERROR_PCT = 25.0
 
@@ -1288,6 +1290,10 @@ def validation_status(conn: sqlite3.Connection, model_slug: str) -> dict:
     accurate", which is precisely the reassurance this project exists not to
     give. `grade` is what the surfaces colour by, so the CLI, the API and the
     page cannot disagree about how encouraging a result is.
+
+    `reasonable` (the UI's Validated badge) needs n, MAE, *and* at least one
+    observation inside the predicted band. n and MAE alone used to promote
+    mongodb.host-ram's default-split round-trips: n=3, MAE 0.8%, 0 in band.
     """
     conn.row_factory = sqlite3.Row
     row = conn.execute(
@@ -1306,9 +1312,14 @@ def validation_status(conn: sqlite3.Connection, model_slug: str) -> dict:
 
     cases = row["cases"]
     err = row["mean_abs_error_pct"] or 0.0
-    thin = cases < THIN_CASES or err > THIN_ERROR_PCT
+    within = int(row["within_band"] or 0)
+    thin = (
+        cases < THIN_CASES
+        or err > THIN_ERROR_PCT
+        or within == 0
+    )
     detail = (
-        f"n={cases}, {row['within_band']} within band, "
+        f"n={cases}, {within} within band, "
         f"mean absolute error {err:.1f}%"
     )
     if thin:
@@ -1317,6 +1328,8 @@ def validation_status(conn: sqlite3.Connection, model_slug: str) -> dict:
             why.append("too few cases to generalise")
         if err > THIN_ERROR_PCT:
             why.append("the error is large enough to need decomposing")
+        if within == 0:
+            why.append("none of the observations fell inside the predicted band")
         text = f"thinly validated ({detail}) — {', and '.join(why)}"
     else:
         text = f"validated ({detail})"
@@ -1325,7 +1338,7 @@ def validation_status(conn: sqlite3.Connection, model_slug: str) -> dict:
         "validated": True,
         "grade": "thin" if thin else "reasonable",
         "cases": cases,
-        "within_band": row["within_band"],
+        "within_band": within,
         "mean_abs_error_pct": err,
         "text": text,
     }
