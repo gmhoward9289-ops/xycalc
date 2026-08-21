@@ -6,7 +6,9 @@ reach a device that throttles on the peak second, and the throttle becomes a
 concurrency problem whose queue does not drain. Extended 2026-08-20/21 by
 investigations 004–007 (Celery amplification, Redis maxmemory conflict,
 provisional cache-cliff shape → measured (006), occupancy-band education,
-colocation share sweep (009), compression-shape sweep (010)). Landed markers below
+colocation share sweep (009), compression-shape sweep (010), Azure Premium
+SSD v2 ceiling control-plane validation (011), Celery concurrency-slots
+sizing (012)). Landed markers below
 are the source of truth for what is no longer “next.”
 
 Each entry below is a *designed experiment*, not a topic. It names the question,
@@ -266,6 +268,16 @@ time, which is what an incident actually cares about.
 ---
 
 ## T9 — When does throughput bind before IOPS?
+
+**Status (2026-08-21).** Investigation 017 — **Arm A done** on reef
+(Docker blkio emulate gp3 baseline + throughput-cap on `/dev/sdd`).
+Plateaus matched caps; knees **64 KiB** / **256 KiB** (predicted 42.7 /
+~195). Emulated coeffs landed under distinct `*-emulated` slugs; documented
+42.7 KiB planning figure kept. **Arm B** native Z: NVMe landing.
+**Arm C done** — temp `m6i.large` + gp3 us-east-2 (`i-0b0f4da9d10b1abba`,
+torn down); plateaus ~3212 IOPS / ~134 MiB/s; harness knee 128 KiB
+(first TP-bound 64 KiB). See
+`docs/investigations/017-io-crossover/FINDINGS.md`.
 
 **Question.** At what I/O size does a gp3 volume hit its throughput ceiling
 before its IOPS ceiling — and what does a local NVMe do on the same workload?

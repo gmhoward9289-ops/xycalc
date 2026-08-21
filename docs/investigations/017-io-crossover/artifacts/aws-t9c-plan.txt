@@ -1,0 +1,9 @@
+T9 Arm C — real gp3 crossover
+region=us-east-2 type=m6i.large ami=ami-06475e8f54266e38e
+subnet=subnet-075ae18eae38d8b80 vpc=vpc-0a6756ac9903ecdcf
+data_volume=gp3 100GiB iops=3000 throughput=125
+tag=xycalc-t9c-20260821 max_hours=2
+cost=m6i.large us-east-2 ~$0.10/hr + gp3 100 GiB @ 3000 IOPS/125 MiB/s; soft max 2h (~$5).
+probe=io_crossover_probe.py on dedicated gp3 (arm=gp3-real)
+watcher=tools/bench/_aws_t9c_watcher.sh (terminate on DONE/FAIL/timeout)
+gates: CONFIRM_T9C_LAUNCH=1 T9_ARM_AB_DONE=0 GEORGE_T9C_OVERRIDE=1

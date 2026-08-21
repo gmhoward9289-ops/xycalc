@@ -1,0 +1,52 @@
+observations:
+  # Investigation 017 / ROADMAP T9 Arm C — real EBS gp3 on m6i.large.
+  # system: ebs (not azure-disks; not nvme-ssd). Do not merge into azure.*.
+
+  - slug: aws-t9c-gp3-2026-08-21-crossover
+    system: ebs
+    parameter: io.io_size_crossover_kib
+    value: 128.0
+    unit: kib
+    workload: >-
+      fio randread QD32, sizes 4→1024 KiB, 12s/point, direct=1 on dedicated
+      gp3 (3000 IOPS / 125 MiB/s) at /dev/nvme1n1
+    machine_class: AWS m6i.large + gp3 3000/125, us-east-2
+    system_version: Amazon Elastic Block Store (gp3)
+    observed_on: '2026-08-21'
+    source: obs-aws-t9c-gp3-2026-08-21
+    notes: >-
+      Harness method iops_drop_with_full_bw reported 128 KiB (predicted
+      42.7 KiB). First throughput-bound size in the sweep is 64 KiB
+      (~135 MiB/s, IOPS fallen off the ~3210 plateau); 4 KiB point was cold
+      (801 IOPS) and skewed the automated knee later. Documented planning
+      figure ebs.gp3-baseline-io-crossover-kib (42.7) kept; this row is the
+      measured real-gp3 observation.
+
+  - slug: aws-t9c-gp3-2026-08-21-iops-plateau
+    system: ebs
+    parameter: io.iops
+    value: 3211.7225876666666
+    unit: iops
+    workload: fio randread plateau on gp3 baseline volume (8–32 KiB mean)
+    machine_class: AWS m6i.large + gp3 3000/125, us-east-2
+    system_version: Amazon Elastic Block Store (gp3)
+    observed_on: '2026-08-21'
+    source: obs-aws-t9c-gp3-2026-08-21
+    notes: >-
+      Mean of 8/16/32 KiB points (~3212 IOPS). Excludes cold 4 KiB (801).
+      Within ~7% of provisioned 3000; no throttle_warnings from harness.
+
+  - slug: aws-t9c-gp3-2026-08-21-throughput-plateau
+    system: ebs
+    parameter: io.throughput_mibps
+    value: 134.0703125
+    unit: mib_per_s
+    workload: fio randread throughput plateau gp3 baseline (256–1024 KiB)
+    machine_class: AWS m6i.large + gp3 3000/125, us-east-2
+    system_version: Amazon Elastic Block Store (gp3)
+    observed_on: '2026-08-21'
+    source: obs-aws-t9c-gp3-2026-08-21
+    notes: >-
+      Harness throughput plateau 137288 KiB/s ≈ 134.1 MiB/s vs included
+      125 MiB/s (~7% over on a short run — same pattern as Azure PSv2 short
+      overdelivery notes; not written into azure.*).
