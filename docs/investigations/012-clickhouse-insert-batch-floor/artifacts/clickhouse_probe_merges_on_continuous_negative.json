@@ -1,0 +1,24 @@
+{
+  "probe": "clickhouse_probe",
+  "investigation": "012-clickhouse-insert-batch-floor",
+  "note": "Continuous merges (duty=1) on this Cursor cloud agent VM never crossed delay \u2014 even with block-IO throttle, background_pool_size=2, fsync, and drop_caches. Guard 3 REFUSED. Peak parts observed across attempts: 7 (heavy throttle), 41 (pool=2), 15 (throttle+drop_caches).",
+  "merges_stopped": false,
+  "merge_duty_cycle": 1.0,
+  "attempts": [
+    {
+      "label": "vdb_throttle_512KiB_20iops",
+      "peak_active_parts": 7,
+      "guard3": false
+    },
+    {
+      "label": "background_pool_2_cpus1",
+      "peak_active_parts": 41,
+      "guard3": false
+    },
+    {
+      "label": "loop0_20iops_drop_caches",
+      "peak_active_parts": 15,
+      "guard3": false
+    }
+  ]
+}

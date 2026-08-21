@@ -4,12 +4,13 @@
 #   ./tools/bench/clickhouse_probe.sh                 # full dual-image sweep
 #   PROBE_SMOKE=1 ./tools/bench/clickhouse_probe.sh   # one image, short budget
 #
-# Merges-on on deliberately slow storage (Claim A without STOP MERGES):
-#   PROBE_STOP_MERGES=0 PROBE_DATA_DIR=/mnt/ch-probe-data/run \
-#   PROBE_DEV=/dev/vdb PROBE_WRITE_BPS=1048576 PROBE_READ_BPS=1048576 \
-#   PROBE_WRITE_IOPS=40 PROBE_READ_IOPS=40 PROBE_MEMORY=768m \
-#   PROBE_SMOKE=1 PROBE_ROWS=8000 PROBE_BATCHES=1 PROBE_WRITERS=16 \
+# Merges-on on deliberately slow storage (Claim A without permanent STOP MERGES):
+#   PROBE_STOP_MERGES=0 PROBE_MERGE_DUTY_CYCLE=0.05 PROBE_BACKGROUND_POOL_SIZE=2 \
+#   PROBE_DATA_DIR=/mnt/ch-probe-data/run PROBE_SMOKE=1 PROBE_SMOKE_SIDE=pre23_6 \
+#   PROBE_ROWS=5000 PROBE_BATCHES=1,10,100 PROBE_WRITERS=16 \
 #     ./tools/bench/clickhouse_probe.sh
+# Optional block-IO (pair DATA_DIR with the throttled device):
+#   PROBE_DEV=/dev/vdb PROBE_WRITE_BPS=1048576 PROBE_WRITE_IOPS=40 ...
 #
 # Starts a uniquely-named ClickHouse container (CPU/memory pinned). Prefers a
 # host-side Python with clickhouse-connect (PROBE_LOCAL=1 or auto-detect) so
@@ -48,6 +49,11 @@ READ_BPS="${PROBE_READ_BPS:-}"
 WRITE_IOPS="${PROBE_WRITE_IOPS:-}"
 READ_IOPS="${PROBE_READ_IOPS:-}"
 THROTTLE_DEV="${PROBE_DEV:-}"
+# Cap ClickHouse background merge pool (server config.d). Empty = image default.
+BG_POOL="${PROBE_BACKGROUND_POOL_SIZE:-}"
+FSYNC_INSERTS="${PROBE_FSYNC_INSERTS:-0}"
+MERGE_DUTY="${PROBE_MERGE_DUTY_CYCLE:-}"
+MERGE_DUTY_PERIOD="${PROBE_MERGE_DUTY_PERIOD_S:-}"
 
 # Dual-image by default: one pre-23.6, one 23.6+. Smoke uses the post side only.
 PRE_IMAGE="${PROBE_PRE_IMAGE:-clickhouse/clickhouse-server:23.3}"
@@ -57,6 +63,7 @@ PY_IMAGE="${PROBE_PY_IMAGE:-python:3.12-slim}"
 here="$(cd "$(dirname "$0")" && pwd)"
 repo="$(cd "$here/../.." && pwd)"
 RESULTS_DIR="$(mktemp -d /tmp/ch-probe-XXXXXX)"
+CFG_DIR=""
 
 if [ -n "$WRITE_BPS$READ_BPS$WRITE_IOPS$READ_IOPS" ] && [ -z "$THROTTLE_DEV" ]; then
     if [ -n "$DATA_DIR" ] && src="$(findmnt -n -o SOURCE --target "$DATA_DIR" 2>/dev/null)"; then
@@ -95,6 +102,10 @@ fi
 cleanup() {
     docker rm -f "$DRIVER" "$NAME" >/dev/null 2>&1 || true
     docker network rm "$NET" >/dev/null 2>&1 || true
+    if [ -n "${CFG_DIR:-}" ]; then
+        rm -rf "$CFG_DIR"
+        CFG_DIR=""
+    fi
 }
 trap cleanup EXIT
 
@@ -121,6 +132,15 @@ run_one() {
         fi
         if [ -n "$WRITE_BPS$READ_BPS$WRITE_IOPS$READ_IOPS" ]; then
             echo "throttle    $THROTTLE_DEV  write_bps=${WRITE_BPS:--} read_bps=${READ_BPS:--} write_iops=${WRITE_IOPS:--} read_iops=${READ_IOPS:--}"
+        fi
+        if [ -n "$BG_POOL" ]; then
+            echo "merges      background_pool_size=${BG_POOL} (config.d)"
+        fi
+        if [ "$FSYNC_INSERTS" = "1" ]; then
+            echo "fsync       every insert (fsync_after_insert=1)"
+        fi
+        if [ -n "$MERGE_DUTY" ]; then
+            echo "merge_duty  cycle=${MERGE_DUTY} period_s=${MERGE_DUTY_PERIOD:-2}"
         fi
         if [ -n "$LOCAL_PY" ]; then
             echo "driver      local $LOCAL_PY (host→published :${HTTP_PORT})"
@@ -150,14 +170,42 @@ run_one() {
     fi
     if [ -n "$DATA_DIR" ]; then
         # Fresh per-run dir; ClickHouse image runs as uid 101.
-        rm -rf "$DATA_DIR"
-        mkdir -p "$DATA_DIR"
         if command -v sudo >/dev/null 2>&1 && sudo -n true 2>/dev/null; then
+            sudo -n rm -rf "$DATA_DIR"
+            sudo -n mkdir -p "$DATA_DIR"
             sudo -n chown -R 101:101 "$DATA_DIR"
         else
+            rm -rf "$DATA_DIR"
+            mkdir -p "$DATA_DIR"
             chown -R 101:101 "$DATA_DIR" 2>/dev/null || true
         fi
         run_args+=(-v "${DATA_DIR}:/var/lib/clickhouse")
+    fi
+    local cfg_dir=""
+    if [ -n "$BG_POOL" ]; then
+        # Replace any previous run's config dir; cleanup() removes CFG_DIR.
+        if [ -n "$CFG_DIR" ]; then
+            rm -rf "$CFG_DIR"
+        fi
+        CFG_DIR="$(mktemp -d /tmp/ch-cfg-XXXXXX)"
+        cfg_dir="$CFG_DIR"
+        # ClickHouse runs as uid 101 and must readdir config.d.
+        chmod 755 "$cfg_dir"
+        cat >"$cfg_dir/xycalc-merges.xml" <<EOF
+<clickhouse>
+  <!-- Cap merge concurrency. Must keep merge_tree free-entry knobs <= pool*ratio
+       or the server refuses to start (BAD_ARGUMENTS). -->
+  <background_pool_size>${BG_POOL}</background_pool_size>
+  <background_merges_mutations_concurrency_ratio>1</background_merges_mutations_concurrency_ratio>
+  <merge_tree>
+    <number_of_free_entries_in_pool_to_execute_mutation>0</number_of_free_entries_in_pool_to_execute_mutation>
+    <number_of_free_entries_in_pool_to_lower_max_size_of_merge>0</number_of_free_entries_in_pool_to_lower_max_size_of_merge>
+  </merge_tree>
+</clickhouse>
+EOF
+        chmod 644 "$cfg_dir/xycalc-merges.xml"
+        # Bind the file only — replacing the whole config.d dir hides image defaults.
+        run_args+=(-v "${cfg_dir}/xycalc-merges.xml:/etc/clickhouse-server/config.d/xycalc-merges.xml:ro")
     fi
 
     docker run "${run_args[@]}" "$image" >/dev/null
@@ -187,6 +235,10 @@ run_one() {
     export PROBE_WRITE_IOPS="${WRITE_IOPS:-}"
     export PROBE_READ_IOPS="${READ_IOPS:-}"
     export PROBE_DATA_DIR="${DATA_DIR:-}"
+    export PROBE_BACKGROUND_POOL_SIZE="${BG_POOL:-}"
+    export PROBE_FSYNC_INSERTS="$FSYNC_INSERTS"
+    export PROBE_MERGE_DUTY_CYCLE="${MERGE_DUTY:-1}"
+    export PROBE_MERGE_DUTY_PERIOD_S="${MERGE_DUTY_PERIOD:-2}"
 
     if [ -n "$LOCAL_PY" ]; then
         raw="$(
@@ -209,6 +261,10 @@ run_one() {
             PROBE_WRITE_IOPS="${WRITE_IOPS:-}" \
             PROBE_READ_IOPS="${READ_IOPS:-}" \
             PROBE_DATA_DIR="${DATA_DIR:-}" \
+            PROBE_BACKGROUND_POOL_SIZE="${BG_POOL:-}" \
+            PROBE_FSYNC_INSERTS="$FSYNC_INSERTS" \
+            PROBE_MERGE_DUTY_CYCLE="${MERGE_DUTY:-1}" \
+            PROBE_MERGE_DUTY_PERIOD_S="${MERGE_DUTY_PERIOD:-2}" \
             "$LOCAL_PY" "$here/clickhouse_probe.py"
         )"
     else
@@ -246,6 +302,10 @@ run_one() {
                     -e "PROBE_WRITE_IOPS=${WRITE_IOPS:-}" \
                     -e "PROBE_READ_IOPS=${READ_IOPS:-}" \
                     -e "PROBE_DATA_DIR=${DATA_DIR:-}" \
+                    -e "PROBE_BACKGROUND_POOL_SIZE=${BG_POOL:-}" \
+                    -e "PROBE_FSYNC_INSERTS=$FSYNC_INSERTS" \
+                    -e "PROBE_MERGE_DUTY_CYCLE=${MERGE_DUTY:-1}" \
+                    -e "PROBE_MERGE_DUTY_PERIOD_S=${MERGE_DUTY_PERIOD:-2}" \
                     "$DRIVER" python /tmp/clickhouse_probe.py
             )"
         else
@@ -270,6 +330,10 @@ run_one() {
                     -e "PROBE_WRITE_IOPS=${WRITE_IOPS:-}" \
                     -e "PROBE_READ_IOPS=${READ_IOPS:-}" \
                     -e "PROBE_DATA_DIR=${DATA_DIR:-}" \
+                    -e "PROBE_BACKGROUND_POOL_SIZE=${BG_POOL:-}" \
+                    -e "PROBE_FSYNC_INSERTS=$FSYNC_INSERTS" \
+                    -e "PROBE_MERGE_DUTY_CYCLE=${MERGE_DUTY:-1}" \
+                    -e "PROBE_MERGE_DUTY_PERIOD_S=${MERGE_DUTY_PERIOD:-2}" \
                     "$DRIVER" python /tmp/clickhouse_probe.py
             )"
         fi
