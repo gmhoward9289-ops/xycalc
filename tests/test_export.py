@@ -62,6 +62,39 @@ def test_every_model_has_golden_vectors(blob, conn):
     assert covered == set(Model.all(conn))
 
 
+def test_a_golden_vector_uses_the_browser_string_path(blob, conn):
+    """Existing ladder vectors carry numbers. The page sends formatted strings
+    ('4,000 iops'); that path needs its own pin or the comma bug is invisible."""
+    from xycalc.model import format_quantity
+
+    displayed = format_quantity(4000, "iops")
+    assert "," in displayed
+    hits = [
+        g
+        for g in blob["golden"]
+        if g["model"] == "ebs.iops-to-provision"
+        and g["inputs"].get("average_iops") == displayed
+    ]
+    assert hits, f"no string-path vector for {displayed!r}"
+    expected = Model.load(conn, "ebs.iops-to-provision").evaluate({"average_iops": 4000})
+    assert hits[0]["mode"] == expected.mode
+
+
+def test_export_refuses_an_unknown_validation_grade(monkeypatch, conn):
+    import xycalc.export as export_mod
+
+    real = export_mod.validation_status
+
+    def fake(c, slug):
+        d = dict(real(c, slug))
+        d["grade"] = "legendary"
+        return d
+
+    monkeypatch.setattr(export_mod, "validation_status", fake)
+    with pytest.raises(ExportError, match="legendary"):
+        export_mod.corpus_blob(conn)
+
+
 def test_vectors_exercise_the_optional_input_branch(conn):
     """An optional input left out takes a different path through evaluate()
     than one supplied, and a second implementation gets exactly that kind of
@@ -112,6 +145,38 @@ def test_javascript_agrees_with_python(blob, tmp_path):
     assert proc.returncode == 0, (
         "the JavaScript port disagrees with model.py:\n" + proc.stdout + proc.stderr
     )
+
+
+@pytest.mark.skipif(NODE is None, reason="node is not installed")
+def test_js_parse_is_the_inverse_of_format(tmp_path):
+    """Same round-trip the Python tests pin, under Node, so a JS-only parse
+    regression cannot hide behind numeric golden vectors."""
+    script = tmp_path / "roundtrip.js"
+    script.write_text(
+        "const XY = require(process.argv[2]);\n"
+        "const cases = [1, 12, 999, 1000, 3000, 4000, 1280, 1000000];\n"
+        "for (const n of cases) {\n"
+        "  const s = XY.formatQuantity(n, 'iops');\n"
+        "  const got = XY.parseNumber(s);\n"
+        "  if (got !== n) { console.log(n, s, got); process.exit(1); }\n"
+        "}\n"
+        "try { XY.parseBytes('1.2.3 GB'); console.log('accepted 1.2.3'); process.exit(1); }\n"
+        "catch (e) { if (!/cannot read a size/.test(e.message)) { console.log(e.message); process.exit(1); } }\n"
+        "const bytes = XY.parseBytes(XY.formatQuantity(5e11, 'bytes'));\n"
+        "if (Math.abs(bytes - 5e11) > 1e-6) { console.log(bytes); process.exit(1); }\n"
+        "if (XY.parseBytes(XY.formatBytes(1500)) !== 1500) { console.log('1500 B'); process.exit(1); }\n"
+        "if (XY.parseNumber('3,000 iops') !== 3000) { console.log('comma'); process.exit(1); }\n"
+        "console.log('parse/format round-trip ok');\n",
+        encoding="utf-8",
+    )
+    proc = subprocess.run(
+        [NODE, str(script), str(EVALUATE_JS.resolve())],
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+    )
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    assert "round-trip ok" in proc.stdout
 
 
 @pytest.mark.skipif(NODE is None, reason="node is not installed")

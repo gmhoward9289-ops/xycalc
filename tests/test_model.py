@@ -39,6 +39,14 @@ class TestParseBytes:
         with pytest.raises(ModelError, match="cannot read a size"):
             parse_bytes("about half a terabyte")
 
+    def test_thousands_separators_are_stripped(self):
+        assert parse_bytes("1,500 B") == 1500
+        assert parse_bytes("1,300.0 GB") == pytest.approx(1300 * 1000**3)
+
+    def test_two_decimal_points_are_rejected(self):
+        with pytest.raises(ModelError, match="cannot read a size"):
+            parse_bytes("1.2.3 GB")
+
     def test_malformed_numeric_size_is_model_error_not_value_error(self):
         """'1.2.3GB' matches the size regex but float() refuses it. That used
         to escape as ValueError and become an API 500."""
@@ -202,6 +210,22 @@ class TestUnitRendering:
         from xycalc.model import format_quantity
 
         assert format_quantity(4000, "iops") == "4,000 iops"
+
+    def test_parse_is_the_inverse_of_format(self):
+        """Scrub-commit used to write format_quantity back into the input and
+        re-parse it. These two functions have to round-trip or the advertised
+        drag interaction is a 1000x error on any value ≥ 1,000."""
+        from xycalc.model import format_quantity, parse_number
+
+        for n in (1, 12, 999, 1000, 3000, 4000, 1_280, 1_000_000):
+            rendered = format_quantity(n, "iops")
+            assert parse_number(rendered) == n
+            assert "," in rendered or n < 1000
+        assert parse_bytes(format_quantity(500 * 1000**3, "bytes")) == pytest.approx(
+            500 * 1000**3
+        )
+        assert parse_bytes(format_bytes(1500)) == 1500
+        assert parse_number(format_quantity(12.5, "percent")) == pytest.approx(12.5)
 
     def test_an_iops_model_says_iops_in_every_step(self, conn):
         m = Model.load(conn, "ebs.iops-to-provision")

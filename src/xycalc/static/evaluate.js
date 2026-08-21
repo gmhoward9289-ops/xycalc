@@ -24,17 +24,36 @@ const XY = (() => {
 
   class ModelError extends Error {}
 
+  // One decimal point, optional en-US thousands separators. `[0-9.]+` used to
+  // accept "1.2.3" (parseFloat silently returned 1.2) and to reject the comma
+  // in formatQuantity's "3,000 iops". parse and format have to be inverses or
+  // the calculator's own scrub-commit corrupts the answer.
+  const AMOUNT = /^\s*((?:[0-9]{1,3}(?:,[0-9]{3})+|[0-9]+)(?:\.[0-9]+)?|\.[0-9]+)\s*([a-zA-Z/%]*)\s*$/;
+
+  function splitAmount(text) {
+    const m = AMOUNT.exec(String(text));
+    if (!m) throw new ModelError("cannot read a size from '" + text + "'");
+    return { value: parseFloat(m[1].replace(/,/g, "")), unit: m[2] };
+  }
+
+  function parseNumber(text) {
+    if (typeof text === "number") return text;
+    try {
+      return splitAmount(text).value;
+    } catch (e) {
+      throw new ModelError("cannot read a number from '" + text + "'");
+    }
+  }
+
   // parse_bytes(). Decimal by default: that is what db.stats() reports and
   // what a vendor sizing table means. KiB/MiB/GiB honoured when written.
   function parseBytes(text) {
     if (typeof text === "number") return text;
-    const m = /^\s*([0-9.]+)\s*([a-zA-Z]*)\s*$/.exec(String(text));
-    if (!m) throw new ModelError("cannot read a size from '" + text + "'");
-    const value = parseFloat(m[1]);
-    const unit = m[2].toLowerCase();
-    if (!unit) return value;
-    if (!(unit in UNITS)) throw new ModelError("unknown unit '" + m[2] + "' in '" + text + "'");
-    return value * UNITS[unit];
+    const parts = splitAmount(text);
+    const unit = parts.unit.toLowerCase();
+    if (!unit) return parts.value;
+    if (!(unit in UNITS)) throw new ModelError("unknown unit '" + parts.unit + "' in '" + text + "'");
+    return parts.value * UNITS[unit];
   }
 
   // Python's ",.Nf": fixed decimals with thousands separators. Locale pinned to
@@ -110,7 +129,20 @@ const XY = (() => {
         if (spec.required) throw new ModelError(model.slug + ": input '" + key + "' is required");
         continue;
       }
-      out[key] = spec.unit === "bytes" ? parseBytes(raw) : parseFloat(raw);
+      try {
+        if (spec.unit === "bytes") {
+          out[key] = parseBytes(raw);
+        } else {
+          try {
+            out[key] = parseNumber(raw);
+          } catch (e) {
+            throw new ModelError(model.slug + ": '" + key + "' is not a number");
+          }
+        }
+      } catch (e) {
+        if (e instanceof ModelError) throw e;
+        throw new ModelError(model.slug + ": '" + key + "' is not a number");
+      }
       if (Number.isNaN(out[key])) throw new ModelError(model.slug + ": '" + key + "' is not a number");
     }
     return out;
@@ -519,9 +551,9 @@ const XY = (() => {
     }
     const current = {};
     if (inputs.current_ram) current.ram = parseBytes(inputs.current_ram);
-    if (inputs.current_vcpu) current.vcpu = parseFloat(inputs.current_vcpu);
-    if (inputs.current_disk_iops) current.disk_iops = parseFloat(inputs.current_disk_iops);
-    if (inputs.current_disk_throughput) current.disk_throughput_mibps = parseFloat(inputs.current_disk_throughput);
+    if (inputs.current_vcpu) current.vcpu = parseNumber(inputs.current_vcpu);
+    if (inputs.current_disk_iops) current.disk_iops = parseNumber(inputs.current_disk_iops);
+    if (inputs.current_disk_throughput) current.disk_throughput_mibps = parseNumber(inputs.current_disk_throughput);
     if (Object.keys(current).length) summary.current = current;
     return summary;
   }
@@ -701,6 +733,7 @@ const XY = (() => {
   return {
     ModelError: ModelError,
     parseBytes: parseBytes,
+    parseNumber: parseNumber,
     formatBytes: formatBytes,
     formatQuantity: formatQuantity,
     formatG: formatG,
