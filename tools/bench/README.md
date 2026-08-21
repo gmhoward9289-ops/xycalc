@@ -8,7 +8,8 @@ same workload driven by a Celery fleet instead of raw threads),
 `s3_stack/` (same four services with ClickHouse on S3/MinIO — `./run.sh` smoke,
 `./perf.sh` for idle/loaded/under_load measurement),
 `clickhouse_probe.sh` (investigation 012 / T10 — fixed-row batch-size sweep
-against MergeTree part thresholds on pre- and post-23.6 images),
+against MergeTree part thresholds on pre- and post-23.6 images; on **reef**
+use `reef_run_t10_clickhouse.ps1` for continuous merges-on with data on `V:`),
 `mongodb_load.js` (seeds a collection sized to fit comfortably in cache, for
 validating the decompression/index terms), `mongodb_saturated_cache.sh` (seeds
 a collection deliberately larger than the configured cache, for validating the
@@ -27,7 +28,7 @@ See each for its own README/comments.
 | T8 | `celery_probe/run_stall_recover.sh` | `docs/plans/issue-16-retry-backoff-amplification.md` |
 | T3 | `eviction_probe.sh` | `docs/plans/issue-11-write-rate-eviction-trigger.md` |
 | T5 | `covered_query_probe.sh` | `docs/plans/issue-13-covered-query-index-residency.md` |
-| T10 | `clickhouse_probe.sh` (pins CH 23.x + 24.x) | `docs/plans/issue-18-clickhouse-insert-batch-floor.md` |
+| T10 | `clickhouse_probe.sh` / `reef_run_t10_clickhouse.ps1` | `docs/plans/issue-18-clickhouse-insert-batch-floor.md` |
 | T9c | `_aws_t9c_launch.sh` / `_aws_t9c_monitor.sh` (scaffold; no launch by default) | plan Wave 3 |
 
 **Multi-GB fio scratch** (`.probe-io-test.bin`, gitignored) may stay on
@@ -146,6 +147,25 @@ match the expected side of 23.6. Guards: `async_insert=0`, single partition,
 batch=1 must cross `parts_to_delay_insert`, avg part size must stay under
 `max_avg_part_size_for_too_many_parts`. Default `PROBE_STOP_MERGES=1` isolates
 the part-count ceilings (on a fast 2 vCPU box merges otherwise keep up).
+
+**reef (Windows + Docker Desktop, data on `V:` SN770):**
+
+```powershell
+cd C:\Users\Owner\dev\xycalc
+git pull
+powershell -File tools\bench\reef_run_t10_clickhouse.ps1
+# optional throttle / dual:
+#   $env:PROBE_WRITE_IOPS='80'; $env:PROBE_READ_IOPS='80'
+#   $env:PROBE_WRITE_BPS='8388608'; $env:PROBE_READ_BPS='8388608'
+#   $env:PROBE_FSYNC_INSERTS='1'; $env:PROBE_BACKGROUND_POOL_SIZE='2'
+#   $env:PROBE_DUAL='1'
+#   powershell -File tools\bench\reef_run_t10_clickhouse.ps1
+```
+
+Writes `V:\xycalc-results\clickhouse-parts\merges-on-continuous-*.json`. Copy
+into `docs/investigations/012-clickhouse-insert-batch-floor/artifacts/` and
+land a `benchmark` observation with `applies_to` naming reef if guard 3 passes
+under continuous merges (`PROBE_STOP_MERGES=0`, no duty-cycle).
 JSON after `===JSON===` (combined `images` array for dual sweep).
 
 ### cache_cliff_probe (T1 / #9)
