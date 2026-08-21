@@ -189,6 +189,73 @@ const XYCALC_APP = (() => {
   const GRADE_LABEL = { none: "Unvalidated", thin: "Thinly validated", reasonable: "Validated" };
   const GRADE_PILL = { none: "unvalidated", thin: "thinly validated", reasonable: "validated" };
   const PERMALINK_RESERVED = ["mode", "tab", "model", "scenario", "available"];
+  const TAB_ALIASES = {
+    "cache-cliff": "cliff",
+    cache_cliff: "cliff",
+    cliff: "cliff",
+    "occupancy-bands": "occupancy",
+    occupancy_bands: "occupancy",
+    occupancy: "occupancy",
+    scenario: "scenario",
+    single: "single",
+    flow: "flow",
+  };
+  const TAB_PUBLIC = { cliff: "cache-cliff" };
+
+  function canonicalTab(tab) {
+    if (tab == null || tab === "") return null;
+    const key = String(tab);
+    if (Object.prototype.hasOwnProperty.call(TAB_ALIASES, key)) return TAB_ALIASES[key];
+    if (TABS.indexOf(key) >= 0) return key;
+    return null;
+  }
+
+  function publicTab(tab) {
+    const c = canonicalTab(tab);
+    if (!c) return tab || "";
+    return TAB_PUBLIC[c] || c;
+  }
+
+  // Turn a parsed hash into the mode/tab the UI should show. Tab aliases
+  // (cache-cliff → cliff) live here so boot cannot treat an inbound cliff
+  // link as "no tab" and fall through to the Scenario default.
+  function permalinkView(parsed) {
+    if (!parsed) return null;
+    const tab = canonicalTab(parsed.tab);
+    const forcedAdvanced = !!(tab || parsed.model || parsed.scenario);
+    if (parsed.mode === "simple" && !forcedAdvanced) {
+      return { mode: "simple", tab: null };
+    }
+    let nextTab = tab;
+    if (!nextTab && parsed.model) nextTab = "single";
+    else if (!nextTab && parsed.scenario) nextTab = "scenario";
+    return { mode: "advanced", tab: nextTab || null };
+  }
+
+  function permalinkHref(hash, loc) {
+    const h = String(hash || "");
+    const frag = h.startsWith("#") ? h : (h ? "#" + h : "#");
+    const path = loc && loc.pathname != null ? loc.pathname : "";
+    const search = loc && loc.search != null ? loc.search : "";
+    return path + search + frag;
+  }
+
+  function validationClause(v) {
+    if (!v) return "";
+    return v.text || v.summary || v.note || "";
+  }
+
+  function validationBannerInner(v) {
+    if (!v || v.grade == null || v.grade === "") return "";
+    const label = GRADE_LABEL[v.grade] || v.grade;
+    return `<strong>${esc(label)}</strong> — ${esc(validationClause(v))}`;
+  }
+
+  function validationBannerHtml(v) {
+    if (!v || v.grade == null || v.grade === "") return "";
+    const cls = v.grade === "reasonable" ? " reasonable" : "";
+    return `<div class="validation${cls} ${esc(v.grade)}">${validationBannerInner(v)}</div>`;
+  }
 
   function gradeSuffix(grade) {
     const phrase = GRADE_PILL[grade];
@@ -260,7 +327,7 @@ const XYCALC_APP = (() => {
   function serializePermalink(state) {
     const p = new URLSearchParams();
     if (state.mode) p.set("mode", state.mode);
-    if (state.tab) p.set("tab", state.tab);
+    if (state.tab) p.set("tab", publicTab(state.tab));
     if (state.model) p.set("model", state.model);
     if (state.scenario) p.set("scenario", state.scenario);
     if (state.available) p.set("available", state.available);
@@ -282,7 +349,9 @@ const XYCALC_APP = (() => {
     let any = false;
     for (const key of PERMALINK_RESERVED) {
       const v = p.get(key);
-      if (v) { out[key] = v; any = true; }
+      if (!v) continue;
+      out[key] = key === "tab" ? (canonicalTab(v) || v) : v;
+      any = true;
     }
     for (const pair of p.entries()) {
       if (PERMALINK_RESERVED.indexOf(pair[0]) >= 0) continue;
@@ -412,8 +481,13 @@ const XYCALC_APP = (() => {
     function writeHash() {
       if (writingHash) return;
       const next = "#" + serializePermalink(permalinkState());
-      if (location.hash === next || (location.hash === "" && next === "#")) return;
-      history.replaceState(null, "", next);
+      const href = permalinkHref(next, location);
+      const cur = (location.pathname || "") + (location.search || "") + (location.hash || "");
+      if (cur === href) return;
+      if (location.hash === "" && next === "#") return;
+      // Path + search + hash, never a bare "#...". A <base href> on the
+      // hosting page would resolve a hash-only replaceState off /calculator/.
+      history.replaceState(null, "", href);
     }
 
     function scheduleHash() {
@@ -423,20 +497,19 @@ const XYCALC_APP = (() => {
 
     function applyPermalink(parsed) {
       if (!parsed) return false;
+      const view = permalinkView(parsed);
+      if (!view) return false;
       writingHash = true;
       try {
-        const wantSimple = parsed.mode === "simple" && !parsed.tab && !parsed.model && !parsed.scenario;
-        if (wantSimple) {
-          setMode("simple", { persist: false });
+        if (view.mode === "simple") {
+          setMode("simple", { persist: false, hash: false });
           if (parsed.inputs.size && $("simple-db-size")) $("simple-db-size").value = parsed.inputs.size;
           if (parsed.inputs.vulns && $("simple-vulns")) $("simple-vulns").value = parsed.inputs.vulns;
           calculateSimple();
           return true;
         }
-        setMode("advanced", { persist: false });
-        if (parsed.tab && TABS.indexOf(parsed.tab) >= 0) setTab(parsed.tab, { hash: false });
-        else if (parsed.model) setTab("single", { hash: false });
-        else if (parsed.scenario) setTab("scenario", { hash: false });
+        setMode("advanced", { persist: false, hash: false });
+        if (view.tab) setTab(view.tab, { hash: false });
         if (parsed.scenario) {
           pickScenario(parsed.scenario);
           for (const key of Object.keys(parsed.inputs)) {
@@ -444,7 +517,7 @@ const XYCALC_APP = (() => {
             if (el) el.value = parsed.inputs[key];
           }
           maybeAuto();
-        } else if (!parsed.model || parsed.tab === "scenario") {
+        } else if (!parsed.model) {
           const scenarios = CORPUS.scenarios || [];
           const def = scenarios.find((s) => s.default && !s.disabled) || scenarios.find((s) => !s.disabled);
           if (def) pickScenario(def.slug);
@@ -548,7 +621,7 @@ const XYCALC_APP = (() => {
         const saved = localStorage.getItem(MODE_KEY);
         if (saved === "simple" || saved === "advanced") mode = saved;
       } catch (_) { /* private mode / blocked storage */ }
-      setMode(mode, { persist: false });
+      setMode(mode, { persist: false, hash: false });
       $("mode-simple").addEventListener("click", () => setMode("simple"));
       $("mode-advanced").addEventListener("click", () => setMode("advanced"));
     }
@@ -565,7 +638,7 @@ const XYCALC_APP = (() => {
         catch (_) { /* ignore */ }
       }
       if (simple) scheduleSimpleCalc();
-      scheduleHash();
+      if (!opts || opts.hash !== false) scheduleHash();
     }
 
     function bootSimple() {
@@ -610,7 +683,7 @@ const XYCALC_APP = (() => {
         renderSimpleResult(data);
         const as = size !== sizeRaw ? ` (read as ${size})` : "";
         status.textContent = "Up to date" + as + " — change a field to recalculate.";
-        scheduleHash();
+        if (document.body.classList.contains("mode-simple")) scheduleHash();
       } catch (e) {
         $("simple-result").hidden = true;
         err.hidden = false;
@@ -702,13 +775,14 @@ const XYCALC_APP = (() => {
         </div>`;
       }).join("");
 
-      const hostRamStep = (data.steps || []).find((st) => st.model === "mongodb.host-ram");
+      const weakest = weakestValidation(
+        (data.steps || []).filter((st) => (st.kind || "model") === "model").map((st) => st.validation)
+      );
       const val = $("simple-validation");
-      if (hostRamStep && hostRamStep.validation) {
-        const v = hostRamStep.validation;
+      if (weakest && weakest.grade != null) {
         val.hidden = false;
-        val.className = "validation" + (v.grade === "reasonable" ? " reasonable" : "");
-        val.innerHTML = `<strong>${esc(v.grade || "unchecked")}</strong> — ${esc(v.summary || v.note || "")}`;
+        val.className = "validation" + (weakest.grade === "reasonable" ? " reasonable" : "") + " " + weakest.grade;
+        val.innerHTML = validationBannerInner(weakest);
       } else {
         val.hidden = true;
       }
@@ -929,10 +1003,7 @@ const XYCALC_APP = (() => {
     }
 
     function renderValidationBanner(v) {
-      if (!v || !v.grade) return "";
-      const cls = v.grade === "reasonable" ? " reasonable" : "";
-      const label = GRADE_LABEL[v.grade] || v.grade;
-      return `<div class="validation${cls} ${esc(v.grade)}"><strong>${esc(label)}</strong> — ${esc(v.text || "")}</div>`;
+      return validationBannerHtml(v);
     }
 
     function renderTermRows(steps, unit) {
@@ -1907,6 +1978,13 @@ const XYCALC_APP = (() => {
     bandCoverageCaption: bandCoverageCaption,
     serializePermalink: serializePermalink,
     parsePermalink: parsePermalink,
+    canonicalTab: canonicalTab,
+    publicTab: publicTab,
+    permalinkView: permalinkView,
+    permalinkHref: permalinkHref,
+    validationClause: validationClause,
+    validationBannerInner: validationBannerInner,
+    validationBannerHtml: validationBannerHtml,
     formatCitation: formatCitation,
     GRADE_LABEL: GRADE_LABEL,
   };
