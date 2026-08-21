@@ -88,3 +88,21 @@ ORDER BY event;
 Investigation 009 / `colocation_probe` and `s3_stack` already record ClickHouse
 container RSS idle/loaded/under_load. Those observations validate neighbor RAM
 pressure, not insert-part thresholds — different question, different series.
+
+## Merges-on / slow-disk probe knobs
+
+`tools/bench/clickhouse_probe.sh` can starve merges without a permanent
+`SYSTEM STOP MERGES`:
+
+| Env | Role |
+|---|---|
+| `PROBE_STOP_MERGES=0` | Leave merge machinery enabled |
+| `PROBE_MERGE_DUTY_CYCLE` | Fraction of each period merges are STARTed (e.g. `0.05`) |
+| `PROBE_BACKGROUND_POOL_SIZE` | Cap server merge pool via config.d |
+| `PROBE_DEV` / `PROBE_*_BPS` / `PROBE_*_IOPS` | Container-scoped block-IO cgroup throttle |
+| `PROBE_DATA_DIR` | Bind-mount `/var/lib/clickhouse` onto the throttled device |
+| `PROBE_FSYNC_INSERTS=1` | `fsync_after_insert` so tiny parts hit the device |
+
+Continuous merges on the Cursor cloud agent VM never crossed delay (peak ≪
+150). Duty-cycle `0.05` did — see investigation 012 FINDINGS and
+`artifacts/clickhouse_probe_merges_on_duty.json`.

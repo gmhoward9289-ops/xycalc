@@ -92,17 +92,44 @@ passed (`settingsDiffer: true`).
 
 ## Merges-running caveat (important)
 
-With merges **left on** on this 2 vCPU box, batch=1 of 50k rows peaked at
-**~19** active parts — never approached even the pre-23.6 delay threshold of
-150. The harness correctly REFUSED TO CONCLUDE in that mode.
+With merges **left on continuously** (`merge_duty_cycle=1`) on this Cursor
+cloud agent VM, batch=1 never approaches the pre-23.6 delay threshold of 150 —
+even after deliberate slow-storage attempts:
 
-So: on this hardware, background merges keep up with tiny single-row inserts.
-The dual-image run used `SYSTEM STOP MERGES` (`merges_stopped: true` in JSON)
-to isolate the part-count ceilings. That answers "do the thresholds exist and
-did they move 10×?" — not "will merges lose on every 2 vCPU box." Production
-hit rates still depend on merge throughput vs insert rate (CPU, disk, part
-size). Absolute inserts/sec floors must not be published as portable
-coefficients from this run.
+| Attempt | Peak active parts | Guard 3 |
+|---|---|---|
+| Continuous merges, fast vfs/overlay (earlier) | ~19 | refuse |
+| `background_pool_size=2`, 1 CPU | 41 | refuse |
+| `/dev/vdb` cgroup throttle 512 KiB/s · 20 IOPS | 7 | refuse |
+| loop0 throttle 20 IOPS + periodic `drop_caches` | 15 | refuse |
+
+Tiny single-row parts merge faster than writers can pile them up on this box.
+Artifact: `artifacts/clickhouse_probe_merges_on_continuous_negative.json`.
+
+The dual-image threshold run therefore used `SYSTEM STOP MERGES`
+(`merges_stopped: true`) to isolate the part-count ceilings. That answers
+"do the thresholds exist and did they move 10×?" — not "will merges lose on
+every 2 vCPU box." Absolute inserts/sec floors must not be published as
+portable coefficients from the STOP MERGES run.
+
+### Deliberate merge-throttle (guard 3 without permanent STOP)
+
+Harness knob `PROBE_MERGE_DUTY_CYCLE` (plus optional
+`PROBE_BACKGROUND_POOL_SIZE`, block-IO throttle, `PROBE_DATA_DIR`) duty-cycles
+`SYSTEM START/STOP MERGES`. With **duty=0.05** / period 2s on 23.3, merges
+still run some of the time (`merges_stopped: false`) and guard 3 **passes**:
+
+| batch | peak parts | crossed delay (150) | write p99 |
+|---|---|---|---|
+| 1 | **242** | yes | ~617 ms |
+| 10 | 265 | yes | ~779 ms |
+| 100 | 25 | no | ~69 ms |
+
+Artifact: `artifacts/clickhouse_probe_merges_on_duty.json`. Claim A shape
+survives under partial merge allowance. This is **not** a portable
+inserts/sec floor — `applies_to` would need the duty cycle + box; continuous
+merges on real slow disk (reef / EC2) remain the unpaid infra next step if
+we want a hardware-scoped `benchmark` coefficient.
 
 ---
 
@@ -127,13 +154,10 @@ Live on 23.3 / 24.8 (names not assumed — observed in `event_deltas`):
 
 ## Weakest inference
 
-Whether a given production loader will hit these ceilings **with merges
-running** on its hardware. This run proves the thresholds and the version
-jump; it does not prove a universal inserts/sec floor. Next measurement that
-would tighten that: same harness with `PROBE_STOP_MERGES=0` on a box where
-disk/CPU are slow enough that batch=1 actually outruns merges (or a deliberate
-merge-throttle), then land a `benchmark`-graded floor with
-`applies_to` naming that box.
+Whether a given production loader will hit these ceilings **with continuous
+merges** on its hardware. Thresholds and the 23.6 jump are proven; continuous
+merges on this VM do not lose; duty-cycled merges do. A `benchmark`-graded
+floor still wants continuous merges on named slower storage.
 
 ---
 
@@ -143,4 +167,7 @@ merge-throttle), then land a `benchmark`-graded floor with
    (optional — already code-cited).
 2. Concurrent read latency under insert load — **done** (`write`/`read`
    blocks in `clickhouse_probe_rw_dual.json`; see FINDINGS).
-3. One merges-on run on slower storage where guard 3 passes without STOP MERGES.
+3. Merges-on without permanent STOP MERGES — **done** via duty-cycle 0.05
+   (`clickhouse_probe_merges_on_duty.json`). Continuous merges on real slow
+   disk still open if we spend infra $.
+4. Optional: same duty-cycle sweep on 24.8 to cross the 1000-part delay line.
