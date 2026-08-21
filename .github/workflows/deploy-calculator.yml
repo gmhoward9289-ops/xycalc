@@ -84,13 +84,13 @@ jobs:
       - name: Verify the page is reachable anonymously
         run: |
           for i in $(seq 1 12); do
-            code="$(curl -s -o /tmp/page.html -w '%{http_code}' https://www.swamplink.com/tools/xycalc/calculator/)"
+            code="$(curl -s -o /tmp/page.html -w '%{http_code}' https://swamplink.com/tools/xycalc/calculator/)"
             if [ "$code" = "200" ] && grep -qi '<title>xycalc' /tmp/page.html; then
               echo "anonymous GET is 200 and serves the page"
               exit 0
             fi
             sleep 5
           done
-          echo "::error::https://www.swamplink.com/tools/xycalc/calculator/ did not serve 200 with the expected title"
+          echo "::error::https://swamplink.com/tools/xycalc/calculator/ did not serve 200 with the expected title"
           head -c 500 /tmp/page.html
           exit 1
