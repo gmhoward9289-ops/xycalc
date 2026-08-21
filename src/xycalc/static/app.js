@@ -263,6 +263,77 @@ const XYCALC_APP = (() => {
   const SIMPLE_HONESTY_LINE =
     "Not a buy size / uncited path — open Advanced for sources.";
 
+  // Bench findings a planner must see on the default MongoDB size path.
+  // Sentences are pinned; do not invent numbers. Occupancy/cliff and EBS
+  // ride the models in mongodb.size-to-instance. Tickets are not a chain
+  // step — they attach only to that scenario (and the ticket model itself)
+  // because 128 as a default is the dangerous-direction miss (#2).
+  const SIZE_PATH_FOOTNOTES = {
+    "mongodb.wt-cache": {
+      id: "occupancy-cliff",
+      text: "Occupancy / cache-cliff (FINDINGS 006, 007): performance erodes before 1.0×; steepest slope is 0.8→1.0 (log–log ≈ −3.8). 80% is a hold target, 95% is the conscription cliff. Not a new GB coefficient.",
+    },
+    "mongodb.ticket-throughput-ceiling": {
+      id: "tickets",
+      text: "Tickets (FINDINGS 003, issue #2): formula is pinned-N. Idle 7.0 floor is 4, not 128 (wrong by up to 32×, dangerous direction). Under stall, ops/s stayed ~110 while tickets climbed 4→74; after load, N stuck at 64 for ≥611 s. Default 128 is not a measured ceiling.",
+    },
+    "ebs.iops-to-provision": {
+      id: "ebs-peak-to-mean",
+      text: "EBS peak-to-mean (issue #4, cooper-burst-2026-08-21): coefficient remains estimate 1.5–3–10 (factor 6.7), n=0, band not narrowed. Lab: batch median 1.59, bursty median 1.16, one window 12.59 > hi 10.",
+    },
+  };
+  const SIZE_PATH_RELATED_FOOTNOTES = {
+    "mongodb.size-to-instance": ["mongodb.ticket-throughput-ceiling"],
+  };
+
+  function footnoteForModel(slug) {
+    return SIZE_PATH_FOOTNOTES[slug] || null;
+  }
+
+  function footnoteHtml(fn) {
+    if (!fn || !fn.text) return "";
+    return `<p class="size-path-footnote" data-footnote="${esc(fn.id)}">${esc(fn.text)}</p>`;
+  }
+
+  function cascadeStepFootnotesHtml(modelSlug) {
+    return footnoteHtml(footnoteForModel(modelSlug));
+  }
+
+  function chainFootnoteSlugs(steps) {
+    const slugs = [];
+    const seen = {};
+    for (const st of steps || []) {
+      const slug = st && st.model;
+      if (!slug || !SIZE_PATH_FOOTNOTES[slug] || seen[slug]) continue;
+      seen[slug] = true;
+      slugs.push(slug);
+    }
+    return slugs;
+  }
+
+  function relatedFootnoteSlugs(scenarioSlug) {
+    return (SIZE_PATH_RELATED_FOOTNOTES[scenarioSlug] || []).slice();
+  }
+
+  function sizePathFootnoteSlugs(steps, scenarioSlug) {
+    const slugs = chainFootnoteSlugs(steps);
+    const seen = {};
+    for (const s of slugs) seen[s] = true;
+    for (const extra of relatedFootnoteSlugs(scenarioSlug)) {
+      if (SIZE_PATH_FOOTNOTES[extra] && !seen[extra]) {
+        seen[extra] = true;
+        slugs.push(extra);
+      }
+    }
+    return slugs;
+  }
+
+  function sizePathFootnotesHtml(steps, scenarioSlug) {
+    return sizePathFootnoteSlugs(steps, scenarioSlug)
+      .map((slug) => footnoteHtml(SIZE_PATH_FOOTNOTES[slug]))
+      .join("");
+  }
+
   function chainModelValidations(steps) {
     const out = [];
     for (const st of steps || []) {
@@ -349,6 +420,10 @@ const XYCALC_APP = (() => {
     const weakest = simpleWeakestValidation(data && data.steps);
     const bannerHtml = validationBannerHtml(weakest);
     const honestyHtml = simpleHonestyBlockHtml();
+    const footnotesHtml = sizePathFootnotesHtml(
+      data && data.steps,
+      "mongodb.size-to-instance",
+    );
     let ramText = ram && fmt ? fmt(ram.mode, ram.unit) : "";
     if (ramText && !simpleRamHonestyOk(ramText, bannerHtml, weakest)) ramText = "";
     const ends = [
@@ -363,7 +438,8 @@ const XYCALC_APP = (() => {
       bannerHtml: bannerHtml,
       honestyHtml: honestyHtml,
       picksHtml: picksHtml,
-      html: (ramText || "") + bannerHtml + honestyHtml + picksHtml,
+      footnotesHtml: footnotesHtml,
+      html: (ramText || "") + bannerHtml + honestyHtml + footnotesHtml + picksHtml,
     };
   }
 
@@ -918,7 +994,7 @@ const XYCALC_APP = (() => {
 
       $("simple-picks").innerHTML = paint.picksHtml;
       const slot = $("simple-honesty-slot");
-      if (slot) slot.innerHTML = paint.bannerHtml + paint.honestyHtml;
+      if (slot) slot.innerHTML = paint.bannerHtml + paint.honestyHtml + (paint.footnotesHtml || "");
       const val = $("simple-validation");
       if (val) val.hidden = true;
     }
@@ -1188,6 +1264,7 @@ const XYCALC_APP = (() => {
         <div class="answer"><div class="value">${esc(fmt(st.answer.mode, st.unit))}</div>
         <div class="band">band ${esc(fmt(st.answer.lo, st.unit))} – ${esc(fmt(st.answer.hi, st.unit))}</div></div>
         ${renderValidationBanner(st.validation)}
+        ${cascadeStepFootnotesHtml(st.model)}
         ${table}
         ${constraints}
       </div>`;
@@ -1299,11 +1376,12 @@ const XYCALC_APP = (() => {
           (data.steps || []).filter((st) => st.kind === "model").map((st) => st.validation)
         );
         const chainBanner = renderValidationBanner(weakest);
+        const pathNotes = sizePathFootnotesHtml(data.steps, currentScenario.slug);
         const citeBtn = `<div class="answer-tools"><button type="button" class="ghost" data-copy-cite="scenario">Copy as citation</button></div>`;
         const sizingBlock = (instSizing || perf || size)
           ? `<div class="panel sizing-summary"><h2>What you need</h2>
-          <div class="summary-grid">${instSizing}${perf}${size}</div>${funnel}${chainBanner}${citeBtn}</div>`
-          : renderCitationSummary(data) + chainBanner + citeBtn;
+          <div class="summary-grid">${instSizing}${perf}${size}</div>${funnel}${chainBanner}${pathNotes}${citeBtn}</div>`
+          : renderCitationSummary(data) + chainBanner + pathNotes + citeBtn;
         $("scenario-summary").innerHTML = sizingBlock;
         lastScenarioCitation = citationFromChain(data);
         const citationOnly = !(instSizing || perf || size) && !!sizingBlock;
@@ -1424,6 +1502,8 @@ const XYCALC_APP = (() => {
       const v = $("validation");
       v.className = "validation " + m.validation.grade;
       v.innerHTML = `<strong>${esc(GRADE_LABEL[m.validation.grade] || m.validation.grade)}</strong> — ${esc(m.validation.text)}`;
+      const fnSlot = $("single-model-footnotes");
+      if (fnSlot) fnSlot.innerHTML = cascadeStepFootnotesHtml(m.slug);
 
       if (available != null) {
         const h = XY.headroom(d, available);
@@ -1814,6 +1894,10 @@ const XYCALC_APP = (() => {
         $("occ-weak").textContent = "Weakest inference — " + g.weakest_inference;
       }
 
+      const ticketBlurb = $("occ-ticket-blurb");
+      const ticketFn = footnoteForModel(g.ticket_model || "mongodb.ticket-throughput-ceiling");
+      if (ticketBlurb && ticketFn) ticketBlurb.textContent = ticketFn.text;
+
       $("occ-tickets").innerHTML = (g.ticket_ladder || []).map((row) => {
         const lat = row.latency_ms == null ? "—" : row.latency_ms.toFixed(1) + " ms";
         return `<tr>
@@ -2123,6 +2207,15 @@ const XYCALC_APP = (() => {
     formatCitation: formatCitation,
     GRADE_LABEL: GRADE_LABEL,
     SIMPLE_HONESTY_LINE: SIMPLE_HONESTY_LINE,
+    SIZE_PATH_FOOTNOTES: SIZE_PATH_FOOTNOTES,
+    SIZE_PATH_RELATED_FOOTNOTES: SIZE_PATH_RELATED_FOOTNOTES,
+    footnoteForModel: footnoteForModel,
+    footnoteHtml: footnoteHtml,
+    cascadeStepFootnotesHtml: cascadeStepFootnotesHtml,
+    chainFootnoteSlugs: chainFootnoteSlugs,
+    relatedFootnoteSlugs: relatedFootnoteSlugs,
+    sizePathFootnoteSlugs: sizePathFootnoteSlugs,
+    sizePathFootnotesHtml: sizePathFootnotesHtml,
     chainModelValidations: chainModelValidations,
     zeroInBand: zeroInBand,
     displayValidation: displayValidation,

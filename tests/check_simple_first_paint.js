@@ -62,6 +62,11 @@ function assertHonesty(panel, label) {
   assert.ok(/\bn=\d+/.test(clause) || /unvalidated \(n=0\)/.test(clause), clause);
   assert.ok(panel.html.includes(APP.SIMPLE_HONESTY_LINE), panel.html);
   assert.ok(panel.html.includes("simple-open-advanced"), panel.html);
+  const fn = APP.SIZE_PATH_FOOTNOTES;
+  assert.ok(panel.html.includes(fn["mongodb.wt-cache"].text), panel.html);
+  assert.ok(panel.html.includes(fn["mongodb.ticket-throughput-ceiling"].text), panel.html);
+  assert.ok(panel.html.includes(fn["ebs.iops-to-provision"].text), panel.html);
+  assert.ok(panel.footnotesHtml.includes(fn["mongodb.wt-cache"].text), panel.footnotesHtml);
   assert.ok(APP.simpleRamHonestyOk(panel.ramText, panel.bannerHtml, panel.weakest), label);
   if (panel.weakest.grade !== "reasonable" || APP.zeroInBand(panel.weakest)) {
     assert.ok(!panel.html.includes("<strong>Validated</strong>"), panel.html);
