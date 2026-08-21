@@ -62,15 +62,17 @@ CKPT_RECENT_MS = "transaction checkpoint most recent time (msecs)"
 
 
 def tickets() -> dict:
+    from mongo_tickets import execution_tickets
+
     s = admin.command("serverStatus")
-    c = s["wiredTiger"]["concurrentTransactions"]
+    t = execution_tickets(s)
     g = s["globalLock"]
     return {
-        "readTotal": c["read"]["totalTickets"],
-        "readOut": c["read"]["out"],
-        "writeTotal": c["write"]["totalTickets"],
-        "queueLength": int(c["read"].get("queueLength", 0)),
-        "queuedMicros": int(c["read"].get("totalTimeQueuedMicros", 0)),
+        "readTotal": t["readTotal"],
+        "readOut": t["readOut"],
+        "writeTotal": t["writeTotal"],
+        "queueLength": t["queueLength"],
+        "queuedMicros": t["queuedMicros"],
         "currentQueueReaders": g["currentQueue"]["readers"],
         "activeReaders": g["activeClients"]["readers"],
     }

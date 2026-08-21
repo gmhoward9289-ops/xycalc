@@ -50,8 +50,13 @@ printjson({
   dirtyPct: 100 * c["tracked dirty bytes in the cache"] / max,
   appEvict: c["pages evicted by application threads"],
   unable: c["eviction server unable to reach eviction goal"],
-  tickets: s.wiredTiger.concurrentTransactions.read.totalTickets,
-  queuedMicros: s.wiredTiger.concurrentTransactions.read.totalTimeQueuedMicros,
+  // 7.0: wiredTiger.concurrentTransactions; 8.0+: queues.execution
+  tickets: (s.queues && s.queues.execution)
+    ? s.queues.execution.read.totalTickets
+    : s.wiredTiger.concurrentTransactions.read.totalTickets,
+  queuedMicros: (s.queues && s.queues.execution)
+    ? s.queues.execution.read.normalPriority.totalTimeQueuedMicros
+    : s.wiredTiger.concurrentTransactions.read.totalTimeQueuedMicros,
   tcmallocHeap: t.heap_size,
   tcmallocAllocated: t.current_allocated_bytes || t.total_allocated_bytes
 });
@@ -68,19 +73,32 @@ Investigation 003's series. These decide whether a storage stall has become a
 concurrency ceiling, which is the difference between "queries are slow" and
 "queries never return".
 
-**Where these live was checked rather than assumed**, and the assumption was
-wrong. This section first said the 7.0+ location is
-`serverStatus().queues.execution`. On MongoDB 7.0.39 that path **does not
-exist** — the figures are still under `wiredTiger.concurrentTransactions`,
-which has instead grown new fields. Verified on a running instance
-2026-07-31.
+**Where these live was checked rather than assumed**, and the path moved
+twice. The section first said the 7.0+ location is
+`serverStatus().queues.execution`. On MongoDB **7.0.39** that path **does not
+exist** — the figures are under `wiredTiger.concurrentTransactions`, which
+grew queue fields. Verified 2026-07-31. On MongoDB **8.0.29 and 8.2.12** the
+opposite is true: `wiredTiger.concurrentTransactions` is **gone**, and tickets
+live under `queues.execution` again (verified 2026-08-21, issue #7). Idle
+`totalTickets` is **4** on all three versions checked.
+
+| Version | Ticket path | Idle `totalTickets` | Checked |
+|---|---|---|---|
+| 7.0.39 | `wiredTiger.concurrentTransactions.{read,write}` | 4 | 2026-07-31 |
+| 8.0.29 | `queues.execution.{read,write}` | 4 | 2026-08-21 |
+| 8.2.12 | `queues.execution.{read,write}` | 4 | 2026-08-21 |
+
+On 8.x, `queueLength` / `totalTimeQueuedMicros` / `addedToQueue` /
+`removedFromQueue` sit under `{normalPriority,exempt}` on each of read/write,
+not directly on the read/write object. Do not confuse `queues.ingress`
+(default `totalTickets` 1_000_000) with execution tickets.
 
 | Series | Unit | Agg | Status | Why |
 |---|---|---|---|---|
-| `wiredTiger.concurrentTransactions.read.totalTickets` | count | last | `obtainable` | **The divisor in the model, and it moves on 7.0+.** Measured at **4** on an idle 7.0.39 instance — the documented floor, not the 128 everyone assumes. |
+| `…read.totalTickets` (path per table above) | count | last | `obtainable` | **The divisor in the model, and it moves on 7.0+.** Measured at **4** idle on 7.0.39 / 8.0.29 / 8.2.12 — the documented floor, not the 128 everyone assumes. |
 | `…read.out` / `.available` | count | last | `obtainable` | `out` equal to `totalTickets` means the pool is exhausted and new operations are queueing. |
-| `…read.queueLength` | count | last | `obtainable` | **New in 7.0.** The queue itself, reported directly rather than inferred. This is the number that "queries never return" looks like. |
-| `…read.totalTimeQueuedMicros` | µs | rate | `obtainable` | Cumulative time spent waiting for a ticket. Rising sharply while `out` is pinned is this failure, unambiguously. |
+| `…read.queueLength` (7.0) or `…read.normalPriority.queueLength` (8.x) | count | last | `obtainable` | **New in 7.0.** The queue itself, reported directly rather than inferred. This is the number that "queries never return" looks like. |
+| `…read.totalTimeQueuedMicros` (same nesting note) | µs | rate | `obtainable` | Cumulative time spent waiting for a ticket. Rising sharply while `out` is pinned is this failure, unambiguously. |
 | `…addedToQueue` / `.removedFromQueue` | count | rate | `obtainable` | Arrival and drain rates for the queue. Added exceeding removed, sustained, is a queue that does not drain. |
 | `globalLock.currentQueue.readers` / `.writers` | count | last | `obtainable` | Demand stacked behind the pool. |
 | `globalLock.activeClients.readers` / `.writers` | count | last | `obtainable` | Concurrency actually in flight. Without contention the ticket limit never binds, so this says whether the precondition even holds. |

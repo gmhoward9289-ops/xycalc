@@ -1,0 +1,50 @@
+observations:
+- slug: cooper-2026-08-21-read-tickets-idle-8.0
+  system: mongodb
+  parameter: db.concurrency_tickets
+  value: 4
+  unit: tickets
+  workload: idle, no client operations in flight
+  machine_class: Docker mongo:8.0 on COOPER (Docker Desktop)
+  system_version: 8.0.29
+  observed_on: '2026-08-21'
+  source: obs-mongodb-tickets-cooper-2026-08-21
+  notes: >-
+    queues.execution.read.totalTickets on an idle 8.0.29 instance. Same
+    resting floor as 7.0.39, but the field moved: wiredTiger.concurrentTransactions
+    is gone on 8.0. Sampled after a 20–30s settle; read and write both 4.
+- slug: cooper-2026-08-21-write-tickets-idle-8.0
+  system: mongodb
+  parameter: db.concurrency_tickets
+  value: 4
+  unit: tickets
+  workload: idle, no client operations in flight
+  machine_class: Docker mongo:8.0 on COOPER (Docker Desktop)
+  system_version: 8.0.29
+  observed_on: '2026-08-21'
+  source: obs-mongodb-tickets-cooper-2026-08-21
+  notes: queues.execution.write.totalTickets, idle 8.0.29.
+- slug: cooper-2026-08-21-read-tickets-idle-8.2
+  system: mongodb
+  parameter: db.concurrency_tickets
+  value: 4
+  unit: tickets
+  workload: idle, no client operations in flight
+  machine_class: Docker mongo:8.2 on COOPER (Docker Desktop)
+  system_version: 8.2.12
+  observed_on: '2026-08-21'
+  source: obs-mongodb-tickets-cooper-2026-08-21
+  notes: >-
+    queues.execution.read.totalTickets on idle 8.2.12. Same relocation as
+    8.0.29; concurrentTransactions absent; resting floor still 4.
+- slug: cooper-2026-08-21-write-tickets-idle-8.2
+  system: mongodb
+  parameter: db.concurrency_tickets
+  value: 4
+  unit: tickets
+  workload: idle, no client operations in flight
+  machine_class: Docker mongo:8.2 on COOPER (Docker Desktop)
+  system_version: 8.2.12
+  observed_on: '2026-08-21'
+  source: obs-mongodb-tickets-cooper-2026-08-21
+  notes: queues.execution.write.totalTickets, idle 8.2.12.

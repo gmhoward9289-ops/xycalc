@@ -2,14 +2,24 @@
 // and by require() under node for helper tests.
 //
 // The arithmetic lives in evaluate.js; this file is the page around it: tabs,
-// scenario form, sweep chart, occupancy/cliff renderers. Pure helpers are
-// exported so tests/test_export.py can pin them the same way it pins XY.
+// scenario form, sweep chart, occupancy/cliff renderers, Simple mode. Pure
+// helpers are exported so tests/test_export.py can pin them the same way it
+// pins XY.
 
 const XYCALC_APP = (() => {
   "use strict";
 
   const TABS = ["scenario", "single", "flow", "occupancy", "cliff"];
   const SAMPLES = 96;
+
+  function esc(s) {
+    return String(s == null ? "" : s)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
+  }
 
   // Round tick values so the axis reads in figures a person would say out loud
   // (1, 2, 5, 10 ...) rather than in whatever the data range happened to be.
@@ -95,8 +105,6 @@ const XYCALC_APP = (() => {
     return (y) => T + ih - ((y - yMin) / (yMax - yMin)) * ih;
   }
 
-  // Shared pointer tracking for both charts. `commit` is the sizing-curve
-  // write-back; the cliff chart omits it and only highlights on move.
   function bindChartScrub(hit, svg, nearest, show, commit) {
     let dragging = false;
     if (commit) {
@@ -121,6 +129,15 @@ const XYCALC_APP = (() => {
     hit.addEventListener("pointermove", (e) => show(nearest(e.clientX)));
   }
 
+  // Advanced/corpus parseBytes treats a bare number as bytes. Simple users
+  // mean GB — "50" → "50GB". Explicit units (GB, GiB, TB, …) pass through.
+  function normalizeSimpleSize(raw) {
+    const t = String(raw || "").trim();
+    if (!t) return t;
+    if (/^[0-9.]+$/.test(t)) return t + "GB";
+    return t;
+  }
+
   function attachUi() {
     if (typeof document === "undefined") return;
     if (!document.getElementById("corpus")) return;
@@ -129,9 +146,6 @@ const XYCALC_APP = (() => {
     const CORPUS = JSON.parse($("corpus").textContent);
     const MODELS = CORPUS.models;
     const fmt = XY.formatQuantity;
-    const esc = (s) => String(s == null ? "" : s)
-      .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-
     // -- boot is gated at the bottom of this IIFE --------------------------------
     // Must run after every `let`/`const` below. Calling boot() up here used to
     // hit the TDZ on `currentScenario` and leave the scenario form permanently
@@ -158,15 +172,191 @@ const XYCALC_APP = (() => {
         btn.addEventListener("click", () => setTab(btn.dataset.tab)));
       document.addEventListener("keydown", (e) => {
         if (e.key === "Enter" && e.target.tagName === "INPUT") {
-          if (!$("tab-single").hidden) calculate();
+          if (document.body.classList.contains("mode-simple")) calculateSimple();
+          else if (!$("tab-single").hidden) calculate();
           else if (!$("tab-scenario").hidden) calculateScenario(false);
         }
       });
+      bootMode();
+      bootSimple();
       bootScenario();
       bootFlow();
       bootOccupancy();
       bootCacheCliff();
       scheduleSingleCalc();
+    }
+
+    const MODE_KEY = "xycalc.calcMode";
+    let simpleCalcTimer = null;
+
+    function bootMode() {
+      let mode = "simple";
+      try {
+        const saved = localStorage.getItem(MODE_KEY);
+        if (saved === "simple" || saved === "advanced") mode = saved;
+      } catch (_) { /* private mode / blocked storage */ }
+      setMode(mode, { persist: false });
+      $("mode-simple").addEventListener("click", () => setMode("simple"));
+      $("mode-advanced").addEventListener("click", () => setMode("advanced"));
+    }
+
+    function setMode(mode, opts) {
+      const persist = !opts || opts.persist !== false;
+      const simple = mode === "simple";
+      document.body.classList.toggle("mode-simple", simple);
+      document.body.classList.toggle("mode-advanced", !simple);
+      $("mode-simple").setAttribute("aria-pressed", simple ? "true" : "false");
+      $("mode-advanced").setAttribute("aria-pressed", simple ? "false" : "true");
+      if (persist) {
+        try { localStorage.setItem(MODE_KEY, simple ? "simple" : "advanced"); }
+        catch (_) { /* ignore */ }
+      }
+      if (simple) scheduleSimpleCalc();
+    }
+
+    function bootSimple() {
+      $("simple-db-size").value = SCENARIO_DEFAULTS["mongodb.size-to-instance"].baseline_storage_size || "";
+      $("simple-vulns").value = "";
+      $("simple-db-size").addEventListener("input", scheduleSimpleCalc);
+      $("simple-vulns").addEventListener("input", scheduleSimpleCalc);
+      scheduleSimpleCalc();
+    }
+
+    function scheduleSimpleCalc() {
+      clearTimeout(simpleCalcTimer);
+      simpleCalcTimer = setTimeout(calculateSimple, 180);
+    }
+
+    function calculateSimple() {
+      const sizeRaw = ($("simple-db-size").value || "").trim();
+      const vulns = ($("simple-vulns").value || "").trim();
+      const err = $("simple-error");
+      const status = $("simple-status");
+      if (!sizeRaw) {
+        $("simple-result").hidden = true;
+        err.hidden = true;
+        status.textContent = "Enter a database size — sizing updates as you type.";
+        return;
+      }
+      const size = normalizeSimpleSize(sizeRaw);
+      const defaults = SCENARIO_DEFAULTS["mongodb.size-to-instance"] || {};
+      const baselineVulns = vulns || defaults.baseline_vuln_count || "250000";
+      // Same corpus chain as Advanced — but Simple answers "today's footprint":
+      // no demo index/foreign pads, and target == baseline so the 3-year growth
+      // path does not inflate a measured size. Advanced is where those live.
+      const inputs = {
+        baseline_storage_size: size,
+        baseline_vuln_count: baselineVulns,
+        target_vuln_count: baselineVulns,
+      };
+      try {
+        const data = applySimpleHostFloor(
+          XY.chainEvaluate(CORPUS, "mongodb.size-to-instance", inputs));
+        err.hidden = true;
+        renderSimpleResult(data);
+        const as = size !== sizeRaw ? ` (read as ${size})` : "";
+        status.textContent = "Up to date" + as + " — change a field to recalculate.";
+      } catch (e) {
+        $("simple-result").hidden = true;
+        err.hidden = false;
+        err.textContent = e.message;
+        status.textContent = "Fix the input to size.";
+      }
+    }
+
+    // Smallest box this product runs: r8i.2xlarge = 64 GiB. Floor the Simple
+    // answer so a tiny DB does not advertise a sub-floor host.
+    const SIMPLE_HOST_FLOOR_BYTES = 64 * 1024 ** 3;
+
+    function applySimpleHostFloor(data) {
+      const s = data.sizing_summary || {};
+      if (!s.ram) return data;
+      const floor = SIMPLE_HOST_FLOOR_BYTES;
+      const clamp = (n) => (n < floor ? floor : n);
+      s.ram = {
+        lo: clamp(s.ram.lo),
+        mode: clamp(s.ram.mode),
+        hi: clamp(s.ram.hi),
+        unit: s.ram.unit,
+      };
+      // Re-pick instances against the floored band using the same catalog/family.
+      const catalog = CORPUS.instance_catalog || [];
+      const ceiling = CORPUS.default_instance_ceiling_bytes;
+      const band = { lo: s.ram.lo, mode: s.ram.mode, hi: s.ram.hi };
+      const pick = XY.selectInstance
+        ? XY.selectInstance(band, catalog, "r8i", ceiling === 0 ? null : ceiling)
+        : null;
+      if (pick && s.cpu) {
+        s.cpu.instance_lo = pick.pick_lo && pick.pick_lo.name;
+        s.cpu.instance_mode = pick.pick_mode && pick.pick_mode.name;
+        s.cpu.instance_hi = pick.pick_hi && pick.pick_hi.name;
+        s.cpu.lo = pick.pick_lo && pick.pick_lo.vcpu;
+        s.cpu.mode = pick.pick_mode && pick.pick_mode.vcpu;
+        s.cpu.hi = pick.pick_hi && pick.pick_hi.vcpu;
+      } else if (s.cpu) {
+        // Fallback if selectInstance is not exported: at least name the floor SKU.
+        if (s.ram.lo <= floor) s.cpu.instance_lo = s.cpu.instance_lo || "r8i.2xlarge";
+        if (s.ram.mode <= floor) s.cpu.instance_mode = "r8i.2xlarge";
+        if (s.ram.hi <= floor) s.cpu.instance_hi = s.cpu.instance_hi || "r8i.2xlarge";
+      }
+      data.sizing_summary = s;
+      return data;
+    }
+
+    function renderSimpleResult(data) {
+      const s = data.sizing_summary || {};
+      const ram = s.ram;
+      $("simple-result").hidden = false;
+      if (ram) {
+        $("simple-ram").textContent = fmt(ram.mode, ram.unit);
+        $("simple-ram-band").textContent =
+          "band " + fmt(ram.lo, ram.unit) + " – " + fmt(ram.hi, ram.unit);
+        if (ram.hi > ram.lo) {
+          $("simple-bandbar").hidden = false;
+          $("simple-bandends").hidden = false;
+          const span = ram.hi - ram.lo;
+          const modePct = ((ram.mode - ram.lo) / span) * 100;
+          $("simple-bandfill").style.left = "0%";
+          $("simple-bandfill").style.width = "100%";
+          $("simple-bandmode").style.left = modePct + "%";
+          $("simple-bandends").innerHTML =
+            `<span>${esc(fmt(ram.lo, ram.unit))}</span><span>${esc(fmt(ram.hi, ram.unit))}</span>`;
+        } else {
+          $("simple-bandbar").hidden = true;
+          $("simple-bandends").hidden = true;
+        }
+      } else {
+        $("simple-ram").textContent = "—";
+        $("simple-ram-band").textContent = "";
+        $("simple-bandbar").hidden = true;
+        $("simple-bandends").hidden = true;
+      }
+
+      const ends = [
+        { key: "lo", label: "Low", name: s.cpu && s.cpu.instance_lo, ram: ram && ram.lo },
+        { key: "mode", label: "Mode", name: s.cpu && s.cpu.instance_mode, ram: ram && ram.mode },
+        { key: "hi", label: "High", name: s.cpu && s.cpu.instance_hi, ram: ram && ram.hi },
+      ];
+      $("simple-picks").innerHTML = ends.map((e) => {
+        const name = e.name || "custom sizing";
+        const spec = e.ram != null && ram ? fmt(e.ram, ram.unit) + " RAM" : "";
+        return `<div class="simple-pick${e.key === "mode" ? " mode-pick" : ""}">
+          <div class="which">${esc(e.label)}</div>
+          <div class="name">${esc(name)}</div>
+          <div class="spec">${esc(spec)}</div>
+        </div>`;
+      }).join("");
+
+      const hostRamStep = (data.steps || []).find((st) => st.model === "mongodb.host-ram");
+      const val = $("simple-validation");
+      if (hostRamStep && hostRamStep.validation) {
+        const v = hostRamStep.validation;
+        val.hidden = false;
+        val.className = "validation" + (v.grade === "reasonable" ? " reasonable" : "");
+        val.innerHTML = `<strong>${esc(v.grade || "unchecked")}</strong> — ${esc(v.summary || v.note || "")}`;
+      } else {
+        val.hidden = true;
+      }
     }
 
     function setTab(name) {
@@ -271,10 +461,10 @@ const XYCALC_APP = (() => {
       const yMax = nvdMax * 1.15;
       const xAt = (i) => L + (years.length === 1 ? iw / 2 : (i / (years.length - 1)) * iw);
       const yAt = (v) => T + ih * (1 - v / yMax);
-      const nvdPath = years.map((a, i) => `${i ? "L" : "M"}${xAt(i).toFixed(1)} ${yAt(a.count).toFixed(1)}`).join(" ");
-      const dots = years.map((a, i) => `<circle class="nvd-dot" cx="${xAt(i).toFixed(1)}" cy="${yAt(a.count).toFixed(1)}" r="3.5"></circle>`).join("");
-      const ms = years.map((a, i) => a.microsoft != null ? `<circle class="ms-dot" cx="${xAt(i).toFixed(1)}" cy="${yAt(a.microsoft).toFixed(1)}" r="4"></circle>` : "").join("");
-      const xLabels = years.map((a, i) => `<text x="${xAt(i).toFixed(1)}" y="${H - 18}" text-anchor="middle">${a.year}</text>`).join("");
+      const nvdPath = years.map((a, i) => `${i ? "L" : "M"}${esc(xAt(i).toFixed(1))} ${esc(yAt(a.count).toFixed(1))}`).join(" ");
+      const dots = years.map((a, i) => `<circle class="nvd-dot" cx="${esc(xAt(i).toFixed(1))}" cy="${esc(yAt(a.count).toFixed(1))}" r="3.5"></circle>`).join("");
+      const ms = years.map((a, i) => a.microsoft != null ? `<circle class="ms-dot" cx="${esc(xAt(i).toFixed(1))}" cy="${esc(yAt(a.microsoft).toFixed(1))}" r="4"></circle>` : "").join("");
+      const xLabels = years.map((a, i) => `<text x="${esc(xAt(i).toFixed(1))}" y="${H - 18}" text-anchor="middle">${esc(a.year)}</text>`).join("");
       const g = chart.growth_pct;
       const src = chart.source_url ? `<a href="${esc(chart.source_url)}" target="_blank" rel="noopener">${esc(chart.source)}</a>` : esc(chart.source);
       return `<div class="panel nvd-panel"><h2>CVE publication growth</h2>
@@ -283,8 +473,8 @@ const XYCALC_APP = (() => {
             <g class="axis">${xLabels}<text class="axis-title" x="12" y="${T + ih / 2}" text-anchor="middle" transform="rotate(-90 12 ${T + ih / 2})">CVEs published per year</text></g>
             <path class="nvd-line" d="${nvdPath}"></path>${dots}${ms}
           </svg>
-          <p class="nvd-meta">Cumulative through 2025: <strong>${chart.cumulative_2025.toLocaleString()}</strong>.
-            YoY band: <strong>${g.lo}–${g.mode}–${g.hi}%</strong>. Source: ${src}.
+          <p class="nvd-meta">Cumulative through 2025: <strong>${esc(chart.cumulative_2025.toLocaleString())}</strong>.
+            YoY band: <strong>${esc(g.lo)}–${esc(g.mode)}–${esc(g.hi)}%</strong>. Source: ${src}.
             ${chart.microsoft_note ? esc(chart.microsoft_note) : ""}</p>
         </div></div>`;
     }
@@ -342,7 +532,7 @@ const XYCALC_APP = (() => {
           <div class="input-section"><h3>${esc(sec.title)}</h3>
           <div class="input-grid">${(sec.inputs || []).map((i) => `
             <div class="field"><label for="scn-in-${esc(i.key)}">${esc(i.label)}</label>
-            <input id="scn-in-${esc(i.key)}" data-key="${esc(i.key)}" placeholder="${i.unit === "bytes" ? "e.g. 500GB" : i.unit}"></div>`).join("")}
+            <input id="scn-in-${esc(i.key)}" data-key="${esc(i.key)}" placeholder="${i.unit === "bytes" ? "e.g. 500GB" : esc(i.unit)}"></div>`).join("")}
           </div></div>`).join("")
           || `<div class="input-grid">${(currentScenario.inputs || []).map((i) => `
             <div class="field"><label for="scn-in-${esc(i.key)}">${esc(i.label)}</label>
@@ -612,7 +802,7 @@ const XYCALC_APP = (() => {
     // One input swept across two decades either side of what was entered, with the
     // band drawn as an envelope rather than a line. The single answer above says
     // how much; this says what happens if the figure fed in was wrong -- which,
-    //     for a quantity nobody measures precisely, is the more useful question.
+    // for a quantity nobody measures precisely, is the more useful question.
     let SWEEP = null;   // {key, unit, xs, los, modes, his}
 
     function computeSweep() {
@@ -913,9 +1103,9 @@ const XYCALC_APP = (() => {
       $("occ-tickets").innerHTML = (g.ticket_ladder || []).map((row) => {
         const lat = row.latency_ms == null ? "—" : row.latency_ms.toFixed(1) + " ms";
         return `<tr>
-          <td class="lab">${row.concurrency}</td>
-          <td style="text-align:right">${row.peak_tickets}</td>
-          <td style="text-align:right">${row.ops_per_s.toFixed(1)}</td>
+          <td class="lab">${esc(row.concurrency)}</td>
+          <td style="text-align:right">${esc(row.peak_tickets)}</td>
+          <td style="text-align:right">${esc(row.ops_per_s.toFixed(1))}</td>
           <td style="text-align:right">${esc(lat)}</td>
         </tr>`;
       }).join("") || "<tr><td colspan='4' class='lab'>Ticket ladder missing from this export.</td></tr>";
@@ -1035,7 +1225,7 @@ const XYCALC_APP = (() => {
         $("cliff-verdict").textContent = "Cache-cliff series missing from this export.";
         return;
       }
-      $("cliff-status").textContent = g.status || "provisional";
+      $("cliff-status").textContent = g.status || "measured";
       $("cliff-verdict").textContent = g.verdict || "";
       $("cliff-transfer").textContent =
         (g.transfer || "") +
@@ -1190,6 +1380,7 @@ const XYCALC_APP = (() => {
   return {
     TABS: TABS,
     SAMPLES: SAMPLES,
+    esc: esc,
     ticks: ticks,
     nearestIndex: nearestIndex,
     nearestPixelIndex: nearestPixelIndex,
@@ -1197,6 +1388,7 @@ const XYCALC_APP = (() => {
     sweepGrid: sweepGrid,
     scenarioRequiredFieldsMissing: scenarioRequiredFieldsMissing,
     chartLayout: chartLayout,
+    normalizeSimpleSize: normalizeSimpleSize,
   };
 })();
 

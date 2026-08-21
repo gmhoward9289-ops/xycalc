@@ -363,9 +363,57 @@ svg.nvd-chart { width: 100%; height: auto; display: block; }
   padding: .35rem 0 .35rem .75rem; margin: .85rem 0 0;
 }
 [hidden] { display: none !important; }
+
+/* -- Simple / Advanced (#54) -- */
+.mode-bar {
+  display: flex; gap: .35rem; align-items: center;
+  margin: 0 0 1.25rem; flex-wrap: wrap;
+}
+.mode-bar .mode-label {
+  font-size: .75rem; text-transform: uppercase; letter-spacing: .06em;
+  color: var(--muted); margin-right: .35rem;
+}
+.mode-btn {
+  background: transparent; color: var(--muted);
+  border: 1px solid var(--line); font-weight: 600;
+  padding: .4rem .9rem; font-size: .85rem; border-radius: 6px;
+}
+.mode-btn[aria-pressed="true"] {
+  color: #fff; background: var(--accent); border-color: var(--accent);
+}
+body.mode-simple .claim { display: none; }
+body.mode-simple #advanced-chrome { display: none !important; }
+body.mode-advanced #simple-view { display: none !important; }
+.simple-answer .band-row {
+  display: flex; justify-content: space-between; gap: 1rem;
+  font-family: var(--mono); font-size: .85rem; color: var(--muted);
+  margin-top: .35rem;
+}
+.simple-picks {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: .75rem;
+  margin-top: 1.25rem;
+}
+@media (max-width: 40rem) {
+  .simple-picks { grid-template-columns: 1fr; }
+}
+.simple-pick {
+  border: 1px solid var(--line); border-radius: 8px;
+  padding: .85rem .9rem; background: var(--bg); text-align: center;
+}
+.simple-pick .which {
+  font-size: .7rem; text-transform: uppercase; letter-spacing: .06em;
+  color: var(--muted); margin: 0 0 .35rem;
+}
+.simple-pick .name {
+  font-family: var(--mono); font-size: 1.05rem; font-weight: 600;
+}
+.simple-pick .spec {
+  font-size: .78rem; color: var(--muted); margin-top: .35rem;
+}
+.simple-pick.mode-pick { border-color: var(--accent); }
 </style>
 </head>
-<body>
+<body class="mode-simple">
 <div class="wrap">
 
 <!--__XYCALC_CRUMB__-->
@@ -391,6 +439,46 @@ svg.nvd-chart { width: 100%; height: auto; display: block; }
 </div>
 
 <div id="app">
+<div class="mode-bar" role="group" aria-label="Calculator mode">
+  <span class="mode-label">View</span>
+  <button type="button" class="mode-btn" id="mode-simple" aria-pressed="true">Simple</button>
+  <button type="button" class="mode-btn" id="mode-advanced" aria-pressed="false">Advanced</button>
+</div>
+
+<div id="simple-view">
+  <div class="panel">
+    <div class="field">
+      <label for="simple-db-size">Total database size</label>
+      <input id="simple-db-size" placeholder="e.g. 500 or 500GB" autocomplete="off">
+      <div class="help">Today’s on-disk footprint (db.stats().storageSize). Bare number = GB. Host floor is 64&nbsp;GB (r8i.2xlarge).</div>
+    </div>
+    <div class="field">
+      <label for="simple-vulns">Vulnerability records <span class="help" style="display:inline">optional</span></label>
+      <input id="simple-vulns" placeholder="e.g. 250000" autocomplete="off">
+      <div class="help">Leave blank to use the corpus default count.</div>
+    </div>
+    <p class="recalc-live" id="simple-status">Enter a database size — sizing updates as you type.</p>
+    <p id="simple-error" class="error" hidden></p>
+  </div>
+  <div id="simple-result" hidden>
+    <div class="panel simple-answer">
+      <div class="answer">
+        <div class="label">Host RAM</div>
+        <div class="value" id="simple-ram"></div>
+        <div class="band" id="simple-ram-band"></div>
+      </div>
+      <div class="bandbar" id="simple-bandbar" hidden>
+        <div class="fill" id="simple-bandfill"></div>
+        <div class="mark" id="simple-bandmode"></div>
+      </div>
+      <div class="bandends" id="simple-bandends" hidden></div>
+      <div class="simple-picks" id="simple-picks"></div>
+      <div class="validation" id="simple-validation" hidden></div>
+    </div>
+  </div>
+</div>
+
+<div id="advanced-chrome">
 <div class="tabs">
   <button class="tab active" id="tab-btn-scenario" data-tab="scenario">Scenario</button>
   <button class="tab" id="tab-btn-single" data-tab="single">Single question</button>
@@ -656,7 +744,7 @@ svg.nvd-chart { width: 100%; height: auto; display: block; }
 <div id="tab-cliff" hidden>
   <div class="panel">
     <h2 style="margin-top:0">Cache cliff vs oversubscription
-      <span class="status-pill" id="cliff-status">provisional</span>
+      <span class="status-pill" id="cliff-status">measured</span>
     </h2>
     <p style="margin:0 0 .5rem;font-size:.92rem;color:var(--muted)" id="cliff-verdict"></p>
     <p class="chart-hint">X is <code>dataSize / maxCache</code>. Y is relative ops/s (1.0 at 0.5×). Scrub to read a point; absolute rates stay in the table.</p>
@@ -684,8 +772,9 @@ svg.nvd-chart { width: 100%; height: auto; display: block; }
     <button type="button" class="ghost" id="cliff-open-wt" style="margin-top:.75rem">Open wt-cache sizing →</button>
   </div>
 </div>
+</div><!-- /advanced-chrome -->
 
-</div>
+</div><!-- /app -->
 
 <footer>
   <p>Code Apache-2.0 · corpus CC BY 4.0 · <span id="provenance"></span></p>

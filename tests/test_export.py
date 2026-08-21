@@ -154,6 +154,9 @@ def test_render_substitutes_every_placeholder(blob):
     assert "xycalc · a swamplink research property" in html
     assert "function setTab" in html, "the page shipped without its UI"
     assert "XYCALC_APP" in html, "the page shipped without the extracted UI script"
+    assert "calculateSimple" in html, "the page shipped without Simple mode"
+    assert 'id="simple-view"' in html
+    assert 'id="mode-simple"' in html
 
 
 def test_export_blob_carries_scenario_chain(blob):
@@ -187,7 +190,9 @@ def test_export_blob_carries_occupancy_band(blob):
 
 def test_export_blob_carries_cache_cliff(blob):
     g = blob["cache_cliff"]
-    assert g["status"] == "provisional"
+    assert g["status"] == "measured"
+    assert g["a2_legs"]
+    assert g["a2_legs"][0]["ratio"] == 0.5
     assert g["steepest_segment"] == [0.8, 1.0]
     assert g["wt_cache_gb"] == 0.25
     assert len(g["legs"]) == 9

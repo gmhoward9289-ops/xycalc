@@ -1,0 +1,12 @@
+sources:
+- slug: obs-mongodb-compression-batch2-2026-08-21
+  title: MongoDB snappy compression on real sample collections, 2026-08-21
+  publisher: local measurement
+  retrieved_on: '2026-08-21'
+  source_type: benchmark
+  notes: "Produced by tools/bench/compression_probe.sh \u2014 a committed, reproducible\
+    \ restore-and-measure procedure on Docker mongo:7.0.39, public sample dataset.\
+    \ The DOCUMENTS are real-world sample data (MongoDB's public sample collections),\
+    \ but the procedure that loaded them is a harness, and source_type describes the\
+    \ procedure, not the documents: these are real document shapes, demo-curated content,\
+    \ not a production workload. MongoDB 7.0.39, snappy confirmed via creationString."

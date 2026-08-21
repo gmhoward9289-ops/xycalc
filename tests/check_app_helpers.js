@@ -76,4 +76,14 @@ const lay = APP.chartLayout(720, 340, 78, 16, 16, 46);
 assert.strictEqual(lay.iw, 720 - 78 - 16);
 assert.strictEqual(lay.ih, 340 - 16 - 46);
 
+assert.strictEqual(APP.normalizeSimpleSize(""), "");
+assert.strictEqual(APP.normalizeSimpleSize("  "), "");
+assert.strictEqual(APP.normalizeSimpleSize("50"), "50GB");
+assert.strictEqual(APP.normalizeSimpleSize("500"), "500GB");
+assert.strictEqual(APP.normalizeSimpleSize("50GB"), "50GB");
+assert.strictEqual(APP.normalizeSimpleSize("64GiB"), "64GiB");
+assert.strictEqual(APP.esc("<img src=x onerror=alert(1)>"), "&lt;img src=x onerror=alert(1)&gt;");
+assert.strictEqual(APP.esc('a&b"c'), "a&amp;b&quot;c");
+assert.strictEqual(APP.esc("it's"), "it&#39;s");
+
 console.log("app helpers ok");

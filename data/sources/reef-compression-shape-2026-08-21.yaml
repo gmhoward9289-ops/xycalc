@@ -1,0 +1,11 @@
+sources:
+- slug: obs-reef-compression-shape-2026-08-21
+  title: MongoDB compression ratio vs document shape, 2026-08-21
+  publisher: xycalc compression_shape_probe
+  retrieved_on: '2026-08-21'
+  source_type: benchmark
+  notes: "Produced by tools/bench/compression_shape_probe.sh \u2014 five synthetic\
+    \ shapes \xD7 snappy/zstd/zlib on reef Docker mongo:7, WD BLACK SN770 work on\
+    \ V:. Same JSONL bytes per shape across compressor arms. creationString verified.\
+    \ Does not authorize narrowing mongodb.compression-ratio-snappy; see investigation\
+    \ 010."

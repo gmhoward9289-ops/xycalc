@@ -18,6 +18,7 @@ module.exports = [
         setTimeout: "readonly",
         clearTimeout: "readonly",
         requestAnimationFrame: "readonly",
+        localStorage: "readonly",
       },
     },
     rules: {
