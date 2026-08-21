@@ -119,6 +119,7 @@ class Term:
     role: str
     apply: str
     input_key: str | None
+    input_key_b: str | None
     optional: bool
     when_input: str | None
     unless_input: str | None
@@ -213,6 +214,7 @@ class Model:
                 role=r["role"],
                 apply=r["apply"],
                 input_key=r["input_key"],
+                input_key_b=r["input_key_b"],
                 optional=bool(r["optional"]),
                 when_input=r["when_input"],
                 unless_input=r["unless_input"],
@@ -230,8 +232,8 @@ class Model:
                 quote=r["quote"],
             )
             for r in conn.execute(
-                "SELECT t.key, t.label, t.role, t.apply, t.input_key, t.optional, "
-                "       t.when_input, t.unless_input, t.rationale, "
+                "SELECT t.key, t.label, t.role, t.apply, t.input_key, t.input_key_b, "
+                "       t.optional, t.when_input, t.unless_input, t.rationale, "
                 "       c.slug AS coeff_slug, c.value_lo, c.value_mode, c.value_hi, "
                 "       c.confidence, c.applies_to, c.quote, "
                 "       p.unit, "
@@ -355,6 +357,42 @@ class Model:
                 factor = 1 + v / 100
                 lo, mode, hi = lo * factor, mode * factor, hi * factor
                 steps.append(Step(term, f"+ {v:g}%", lo, mode, hi))
+                continue
+
+            if term.apply == "add_product_of_inputs":
+                a = supplied.get(term.input_key)
+                b = supplied.get(term.input_key_b)
+                if a is None and b is None:
+                    if term.optional:
+                        steps.append(
+                            Step(term, "—", lo, mode, hi, True, "not supplied")
+                        )
+                        continue
+                    raise ModelError(
+                        f"{self.slug}: inputs '{term.input_key}' and "
+                        f"'{term.input_key_b}' are required"
+                    )
+                if a is None or b is None:
+                    missing = term.input_key if a is None else term.input_key_b
+                    raise ModelError(
+                        f"{self.slug}: '{term.input_key}' and "
+                        f"'{term.input_key_b}' must be supplied together "
+                        f"(missing '{missing}')"
+                    )
+                product = a * b
+                lo, mode, hi = lo + product, mode + product, hi + product
+                a_unit = declared_units.get(term.input_key) or "count"
+                b_unit = declared_units.get(term.input_key_b) or self.output_unit
+                steps.append(
+                    Step(
+                        term,
+                        f"+ {format_quantity(a, a_unit)} × "
+                        f"{format_quantity(b, b_unit)}",
+                        lo,
+                        mode,
+                        hi,
+                    )
+                )
                 continue
 
             clo, cmode, chi = term.coeff_lo, term.coeff_mode, term.coeff_hi

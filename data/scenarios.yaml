@@ -26,15 +26,18 @@ scenarios:
     label: MongoDB instance sizing
     default: true
     summary: >-
-      Project collection size from vulnerability record growth, add indexes and
-      foreign collections, compare to what you run today. Outputs total
-      RAM, CPU, and gp3 disk IOPS/throughput — adjust inputs to move sizing.
+      Project collection size from vuln and optional device document counts
+      (plus a residual floor), add indexes and foreign collections, compare to
+      what you run today. Outputs total RAM, CPU, and gp3 disk IOPS/throughput.
     input_sections:
-      - title: Project database size (NVD-driven)
+      - title: Project database size (collection families)
         keys:
           - baseline_vuln_count
           - baseline_storage_size
           - target_vuln_count
+          - device_count
+          - device_avg_storage_bytes
+          - residual_storage_size
       - title: MongoDB footprint
         keys:
           - index_size
@@ -80,7 +83,7 @@ scenarios:
           — paste a measurement to replace the guess.
     steps:
       - kind: model
-        model: nvd.storage-from-vuln-growth
+        model: mongodb.storage-from-doc-families
       - kind: model
         model: mongodb.wt-cache
         feed:
@@ -98,7 +101,7 @@ scenarios:
         sum_inputs:
           - index_size
           - foreign_collections_size
-        sum_model: nvd.storage-from-vuln-growth
+        sum_model: mongodb.storage-from-doc-families
       - kind: model
         model: ebs.iops-to-provision
         defaults_from_coefficient:
