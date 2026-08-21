@@ -1,0 +1,284 @@
+observations:
+# Investigation 006 A1 — cache oversubscription shape on swamplink-eu.
+# Absolute ops/s are throttle artifacts. Relative ops vs ratio is the claim.
+# A1-r1: full 0.5…50×. A1-r2: knee region through 2× (higher ratios pending).
+
+# -- A1 run 1 ops/s ----------------------------------------------------------
+- slug: swamplink-2026-08-21-cliff-a1r1-ops-0p5
+  system: mongodb
+  parameter: db.ops_per_second
+  value: 1590
+  unit: ops/s
+  workload: >-
+    random point lookups, c=1, dataSize/maxCache=0.5×, WT cache 0.25 GB,
+    throttled device (8 MiB/s, 150 IOPS), fresh mongod
+  machine_class: Hetzner CX shared vCPU, 7.6 GB RAM (swamplink-eu)
+  system_version: 7.0.39
+  observed_on: '2026-08-21'
+  source: obs-mongodb-cache-cliff-swamplink-2026-08-21
+  notes: Near-resident baseline for relative-ops normalisation.
+
+- slug: swamplink-2026-08-21-cliff-a1r1-ops-0p8
+  system: mongodb
+  parameter: db.ops_per_second
+  value: 514
+  unit: ops/s
+  workload: >-
+    random point lookups, c=1, dataSize/maxCache=0.8×, WT cache 0.25 GB,
+    throttled device (8 MiB/s, 150 IOPS), fresh mongod
+  machine_class: Hetzner CX shared vCPU, 7.6 GB RAM (swamplink-eu)
+  system_version: 7.0.39
+  observed_on: '2026-08-21'
+  source: obs-mongodb-cache-cliff-swamplink-2026-08-21
+  notes: Already ~3× slower than 0.5× — erosion before cache == data.
+
+- slug: swamplink-2026-08-21-cliff-a1r1-ops-1
+  system: mongodb
+  parameter: db.ops_per_second
+  value: 219
+  unit: ops/s
+  workload: >-
+    random point lookups, c=1, dataSize/maxCache=1.0×, WT cache 0.25 GB,
+    throttled device (8 MiB/s, 150 IOPS), fresh mongod
+  machine_class: Hetzner CX shared vCPU, 7.6 GB RAM (swamplink-eu)
+  system_version: 7.0.39
+  observed_on: '2026-08-21'
+  source: obs-mongodb-cache-cliff-swamplink-2026-08-21
+  notes: Steepest adjacent log–log segment ends here (0.8→1.0).
+
+- slug: swamplink-2026-08-21-cliff-a1r1-ops-1p2
+  system: mongodb
+  parameter: db.ops_per_second
+  value: 162
+  unit: ops/s
+  workload: random point lookups, c=1, 1.2× oversub, WT 0.25 GB, throttled device
+  machine_class: Hetzner CX shared vCPU, 7.6 GB RAM (swamplink-eu)
+  system_version: 7.0.39
+  observed_on: '2026-08-21'
+  source: obs-mongodb-cache-cliff-swamplink-2026-08-21
+
+- slug: swamplink-2026-08-21-cliff-a1r1-ops-1p5
+  system: mongodb
+  parameter: db.ops_per_second
+  value: 128
+  unit: ops/s
+  workload: random point lookups, c=1, 1.5× oversub, WT 0.25 GB, throttled device
+  machine_class: Hetzner CX shared vCPU, 7.6 GB RAM (swamplink-eu)
+  system_version: 7.0.39
+  observed_on: '2026-08-21'
+  source: obs-mongodb-cache-cliff-swamplink-2026-08-21
+
+- slug: swamplink-2026-08-21-cliff-a1r1-ops-2
+  system: mongodb
+  parameter: db.ops_per_second
+  value: 107
+  unit: ops/s
+  workload: random point lookups, c=1, 2.0× oversub, WT 0.25 GB, throttled device
+  machine_class: Hetzner CX shared vCPU, 7.6 GB RAM (swamplink-eu)
+  system_version: 7.0.39
+  observed_on: '2026-08-21'
+  source: obs-mongodb-cache-cliff-swamplink-2026-08-21
+
+- slug: swamplink-2026-08-21-cliff-a1r1-ops-4
+  system: mongodb
+  parameter: db.ops_per_second
+  value: 82
+  unit: ops/s
+  workload: random point lookups, c=1, 4.0× oversub, WT 0.25 GB, throttled device
+  machine_class: Hetzner CX shared vCPU, 7.6 GB RAM (swamplink-eu)
+  system_version: 7.0.39
+  observed_on: '2026-08-21'
+  source: obs-mongodb-cache-cliff-swamplink-2026-08-21
+
+- slug: swamplink-2026-08-21-cliff-a1r1-ops-8
+  system: mongodb
+  parameter: db.ops_per_second
+  value: 73
+  unit: ops/s
+  workload: random point lookups, c=1, 8.0× oversub, WT 0.25 GB, throttled device
+  machine_class: Hetzner CX shared vCPU, 7.6 GB RAM (swamplink-eu)
+  system_version: 7.0.39
+  observed_on: '2026-08-21'
+  source: obs-mongodb-cache-cliff-swamplink-2026-08-21
+
+- slug: swamplink-2026-08-21-cliff-a1r1-ops-50
+  system: mongodb
+  parameter: db.ops_per_second
+  value: 59
+  unit: ops/s
+  workload: random point lookups, c=1, 50× oversub, WT 0.25 GB, throttled device
+  machine_class: Hetzner CX shared vCPU, 7.6 GB RAM (swamplink-eu)
+  system_version: 7.0.39
+  observed_on: '2026-08-21'
+  source: obs-mongodb-cache-cliff-swamplink-2026-08-21
+  notes: Far oversub; shallow decline continues. 100× leg failed during load.
+
+# -- A1 run 1 pages read into cache per op -----------------------------------
+- slug: swamplink-2026-08-21-cliff-a1r1-pages-0p5
+  system: mongodb
+  parameter: cache.pages_read_per_op
+  value: 0.001
+  unit: pages/op
+  workload: paired with cliff-a1r1-ops-0p5
+  machine_class: Hetzner CX shared vCPU, 7.6 GB RAM (swamplink-eu)
+  system_version: 7.0.39
+  observed_on: '2026-08-21'
+  source: obs-mongodb-cache-cliff-swamplink-2026-08-21
+
+- slug: swamplink-2026-08-21-cliff-a1r1-pages-0p8
+  system: mongodb
+  parameter: cache.pages_read_per_op
+  value: 0.163
+  unit: pages/op
+  workload: paired with cliff-a1r1-ops-0p8
+  machine_class: Hetzner CX shared vCPU, 7.6 GB RAM (swamplink-eu)
+  system_version: 7.0.39
+  observed_on: '2026-08-21'
+  source: obs-mongodb-cache-cliff-swamplink-2026-08-21
+
+- slug: swamplink-2026-08-21-cliff-a1r1-pages-1
+  system: mongodb
+  parameter: cache.pages_read_per_op
+  value: 0.400
+  unit: pages/op
+  workload: paired with cliff-a1r1-ops-1
+  machine_class: Hetzner CX shared vCPU, 7.6 GB RAM (swamplink-eu)
+  system_version: 7.0.39
+  observed_on: '2026-08-21'
+  source: obs-mongodb-cache-cliff-swamplink-2026-08-21
+
+- slug: swamplink-2026-08-21-cliff-a1r1-pages-1p2
+  system: mongodb
+  parameter: cache.pages_read_per_op
+  value: 0.536
+  unit: pages/op
+  workload: paired with cliff-a1r1-ops-1p2
+  machine_class: Hetzner CX shared vCPU, 7.6 GB RAM (swamplink-eu)
+  system_version: 7.0.39
+  observed_on: '2026-08-21'
+  source: obs-mongodb-cache-cliff-swamplink-2026-08-21
+
+- slug: swamplink-2026-08-21-cliff-a1r1-pages-1p5
+  system: mongodb
+  parameter: cache.pages_read_per_op
+  value: 0.678
+  unit: pages/op
+  workload: paired with cliff-a1r1-ops-1p5
+  machine_class: Hetzner CX shared vCPU, 7.6 GB RAM (swamplink-eu)
+  system_version: 7.0.39
+  observed_on: '2026-08-21'
+  source: obs-mongodb-cache-cliff-swamplink-2026-08-21
+
+- slug: swamplink-2026-08-21-cliff-a1r1-pages-2
+  system: mongodb
+  parameter: cache.pages_read_per_op
+  value: 0.894
+  unit: pages/op
+  workload: paired with cliff-a1r1-ops-2
+  machine_class: Hetzner CX shared vCPU, 7.6 GB RAM (swamplink-eu)
+  system_version: 7.0.39
+  observed_on: '2026-08-21'
+  source: obs-mongodb-cache-cliff-swamplink-2026-08-21
+
+- slug: swamplink-2026-08-21-cliff-a1r1-pages-4
+  system: mongodb
+  parameter: cache.pages_read_per_op
+  value: 1.271
+  unit: pages/op
+  workload: paired with cliff-a1r1-ops-4
+  machine_class: Hetzner CX shared vCPU, 7.6 GB RAM (swamplink-eu)
+  system_version: 7.0.39
+  observed_on: '2026-08-21'
+  source: obs-mongodb-cache-cliff-swamplink-2026-08-21
+
+- slug: swamplink-2026-08-21-cliff-a1r1-pages-8
+  system: mongodb
+  parameter: cache.pages_read_per_op
+  value: 1.640
+  unit: pages/op
+  workload: paired with cliff-a1r1-ops-8
+  machine_class: Hetzner CX shared vCPU, 7.6 GB RAM (swamplink-eu)
+  system_version: 7.0.39
+  observed_on: '2026-08-21'
+  source: obs-mongodb-cache-cliff-swamplink-2026-08-21
+
+- slug: swamplink-2026-08-21-cliff-a1r1-pages-50
+  system: mongodb
+  parameter: cache.pages_read_per_op
+  value: 2.524
+  unit: pages/op
+  workload: paired with cliff-a1r1-ops-50
+  machine_class: Hetzner CX shared vCPU, 7.6 GB RAM (swamplink-eu)
+  system_version: 7.0.39
+  observed_on: '2026-08-21'
+  source: obs-mongodb-cache-cliff-swamplink-2026-08-21
+
+# -- A1 run 2 ops/s (knee region; shape check) --------------------------------
+- slug: swamplink-2026-08-21-cliff-a1r2-ops-0p5
+  system: mongodb
+  parameter: db.ops_per_second
+  value: 2189
+  unit: ops/s
+  workload: >-
+    A1-r2 repeat: random point lookups, c=1, 0.5× oversub, WT 0.25 GB,
+    throttled device, fresh mongod
+  machine_class: Hetzner CX shared vCPU, 7.6 GB RAM (swamplink-eu)
+  system_version: 7.0.39
+  observed_on: '2026-08-21'
+  source: obs-mongodb-cache-cliff-swamplink-2026-08-21
+  notes: Absolute 0.5× rate varies vs r1; shape from 0.8× up reproduces.
+
+- slug: swamplink-2026-08-21-cliff-a1r2-ops-0p8
+  system: mongodb
+  parameter: db.ops_per_second
+  value: 520
+  unit: ops/s
+  workload: A1-r2 repeat, 0.8× oversub, WT 0.25 GB, c=1, throttled device
+  machine_class: Hetzner CX shared vCPU, 7.6 GB RAM (swamplink-eu)
+  system_version: 7.0.39
+  observed_on: '2026-08-21'
+  source: obs-mongodb-cache-cliff-swamplink-2026-08-21
+
+- slug: swamplink-2026-08-21-cliff-a1r2-ops-1
+  system: mongodb
+  parameter: db.ops_per_second
+  value: 219
+  unit: ops/s
+  workload: A1-r2 repeat, 1.0× oversub, WT 0.25 GB, c=1, throttled device
+  machine_class: Hetzner CX shared vCPU, 7.6 GB RAM (swamplink-eu)
+  system_version: 7.0.39
+  observed_on: '2026-08-21'
+  source: obs-mongodb-cache-cliff-swamplink-2026-08-21
+
+- slug: swamplink-2026-08-21-cliff-a1r2-ops-1p2
+  system: mongodb
+  parameter: db.ops_per_second
+  value: 158
+  unit: ops/s
+  workload: A1-r2 repeat, 1.2× oversub, WT 0.25 GB, c=1, throttled device
+  machine_class: Hetzner CX shared vCPU, 7.6 GB RAM (swamplink-eu)
+  system_version: 7.0.39
+  observed_on: '2026-08-21'
+  source: obs-mongodb-cache-cliff-swamplink-2026-08-21
+
+- slug: swamplink-2026-08-21-cliff-a1r2-ops-1p5
+  system: mongodb
+  parameter: db.ops_per_second
+  value: 129
+  unit: ops/s
+  workload: A1-r2 repeat, 1.5× oversub, WT 0.25 GB, c=1, throttled device
+  machine_class: Hetzner CX shared vCPU, 7.6 GB RAM (swamplink-eu)
+  system_version: 7.0.39
+  observed_on: '2026-08-21'
+  source: obs-mongodb-cache-cliff-swamplink-2026-08-21
+
+- slug: swamplink-2026-08-21-cliff-a1r2-ops-2
+  system: mongodb
+  parameter: db.ops_per_second
+  value: 106
+  unit: ops/s
+  workload: A1-r2 repeat, 2.0× oversub, WT 0.25 GB, c=1, throttled device
+  machine_class: Hetzner CX shared vCPU, 7.6 GB RAM (swamplink-eu)
+  system_version: 7.0.39
+  observed_on: '2026-08-21'
+  source: obs-mongodb-cache-cliff-swamplink-2026-08-21

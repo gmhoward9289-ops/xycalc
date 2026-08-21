@@ -148,7 +148,9 @@ class TestPage:
         assert 'data-tab="single"' in html
         assert 'data-tab="flow"' in html
         assert 'data-tab="occupancy"' in html
+        assert 'data-tab="cliff"' in html
         assert "occupancy_band" in html
+        assert "cache_cliff" in html
         assert "mongodb.wt-cache" in html
 
     def test_api_corpus_matches_page_blob(self, client):
@@ -157,3 +159,7 @@ class TestPage:
         assert api["corpus_digest"] in page
         assert api["occupancy_band"]["ladder"]["eviction_target"]["value"] == 80
         assert len(api["occupancy_band"]["passes"]) == 3
+        assert len(api["occupancy_band"]["ticket_ladder"]) == 3
+        assert len(api["occupancy_band"]["playbook"]) >= 4
+        assert api["cache_cliff"]["status"] == "provisional"
+        assert len(api["cache_cliff"]["legs"]) == 9
