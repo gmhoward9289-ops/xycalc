@@ -449,8 +449,8 @@ body.mode-advanced #simple-view { display: none !important; }
   <div class="panel">
     <div class="field">
       <label for="simple-db-size">Total database size</label>
-      <input id="simple-db-size" placeholder="e.g. 500GB" autocomplete="off">
-      <div class="help">Measured on-disk footprint (e.g. db.stats().storageSize).</div>
+      <input id="simple-db-size" placeholder="e.g. 500 or 500GB" autocomplete="off">
+      <div class="help">Today’s on-disk footprint (db.stats().storageSize). Bare number = GB. Host floor is 64&nbsp;GB (r8i.2xlarge).</div>
     </div>
     <div class="field">
       <label for="simple-vulns">Vulnerability records <span class="help" style="display:inline">optional</span></label>
@@ -881,36 +881,89 @@ function scheduleSimpleCalc() {
   simpleCalcTimer = setTimeout(calculateSimple, 180);
 }
 
+function normalizeSimpleSize(raw) {
+  // Advanced/corpus parseBytes treats a bare number as bytes. Simple users
+  // mean GB — "50" → "50GB". Explicit units (GB, GiB, TB, …) pass through.
+  const t = String(raw || "").trim();
+  if (!t) return t;
+  if (/^[0-9.]+$/.test(t)) return t + "GB";
+  return t;
+}
+
 function calculateSimple() {
-  const size = ($("simple-db-size").value || "").trim();
+  const sizeRaw = ($("simple-db-size").value || "").trim();
   const vulns = ($("simple-vulns").value || "").trim();
   const err = $("simple-error");
   const status = $("simple-status");
-  if (!size) {
+  if (!sizeRaw) {
     $("simple-result").hidden = true;
     err.hidden = true;
     status.textContent = "Enter a database size — sizing updates as you type.";
     return;
   }
+  const size = normalizeSimpleSize(sizeRaw);
   const defaults = SCENARIO_DEFAULTS["mongodb.size-to-instance"] || {};
+  const baselineVulns = vulns || defaults.baseline_vuln_count || "250000";
+  // Same corpus chain as Advanced — but Simple answers "today's footprint":
+  // no demo index/foreign pads, and target == baseline so the 3-year growth
+  // path does not inflate a measured size. Advanced is where those live.
   const inputs = {
     baseline_storage_size: size,
-    baseline_vuln_count: vulns || defaults.baseline_vuln_count || "250000",
-    index_size: defaults.index_size || "40GB",
-    foreign_collections_size: defaults.foreign_collections_size || "80GB",
-    // no target_vuln_count → three-year growth path
+    baseline_vuln_count: baselineVulns,
+    target_vuln_count: baselineVulns,
   };
   try {
-    const data = XY.chainEvaluate(CORPUS, "mongodb.size-to-instance", inputs);
+    const data = applySimpleHostFloor(
+      XY.chainEvaluate(CORPUS, "mongodb.size-to-instance", inputs));
     err.hidden = true;
     renderSimpleResult(data);
-    status.textContent = "Up to date — change a field to recalculate.";
+    const as = size !== sizeRaw ? ` (read as ${size})` : "";
+    status.textContent = "Up to date" + as + " — change a field to recalculate.";
   } catch (e) {
     $("simple-result").hidden = true;
     err.hidden = false;
     err.textContent = e.message;
     status.textContent = "Fix the input to size.";
   }
+}
+
+// Smallest box this product runs: r8i.2xlarge = 64 GiB. Floor the Simple
+// answer so a tiny DB does not advertise a sub-floor host.
+const SIMPLE_HOST_FLOOR_BYTES = 64 * 1024 ** 3;
+
+function applySimpleHostFloor(data) {
+  const s = data.sizing_summary || {};
+  if (!s.ram) return data;
+  const floor = SIMPLE_HOST_FLOOR_BYTES;
+  const clamp = (n) => (n < floor ? floor : n);
+  s.ram = {
+    lo: clamp(s.ram.lo),
+    mode: clamp(s.ram.mode),
+    hi: clamp(s.ram.hi),
+    unit: s.ram.unit,
+  };
+  // Re-pick instances against the floored band using the same catalog/family.
+  const catalog = CORPUS.instance_catalog || [];
+  const ceiling = CORPUS.default_instance_ceiling_bytes;
+  const band = { lo: s.ram.lo, mode: s.ram.mode, hi: s.ram.hi };
+  const pick = XY.selectInstance
+    ? XY.selectInstance(band, catalog, "r8i", ceiling === 0 ? null : ceiling)
+    : null;
+  if (pick && s.cpu) {
+    s.cpu.instance_lo = pick.pick_lo && pick.pick_lo.name;
+    s.cpu.instance_mode = pick.pick_mode && pick.pick_mode.name;
+    s.cpu.instance_hi = pick.pick_hi && pick.pick_hi.name;
+    s.cpu.lo = pick.pick_lo && pick.pick_lo.vcpu;
+    s.cpu.mode = pick.pick_mode && pick.pick_mode.vcpu;
+    s.cpu.hi = pick.pick_hi && pick.pick_hi.vcpu;
+  } else if (s.cpu) {
+    // Fallback if selectInstance is not exported: at least name the floor SKU.
+    if (s.ram.lo <= floor) s.cpu.instance_lo = s.cpu.instance_lo || "r8i.2xlarge";
+    if (s.ram.mode <= floor) s.cpu.instance_mode = "r8i.2xlarge";
+    if (s.ram.hi <= floor) s.cpu.instance_hi = s.cpu.instance_hi || "r8i.2xlarge";
+  }
+  data.sizing_summary = s;
+  return data;
 }
 
 function renderSimpleResult(data) {

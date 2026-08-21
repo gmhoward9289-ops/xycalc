@@ -681,6 +681,7 @@ const XY = (() => {
     headroom: headroom,
     checkGolden: checkGolden,
     chainEvaluate: chainEvaluate,
+    selectInstance: selectInstance,
   };
 })();
 
