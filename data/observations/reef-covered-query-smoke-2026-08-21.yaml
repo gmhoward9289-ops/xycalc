@@ -1,0 +1,25 @@
+observations:
+- slug: reef-covered-smoke-phaseA-ratio-2026-08-21
+  parameter: storage.covered_query_residency_ratio
+  value: 1.2350865947126777
+  unit: ratio
+  workload: covered_query_probe phaseA docs=50000
+  system: mongodb
+  machine_class: reef Docker mongo:7 smoke
+  system_version: '7.0'
+  observed_on: '2026-08-21'
+  source: obs-reef-covered-query-smoke-2026-08-21
+  notes: "residencyBytes=2134862 indexSizeBytes=1728512. Smoke (50k docs) \u2014 not\
+    \ a full soak."
+- slug: reef-covered-smoke-phaseB-ratio-2026-08-21
+  parameter: storage.covered_query_residency_ratio
+  value: 2.4052191840277777
+  unit: ratio
+  workload: covered_query_probe phaseB docs=50000
+  system: mongodb
+  machine_class: reef Docker mongo:7 smoke
+  system_version: '7.0'
+  observed_on: '2026-08-21'
+  source: obs-reef-covered-query-smoke-2026-08-21
+  notes: "residencyBytes=709328 indexSizeBytes=294912. Smoke (50k docs) \u2014 not\
+    \ a full soak."

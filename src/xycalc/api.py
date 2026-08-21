@@ -9,25 +9,23 @@ endpoint to be tempted by.
 
 from __future__ import annotations
 
+import sqlite3
+from collections.abc import Iterator
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 
 from . import __version__
 from .db import connect
 from .export import corpus_blob, render
-from .model import (
-    Model,
-    ModelError,
-    build_instance_sizing_summary,
-    chain_evaluate,
-    describe_scenarios,
-    get_scenario,
-    headroom,
-    parse_bytes,
-    validation_status,
+from .model import Model, ModelError, describe_scenarios
+from .payloads import (
+    list_models_payload,
+    scenario_payload,
+    sizing_payload,
+    why_payload,
 )
 
 STATIC = Path(__file__).parent / "static"
@@ -39,243 +37,82 @@ app = FastAPI(
 )
 
 
-def _conn():
-    return connect()
-
-
-def _model(slug: str) -> Model:
+def _db() -> Iterator[sqlite3.Connection]:
+    """One connection per request; closed even if the handler raises."""
+    conn = connect()
     try:
-        return Model.load(_conn(), slug)
+        yield conn
+    finally:
+        conn.close()
+
+
+def _model(conn: sqlite3.Connection, slug: str) -> Model:
+    try:
+        return Model.load(conn, slug)
     except ModelError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
 
-def _serialise(result, model: Model) -> dict:
-    return {
-        "model": model.slug,
-        "question": model.question,
-        "unit": result.unit,
-        "answer": {"lo": result.lo, "mode": result.mode, "hi": result.hi},
-        "inputs": result.inputs,
-        "steps": [
-            {
-                "key": s.term.key,
-                "label": s.term.label,
-                "role": s.term.role,
-                "contribution": s.contribution,
-                "running": {"lo": s.lo, "mode": s.mode, "hi": s.hi},
-                "skipped": s.skipped,
-                "skip_reason": s.skip_reason,
-                "rationale": s.term.rationale,
-                "coefficient": s.term.coefficient,
-                "confidence": s.term.confidence,
-                "applies_to": s.term.applies_to,
-                "source": s.term.source,
-                "source_title": s.term.source_title,
-                "source_url": s.term.source_url,
-                "quote": s.term.quote,
-            }
-            for s in result.steps
-        ],
-        "constraints": [
-            {
-                "key": t.key,
-                "label": t.label,
-                "value": t.coeff_mode,
-                "unit": t.unit,
-                "rationale": t.rationale,
-                "source": t.source,
-                "source_url": t.source_url,
-            }
-            for t in result.constraints
-        ],
-        # Never optional, never omitted when absent. A response without it
-        # would read as a validated answer to anything that forgot to check.
-        "validation": validation_status(_conn(), model.slug),
-        "reframe": model.reframe,
-        "notes": model.notes,
-    }
-
-
 @app.get("/api/models")
-def list_models():
-    conn = _conn()
-    out = []
-    for slug in Model.all(conn):
-        m = Model.load(conn, slug)
-        out.append(
-            {
-                "slug": slug,
-                "question": m.question,
-                "system": m.system,
-                "summary": m.summary,
-                "unit": m.output_unit,
-                "inputs": m.inputs,
-                "validation": validation_status(conn, slug),
-            }
-        )
-    return {"models": out}
+def list_models(conn: sqlite3.Connection = Depends(_db)):
+    return list_models_payload(conn)
 
 
 @app.get("/api/sizing/{model_slug:path}")
-def sizing(model_slug: str, **_):
+def sizing(model_slug: str):
     raise HTTPException(status_code=400, detail="use POST /api/sizing")
 
 
 @app.post("/api/sizing")
-def post_sizing(payload: dict):
-    model = _model(payload.get("model", ""))
+def post_sizing(payload: dict, conn: sqlite3.Connection = Depends(_db)):
+    _model(conn, payload.get("model", ""))
     try:
-        result = model.evaluate(payload.get("inputs", {}))
-    except ModelError as e:
+        return sizing_payload(
+            conn,
+            payload.get("model", ""),
+            payload.get("inputs", {}),
+            available=payload.get("available"),
+        )
+    except (ModelError, TypeError, ValueError) as e:
         raise HTTPException(status_code=422, detail=str(e))
-    body = _serialise(result, model)
-
-    available = payload.get("available")
-    if available:
-        try:
-            body["headroom"] = headroom(result, parse_bytes(available))
-        except ModelError as e:
-            raise HTTPException(status_code=422, detail=str(e))
-    return body
-
-
-def _serialise_instance_spec(spec) -> dict | None:
-    if spec is None:
-        return None
-    return {
-        "name": spec.name,
-        "ram_bytes": spec.ram_bytes,
-        "vcpu": spec.vcpu,
-        "ebs_bandwidth_gbps": spec.ebs_bandwidth_gbps,
-        "source_title": spec.source_title,
-        "source_url": spec.source_url,
-    }
-
-
-def _serialise_instance_pick(pick: dict) -> dict:
-    return {
-        "required_lo": pick["required_lo"],
-        "required_mode": pick["required_mode"],
-        "required_hi": pick["required_hi"],
-        "pick_lo": _serialise_instance_spec(pick["pick_lo"]),
-        "pick_mode": _serialise_instance_spec(pick["pick_mode"]),
-        "pick_hi": _serialise_instance_spec(pick["pick_hi"]),
-        "largest_in_pool": _serialise_instance_spec(pick["largest_in_pool"]),
-        "exceeds_pool": pick["exceeds_pool"],
-    }
 
 
 @app.get("/api/scenarios")
-def list_scenarios():
-    return {"scenarios": describe_scenarios(_conn())}
+def list_scenarios(conn: sqlite3.Connection = Depends(_db)):
+    return {"scenarios": describe_scenarios(conn)}
 
 
 @app.post("/api/scenario")
-def post_scenario(payload: dict):
-    scenario = get_scenario(payload.get("scenario", ""))
-    if scenario.get("disabled"):
-        raise HTTPException(status_code=422, detail=f"{scenario['slug']}: not yet modeled")
-
-    available = payload.get("available")
+def post_scenario(payload: dict, conn: sqlite3.Connection = Depends(_db)):
     try:
-        available_bytes = parse_bytes(available) if available else None
-        steps = chain_evaluate(
-            _conn(), scenario, payload.get("inputs", {}), available=available_bytes
+        return scenario_payload(
+            conn,
+            payload.get("scenario", ""),
+            payload.get("inputs", {}),
+            available=payload.get("available"),
         )
-    except ModelError as e:
+    except (ModelError, TypeError, ValueError) as e:
         raise HTTPException(status_code=422, detail=str(e))
-
-    body_steps = []
-    for s in steps:
-        if s.kind == "model":
-            step_body = _serialise(s.result, s.model)
-            step_body["chained"] = s.chained
-            if s.headroom is not None:
-                step_body["headroom"] = s.headroom
-            if s.assumed_inputs:
-                step_body["assumed_inputs"] = s.assumed_inputs
-            body_steps.append({"kind": "model", **step_body})
-        else:
-            if s.gp3_spec is not None:
-                body_steps.append(
-                    {
-                        "kind": "lookup",
-                        "lookup": s.slug,
-                        "chained": False,
-                        "gp3": s.gp3_spec,
-                    }
-                )
-            else:
-                body_steps.append(
-                    {
-                        "kind": "lookup",
-                        "lookup": s.slug,
-                        "chained": True,
-                        "pick": _serialise_instance_pick(s.instance_pick),
-                    }
-                )
-
-    summary = build_instance_sizing_summary(steps, payload.get("inputs", {}))
-
-    return {
-        "scenario": scenario["slug"],
-        "label": scenario["label"],
-        "summary": scenario.get("summary"),
-        "see_also": scenario.get("see_also", []),
-        "steps": body_steps,
-        "sizing_summary": summary if summary else None,
-    }
 
 
 @app.get("/api/why/{model_slug:path}")
-def why(model_slug: str):
+def why(model_slug: str, conn: sqlite3.Connection = Depends(_db)):
     """The citation chain, without running the model. What a reader wants when
     they distrust a number rather than when they need one."""
-    model = _model(model_slug)
-    return {
-        "model": model.slug,
-        "question": model.question,
-        "summary": model.summary,
-        "reframe": model.reframe,
-        "notes": model.notes,
-        "validation": validation_status(_conn(), model.slug),
-        "terms": [
-            {
-                "key": t.key,
-                "label": t.label,
-                "role": t.role,
-                "rationale": t.rationale,
-                "coefficient": t.coefficient,
-                "band": (
-                    None
-                    if t.coefficient is None
-                    else {"lo": t.coeff_lo, "mode": t.coeff_mode, "hi": t.coeff_hi}
-                ),
-                "unit": t.unit,
-                "confidence": t.confidence,
-                "applies_to": t.applies_to,
-                "source": t.source,
-                "source_title": t.source_title,
-                "source_url": t.source_url,
-                "quote": t.quote,
-                "input_key": t.input_key,
-            }
-            for t in model.terms
-        ],
-    }
+    _model(conn, model_slug)
+    return why_payload(conn, model_slug)
 
 
 @app.get("/")
-def index():
+def index(conn: sqlite3.Connection = Depends(_db)):
     """Same page as the static export — one calculator for GUI and deploy."""
-    return HTMLResponse(render(corpus_blob(_conn())))
+    return HTMLResponse(render(corpus_blob(conn)))
 
 
 @app.get("/api/corpus")
-def api_corpus():
+def api_corpus(conn: sqlite3.Connection = Depends(_db)):
     """The export blob, for tooling that wants the page without HTML."""
-    return corpus_blob(_conn())
+    return corpus_blob(conn)
 
 
 app.mount("/static", StaticFiles(directory=STATIC), name="static")

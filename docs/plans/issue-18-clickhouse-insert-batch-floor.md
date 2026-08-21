@@ -1,7 +1,10 @@
 # Plan — Issue #18 / Roadmap T10: ClickHouse insert-frequency ceiling
 
-Status: proposal only. Nothing here has been run. No figure below is in the
-corpus yet.
+Status: dual-image probe complete (2026-08-21). Live thresholds match
+coefficients; FINDINGS.md written. `PROBE_STOP_MERGES=1` used to isolate
+ceilings (merges-on on this 2 vCPU box never crossed delay). Docker on the
+cloud agent needed `storage-driver: vfs` (overlayfs whiteouts fail). Harness
+prefers host `.venv` + published port when container PyPI is unreachable.
 
 ## 1. The question, as a person would ask it
 
@@ -208,10 +211,9 @@ container required) —
   `clickhouse.active_parts_throw_threshold` (dimension: count).
 - New file `data/coefficients/clickhouse.yaml` and `data/models/clickhouse.yaml`
   — this system currently has zero coefficients, so these are the first.
-  New investigation directory, next available number as of this writing —
-  `docs/investigations/005-clickhouse-insert-batch-floor/` — **check for
-  collisions before creating it**, other roadmap items being planned in this
-  same session may also claim a 005 slot.
+  Investigation directory:
+  `docs/investigations/012-clickhouse-insert-batch-floor/` (010 was taken by
+  compression-shape; 011 by azure-premium-v2).
 
 **Requires the benchmark:** a `clickhouse.insert-batch-floor` model
 (`data/models/clickhouse.yaml`) carrying the measured crossover — the

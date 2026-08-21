@@ -1,0 +1,118 @@
+{
+  "arm": "local-v-nvme",
+  "device": "V: WD BLACK SN770 NVMe",
+  "transport": null,
+  "model": null,
+  "throttle_iops": null,
+  "throttle_bps": null,
+  "points": [
+    {
+      "bs_kib": 4.0,
+      "iops": 37728.783902,
+      "bw_kib_s": 150915.0,
+      "lat_us": 840.872441713,
+      "iodepth_mean": 32.0,
+      "direct": true,
+      "ok": true,
+      "reject_reason": null
+    },
+    {
+      "bs_kib": 8.0,
+      "iops": 29303.049238,
+      "bw_kib_s": 234424.0,
+      "lat_us": 1087.050666052,
+      "iodepth_mean": 32.0,
+      "direct": true,
+      "ok": true,
+      "reject_reason": null
+    },
+    {
+      "bs_kib": 16.0,
+      "iops": 20224.068983,
+      "bw_kib_s": 323585.0,
+      "lat_us": 1580.674975524,
+      "iodepth_mean": 32.0,
+      "direct": true,
+      "ok": true,
+      "reject_reason": null
+    },
+    {
+      "bs_kib": 32.0,
+      "iops": 10544.045983,
+      "bw_kib_s": 337409.0,
+      "lat_us": 3033.44610694,
+      "iodepth_mean": 32.0,
+      "direct": true,
+      "ok": true,
+      "reject_reason": null
+    },
+    {
+      "bs_kib": 64.0,
+      "iops": 2596.281043,
+      "bw_kib_s": 166161.0,
+      "lat_us": 12321.620310084,
+      "iodepth_mean": 32.0,
+      "direct": true,
+      "ok": true,
+      "reject_reason": null
+    },
+    {
+      "bs_kib": 128.0,
+      "iops": 1765.461347,
+      "bw_kib_s": 225979.0,
+      "lat_us": 18118.964971184,
+      "iodepth_mean": 32.0,
+      "direct": true,
+      "ok": true,
+      "reject_reason": null
+    },
+    {
+      "bs_kib": 256.0,
+      "iops": 929.158367,
+      "bw_kib_s": 237864.0,
+      "lat_us": 34428.449410960005,
+      "iodepth_mean": 32.0,
+      "direct": true,
+      "ok": true,
+      "reject_reason": null
+    },
+    {
+      "bs_kib": 512.0,
+      "iops": 546.954472,
+      "bw_kib_s": 280040.0,
+      "lat_us": 58479.21483374901,
+      "iodepth_mean": 32.0,
+      "direct": true,
+      "ok": true,
+      "reject_reason": null
+    },
+    {
+      "bs_kib": 1024.0,
+      "iops": 300.604416,
+      "bw_kib_s": 307818.0,
+      "lat_us": 106363.87574230599,
+      "iodepth_mean": 32.0,
+      "direct": true,
+      "ok": true,
+      "reject_reason": null
+    }
+  ],
+  "plateaus": [
+    {
+      "kind": "throughput",
+      "value": 275240.6666666667,
+      "unit": "KiB/s",
+      "bs_kib_lo": 256.0,
+      "bs_kib_hi": 1024.0
+    }
+  ],
+  "crossover": {
+    "bs_kib": 16.0,
+    "method": "iops_drop_with_full_bw",
+    "predicted_kib": null
+  },
+  "guards": {
+    "throttle_warnings": [],
+    "predicted_crossover_kib": null
+  }
+}

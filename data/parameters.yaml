@@ -59,6 +59,17 @@ parameters:
       mongoexport + gzip -9, without WiredTiger internals. Used as the x-axis
       for the manufactured compression-shape curve (investigation 010 / T2).
 
+  - slug: storage.covered_query_residency_ratio
+    label: Covered-query residency / indexSize ratio
+    unit: ratio
+    dimension: ratio
+    notes: >-
+      WiredTiger bytes brought into cache by an index-covered query path,
+      divided by db.stats().indexSize for the indexes that path touched.
+      Investigation 005 / T5: values near 1.0 support treating in-cache index
+      bytes as ≈ indexSize; values well above 1.0 would imply an expansion
+      term (see plan issue-13).
+
   # -- WiredTiger cache -------------------------------------------------
   - slug: cache.size_bytes
     label: WiredTiger cache size
@@ -492,3 +503,42 @@ parameters:
     notes: >-
       (1 + YoY growth/100)^years — precomputed bands for multi-year storage
       projection when the model engine cannot exponentiate in one step.
+
+  # -- ClickHouse MergeTree insert backpressure ---------------------------
+  - slug: clickhouse.active_parts_delay_threshold
+    label: Active parts per partition before insert delay
+    unit: count
+    dimension: count
+    notes: >-
+      MergeTree setting parts_to_delay_insert. When active parts in a single
+      partition reach this count, INSERTs are artificially slowed so merges can
+      catch up. Defaults jumped from 150 to 1000 at ClickHouse 23.6.
+
+  - slug: clickhouse.active_parts_throw_threshold
+    label: Active parts per partition before insert reject
+    unit: count
+    dimension: count
+    notes: >-
+      MergeTree setting parts_to_throw_insert. Above this active-part count in
+      one partition, INSERT raises "Too many parts". Defaults jumped from 300
+      to 3000 at ClickHouse 23.6.
+
+  - slug: clickhouse.max_insert_delay_seconds
+    label: Max artificial INSERT delay under part pressure
+    unit: seconds
+    dimension: seconds
+    notes: >-
+      MergeTree setting max_delay_to_insert — upper bound on how long ClickHouse
+      will sleep an INSERT when parts_to_delay_insert has been crossed.
+
+  - slug: clickhouse.max_avg_part_size_for_too_many_parts_bytes
+    label: Avg part size above which too-many-parts checks are skipped
+    unit: bytes
+    dimension: bytes
+    notes: >-
+      MergeTree setting max_avg_part_size_for_too_many_parts. When the average
+      active part in a partition is larger than this, parts_to_delay_insert and
+      parts_to_throw_insert do not delay or reject — ClickHouse's own escape
+      hatch for tables whose parts have already merged large (TB-scale tables
+      with healthy merges). The insert-frequency failure mode is about many
+      small parts, not about total table bytes.

@@ -27,7 +27,7 @@ Living recommendations — **Product core** (instance sizing), **Simple** /
 **Advanced** / **Evidence** (ops + catalogs) — live in
 [`recommendations.md`](recommendations.md). [`dashboards.md`](dashboards.md)
 is a short pointer to that file. Per-system series contracts remain in
-`mongodb.md`, `ebs.md`, and `redis.md`.
+`mongodb.md`, `ebs.md`, `redis.md`, and `clickhouse.md`.
 
 ## The import contract
 

@@ -94,6 +94,11 @@ scenarios:
         family: r8i
         feed: previous
       - kind: lookup
+        lookup: instance_select
+        system: azure-vm
+        family: Esv6
+        feed: previous
+      - kind: lookup
         lookup: gp3_spec
         sum_inputs:
           - index_size
@@ -103,6 +108,9 @@ scenarios:
         model: ebs.iops-to-provision
         defaults_from_coefficient:
           average_iops: ebs.gp3-baseline-iops
+        assumed_note: >-
+          not measured — peak-second IOPS still applied so a
+          microburst cannot stall storage tickets
     see_also:
       - url: https://repost.aws/knowledge-center/ebs-troubleshoot-performance-issues-ec2
         label: AWS — raise IOPS or throughput until exceeded checks stay at 0
@@ -159,16 +167,47 @@ scenarios:
           after VolumeIOPSExceededCheck / VolumeThroughputExceededCheck say you
           are actually hitting a volume limit rather than an instance pipe.
 
-  - slug: clickhouse.stub
-    label: ClickHouse
-    disabled: true
-    note: Stub. No coefficients yet.
-  - slug: redis.stub
-    label: Redis
-    disabled: true
-    note: >-
-      Investigation 005 maxmemory/eviction coefficients in corpus; no sizing
-      scenario yet.
+  - slug: clickhouse.parts-insert-ceiling
+    label: ClickHouse insert part-count ceiling
+    summary: >-
+      At how many active parts per partition ClickHouse rejects inserts — and
+      the 10× default jump at 23.6 that makes an unversioned answer wrong.
+    steps:
+      - kind: model
+        model: clickhouse.parts-insert-ceiling
+
+  - slug: redis.celery-broker
+    label: Redis as a Celery broker
+    summary: >-
+      How much Redis maxmemory, and how many workers, before Celery loses tasks
+      or cannot drain. Investigation 005 measured both policies Celery documents:
+      noeviction stalls workers and loses the batch; allkeys-lru keeps workers
+      busy while dropping ~two-thirds. Neither is a safe point — alert on
+      used_memory/maxmemory before either mode. Drain and completion-ceiling
+      terms are investigation 004's; prefetch reservation is the documented
+      worker formula, not a drain prediction.
+    input_sections:
+      - title: Worker fleet (optional)
+        keys:
+          - concurrency
+    steps:
+      - kind: model
+        model: celery.redis-broker-maxmemory
+      - kind: model
+        model: celery.queue-amplification
+      - kind: model
+        model: celery.worker-prefetch
+    see_also:
+      - scenario: celery.queue-amplification
+        reason: >-
+          Backlog growth above the completion ceiling and drain time while the
+          disk stays bad are the 004 model on its own. This scenario puts those
+          next to the maxmemory failure modes rather than replacing them.
+      - url: https://docs.celeryq.dev/en/v5.4.0/getting-started/backends-and-brokers/redis.html
+        label: Celery 5.4.0 — Using Redis (documents noeviction and allkeys-lru)
+        reason: >-
+          The page that presents both policies as valid. The scenario's first
+          step is the measured conflict with that wording, not a policy pick.
   - slug: celery.queue-amplification
     label: Celery queue under a storage stall
     summary: >-
@@ -178,3 +217,9 @@ scenarios:
     steps:
       - kind: model
         model: celery.queue-amplification
+    see_also:
+      - scenario: redis.celery-broker
+        reason: >-
+          When that unbounded backlog fills Redis, both documented maxmemory
+          policies fail — stall versus silent loss. The Redis/Celery scenario
+          names the failure mode and the occupancy to alert on.

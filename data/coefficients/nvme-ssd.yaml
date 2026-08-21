@@ -1,31 +1,34 @@
 coefficients:
-- slug: nvme-ssd.max-random-read-iops
-  parameter: io.iops
-  system: nvme-ssd
-  applies_to: reef Windows, WDC WDS240G1G0A-00SS50 (C:), 2026-08-20
-  value_lo: 26860.461192
-  value_mode: 29844.956879999998
-  value_hi: 32829.452568
-  confidence: measured
-  source: io-probe-reef-2026-08-20
-  notes: "Random read IOPS plateau from fio sweep (4\u20138 KiB). Device 'C:\\\\ (system\
-    \ volume)', transport 'sata'."
-- slug: nvme-ssd.max-throughput-mibps
-  parameter: io.throughput_mibps
-  system: nvme-ssd
-  applies_to: reef Windows, WDC WDS240G1G0A-00SS50 (C:), 2026-08-20
-  value_lo: 201.33984375
-  value_mode: 223.7109375
-  value_hi: 246.08203125000003
-  confidence: measured
-  source: io-probe-reef-2026-08-20
-  notes: "Throughput plateau from fio sweep (128\u2013256 KiB). Device 'C:\\\\ (system\
-    \ volume)'."
-- slug: nvme-ssd.io-size-crossover-kib
-  parameter: io.io_size_crossover_kib
-  system: nvme-ssd
-  applies_to: reef Windows, WDC WDS240G1G0A-00SS50 (C:), 2026-08-20
-  value: 16.0
-  confidence: measured
-  source: io-probe-reef-2026-08-20
-  notes: Crossover method 'iops_drop_with_full_bw'. Predicted None.
+  - slug: nvme-ssd.max-random-read-iops
+    parameter: io.iops
+    system: nvme-ssd
+    applies_to: "reef V: WD BLACK SN770 NVMe native Windows fio, 2026-08-21"
+    value_lo: 30164.324913
+    value_mode: 33515.91657
+    value_hi: 36867.508227
+    confidence: measured
+    source: obs-reef-nvme-sn770-2026-08-21
+    notes: >-
+      Derived from 4–8 KiB fio windowsaio QD32 points (strict plateaus finder
+      returned throughput-only). Replaces 2026-08-20 C: SATA smoke that was
+      mis-published under the nvme-ssd system.
+  - slug: nvme-ssd.max-throughput-mibps
+    parameter: io.throughput_mibps
+    system: nvme-ssd
+    applies_to: "reef V: WD BLACK SN770 NVMe native Windows fio, 2026-08-21"
+    value_lo: 241.9107421875
+    value_mode: 268.7897135416667
+    value_hi: 295.6686848958334
+    confidence: measured
+    source: obs-reef-nvme-sn770-2026-08-21
+    notes: >-
+      Throughput plateau from fio sweep (256–1024 KiB). Device V: WD BLACK SN770.
+  - slug: nvme-ssd.io-size-crossover-kib
+    parameter: io.io_size_crossover_kib
+    system: nvme-ssd
+    applies_to: "reef V: WD BLACK SN770 NVMe native Windows fio, 2026-08-21"
+    value: 16.0
+    confidence: measured
+    source: obs-reef-nvme-sn770-2026-08-21
+    notes: >-
+      Crossover method iops_drop_with_full_bw. Host NVMe, not Docker virtio.
