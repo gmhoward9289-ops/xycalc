@@ -82,11 +82,28 @@ const XYCALC_APP = (() => {
     return grid;
   }
 
+  function scenarioInputList(s) {
+    if (!s) return [];
+    if (s.input_sections && s.input_sections.length) {
+      const out = [];
+      for (const sec of s.input_sections) {
+        for (const inp of (sec.inputs || [])) out.push(inp);
+      }
+      return out;
+    }
+    return s.inputs || [];
+  }
+
   function scenarioRequiredFieldsMissing(inputs, values) {
     return (inputs || []).filter((i) => i.required).some((i) => {
       const v = values[i.key];
       return v == null || !String(v).trim();
     });
+  }
+
+  function effectiveYScale(requested, yMin) {
+    if (requested === "log" && yMin > 0) return "log";
+    return "linear";
   }
 
   function chartLayout(W, H, L, R, T, B) {
@@ -480,10 +497,7 @@ const XYCALC_APP = (() => {
     }
 
     function scenarioInputCount(s) {
-      if (s.input_sections && s.input_sections.length) {
-        return s.input_sections.reduce((n, sec) => n + (sec.inputs || []).length, 0);
-      }
-      return (s.inputs || []).length;
+      return scenarioInputList(s).length;
     }
 
     function renderCitationSummary(data) {
@@ -558,12 +572,13 @@ const XYCALC_APP = (() => {
 
     function maybeAuto() {
       if (!currentScenario) return;
+      const fields = scenarioInputList(currentScenario);
       const values = {};
-      (currentScenario.inputs || []).forEach((i) => {
+      fields.forEach((i) => {
         const el = $("scn-in-" + i.key);
         values[i.key] = el ? el.value : null;
       });
-      if (!scenarioRequiredFieldsMissing(currentScenario.inputs, values)) calculateScenario(true);
+      if (!scenarioRequiredFieldsMissing(fields, values)) calculateScenario(true);
     }
 
     function calculateScenario(auto) {
@@ -688,6 +703,9 @@ const XYCALC_APP = (() => {
       if (availRaw) {
         try { available = XY.parseBytes(availRaw); }
         catch (e) {
+          const st = $("single-recalc-status");
+          if (st) st.textContent = "Answer is not reflecting current inputs.";
+          $("result").hidden = true;
           if (!quiet) {
             $("error").textContent = e.message;
             $("error").hidden = false;
@@ -723,7 +741,7 @@ const XYCALC_APP = (() => {
       const v = $("validation");
       const LABEL = { none: "Unvalidated", thin: "Thinly validated", reasonable: "Validated" };
       v.className = "validation " + m.validation.grade;
-      v.innerHTML = `<strong>${esc(LABEL[m.validation.grade])}</strong> — ${esc(m.validation.text)}`;
+      v.innerHTML = `<strong>${esc(LABEL[m.validation.grade] || m.validation.grade)}</strong> — ${esc(m.validation.text)}`;
 
       if (available != null) {
         const h = XY.headroom(d, available);
@@ -852,7 +870,9 @@ const XYCALC_APP = (() => {
       let yMin = Math.min.apply(null, s.los);
       let yMax = Math.max.apply(null, s.his);
       if (avail != null) { yMin = Math.min(yMin, avail); yMax = Math.max(yMax, avail); }
-      const logY = YSCALE === "log" && yMin > 0;
+      const logY = effectiveYScale(YSCALE, yMin) === "log";
+      $("ylin").setAttribute("aria-pressed", String(!logY));
+      $("ylog").setAttribute("aria-pressed", String(logY));
       if (!logY) yMin = Math.min(0, yMin);
       else { yMin = yMin / 1.15; yMax = yMax * 1.15; }
       if (!logY) yMax = yMax * 1.05;
@@ -918,7 +938,7 @@ const XYCALC_APP = (() => {
       const commit = (i) => {
         const el = $("in-" + s.key);
         if (!el) return;
-        el.value = fmt(s.xs[i], s.unit);
+        el.value = String(s.xs[i]);
         calculate();
       };
       const hit = svg.querySelector("#hit");
@@ -928,12 +948,16 @@ const XYCALC_APP = (() => {
       show(centreIdx);
 
       const ratio = s.his[centreIdx] / (s.los[centreIdx] || 1);
-      $("chart-note").textContent =
+      let note =
         `${s.label} swept from ${fmt(xLo, s.unit)} to ${fmt(xHi, s.unit)}; ` +
         `everything else held at what you entered. The shaded envelope is the band, ` +
         `not error bars — at the value you gave it spans a factor of ${ratio.toFixed(1)}.`;
+      if (YSCALE === "log" && !logY) {
+        note += " Y-axis is linear because a curve touches 0 (log is undefined).";
+      }
+      $("chart-note").textContent = note;
       svg.setAttribute("aria-label",
-        `${STATE.model.question} — ${s.label} on a log axis from ${fmt(xLo, s.unit)} to ${fmt(xHi, s.unit)}, ` +
+        `${STATE.model.question} — ${s.label} on a ${logY ? "log" : "linear"} axis from ${fmt(xLo, s.unit)} to ${fmt(xHi, s.unit)}, ` +
         `answer from ${fmt(s.modes[0], u)} to ${fmt(s.modes[s.modes.length - 1], u)}. The table below has the figures.`);
 
       $("sweep-h").textContent = s.label;
@@ -1386,7 +1410,9 @@ const XYCALC_APP = (() => {
     nearestPixelIndex: nearestPixelIndex,
     sweepBounds: sweepBounds,
     sweepGrid: sweepGrid,
+    scenarioInputList: scenarioInputList,
     scenarioRequiredFieldsMissing: scenarioRequiredFieldsMissing,
+    effectiveYScale: effectiveYScale,
     chartLayout: chartLayout,
     normalizeSimpleSize: normalizeSimpleSize,
   };

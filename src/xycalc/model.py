@@ -44,10 +44,36 @@ class ModelError(Exception):
     pass
 
 
-# Mirrors build.py's own DATA computation rather than importing it, so this
-# module has no dependency on the build pipeline -- a scenario only ever
-# references models that build.py has already loaded into the database.
-_SCENARIOS_PATH = Path(__file__).parent.parent.parent / "data" / "scenarios.yaml"
+# One decimal point, optional en-US thousands separators. `[0-9.]+` used to
+# accept "1.2.3" (Python then threw; JS parseFloat silently returned 1.2) and
+# to reject the comma in format_quantity's "3,000 iops". parse and format have
+# to be inverses or the calculator's own scrub-commit corrupts the answer.
+_AMOUNT = re.compile(
+    r"\s*((?:[0-9]{1,3}(?:,[0-9]{3})+|[0-9]+)(?:\.[0-9]+)?|\.[0-9]+)"
+    r"\s*([a-zA-Z/%]*)\s*"
+)
+
+
+def _split_amount(text: str) -> tuple[float, str]:
+    m = _AMOUNT.fullmatch(text)
+    if not m:
+        raise ModelError(f"cannot read a size from {text!r}")
+    return float(m.group(1).replace(",", "")), m.group(2)
+
+
+def parse_number(text: str | float | int) -> float:
+    """Scalar half of parse_bytes: strip thousands separators, one decimal.
+
+    format_quantity(3000, "iops") is "3,000 iops"; this reads it back as 3000
+    rather than 3. Units are ignored — the number is what the model wants.
+    """
+    if isinstance(text, (int, float)):
+        return float(text)
+    try:
+        value, _unit = _split_amount(str(text))
+    except ModelError:
+        raise ModelError(f"cannot read a number from {text!r}") from None
+    return value
 
 
 def parse_bytes(text: str | float | int) -> float:
@@ -56,19 +82,19 @@ def parse_bytes(text: str | float | int) -> float:
     when written explicitly."""
     if isinstance(text, (int, float)):
         return float(text)
-    m = re.fullmatch(r"\s*([0-9.]+)\s*([a-zA-Z]*)\s*", str(text))
-    if not m:
-        raise ModelError(f"cannot read a size from {text!r}")
-    try:
-        value = float(m.group(1))
-    except ValueError:
-        raise ModelError(f"cannot read a size from {text!r}") from None
-    unit = m.group(2).lower()
+    value, unit_raw = _split_amount(str(text))
+    unit = unit_raw.lower()
     if not unit:
         return value
     if unit not in _UNITS:
-        raise ModelError(f"unknown unit {m.group(2)!r} in {text!r}")
+        raise ModelError(f"unknown unit {unit_raw!r} in {text!r}")
     return value * _UNITS[unit]
+
+
+# Mirrors build.py's own DATA computation rather than importing it, so this
+# module has no dependency on the build pipeline -- a scenario only ever
+# references models that build.py has already loaded into the database.
+_SCENARIOS_PATH = Path(__file__).parent.parent.parent / "data" / "scenarios.yaml"
 
 
 # Units whose fractional part is noise. "1,280.00 ops/s" implies a precision
@@ -474,9 +500,15 @@ class Model:
                     raise ModelError(f"{self.slug}: input '{key}' is required")
                 continue
             try:
-                out[key] = (
-                    parse_bytes(raw) if spec["unit"] == "bytes" else float(raw)
-                )
+                if spec["unit"] == "bytes":
+                    out[key] = parse_bytes(raw)
+                else:
+                    try:
+                        out[key] = parse_number(raw)
+                    except ModelError:
+                        raise ModelError(
+                            f"{self.slug}: input '{key}' is not a number ({raw!r})"
+                        ) from None
             except (TypeError, ValueError):
                 raise ModelError(
                     f"{self.slug}: input '{key}' is not a number ({raw!r})"
@@ -1018,7 +1050,7 @@ def build_instance_sizing_summary(
         if out_key == "ram":
             current[out_key] = parse_bytes(raw)
         else:
-            current[out_key] = float(raw)
+            current[out_key] = parse_number(raw)
     if current:
         summary["current"] = current
 

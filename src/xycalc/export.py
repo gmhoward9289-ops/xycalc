@@ -45,6 +45,7 @@ from .model import (
     ModelError,
     chain_evaluate,
     describe_scenarios,
+    format_quantity,
     get_scenario,
     load_instance_catalog,
     parse_bytes,
@@ -91,6 +92,11 @@ class ExportError(Exception):
     pass
 
 
+# The calculator banners these with human labels. A new grade that is not in
+# this set used to render as "undefined —" in the page's most important strip.
+KNOWN_VALIDATION_GRADES = frozenset({"none", "thin", "reasonable"})
+
+
 def _term_dict(t) -> dict:
     return {
         "key": t.key,
@@ -118,6 +124,14 @@ def _term_dict(t) -> dict:
 
 def _model_dict(conn: sqlite3.Connection, slug: str) -> dict:
     m = Model.load(conn, slug)
+    validation = validation_status(conn, slug)
+    grade = validation.get("grade")
+    if grade not in KNOWN_VALIDATION_GRADES:
+        raise ExportError(
+            f"{slug}: validation grade {grade!r} is not in "
+            f"{sorted(KNOWN_VALIDATION_GRADES)}; the calculator has no label "
+            "for it and would render 'undefined —'"
+        )
     return {
         "slug": m.slug,
         "question": m.question,
@@ -139,7 +153,7 @@ def _model_dict(conn: sqlite3.Connection, slug: str) -> dict:
             for i in m.inputs
         ],
         "terms": [_term_dict(t) for t in m.terms],
-        "validation": validation_status(conn, slug),
+        "validation": validation,
     }
 
 
@@ -181,6 +195,26 @@ def golden_vectors(conn: sqlite3.Connection, slug: str) -> list[dict]:
                 }
             )
     return out
+
+
+def browser_string_path_vector(conn: sqlite3.Connection) -> dict:
+    """The path the calculator actually sends: a formatted display string.
+
+    Ladder vectors carry Python numbers, which is why scrub-commit's
+    '3,000 iops' → parseFloat → 3 never showed up as a golden failure.
+    """
+    slug = "ebs.iops-to-provision"
+    m = Model.load(conn, slug)
+    displayed = format_quantity(4000, "iops")
+    r = m.evaluate({"average_iops": displayed})
+    return {
+        "model": slug,
+        "inputs": {"average_iops": displayed},
+        "lo": r.lo,
+        "mode": r.mode,
+        "hi": r.hi,
+        "contributions": [s.contribution for s in r.steps],
+    }
 
 
 def scenario_golden_vectors(conn: sqlite3.Connection) -> list[dict]:
@@ -536,6 +570,7 @@ def corpus_blob(conn: sqlite3.Connection) -> dict:
             "no golden vectors could be generated — the export refuses to ship "
             "a page whose arithmetic nothing checks"
         )
+    golden.append(browser_string_path_vector(conn))
     blob = {
         "xycalc_version": __version__,
         "xycalc_git": git_identity(),
