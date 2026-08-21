@@ -11,6 +11,13 @@ from __future__ import annotations
 import sqlite3
 
 from .export import corpus_blob
+from .ingest import (
+    IngestError,
+    extract_mongodb,
+    observation_skeleton,
+    parse_metrics,
+    render_observation_yaml,
+)
 from .model import (
     Model,
     ModelError,
@@ -244,3 +251,86 @@ def scenario_payload(
         "steps": body_steps,
         "sizing_summary": summary if summary else None,
     }
+
+
+# Status of the *paste*, not of the model. The model's validation grade still
+# lives on `sizing.validation` so a client cannot confuse the two.
+_MEASUREMENT_CANDIDATE = {
+    "status": "candidate",
+    "cited": False,
+    "validated": False,
+    "text": (
+        "Ingested measurement is a candidate, not a cited corpus fact and "
+        "not a validation of any model."
+    ),
+}
+
+
+def ingest_payload(
+    conn: sqlite3.Connection,
+    metrics,
+    *,
+    model: str = "mongodb.wt-cache",
+    emit_observation: bool = False,
+    tag: str | None = None,
+    workload: str | None = None,
+    machine_class: str | None = None,
+    publisher: str | None = None,
+    source_type: str | None = None,
+) -> dict:
+    """Extract model inputs from a metrics paste and optionally size them.
+
+    Reused by the CLI and the MCP ``import_metrics`` tool so those surfaces
+    cannot disagree about what was read. The measurement block is always
+    ``candidate`` / not cited / not validated — even when the *model*'s
+    validation grade is reasonable.
+    """
+    dump = parse_metrics(metrics)
+    try:
+        extracted = extract_mongodb(dump)
+    except IngestError:
+        raise
+    except Exception as e:  # pragma: no cover
+        raise IngestError(str(e)) from e
+
+    skeleton = observation_skeleton(
+        extracted,
+        tag=tag,
+        workload=workload,
+        machine_class=machine_class,
+        publisher=publisher,
+        source_type=source_type,
+    )
+
+    Model.load(conn, model)  # unknown slug fails here, not as n=0 silence
+    body: dict = {
+        "measurement": dict(_MEASUREMENT_CANDIDATE),
+        "extraction": extracted.as_dict(),
+        "model_inputs": extracted.model_inputs,
+        "applies_to": extracted.version,
+        "sizing": None,
+        # Model grade, not the paste. Always present so a client that only
+        # looks for `validation` cannot treat silence as a validated ingest.
+        "validation": validation_status(conn, model),
+    }
+
+    if extracted.model_inputs.get("storage_size") is not None:
+        # Bytes are already numbers; sizing_payload / evaluate accepts them.
+        body["sizing"] = sizing_payload(
+            conn, model, extracted.model_inputs
+        )
+    else:
+        body["sizing_error"] = (
+            "no storageSize in the paste; cannot run " + model
+        )
+
+    if emit_observation:
+        body["observation_yaml"] = render_observation_yaml(skeleton)
+        body["observation_skeleton"] = {
+            "tag": skeleton["tag"],
+            "sources": skeleton["sources"],
+            "observations": skeleton["observations"],
+            "applies_to": skeleton["applies_to"],
+        }
+
+    return body

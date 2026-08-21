@@ -19,8 +19,10 @@ from typing import Any
 
 from . import __version__
 from .db import connect
+from .ingest import IngestError
 from .model import ModelError
 from .payloads import (
+    ingest_payload,
     list_models_payload,
     scenario_payload,
     sizing_payload,
@@ -161,6 +163,44 @@ def create_server():
             try:
                 body = why_payload(conn, model)
             except ModelError as e:
+                _fail(e)
+            return with_corpus_digest(body, conn)
+
+    @server.tool(
+        name="import_metrics",
+        description=(
+            "Paste MongoDB db.stats() / serverStatus JSON and get the model "
+            "inputs the corpus actually consumes, a sizing run on those "
+            "inputs, and (optionally) a ready-to-PR observation YAML skeleton. "
+            "The paste is a CANDIDATE — not cited, not validated. Do not "
+            "present ingest output as a corpus fact. Model results still "
+            "include validation grade; unvalidated models say "
+            "'unvalidated (n=0)'. "
+            f"{_HONESTY} "
+            "metrics is the JSON object or JSON text. emit_observation adds "
+            "the YAML skeleton with TODO for provenance that cannot be derived."
+        ),
+    )
+    def import_metrics(
+        metrics: str | dict[str, Any],
+        emit_observation: bool = False,
+        model: str = "mongodb.wt-cache",
+        workload: str | None = None,
+        machine_class: str | None = None,
+        publisher: str | None = None,
+    ) -> dict[str, Any]:
+        with _db() as conn:
+            try:
+                body = ingest_payload(
+                    conn,
+                    metrics,
+                    model=model,
+                    emit_observation=emit_observation,
+                    workload=workload,
+                    machine_class=machine_class,
+                    publisher=publisher,
+                )
+            except (IngestError, ModelError) as e:
                 _fail(e)
             return with_corpus_digest(body, conn)
 

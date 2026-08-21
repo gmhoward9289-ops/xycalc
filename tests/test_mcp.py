@@ -12,6 +12,7 @@ import asyncio
 import json
 import os
 import sys
+from pathlib import Path
 from typing import Any
 
 import pytest
@@ -119,7 +120,14 @@ class TestHonestyInToolDescriptions:
 
         listed = asyncio.run(_list(db_path))
         names = {t.name for t in listed.tools}
-        assert names == {"list_models", "sizing", "headroom", "scenario", "why"}
+        assert names == {
+            "list_models",
+            "sizing",
+            "headroom",
+            "scenario",
+            "why",
+            "import_metrics",
+        }
         for tool in listed.tools:
             desc = tool.description or ""
             assert "unvalidated (n=0)" in desc, tool.name
@@ -227,3 +235,34 @@ class TestWhy:
         for term in wt_body["terms"]:
             assert term["rationale"]
         assert_validation_unavoidable(wt)
+
+
+class TestImportMetrics:
+    def test_paste_returns_candidate_extraction_and_sizing(self, db_path):
+        fixture = Path(__file__).resolve().parent / "fixtures" / "ingest" / "mongodb-wrapped-numberlong.json"
+        raw = fixture.read_text(encoding="utf-8")
+        result = call(db_path, "import_metrics", {"metrics": raw})
+        body = payload(result)
+        assert body["measurement"]["status"] == "candidate"
+        assert body["measurement"]["cited"] is False
+        assert body["measurement"]["validated"] is False
+        assert body["model_inputs"]["storage_size"] == 500000000000
+        assert body["sizing"]["answer"]["mode"] > 0
+        assert_validation_unavoidable(result)
+        text = dumped(result)
+        assert "candidate" in text.lower()
+        assert "not a cited" in body["measurement"]["text"]
+
+    def test_emit_observation_yaml_uses_todo_not_filler(self, db_path):
+        fixture = Path(__file__).resolve().parent / "fixtures" / "ingest" / "mongodb-serverstatus-nested.json"
+        result = call(
+            db_path,
+            "import_metrics",
+            {"metrics": fixture.read_text(encoding="utf-8"), "emit_observation": True},
+        )
+        body = payload(result)
+        yaml_text = body["observation_yaml"]
+        assert "publisher: TODO" in yaml_text
+        assert "local measurement" not in yaml_text
+        assert "CANDIDATE" in yaml_text
+        assert body["applies_to"] == "8.0.4"

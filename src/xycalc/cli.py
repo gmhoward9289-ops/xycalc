@@ -6,6 +6,8 @@
     xycalc scenarios
     xycalc scenario mongodb.size-to-instance --storage-size 500GB --index-size 40GB
     xycalc why      mongodb.wt-cache
+    xycalc ingest   dump.json
+    xycalc ingest   dump.json --emit-observation candidate.yaml
     xycalc build
     xycalc audit
     xycalc gui
@@ -28,6 +30,7 @@ from pathlib import Path
 from . import audit as audit_mod
 from . import build as build_mod
 from .db import connect
+from .ingest import IngestError, format_extraction, write_observation_files
 from .model import (
     DEFAULT_INSTANCE_CEILING,
     Model,
@@ -519,6 +522,91 @@ def cmd_export(args) -> int:
     return export_mod.main(argv)
 
 
+def cmd_ingest(args) -> int:
+    """Paste db.stats() / serverStatus JSON → model inputs + optional YAML.
+
+    The paste is a candidate. This command never writes the corpus and never
+    claims the measurement is cited or validated.
+    """
+    from .ingest import extract_mongodb, observation_skeleton, parse_metrics
+    from .payloads import ingest_payload
+
+    if args.metrics in (None, "-", Path("-")):
+        raw = sys.stdin.read()
+    else:
+        raw = Path(args.metrics).read_text(encoding="utf-8")
+
+    emit_dest = args.emit_observation
+    if emit_dest is not None:
+        emit_dest = str(emit_dest)
+
+    conn = connect(args.db)
+    try:
+        body = ingest_payload(
+            conn,
+            raw,
+            model=args.model,
+            emit_observation=bool(emit_dest),
+            tag=args.tag,
+            workload=args.workload,
+            machine_class=args.machine_class,
+            publisher=args.publisher,
+            source_type=args.source_type,
+        )
+    except (IngestError, ModelError) as e:
+        print(f"error: {e}", file=sys.stderr)
+        conn.close()
+        return 2
+
+    dump = parse_metrics(raw)
+    extracted = extract_mongodb(dump)
+    report = format_extraction(extracted)
+    # YAML on stdout would be unusable mixed with the human report.
+    report_file = sys.stderr if emit_dest == "-" else sys.stdout
+    print(report, file=report_file)
+
+    if body.get("sizing"):
+        model = _load(conn, args.model)
+        try:
+            result = model.evaluate(extracted.model_inputs)
+        except ModelError as e:
+            print(f"error: {e}", file=sys.stderr)
+            conn.close()
+            return 2
+        import contextlib
+        import io
+
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            _print_breakdown(result, model)
+            _print_constraints(result)
+            _print_validation(conn, model.slug)
+            _print_reframe(model)
+        print(file=report_file)
+        print(buf.getvalue(), end="", file=report_file)
+
+    if emit_dest:
+        skeleton = observation_skeleton(
+            extracted,
+            tag=args.tag,
+            workload=args.workload,
+            machine_class=args.machine_class,
+            publisher=args.publisher,
+            source_type=args.source_type,
+        )
+        if emit_dest == "-":
+            from .ingest import render_observation_yaml
+
+            sys.stdout.write(render_observation_yaml(skeleton))
+        else:
+            written = write_observation_files(skeleton, emit_dest)
+            for path in written:
+                print(f"wrote {path}", file=report_file)
+
+    conn.close()
+    return 0
+
+
 def cmd_gui(args) -> int:
     try:
         import uvicorn
@@ -656,6 +744,46 @@ def build_parser(db: Path | None = None) -> argparse.ArgumentParser:
     sp.add_argument("--crumb", default=None, help="raw HTML inserted above the header")
     sp.set_defaults(func=cmd_export)
 
+    sp = sub.add_parser(
+        "ingest",
+        help="paste db.stats()/serverStatus JSON → model inputs and a candidate observation",
+    )
+    sp.add_argument(
+        "metrics",
+        nargs="?",
+        default="-",
+        help="JSON file, or - / omit to read stdin",
+    )
+    sp.add_argument(
+        "--model",
+        default="mongodb.wt-cache",
+        help="model to run on the extracted inputs (default: mongodb.wt-cache)",
+    )
+    sp.add_argument(
+        "--emit-observation",
+        nargs="?",
+        const="-",
+        default=None,
+        metavar="PATH",
+        help=(
+            "write a ready-to-PR observation YAML skeleton. PATH.yaml is one "
+            "combined file; a directory gets data/sources + data/observations; "
+            "omit PATH to print YAML on stdout (report goes to stderr). "
+            "Provenance that cannot be derived is TODO, never invented."
+        ),
+    )
+    sp.add_argument("--tag", help="slug prefix for the skeleton (default: ingest-<db>-<date>)")
+    sp.add_argument("--workload", help="fills observation.workload; otherwise TODO")
+    sp.add_argument("--machine-class", help="fills observation.machine_class; otherwise TODO")
+    sp.add_argument("--publisher", help="fills source.publisher; otherwise TODO")
+    sp.add_argument(
+        "--source-type",
+        choices=["measured", "benchmark"],
+        default=None,
+        help="measured (a running system) or benchmark (a committed harness). Default: measured",
+    )
+    sp.set_defaults(func=cmd_ingest)
+
     return p
 
 
@@ -675,6 +803,9 @@ def main(argv: list[str] | None = None) -> int:
     except build_mod.BuildError as e:
         print(f"corpus build failed: {e}", file=sys.stderr)
         return 1
+    except IngestError as e:
+        print(f"error: {e}", file=sys.stderr)
+        return 2
 
 
 if __name__ == "__main__":
