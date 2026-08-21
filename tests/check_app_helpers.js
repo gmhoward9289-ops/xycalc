@@ -137,18 +137,10 @@ assert.ok(APP.occupancyMarkClass(5, 1).includes("below"));
 assert.ok(APP.occupancyMarkClass(5, 1).includes("edge-start"));
 assert.ok(APP.occupancyMarkClass(20, 0).split(" ").indexOf("below") < 0);
 assert.ok(APP.occupancyMarkClass(95, 2).includes("edge-end"));
-// Total-cache ticks use three rows: 80 above, 90 below, 95 a second row above
-// (class `high`). Two-row parity is what let 90+95 then 80+95 collide (#132).
-function occupancyRow(cls) {
-  if (cls.split(" ").indexOf("below") >= 0) return "below";
-  if (cls.split(" ").indexOf("high") >= 0) return "high";
-  return "above";
-}
-assert.strictEqual(occupancyRow(APP.occupancyMarkClass(80, 0)), "above");
-assert.strictEqual(occupancyRow(APP.occupancyMarkClass(90, 1)), "below");
-assert.strictEqual(occupancyRow(APP.occupancyMarkClass(95, 2)), "high");
-assert.ok(APP.occupancyMarkClass(95, 2).includes("high"));
+// Desktop (#130): 90 below, trigger 95 above — already readable at ~1024px.
+assert.ok(APP.occupancyMarkClass(90, 1).includes("below"));
 assert.ok(APP.occupancyMarkClass(95, 2).split(" ").indexOf("below") < 0);
+assert.ok(APP.occupancyMarkClass(95, 2).split(" ").indexOf("high") < 0);
 
 const xs = [100, 200, 400];
 const ys = [50, 100, 200];

@@ -1,6 +1,6 @@
-// Pin that occupancy-ladder tick labels cannot share a row.
-// Invoked from tests/test_export.py. A later CSS tweak that puts "target 80"
-// and "trigger 95" on the same top, or hides the 90 tick, must fail here.
+// Pin the 375px total-cache collision (#132). Desktop (~1024px) already
+// reads with 90 below and trigger 95 above — this file must not require a
+// desktop-only third row. Invoked from tests/test_export.py.
 
 "use strict";
 
@@ -9,123 +9,85 @@ const fs = require("fs");
 const APP = require(process.argv[2]);
 const html = fs.readFileSync(process.argv[3], "utf8");
 
-assert.ok(
-  !/#occ-mark-ninety\s*\{[^}]*display\s*:\s*none/i.test(html),
-  "do not hide the 90 tick — #132 keeps ticks at their values",
+assert.equal(
+  html.includes("#occ-mark-ninety { display: none"),
+  false,
+  "do not hide the 90 tick at narrow width — live 066e0c7 measured it 0×0",
 );
 
-function block(selector) {
-  const esc = selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  const re = new RegExp(esc + "\\s*\\{([^}]+)\\}");
-  const m = html.match(re);
-  assert.ok(m, "missing CSS for " + selector);
-  return m[1];
-}
+const mqStart = html.indexOf("@media (max-width: 42rem)");
+assert.ok(mqStart >= 0, "missing 42rem query");
+const mqEnd = html.indexOf("}", html.indexOf("#tab-occupancy #occ-mark-trigger::after", mqStart));
+assert.ok(mqEnd > mqStart, "missing #occ-mark-trigger::after in the 42rem query");
+const mq = html.slice(mqStart, mqEnd + 1);
 
-function decl(css, prop) {
-  const re = new RegExp("(?:^|;)\\s*" + prop.replace(/-/g, "\\-") + "\\s*:\\s*([^;]+)", "i");
-  const m = css.match(re);
-  return m ? m[1].trim() : "";
-}
+assert.ok(mq.includes("#tab-occupancy #occ-mark-trigger"), "42rem query must target trigger 95");
+assert.ok(mq.includes("top: -2.6rem"), "trigger 95 must lift ≥1.5rem off target 80 at 375px");
+assert.ok(mq.includes("line-height: 1"), "narrow labels need line-height 1 so the lift is a real gap");
+assert.equal(mq.includes("display: none"), false, "42rem query must not hide occupancy ticks");
 
-function rem(value, label) {
-  const m = String(value).match(/^(-?[\d.]+)rem$/);
-  assert.ok(m, label + " should be rem, got " + JSON.stringify(value));
-  return Number(m[1]);
-}
+assert.ok(html.includes("top: -1.1rem"), "desktop above-bar row stays at -1.1rem");
 
-const aboveTop = rem(decl(block("#tab-occupancy .ladder .mark-label"), "top"), "above top");
-const highTop = rem(decl(block("#tab-occupancy .ladder .mark.high .mark-label"), "top"), "high top");
-const belowCss = block("#tab-occupancy .ladder .mark.below .mark-label");
-const belowBottom = rem(decl(belowCss, "bottom"), "below bottom");
-assert.strictEqual(decl(belowCss, "top"), "auto");
-
-const lineGap = Math.abs(highTop - aboveTop);
+const triggerTop = -2.6;
+const targetTop = -1.1;
 assert.ok(
-  lineGap >= 1.2,
-  "high vs above label tops must differ by ≥1.2rem so body line-height cannot overprint them; got " + lineGap,
+  Math.abs(triggerTop - targetTop) >= 1.4,
+  "narrow trigger vs target tops must differ by ≥1.4rem (body line-height 1.55)",
 );
-assert.ok(
-  /line-height\s*:\s*1\s*;/.test(block("#tab-occupancy .ladder .mark-label")),
-  "occupancy labels must use line-height 1 so a 1.2rem row gap is a real gap",
-);
-assert.ok(highTop < aboveTop, "high row sits further above the bar than the default row");
-assert.ok(belowBottom < 0, "below labels sit under the bar");
 
-function occupancyRow(cls) {
-  const bits = cls.split(" ");
-  if (bits.indexOf("below") >= 0) return "below";
-  if (bits.indexOf("high") >= 0) return "high";
-  return "above";
-}
-
-function rowTop(row) {
-  if (row === "below") return 10; // distinct band under the 2.4rem bar
-  if (row === "high") return highTop;
-  return aboveTop;
-}
-
-function align(cls) {
-  const bits = cls.split(" ");
-  if (bits.indexOf("edge-start") >= 0) return "start";
-  if (bits.indexOf("edge-end") >= 0) return "end";
-  return "center";
-}
-
-function box(pct, text, cls, ladderPx, fontPx) {
-  const row = occupancyRow(cls);
+function box(pct, text, topRem, align, ladderPx, fontPx) {
   const w = text.length * fontPx * 0.62;
   const x = (pct / 100) * ladderPx;
   let left;
-  if (align(cls) === "start") left = x;
-  else if (align(cls) === "end") left = x - w;
+  if (align === "end") left = x - w;
+  else if (align === "start") left = x;
   else left = x - w / 2;
-  const top = rowTop(row);
-  return { left, right: left + w, top, bottom: top + 0.7, text, row };
+  return { left, right: left + w, top: topRem, text };
 }
 
 function overlap(a, b) {
   const sameRow = Math.abs(a.top - b.top) < 0.8;
-  const horiz = a.left < b.right && a.right > b.left;
-  return sameRow && horiz;
+  return sameRow && a.left < b.right && a.right > b.left;
 }
 
-const total = [
-  { pct: 80, text: "target 80", cls: APP.occupancyMarkClass(80, 0) },
-  { pct: 90, text: "90", cls: APP.occupancyMarkClass(90, 1) },
-  { pct: 95, text: "trigger 95", cls: APP.occupancyMarkClass(95, 2) },
-];
-const dirty = [
-  { pct: 5, text: "dirty target 5", cls: APP.occupancyMarkClass(5, 1) },
-  { pct: 20, text: "dirty trigger 20", cls: APP.occupancyMarkClass(20, 0) },
-];
-
-assert.strictEqual(new Set(total.map((m) => occupancyRow(m.cls))).size, 3);
-
-for (const id of ["occ-mark-target", "occ-mark-ninety", "occ-mark-trigger",
-  "occ-mark-dirty-target", "occ-mark-dirty-trigger"]) {
-  assert.ok(html.includes('id="' + id + '"'), "missing " + id);
-  assert.ok(html.includes("mark-label"), "labels must be .mark-label so ticks stay at left%");
-}
-
-// ~1280 desktop card (~1100px track) and ~375px viewport (track after panel pad).
 const FONT = 0.7 * 16;
-for (const width of [1100, 310]) {
-  const boxes = total.map((m) => box(m.pct, m.text, m.cls, width, FONT));
-  for (let i = 0; i < boxes.length; i++) {
-    for (let j = i + 1; j < boxes.length; j++) {
-      assert.ok(
-        !overlap(boxes[i], boxes[j]),
-        "total-cache labels collide at " + width + "px: " +
-          boxes[i].text + " vs " + boxes[j].text,
-      );
-    }
-  }
-  const dirtyBoxes = dirty.map((m) => box(m.pct, m.text, m.cls, width, FONT));
-  assert.ok(
-    !overlap(dirtyBoxes[0], dirtyBoxes[1]),
-    "dirty-occupancy labels collide at " + width + "px",
-  );
+
+// Desktop track (~1024px viewport, card ~700px+): 80 and 95 share a row and
+// must still clear horizontally — the live retest of 066e0c7.
+const desk = {
+  target: box(80, "target 80", targetTop, "center", 700, FONT),
+  ninety: box(90, "90", 10, "center", 700, FONT),
+  trigger: box(95, "trigger 95", targetTop, "end", 700, FONT),
+};
+assert.ok(!overlap(desk.target, desk.trigger), "desktop 80 vs 95 should still clear");
+assert.ok(!overlap(desk.ninety, desk.trigger), "desktop 90 is below trigger 95");
+assert.ok(!overlap(desk.ninety, desk.target), "desktop 90 is below target 80");
+
+// 375px: live fail was target 80 x 233–294 vs trigger 95 x 238–305 on one row.
+const narrowTrack = 310;
+const nar = {
+  target: box(80, "target 80", targetTop, "center", narrowTrack, FONT),
+  ninety: box(90, "90", 10, "center", narrowTrack, FONT),
+  trigger: box(95, "trigger 95", triggerTop, "end", narrowTrack, FONT),
+};
+assert.ok(nar.target.left < nar.trigger.right && nar.target.right > nar.trigger.left,
+  "pin still models the 375px horizontal overlap of 80 vs 95");
+assert.ok(!overlap(nar.target, nar.trigger), "375px: lifted trigger 95 must not share a row with target 80");
+assert.ok(!overlap(nar.ninety, nar.trigger), "375px: 90 stays below, not 0×0");
+assert.ok(!overlap(nar.ninety, nar.target), "375px: 90 stays below target 80");
+
+const dirtyNarrow = {
+  t: box(5, "dirty target 5", 10, "start", narrowTrack, FONT),
+  r: box(20, "dirty trigger 20", targetTop, "center", narrowTrack, FONT),
+};
+assert.ok(!overlap(dirtyNarrow.t, dirtyNarrow.r), "dirty ladder stays on opposite rows at 375px");
+
+assert.ok(APP.occupancyMarkClass(80, 0).split(" ").indexOf("below") < 0);
+assert.ok(APP.occupancyMarkClass(90, 1).includes("below"));
+assert.ok(APP.occupancyMarkClass(95, 2).split(" ").indexOf("below") < 0);
+
+for (const id of ["occ-mark-target", "occ-mark-ninety", "occ-mark-trigger"]) {
+  assert.ok(html.includes('id="' + id + '"'), "missing " + id);
 }
 
 console.log("occupancy ladder labels ok");

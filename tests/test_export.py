@@ -513,7 +513,7 @@ def test_app_js_helpers():
 
 @pytest.mark.skipif(NODE is None, reason="node is not installed")
 def test_occupancy_ladder_labels_do_not_collide():
-    """#132: total-cache 80/90/95 must occupy three rows; 90 stays visible."""
+    """#132: at 375px, target 80 and trigger 95 must not share a row; 90 stays painted."""
     script = Path(__file__).resolve().parent / "check_occupancy_ladder.js"
     proc = subprocess.run(
         [NODE, str(script), str(APP_JS.resolve()), str(TEMPLATE.resolve())],
