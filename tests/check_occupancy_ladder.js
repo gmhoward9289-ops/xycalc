@@ -42,8 +42,12 @@ assert.strictEqual(decl(belowCss, "top"), "auto");
 
 const lineGap = Math.abs(highTop - aboveTop);
 assert.ok(
-  lineGap >= 0.9,
-  "high vs above label tops must differ by ≥0.9rem so they cannot overprint; got " + lineGap,
+  lineGap >= 1.2,
+  "high vs above label tops must differ by ≥1.2rem so body line-height cannot overprint them; got " + lineGap,
+);
+assert.ok(
+  /line-height\s*:\s*1\s*;/.test(block("#tab-occupancy .ladder .mark-label")),
+  "occupancy labels must use line-height 1 so a 1.2rem row gap is a real gap",
 );
 assert.ok(highTop < aboveTop, "high row sits further above the bar than the default row");
 assert.ok(belowBottom < 0, "below labels sit under the bar");

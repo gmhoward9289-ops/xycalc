@@ -351,10 +351,11 @@ svg.nvd-chart { width: 100%; height: auto; display: block; }
 
 /* Occupancy-tab ticks only. Pin the tick at left%; put the text in
    .mark-label so 80 / 90 / 95 can occupy three rows without dragging the
-   tick (parity stagger only has two rows — #132). Keep this block out of
-   Simple/Advanced chrome. */
+   tick (parity stagger only has two rows — #132). Labels use line-height 1
+   and a ≥1.2rem gap so body 1.55 line-height cannot overprint high vs above.
+   Keep this block out of Simple/Advanced chrome. */
 #tab-occupancy .ladder {
-  margin-top: 2.55rem;
+  margin-top: 2.85rem;
   margin-bottom: 2.15rem;
 }
 #tab-occupancy .ladder .mark {
@@ -375,16 +376,17 @@ svg.nvd-chart { width: 100%; height: auto; display: block; }
 #tab-occupancy .ladder .mark-label {
   position: absolute;
   left: 0;
-  top: -1.15rem;
+  top: -1.2rem;
   transform: translateX(-50%);
   white-space: nowrap;
+  line-height: 1;
 }
 #tab-occupancy .ladder .mark.below .mark-label {
   top: auto;
-  bottom: -1.15rem;
+  bottom: -1.2rem;
 }
 #tab-occupancy .ladder .mark.high .mark-label {
-  top: -2.25rem;
+  top: -2.55rem;
 }
 #tab-occupancy .ladder .mark.edge-start .mark-label {
   transform: translateX(0);
