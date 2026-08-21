@@ -280,7 +280,7 @@ def ingest_payload(
 ) -> dict:
     """Extract model inputs from a metrics paste and optionally size them.
 
-    Reused by the CLI and the MCP ``import_metrics`` tool so those surfaces
+    Reused by the CLI and the MCP ``ingest_dbstats`` tool so those surfaces
     cannot disagree about what was read. The measurement block is always
     ``candidate`` / not cited / not validated — even when the *model*'s
     validation grade is reasonable.

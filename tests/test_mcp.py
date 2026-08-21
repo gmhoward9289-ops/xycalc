@@ -134,6 +134,7 @@ class TestHonestyInToolDescriptions:
         assert "db.stats" in by_name["ingest_dbstats"]
         assert "ingest_dbstats" in by_name["import_metrics"]
         assert "import_metrics" in by_name["ingest_dbstats"]
+        assert "never writes files" in by_name["ingest_dbstats"]
         for tool in listed.tools:
             desc = tool.description or ""
             assert "unvalidated (n=0)" in desc, tool.name
@@ -271,4 +272,5 @@ class TestIngestDbstats:
         assert "publisher: TODO" in yaml_text
         assert "local measurement" not in yaml_text
         assert "CANDIDATE" in yaml_text
+        assert "source_type: measured" not in yaml_text
         assert body["applies_to"] == "8.0.4"

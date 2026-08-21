@@ -30,7 +30,12 @@ from pathlib import Path
 from . import audit as audit_mod
 from . import build as build_mod
 from .db import connect
-from .ingest import IngestError, format_extraction, write_observation_files
+from .ingest import (
+    IngestError,
+    format_extraction,
+    is_published_corpus_path,
+    write_observation_files,
+)
 from .model import (
     DEFAULT_INSTANCE_CEILING,
     Model,
@@ -540,8 +545,10 @@ def cmd_export(args) -> int:
 def cmd_ingest(args) -> int:
     """Paste db.stats() / serverStatus JSON → model inputs + optional YAML.
 
-    The paste is a candidate. This command never writes the corpus and never
-    claims the measurement is cited or validated.
+    The paste is a candidate. By default this command never writes the
+    corpus. ``--emit-observation`` writes candidate YAML outside ``data/``;
+    destinations under the published tree are refused unless
+    ``--force-corpus``.
     """
     from .ingest import extract_mongodb, observation_skeleton, parse_metrics
     from .payloads import ingest_payload
@@ -554,6 +561,21 @@ def cmd_ingest(args) -> int:
     emit_dest = args.emit_observation
     if emit_dest is not None:
         emit_dest = str(emit_dest)
+    if (
+        emit_dest
+        and emit_dest != "-"
+        and is_published_corpus_path(emit_dest)
+        and not args.force_corpus
+    ):
+        print(
+            "error: refusing to write under data/ (the published corpus that "
+            "xycalc.build compiles). Default ingest writes nothing. Pass "
+            "--emit-observation a path outside data/, or --force-corpus "
+            "if you really mean to write candidate YAML into the published "
+            "tree.",
+            file=sys.stderr,
+        )
+        return 2
 
     conn = connect(args.db)
     try:
@@ -614,7 +636,9 @@ def cmd_ingest(args) -> int:
 
             sys.stdout.write(render_observation_yaml(skeleton))
         else:
-            written = write_observation_files(skeleton, emit_dest)
+            written = write_observation_files(
+                skeleton, emit_dest, force_corpus=args.force_corpus
+            )
             for path in written:
                 print(f"wrote {path}", file=report_file)
 
@@ -786,13 +810,31 @@ def build_parser(db: Path | None = None) -> argparse.ArgumentParser:
         default=None,
         metavar="PATH",
         help=(
-            "write a ready-to-PR observation YAML skeleton. PATH.yaml is one "
-            "combined file; a directory gets data/sources + data/observations; "
-            "omit PATH to print YAML on stdout (report goes to stderr). "
-            "Provenance that cannot be derived is TODO, never invented."
+            "write a candidate observation YAML skeleton. PATH.yaml is one "
+            "combined file; a directory gets sources/ + observations/ "
+            "(corpus layout). Destinations under data/ (the published "
+            "corpus xycalc.build compiles) are refused unless "
+            "--force-corpus. Omit PATH to print YAML on stdout (report "
+            "goes to stderr). Default ingest writes nothing. Provenance "
+            "that cannot be derived is TODO, never invented."
         ),
     )
-    sp.add_argument("--tag", help="slug prefix for the skeleton (default: ingest-<db>-<date>)")
+    sp.add_argument(
+        "--force-corpus",
+        action="store_true",
+        help=(
+            "allow --emit-observation to write under data/. Without this "
+            "flag, ingest never writes the published corpus. MCP "
+            "ingest_dbstats never writes files."
+        ),
+    )
+    sp.add_argument(
+        "--tag",
+        help=(
+            "slug prefix for the skeleton (default: ingest-<db> or "
+            "ingest-<db>-<observed_on from the paste>; never today's date)"
+        ),
+    )
     sp.add_argument("--workload", help="fills observation.workload; otherwise TODO")
     sp.add_argument("--machine-class", help="fills observation.machine_class; otherwise TODO")
     sp.add_argument("--publisher", help="fills source.publisher; otherwise TODO")
@@ -800,7 +842,10 @@ def build_parser(db: Path | None = None) -> argparse.ArgumentParser:
         "--source-type",
         choices=["measured", "benchmark"],
         default=None,
-        help="measured (a running system) or benchmark (a committed harness). Default: measured",
+        help=(
+            "measured (a running system) or benchmark (a committed harness). "
+            "Default: TODO — not invented as measured"
+        ),
     )
     sp.set_defaults(func=cmd_ingest)
 

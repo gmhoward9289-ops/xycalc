@@ -7,6 +7,7 @@ cannot regress into something that looks already cited or already validated.
 from __future__ import annotations
 
 import json
+from datetime import date
 from pathlib import Path
 
 import pytest
@@ -17,12 +18,15 @@ from xycalc.cli import main
 from xycalc.ingest import (
     TODO,
     IngestError,
+    PUBLISHED_CORPUS,
     _parameter_map,
     extract_mongodb,
+    is_published_corpus_path,
     observation_skeleton,
     parse_metrics,
     read_number,
     render_observation_yaml,
+    write_observation_files,
 )
 from xycalc.payloads import ingest_payload
 
@@ -109,6 +113,44 @@ class TestExtractor:
         with pytest.raises(IngestError, match="not JSON"):
             parse_metrics("not json {")
 
+    def test_storage_size_and_index_size_without_datasize_is_stats(self):
+        """wt-cache inputs alone must be recognized; dataSize is not required."""
+        ext = extract_mongodb({"storageSize": 500, "indexSize": 40})
+        assert ext.model_inputs["storage_size"] == 500
+        assert ext.model_inputs["index_size"] == 40
+        assert ext.data_size is None
+        assert not any("no storageSize" in w for w in ext.warnings)
+        used_as = [f.used_as for f in ext.read if f.path.endswith("storageSize")]
+        assert used_as
+        assert "NOT the model's --storage-size" not in used_as[0]
+
+    def test_mongod_shaped_storage_without_datasize_is_not_ignored(self):
+        ext = extract_mongodb(
+            {
+                "process": "mongod",
+                "storageSize": 123,
+                "indexSize": 4,
+                "ok": 1,
+            }
+        )
+        assert ext.model_inputs["storage_size"] == 123
+        assert ext.model_inputs["index_size"] == 4
+        ignored_blob = " ".join(ext.ignored)
+        assert "storageSize" not in ignored_blob
+        assert not any("no storageSize" in w for w in ext.warnings)
+
+    def test_zero_storage_size_is_present_not_missing(self):
+        ext = extract_mongodb(
+            {"storageSize": 0, "indexSize": 40, "dataSize": 0, "ok": 1}
+        )
+        assert "storage_size" in ext.model_inputs
+        assert ext.model_inputs["storage_size"] == 0
+        assert not any("no storageSize" in w for w in ext.warnings)
+
+    def test_index_only_warns_that_storage_size_is_absent(self):
+        ext = extract_mongodb({"indexSize": 40})
+        assert "storage_size" not in ext.model_inputs
+        assert any("no storageSize" in w for w in ext.warnings)
 
     def test_observation_parameters_come_from_the_shared_map(self):
         """Grafana import and db.stats ingest share tools/metrics_parameter_map.yaml."""
@@ -139,8 +181,16 @@ class TestHonesty:
         assert src["publisher"] == TODO
         assert src["retrieved_on"] == TODO
         assert src["publisher"] != "local measurement"
+        assert src["source_type"] == TODO
+        assert src["source_type"] != "measured"
+        today = date.today().isoformat()
+        assert today not in sk["tag"]
+        assert today not in src["slug"]
+        for obs in sk["observations"]:
+            assert today not in obs["slug"]
         assert "CANDIDATE" in src["notes"]
         assert "not a validation" in src["notes"].lower()
+        assert "source_type is `measured`" not in src["notes"]
         for obs in sk["observations"]:
             assert obs["workload"] == TODO
             assert obs["machine_class"] == TODO
@@ -166,6 +216,8 @@ class TestHonesty:
         assert "CANDIDATE" in yaml_text
         assert "NOT been validated" in yaml_text
         assert "local measurement" not in yaml_text
+        assert "source_type: measured" not in yaml_text
+        assert "source_type: TODO" in yaml_text
         assert body["sizing"]["answer"]["mode"] > 0
         # The model's own grade is still present — that is about the model,
         # not about this paste.
@@ -181,6 +233,7 @@ class TestSkeletonBuildsOnceFilled:
             workload="read-heavy, production-shaped paste (fixture)",
             machine_class="r6i.4xlarge",
             publisher="fixture test",
+            source_type="measured",
         )
         src = corpus.data / "sources" / "ingest-fixture-test.yaml"
         obs = corpus.data / "observations" / "ingest-fixture-test.yaml"
@@ -232,3 +285,98 @@ class TestCli:
         units = {o["parameter"]: o["unit"] for o in doc["observations"]}
         assert units["storage.collection_bytes_on_disk"] == "bytes"
         assert units["storage.compression_ratio"] == "ratio"
+        assert doc["sources"][0]["source_type"] == TODO
+
+    def test_storage_size_only_paste_runs_wt_cache(self, db_path, tmp_path, capsys):
+        paste = tmp_path / "wt-inputs.json"
+        paste.write_text(
+            json.dumps({"storageSize": 500000000000, "indexSize": 40000000000}),
+            encoding="utf-8",
+        )
+        rc, out, err = _run(
+            ["--db", str(db_path), "ingest", str(paste)],
+            capsys,
+        )
+        assert rc == 0, err
+        assert "no storageSize" not in out
+        assert "ANSWER" in out
+
+    def test_emit_observation_refuses_published_corpus(self, db_path, capsys):
+        tag = "ingest-honesty-refuse-test"
+        src = PUBLISHED_CORPUS / "sources" / f"{tag}.yaml"
+        obs = PUBLISHED_CORPUS / "observations" / f"{tag}.yaml"
+        rc, out, err = _run(
+            [
+                "--db",
+                str(db_path),
+                "ingest",
+                str(WRAPPED),
+                "--tag",
+                tag,
+                "--emit-observation",
+                "data",
+            ],
+            capsys,
+        )
+        assert rc == 2, out
+        assert "refusing to write under data/" in err
+        assert "ANSWER" not in out
+        assert not src.exists()
+        assert not obs.exists()
+
+    def test_emit_observation_split_files_carry_candidate_header(
+        self, db_path, tmp_path, capsys
+    ):
+        dest = tmp_path / "candidate-layout"
+        rc, out, err = _run(
+            [
+                "--db",
+                str(db_path),
+                "ingest",
+                str(NESTED),
+                "--tag",
+                "split-cand",
+                "--emit-observation",
+                str(dest),
+            ],
+            capsys,
+        )
+        assert rc == 0, err
+        src = dest / "sources" / "split-cand.yaml"
+        obs = dest / "observations" / "split-cand.yaml"
+        assert "CANDIDATE" in src.read_text(encoding="utf-8")
+        assert "CANDIDATE" in obs.read_text(encoding="utf-8")
+
+
+class TestCorpusWriteGuard:
+    def test_published_corpus_path_is_data_tree_not_tmp(self, tmp_path):
+        assert is_published_corpus_path(PUBLISHED_CORPUS)
+        assert is_published_corpus_path(PUBLISHED_CORPUS / "sources")
+        assert is_published_corpus_path("data")
+        assert not is_published_corpus_path(tmp_path)
+        assert not is_published_corpus_path("-")
+
+    def test_write_observation_files_refuses_corpus_without_force(self):
+        ext = extract_mongodb({"storageSize": 1, "indexSize": 1})
+        sk = observation_skeleton(ext, tag="must-not-write")
+        with pytest.raises(IngestError, match="published corpus"):
+            write_observation_files(sk, PUBLISHED_CORPUS)
+        assert not (PUBLISHED_CORPUS / "sources" / "must-not-write.yaml").exists()
+
+
+class TestPayloadSizing:
+    def test_storage_size_only_paste_has_sizing(self, conn):
+        body = ingest_payload(
+            conn, {"storageSize": 500_000_000_000, "indexSize": 40_000_000_000}
+        )
+        assert body["model_inputs"]["storage_size"] == 500_000_000_000
+        assert body["sizing"]["answer"]["mode"] > 0
+        assert "sizing_error" not in body
+
+    def test_zero_storage_size_does_not_claim_the_field_was_missing(self, conn):
+        body = ingest_payload(conn, {"storageSize": 0, "indexSize": 40_000_000_000})
+        assert body["model_inputs"]["storage_size"] == 0
+        assert body["sizing"] is not None
+        assert "sizing_error" not in body
+        warnings = body["extraction"]["warnings"]
+        assert not any("no storageSize" in w for w in warnings)
