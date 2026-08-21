@@ -66,9 +66,12 @@ models:
       The 80→90% band: workers are active above target; 90% is closer to the
       conscription cliff than to a healthy hold. Tuning eviction_target from
       80 to 90 is a different knob than "we measured occupancy at 90%" —
-      measure both with tools/bench/occupancy_band_probe.sh. Absolute ops/s
-      on a throttled toy cache are not capacity numbers; the delta between
-      legs is.
+      measure both with tools/bench/occupancy_band_probe.sh. On swamplink
+      2026-08-21 (2× oversub, c=1, throttled device) raising the configured
+      target filled the cache (~78% → ~87–88% mean) with a modest, noisy
+      ops/s delta (flat at 12s; +7%/+13% at two 25s passes). Absolute ops/s
+      are not capacity numbers; do not raise production target to 90 for
+      throughput.
 
       eviction_dirty_target / eviction_dirty_trigger (5 / 20): write path.
       Example — bulk load with dirty% approaching 20 while total occupancy
