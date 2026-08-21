@@ -55,6 +55,7 @@ from .model import (
 STATIC = Path(__file__).parent / "static"
 TEMPLATE = STATIC / "calculator.html"
 EVALUATE_JS = STATIC / "evaluate.js"
+APP_JS = STATIC / "app.js"
 
 FAMILY_STRIP = """<div class="family">
     <span>xycalc · a swamplink research property</span>
@@ -550,6 +551,7 @@ def corpus_blob(conn: sqlite3.Connection) -> dict:
 def render(blob: dict, crumb: str | None = None) -> str:
     template = TEMPLATE.read_text(encoding="utf-8")
     js = EVALUATE_JS.read_text(encoding="utf-8")
+    app_js = APP_JS.read_text(encoding="utf-8")
 
     payload = json.dumps(blob, sort_keys=True, separators=(",", ":"), allow_nan=False)
     # `</script>` inside a JSON string would end the block early and hand the
@@ -559,11 +561,13 @@ def render(blob: dict, crumb: str | None = None) -> str:
 
     html = template.replace("/*__XYCALC_CORPUS_JSON__*/", payload)
     html = html.replace("/*__XYCALC_EVALUATE_JS__*/", js)
+    html = html.replace("/*__XYCALC_APP_JS__*/", app_js)
     html = html.replace("<!--__XYCALC_CRUMB__-->", crumb or "")
     html = html.replace("<!--__XYCALC_FAMILY_STRIP__-->", FAMILY_STRIP)
     for marker in (
         "__XYCALC_CORPUS_JSON__",
         "__XYCALC_EVALUATE_JS__",
+        "__XYCALC_APP_JS__",
         "__XYCALC_CRUMB__",
         "__XYCALC_FAMILY_STRIP__",
     ):
