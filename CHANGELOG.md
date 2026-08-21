@@ -3,6 +3,22 @@
 All notable changes to the **xycalc tool** (not the corpus) are recorded here.
 Corpus identity is `corpus_digest` on the exported page. See `docs/VERSIONING.md`.
 
+## 0.5.0
+
+- `xycalc export` writes landing sidecars next to the calculator HTML:
+  `og.png` (1200×630 sweep chart with the band envelope and “what you
+  already have” line) and `stamp.html` (model count, `corpus_digest`,
+  `xycalc_version`, `xycalc_git` — the same string as the calculator
+  footer). Calculator HTML stays byte-deterministic; a skipped chart
+  does not change it. `deploy-calculator.yml` copies both into
+  `tools/xycalc/` in swamplink-root.
+- `xycalc_version` on the export blob follows `pyproject.toml` when the
+  running code is a source/editable checkout, so a stale `pip install`
+  (metadata still 0.1.1) cannot lie in the footer.
+- Permalink shape for landing deep-links is documented in
+  `docs/CALCULATOR.md` (`#tab=single&model=<slug>`,
+  `#tab=scenario&scenario=<slug>`).
+
 ## 0.4.0
 
 - Homepage 500 GB Simple question names cited SKUs (`r8i.96xlarge` lo/mode,
