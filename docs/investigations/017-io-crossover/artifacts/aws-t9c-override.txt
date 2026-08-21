@@ -1,0 +1,1 @@
+NOTE: launching with GEORGE_T9C_OVERRIDE=1 (Arm A+B soft gate bypassed by explicit approval).

@@ -2,7 +2,8 @@
 
 **Investigated:** 2026-07-31 · **Model:** `mongodb.wt-cache`, `mongodb.host-ram`
 · **Validation:** `mongodb.wt-cache` n=1, within band, +41.1% at the mode.
-`mongodb.host-ram` still unvalidated. See *First contact with a real database*
+`mongodb.host-ram` thinly validated (see cooper-hostram-2026-08-21 and earlier
+reef/agent cases). See *First contact with a real database*
 below — the 41% decomposes into two very different things.
 
 ---
@@ -206,8 +207,13 @@ db.version()
 ```
 
 `docs/telemetry/mongodb.md` lists the full series. `xy-observe` imports them.
-`mongodb.host-ram` remains unvalidated and will stay so until an instance runs
-with the default cache split rather than an explicitly pinned size.
+`mongodb.host-ram` remains thinly validated. The dedicated
+`tools/bench/hostram_probe.sh` run on COOPER (2026-08-21) confirmed the
+forward default-split formula within 0.03% on an unpinned `mongo:7.0.39`, and
+also showed that on Docker Desktop `hostInfo().memSizeMB` can disagree with
+the cgroup limit WiredTiger actually used for the split — multi-size
+hostInfo-honest checks still want a Linux host. See
+`obs-cooper-hostram-2026-08-21`.
 
 ---
 

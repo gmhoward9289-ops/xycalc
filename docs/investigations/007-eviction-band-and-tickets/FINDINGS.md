@@ -40,7 +40,7 @@ production target to 90 for capacity. The documented danger remains **95%**
 | `eviction=(threads_min,threads_max)` | up to **20** hard max | Background eviction pool | **20/20 and still losing** → not a knob problem; IOPS / write rate / working set. |
 | `tcmallocReleaseRate` | (runtime) | Return free pages to OS | Shrink `heap_size − allocated` gap. Prefer over aggressive decommit. |
 | `tcmallocAggressiveMemoryDecommit` | off | Aggressive return to OS | Vendor: large perf penalty — last resort. |
-| `concurrentTransactions.*.totalTickets` (7.0+) | dynamic 4–128 | Admission control | Read it live; idle often **4**. Climbing tickets ≠ more ops/s if the device binds. |
+| `concurrentTransactions.*.totalTickets` (7.0.x) / `queues.execution.*.totalTickets` (8.0+) | dynamic 4–128 | Admission control | Read it live; idle often **4**. Path moved between 7.0.39 and 8.0.29 (issue #7). Climbing tickets ≠ more ops/s if the device binds. |
 
 **Example — operator playbook**
 

@@ -1,0 +1,262 @@
+{
+    "host":  "reef",
+    "device":  "/dev/sdd",
+    "scratch_root":  "Z:\\xycalc-work\\io-crossover",
+    "observed_on":  "2026-08-21",
+    "arms":  [
+                 {
+                     "arm":  "gp3-baseline",
+                     "device":  "/dev/sdd",
+                     "transport":  null,
+                     "model":  "Virtual Disk",
+                     "throttle_iops":  3000,
+                     "throttle_bps":  131072000,
+                     "points":  [
+                                    {
+                                        "bs_kib":  4.0,
+                                        "iops":  2998.418907,
+                                        "bw_kib_s":  11993.0,
+                                        "lat_us":  10662.081068162,
+                                        "iodepth_mean":  32.0,
+                                        "direct":  true,
+                                        "ok":  true,
+                                        "reject_reason":  null
+                                    },
+                                    {
+                                        "bs_kib":  8.0,
+                                        "iops":  3002.166306,
+                                        "bw_kib_s":  24017.0,
+                                        "lat_us":  10657.977161467,
+                                        "iodepth_mean":  32.0,
+                                        "direct":  true,
+                                        "ok":  true,
+                                        "reject_reason":  null
+                                    },
+                                    {
+                                        "bs_kib":  16.0,
+                                        "iops":  3001.916188,
+                                        "bw_kib_s":  48030.0,
+                                        "lat_us":  10659.041858820001,
+                                        "iodepth_mean":  32.0,
+                                        "direct":  true,
+                                        "ok":  true,
+                                        "reject_reason":  null
+                                    },
+                                    {
+                                        "bs_kib":  32.0,
+                                        "iops":  3001.916188,
+                                        "bw_kib_s":  96061.0,
+                                        "lat_us":  10658.735560418001,
+                                        "iodepth_mean":  32.0,
+                                        "direct":  true,
+                                        "ok":  true,
+                                        "reject_reason":  null
+                                    },
+                                    {
+                                        "bs_kib":  64.0,
+                                        "iops":  2001.83257,
+                                        "bw_kib_s":  128117.0,
+                                        "lat_us":  15983.912601199,
+                                        "iodepth_mean":  32.0,
+                                        "direct":  true,
+                                        "ok":  true,
+                                        "reject_reason":  null
+                                    },
+                                    {
+                                        "bs_kib":  128.0,
+                                        "iops":  1001.91523,
+                                        "bw_kib_s":  128245.0,
+                                        "lat_us":  31934.467068982998,
+                                        "iodepth_mean":  32.0,
+                                        "direct":  true,
+                                        "ok":  true,
+                                        "reject_reason":  null
+                                    },
+                                    {
+                                        "bs_kib":  256.0,
+                                        "iops":  502.331779,
+                                        "bw_kib_s":  128596.0,
+                                        "lat_us":  63694.726067971,
+                                        "iodepth_mean":  32.0,
+                                        "direct":  true,
+                                        "ok":  true,
+                                        "reject_reason":  null
+                                    },
+                                    {
+                                        "bs_kib":  512.0,
+                                        "iops":  250.45432,
+                                        "bw_kib_s":  128232.0,
+                                        "lat_us":  127710.048051451,
+                                        "iodepth_mean":  32.0,
+                                        "direct":  true,
+                                        "ok":  true,
+                                        "reject_reason":  null
+                                    },
+                                    {
+                                        "bs_kib":  1024.0,
+                                        "iops":  125.46065,
+                                        "bw_kib_s":  128471.0,
+                                        "lat_us":  254852.841429504,
+                                        "iodepth_mean":  32.0,
+                                        "direct":  true,
+                                        "ok":  true,
+                                        "reject_reason":  null
+                                    }
+                                ],
+                     "plateaus":  [
+                                      {
+                                          "kind":  "iops",
+                                          "value":  3000.8338003333333,
+                                          "unit":  "iops",
+                                          "bs_kib_lo":  4.0,
+                                          "bs_kib_hi":  16.0
+                                      },
+                                      {
+                                          "kind":  "throughput",
+                                          "value":  128433.0,
+                                          "unit":  "KiB/s",
+                                          "bs_kib_lo":  256.0,
+                                          "bs_kib_hi":  1024.0
+                                      }
+                                  ],
+                     "crossover":  {
+                                       "bs_kib":  64.0,
+                                       "method":  "iops_drop_with_full_bw",
+                                       "predicted_kib":  42.666666666666664
+                                   },
+                     "guards":  {
+                                    "throttle_warnings":  [
+
+                                                          ],
+                                    "predicted_crossover_kib":  42.666666666666664
+                                }
+                 },
+                 {
+                     "arm":  "gp3-throughput-cap",
+                     "device":  "/dev/sdd",
+                     "transport":  null,
+                     "model":  "Virtual Disk",
+                     "throttle_iops":  10500,
+                     "throttle_bps":  2097152000,
+                     "points":  [
+                                    {
+                                        "bs_kib":  4.0,
+                                        "iops":  10490.427834,
+                                        "bw_kib_s":  41961.0,
+                                        "lat_us":  3046.538511854,
+                                        "iodepth_mean":  32.0,
+                                        "direct":  true,
+                                        "ok":  true,
+                                        "reject_reason":  null
+                                    },
+                                    {
+                                        "bs_kib":  8.0,
+                                        "iops":  10500.916514,
+                                        "bw_kib_s":  84007.0,
+                                        "lat_us":  3046.8107539519997,
+                                        "iodepth_mean":  32.0,
+                                        "direct":  true,
+                                        "ok":  true,
+                                        "reject_reason":  null
+                                    },
+                                    {
+                                        "bs_kib":  16.0,
+                                        "iops":  10499.166944,
+                                        "bw_kib_s":  167986.0,
+                                        "lat_us":  3047.2519446090005,
+                                        "iodepth_mean":  32.0,
+                                        "direct":  true,
+                                        "ok":  true,
+                                        "reject_reason":  null
+                                    },
+                                    {
+                                        "bs_kib":  32.0,
+                                        "iops":  10500.916514,
+                                        "bw_kib_s":  336029.0,
+                                        "lat_us":  3046.868664419,
+                                        "iodepth_mean":  32.0,
+                                        "direct":  true,
+                                        "ok":  true,
+                                        "reject_reason":  null
+                                    },
+                                    {
+                                        "bs_kib":  64.0,
+                                        "iops":  10498.292378,
+                                        "bw_kib_s":  671890.0,
+                                        "lat_us":  3047.4722386460003,
+                                        "iodepth_mean":  32.0,
+                                        "direct":  true,
+                                        "ok":  true,
+                                        "reject_reason":  null
+                                    },
+                                    {
+                                        "bs_kib":  128.0,
+                                        "iops":  10500.041656,
+                                        "bw_kib_s":  1344005.0,
+                                        "lat_us":  3046.8155926669997,
+                                        "iodepth_mean":  32.0,
+                                        "direct":  true,
+                                        "ok":  true,
+                                        "reject_reason":  null
+                                    },
+                                    {
+                                        "bs_kib":  256.0,
+                                        "iops":  7996.669165,
+                                        "bw_kib_s":  2047147.0,
+                                        "lat_us":  4000.537373709,
+                                        "iodepth_mean":  32.0,
+                                        "direct":  true,
+                                        "ok":  true,
+                                        "reject_reason":  null
+                                    },
+                                    {
+                                        "bs_kib":  512.0,
+                                        "iops":  3999.666916,
+                                        "bw_kib_s":  2047829.0,
+                                        "lat_us":  7998.164936126,
+                                        "iodepth_mean":  32.0,
+                                        "direct":  true,
+                                        "ok":  true,
+                                        "reject_reason":  null
+                                    },
+                                    {
+                                        "bs_kib":  1024.0,
+                                        "iops":  2000.999167,
+                                        "bw_kib_s":  2049023.0,
+                                        "lat_us":  15981.367101573,
+                                        "iodepth_mean":  32.0,
+                                        "direct":  true,
+                                        "ok":  true,
+                                        "reject_reason":  null
+                                    }
+                                ],
+                     "plateaus":  [
+                                      {
+                                          "kind":  "iops",
+                                          "value":  10496.837097333333,
+                                          "unit":  "iops",
+                                          "bs_kib_lo":  4.0,
+                                          "bs_kib_hi":  16.0
+                                      },
+                                      {
+                                          "kind":  "throughput",
+                                          "value":  2047999.6666666667,
+                                          "unit":  "KiB/s",
+                                          "bs_kib_lo":  256.0,
+                                          "bs_kib_hi":  1024.0
+                                      }
+                                  ],
+                     "crossover":  {
+                                       "bs_kib":  256.0,
+                                       "method":  "iops_drop_with_full_bw",
+                                       "predicted_kib":  195.04761904761904
+                                   },
+                     "guards":  {
+                                    "throttle_warnings":  [
+
+                                                          ],
+                                    "predicted_crossover_kib":  195.04761904761904
+                                }
+                 }
+             ]
+}

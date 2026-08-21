@@ -1,0 +1,24 @@
+sources:
+- slug: obs-cooper-hostram-2026-08-21
+  title: MongoDB default WiredTiger cache split vs host RAM (Docker Desktop), 2026-08-21
+  publisher: xycalc measurement (COOPER)
+  retrieved_on: '2026-08-21'
+  source_type: benchmark
+  notes: >-
+    Produced by tools/bench/hostram_probe.sh on COOPER Docker Desktop using
+    mongo:7.0.39 with NO wiredTigerCacheSizeGB. Sweep requested --memory
+    2/4/8/16 GiB plus an uncapped control.
+
+    Finding: hostInfo().system.memSizeMB reported 3917 on EVERY run — it does
+    not track Docker --memory on this Docker Desktop / WSL2 setup. Cache
+    sizing DID follow the cgroup at 2 GiB (maximum bytes configured =
+    536870912 = 0.5 × (2 GiB − 1 GiB) exactly) while hostInfo still said
+    3917 MB. At 4 GiB and above (at or over the ~4 GiB VM memory Docker
+    exposes), cache matched 0.5 × (3917 MiB − 1 GiB) within 0.03%.
+
+    Guards correctly refused 2/8/16 GiB rows as distinct host sizes for
+    host-ram validation via hostInfo. Import keeps the uncapped control (and
+    the 4 GiB row, same visible RAM) plus a separate observation that the
+    2 GiB cgroup drove cache correctly despite hostInfo lying. Multi-size
+    hostInfo-honest sweeps need a Linux host where memSizeMB tracks cgroup
+    (or a bare mongod), not Docker Desktop on Windows.

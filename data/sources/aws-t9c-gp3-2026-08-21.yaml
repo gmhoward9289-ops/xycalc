@@ -1,0 +1,15 @@
+sources:
+  - slug: obs-aws-t9c-gp3-2026-08-21
+    title: "T9 Arm C: real EBS gp3 crossover on m6i.large us-east-2"
+    publisher: xycalc project (benchmark harness, committed)
+    version: tools/bench/io_crossover_probe.py + _aws_t9c_launch.sh
+    retrieved_on: "2026-08-21"
+    source_type: benchmark
+    notes: >-
+      Investigation 017 Arm C via tools/bench/io_crossover_probe.py and
+      tools/bench/_aws_t9c_launch.sh. Dedicated 100 GiB gp3 (3000 IOPS /
+      125 MiB/s) on m6i.large i-0b0f4da9d10b1abba, us-east-2. Instance
+      terminated after pull. Artifact:
+      docs/investigations/017-io-crossover/artifacts/aws-t9c-gp3-20260821.json.
+      Soft gate launched with GEORGE_T9C_OVERRIDE=1 while Arm B native NVMe
+      was still landing on reef; Arm A cgroup observations already in corpus.

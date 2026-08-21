@@ -183,6 +183,7 @@ class TestPage:
         assert 'data-tab="flow"' in html
         assert 'data-tab="occupancy"' in html
         assert 'data-tab="cliff"' in html
+        assert 'id="simple-view"' in html
         assert "occupancy_band" in html
         assert "cache_cliff" in html
         assert "mongodb.wt-cache" in html

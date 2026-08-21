@@ -1,0 +1,44 @@
+observations:
+- slug: cooper-hostram-2026-08-21-control-ram
+  system: mongodb
+  parameter: host.ram_bytes
+  value: 4107272192
+  unit: bytes
+  workload: idle, default cache split, uncapped Docker control
+  machine_class: COOPER Docker Desktop, control
+  system_version: 7.0.39
+  observed_on: '2026-08-21'
+  source: obs-cooper-hostram-2026-08-21
+  notes: >-
+    hostInfo.system.memSizeMB=3917 as MiB → 4107272192 bytes. Uncapped
+    container; matches the RAM Docker Desktop exposes to every container
+    on this host.
+- slug: cooper-hostram-2026-08-21-control-cache
+  system: mongodb
+  parameter: cache.size_bytes
+  value: 1516240896
+  unit: bytes
+  workload: idle, default cache split, uncapped Docker control
+  machine_class: COOPER Docker Desktop, control
+  system_version: 7.0.39
+  observed_on: '2026-08-21'
+  source: obs-cooper-hostram-2026-08-21
+  notes: >-
+    maximum bytes configured with no wiredTigerCacheSizeGB. Forward check
+    vs 0.5 × (memBytes − 1 GiB) differs by 524288 bytes (relError ≈ 0.00035).
+- slug: cooper-hostram-2026-08-21-2GiB-cache-vs-cgroup
+  system: mongodb
+  parameter: cache.size_bytes
+  value: 536870912
+  unit: bytes
+  workload: idle, default cache split, Docker --memory=2GiB
+  machine_class: COOPER Docker Desktop, 2GiB cgroup
+  system_version: 7.0.39
+  observed_on: '2026-08-21'
+  source: obs-cooper-hostram-2026-08-21
+  notes: >-
+    Docker HostConfig.Memory=2147483648. Cache is exactly 0.5 × (2 GiB − 1 GiB)
+    = 512 MiB, so mongod's default-split used the cgroup limit. hostInfo
+    still reported memSizeMB=3917 — do NOT use this row as a host-ram
+    validation actual against hostInfo; it is evidence that cache sizing
+    and hostInfo can disagree under Docker Desktop.
