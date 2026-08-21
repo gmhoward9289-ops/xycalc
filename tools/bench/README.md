@@ -28,6 +28,22 @@ then falls back. Above 1.0×, a cgroup device-byte guard must pass or the
 script exits 2 — do not import failed legs. Default ratios:
 `0.5,0.8,1.0,1.2,1.5,2,4,8,50,100`.
 
+### burst_probe (issue #4 — EBS peak-to-mean IOPS ratio)
+
+```bash
+sudo ./tools/bench/burst_probe.sh > burst.json        # ~35 min (control + 2x15)
+PROBE_SMOKE=1 sudo ./tools/bench/burst_probe.sh        # short, for wiring only
+python tools/import_burst_probe.py burst.json --machine-class m6i.large
+```
+
+Measures the gap between the peak second (what EBS throttles on) and the mean
+minute (what CloudWatch shows) on a dedicated `--direct-io=on` loop device, so
+neither the host page cache nor another process can fake a burst. A constant-rate
+control run must return ratio ~1.0 and gates the rest. Records observations of
+`io.peak_to_mean_ratio`; it does **not** narrow `ebs.peak-to-mean-iops-ratio`
+(one host is not the population). Runs on a small instance — the loop device is
+local, no EBS bandwidth is used. See
+`docs/plans/issue-4-ebs-burst-factor-iostat.md`.
 ### azure_premium_v2_probe (validates azure.premium-v2-throughput-ceiling)
 
 ```bash
