@@ -18,7 +18,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
-import gzip as gzmod
+import gzip as gzip_mod
 import os
 import random
 import string

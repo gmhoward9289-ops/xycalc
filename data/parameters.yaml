@@ -50,6 +50,15 @@ parameters:
     unit: ratio
     dimension: ratio
 
+  - slug: storage.self_compression_proxy_ratio
+    label: Gzip self-compression proxy (raw ÷ gzip-9)
+    unit: ratio
+    dimension: ratio
+    notes: >-
+      A property of the raw document bytes that an operator can measure with
+      mongoexport + gzip -9, without WiredTiger internals. Used as the x-axis
+      for the manufactured compression-shape curve (investigation 010 / T2).
+
   # -- WiredTiger cache -------------------------------------------------
   - slug: cache.size_bytes
     label: WiredTiger cache size

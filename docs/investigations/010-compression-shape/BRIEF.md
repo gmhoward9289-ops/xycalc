@@ -3,8 +3,9 @@
 **Question as asked:** How does the snappy ratio move between high-entropy and
 structured documents, and where in that range do real collections sit?
 
-**Status:** open. Plan:
-`docs/plans/issue-10-compression-ratio-shape-sweep.md`. Issue: #10.
+**Status:** complete (2026-08-21). Findings in `FINDINGS.md`. Observations
+in `data/observations/swamplink-compression-shape-2026-08-21.yaml`. Band
+not rewritten.
 
 **Expected confidence ceiling:** `measured` for synthetic shape × compressor
 ratios and for the gzip-proxy axis on those same bytes. Does **not** authorize
