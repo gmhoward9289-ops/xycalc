@@ -51,8 +51,11 @@ done
 cleanup() { docker rm -f "$CONTAINER" >/dev/null 2>&1 || true; }
 trap cleanup EXIT
 
+# PROBE_DOCKER_NETWORK lets a constrained host (no default bridge / no iptables,
+# e.g. a rootless or nested daemon) run with --network host or none instead. All
+# mongo interaction is via `docker exec`, so host networking is sufficient.
 echo "starting $IMAGE ..." >&2
-docker run -d --name "$CONTAINER" "$IMAGE" >/dev/null
+docker run -d --name "$CONTAINER" ${PROBE_DOCKER_NETWORK:+--network "$PROBE_DOCKER_NETWORK"} "$IMAGE" >/dev/null
 # wait for mongod
 for _ in $(seq 1 30); do
   if docker exec "$CONTAINER" mongosh --quiet --eval 'db.runCommand({ping:1}).ok' >/dev/null 2>&1; then
@@ -130,5 +133,8 @@ if [ "${#dumps[@]}" -eq 0 ]; then
   exit 4
 fi
 
+# Not `exec`: the cleanup trap (which removes the container) must run on exit,
+# and exec would replace this shell before it could fire, leaking the container.
 echo "evaluating ${#dumps[@]} collection(s) ..." >&2
-exec "$PY" "$here/compression_probe.py" "${dumps[@]}" --machine-class "${PROBE_MACHINE:-Docker $IMAGE}"
+"$PY" "$here/compression_probe.py" "${dumps[@]}" --machine-class "${PROBE_MACHINE:-Docker $IMAGE}"
+exit $?
