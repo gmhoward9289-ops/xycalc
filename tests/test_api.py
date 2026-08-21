@@ -94,6 +94,17 @@ class TestSizing:
         ).json()
         assert "covered" in body["headroom"]["verdict"]
 
+    def test_get_hints_at_post_instead_of_demanding_underscore(self, client):
+        """GET used to declare ``**_``, which FastAPI treated as a required
+        query parameter named ``_`` and answered 422. The stub is a 400 that
+        points at POST, including when a caller sends leftover query params."""
+        r = client.get(
+            "/api/sizing/mongodb.wt-cache",
+            params={"storage_size": "500GB", "index_size": "40GB"},
+        )
+        assert r.status_code == 400
+        assert r.json()["detail"] == "use POST /api/sizing"
+
     def test_unknown_model_is_404(self, client):
         assert client.post("/api/sizing", json={"model": "nope"}).status_code == 404
 
