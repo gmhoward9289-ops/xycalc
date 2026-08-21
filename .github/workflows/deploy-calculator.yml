@@ -34,6 +34,11 @@ name: Deploy calculator
 # test-py314, not invented names — and the production job does not run
 # until those four are green. A red SHA fails merge-gates and never
 # touches the production environment.
+#
+# A GITHUB_TOKEN auto-merge does not emit `push` at all, so this file's
+# `on.push` never runs for those SHAs. auto-merge.yml waits for the merge
+# and workflow_dispatches this workflow (and ci.yml); kick-main-pipelines.yml
+# is the CodeQL-on-main backstop. Merge-gates still apply to those runs.
 
 on:
   push:

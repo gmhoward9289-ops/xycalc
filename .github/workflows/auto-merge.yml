@@ -11,6 +11,16 @@ name: Auto-merge owner PRs
 #
 # Bot-authored PRs (release-please, dependabot) deliberately do not match
 # either. Cutting a release stays a decision someone makes on purpose.
+#
+# GITHUB_TOKEN + `gh pr merge --auto` queues native auto-merge. When GitHub
+# then squash-merges as github-actions[bot], it does not create `push`
+# workflow runs (ci, Codespell, Deploy calculator). That is why production
+# stuck at #118 after later bot-merged calculator PRs. Do not "fix" that by
+# squash-merging immediately — that skips required checks. After the PR
+# actually merges, wait-pr-merged.sh starts those workflows via
+# workflow_dispatch (the documented GITHUB_TOKEN exception). Optional repo
+# secret AUTO_MERGE_TOKEN (a PAT or GitHub App token) makes the merge itself
+# a user-attributed push so `on: push` fires; the kick is then a no-op.
 
 on:
   pull_request:
@@ -19,6 +29,7 @@ on:
 permissions:
   contents: write
   pull-requests: write
+  actions: write
 
 jobs:
   enable-auto-merge:
@@ -29,7 +40,7 @@ jobs:
     steps:
       - name: Enable auto-merge
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.AUTO_MERGE_TOKEN || github.token }}
           PR_URL: ${{ github.event.pull_request.html_url }}
         # Queue native auto-merge only. A `gh pr merge --squash` fallback
         # merges immediately when GitHub refuses to queue (for example if
@@ -38,3 +49,17 @@ jobs:
         # test, and test-py314; `--auto` waits for those. If queueing fails,
         # leave the PR open.
         run: gh pr merge --auto --squash --delete-branch "$PR_URL"
+
+  kick-after-merge:
+    needs: [enable-auto-merge]
+    if: >-
+      github.event.pull_request.user.login == github.repository_owner
+      && github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Wait for merge, then start main pipelines
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+        run: bash .github/scripts/wait-pr-merged.sh
