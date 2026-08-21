@@ -5,6 +5,12 @@ at three phases (idle, data loaded, under light concurrent traffic).
 
 ```bash
 cd tools/bench/colocation_probe && ./run.sh
+
+# T11 — WiredTiger share of Mongo's own mem_limit (50/60/70/80%), with
+# dataSize >= OVERSUB × cache so neighbors actually compete. Needs a host
+# with enough RAM that the sum of mem_limits approaches the ceiling
+# (reef ~64 GB / WSL2 cap); swamplink 7.6 GB is only a shape smoke.
+MONGO_MEM_GB=8 OVERSUB=2.5 ./share_sweep.sh
 ```
 
 ## What this answers

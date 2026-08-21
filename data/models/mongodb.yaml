@@ -168,10 +168,15 @@ models:
         apply: note
         coefficient: mongodb.eviction-trigger-pct
         rationale: >-
-          At 95% cache usage application threads are pulled into eviction.
-          Nothing crashes; queries just get slower, which is why undersized
-          cache is usually diagnosed from a latency graph rather than from a
-          memory one.
+          Ladder, not a single cliff: WiredTiger tries to hold the cache at
+          eviction_target (default 80%). Between ~80% and ~90% background
+          workers are already fighting; at eviction_trigger (default 95%)
+          application threads are conscripted into eviction and query latency
+          is the symptom. Example — if serverStatus shows occupancy climbing
+          through the high 80s with "eviction server unable to reach eviction
+          goal" rising, you are in the danger band before 95%. Raising worker
+          count past WiredTiger's hard max of 20 does not buy another band;
+          size the working set or the device instead. See investigation 007.
 
       - key: dirty_ceiling
         label: The write-heavy ceiling, hit first
@@ -180,9 +185,11 @@ models:
         coefficient: mongodb.eviction-dirty-trigger-pct
         rationale: >-
           Only 20% of the cache may be dirty before application threads are
-          throttled. A bulk load can hit that at 20% total occupancy, so a
-          cache sized correctly by this model can still throttle. Sizing does
-          not settle a write-heavy incident.
+          throttled (dirty target 5%). Example — a bulk load can hit the dirty
+          trigger at ~20% total occupancy while the total-bytes size still
+          looks fine. Sizing from this model does not settle a write-heavy
+          incident; watch tracked dirty bytes and pages evicted by application
+          threads.
 
       - key: vendor_default
         label: What the vendor recommends instead
