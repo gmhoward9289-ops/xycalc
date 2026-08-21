@@ -866,6 +866,7 @@ class ScenarioStepResult:
     gp3_spec: dict | None = None
     headroom: dict | None = None
     assumed_inputs: dict | None = None
+    assumed_note: str | None = None
 
 
 def gp3_volume_spec(volume_bytes: float) -> dict:
@@ -1130,6 +1131,7 @@ def chain_evaluate(
                 model=model,
                 result=composed,
                 assumed_inputs=assumed or None,
+                assumed_note=(step.get("assumed_note") if assumed else None),
             )
             if available is not None and step is last_bytes_step:
                 step_result.headroom = headroom(composed, available)

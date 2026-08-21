@@ -185,9 +185,10 @@ three parts, then extended:
    Celery-documented Redis `maxmemory` policies fail differently (`noeviction`
    stalls workers; `allkeys-lru` loses tasks). Report the conflict; do not pick
    a winner.
-6. **[006](docs/investigations/006-cache-cliff/FINDINGS.md)** — provisional:
-   oversubscription is not a plateau-then-cliff at 1.0×; relative ops fall hard
-   already between 0.5× and 1.0× (steepest 0.8→1.0). A2 transfer still open.
+6. **[006](docs/investigations/006-cache-cliff/FINDINGS.md)** — oversubscription
+   is not a plateau-then-cliff at 1.0×; relative ops fall hard already between
+   0.5× and 1.0× (steepest 0.8→1.0). A1 and A2 agree on shape; still no
+   wt-cache coefficient (relative ops under throttle ≠ hit-ratio).
 7. **[007](docs/investigations/007-eviction-band-and-tickets/FINDINGS.md)** —
    raising eviction target 80→90 holds the cache fuller; ops/s delta modest /
    noisy. Education on calculator Occupancy tab, not a production knob change.
@@ -229,9 +230,6 @@ short version, worst first:
 - **[#5](https://github.com/gmhoward9289-ops/xycalc/issues/5)** — compression
   is still the largest error term in the cache model; need production-shaped
   `db.stats()`, not more synthetic base62.
-- **[#9](https://github.com/gmhoward9289-ops/xycalc/issues/9)** — cache-cliff
-  A1 shape is provisional; **A2 transfer** (1.0 GB cache) not run — no
-  wt-cache coefficient until ratio scale-invariance holds.
 - **[#8](https://github.com/gmhoward9289-ops/xycalc/issues/8)** — two harnesses
   have produced clean tables that measured nothing. Both guarded now; the next
   one will invent a fourth way.
@@ -243,16 +241,14 @@ code.
 
 Designed experiments live in
 [`docs/investigations/ROADMAP.md`](docs/investigations/ROADMAP.md) and as
-[#9–#18](https://github.com/gmhoward9289-ops/xycalc/labels/roadmap). T1b
-(occupancy band) and T7 (Redis broker eviction) have **landed** as
-investigations 007 and 005. T1 (cache cliff) has a provisional A1 finding;
-A2 is the remaining gate.
+[#9–#18](https://github.com/gmhoward9289-ops/xycalc/labels/roadmap). T1
+(cache cliff, A1+A2), T1b (occupancy band) and T7 (Redis broker eviction)
+have **landed** as investigations 006, 007 and 005. A2 transferred the A1
+shape at 1.0 GB cache; that is not a remaining gate, and it still does not
+mint a wt-cache coefficient.
 
-The three most likely to overturn something already published:
+The experiments most likely to overturn something already published:
 
-- **[#9](https://github.com/gmhoward9289-ops/xycalc/issues/9) / A2** — does
-  the oversubscription *shape* transfer at a larger cache? If not, the A1
-  curve is a throttle story, not a cache story.
 - **[#12](https://github.com/gmhoward9289-ops/xycalc/issues/12)** — is
   investigation 003's flat throughput actually flat, or is a 25-second mean
   hiding a checkpoint sawtooth? If so, this corpus made at small scale the same
