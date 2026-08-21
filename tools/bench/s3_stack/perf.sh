@@ -78,7 +78,15 @@ python3 sample.py idle > /tmp/s3_stack_phase_idle.json
 
 echo "== load mongo (celery_probe drive.load, enforces ${PROBE_MIN_OVERSUB}x oversub) ==" >&2
 "${COMPOSE[@]}" --profile driver build driver >&2
-"${COMPOSE[@]}" --profile driver run --rm --no-deps -T driver \
+# Pass sizing env explicitly — compose ${VAR:-default} alone has silently
+# fallen back to 1.5M docs while the shell had PROBE_DOCS=800000.
+"${COMPOSE[@]}" --profile driver run --rm --no-deps -T \
+  -e "PROBE_DOCS=${PROBE_DOCS}" \
+  -e "PROBE_MIN_OVERSUB=${PROBE_MIN_OVERSUB}" \
+  -e "PROBE_RATES=${PROBE_RATES}" \
+  -e "PROBE_SECONDS=${PROBE_SECONDS}" \
+  -e "PROBE_ACKS_LATE=${PROBE_ACKS_LATE:-1}" \
+  driver \
   python -c 'from drive import load; import json; print(json.dumps(load()))' \
   >/tmp/s3_stack_mongo_load.out 2>/tmp/s3_stack_mongo_load.err
 cat /tmp/s3_stack_mongo_load.err >&2 || true
@@ -152,7 +160,13 @@ sleep 3
 python3 sample.py loaded > /tmp/s3_stack_phase_loaded.json
 
 echo "== phase 3: under_load (celery drive + clickhouse S3 scan) ==" >&2
-"${COMPOSE[@]}" --profile driver run --rm --no-deps -T driver python drive.py \
+"${COMPOSE[@]}" --profile driver run --rm --no-deps -T \
+  -e "PROBE_DOCS=${PROBE_DOCS}" \
+  -e "PROBE_MIN_OVERSUB=${PROBE_MIN_OVERSUB}" \
+  -e "PROBE_RATES=${PROBE_RATES}" \
+  -e "PROBE_SECONDS=${PROBE_SECONDS}" \
+  -e "PROBE_ACKS_LATE=${PROBE_ACKS_LATE:-1}" \
+  driver python drive.py \
   > /tmp/s3_stack_drive.out 2>/tmp/s3_stack_drive.err &
 DRIVER_PID=$!
 # Overlap a ClickHouse scan while Celery is hitting Mongo.
