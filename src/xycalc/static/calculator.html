@@ -349,6 +349,15 @@ svg.nvd-chart { width: 100%; height: auto; display: block; }
 .ladder .mark.edge-start.below::after { left: 1px; margin: 0; }
 .ladder .mark.edge-end { transform: translateX(-100%); }
 .ladder .mark.edge-end.below::after { left: auto; right: 0; margin: 0; }
+
+/* Occupancy-tab tick labels only. Desktop: "90" and "trigger 95" both sat
+   below the bar and overlapped. Keep this block out of Simple/Advanced chrome
+   so it can merge with size-path footnote work. */
+#tab-occupancy .ladder {
+  margin-top: 1.75rem;
+  margin-bottom: 2.15rem;
+}
+
 .ladder .you {
   position: absolute; top: 0; bottom: 0; width: 3px; background: var(--accent);
   transform: translateX(-50%); border-radius: 2px;

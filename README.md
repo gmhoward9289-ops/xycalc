@@ -210,7 +210,7 @@ Package versioning and the calculator's `exported by xycalc …` stamp:
 (product core, alerts, evidence):
 [`docs/telemetry/recommendations.md`](docs/telemetry/recommendations.md).
 
-Nine models today (`xycalc models`). The spine is still one failure told in
+Twelve models today (`xycalc models`). The spine is still one failure told in
 three parts, then extended:
 
 1. **[001](docs/investigations/001-wiredtiger-cache/FINDINGS.md)** — the cache
@@ -243,8 +243,13 @@ one corpus rather than seven spreadsheets.
 
 Systems with real coefficients include MongoDB, EBS, Azure Premium SSD v2,
 Redis/Celery broker defaults and eviction measurements, NVMe plateaus (reef
-fio), NVD growth, and AWS EC2 `r8i` instance pick. ClickHouse and Azure VM /
-bare-metal catalogs are still stubs (named in `data/systems.yaml`).
+fio), NVD growth, AWS EC2 `r8i` instance pick, Azure VM Esv5/Esv6
+(`data/coefficients/azure-vm.yaml`, PR #98), and ClickHouse MergeTree
+part-count defaults (`data/coefficients/clickhouse.yaml`). Bare-metal is still
+a stub catalog in `data/systems.yaml`. ClickHouse is not a validated
+inserts/sec sizing answer — `clickhouse.parts-insert-ceiling` prints
+**unvalidated (n=0)**; [#18](https://github.com/gmhoward9289-ops/xycalc/issues/18)
+is still open for a portable Hz floor.
 
 `mongodb.wt-cache` is **thinly validated (n=2, both within band, mean abs
 error 28.5%)** — still too few to generalise; compression remains the largest
@@ -267,22 +272,25 @@ capture.
 ## What is open
 
 Tracked as [issues](https://github.com/gmhoward9289-ops/xycalc/issues). The
-short version, worst first:
+short version, worst first. [#2](https://github.com/gmhoward9289-ops/xycalc/issues/2),
+[#4](https://github.com/gmhoward9289-ops/xycalc/issues/4), and
+[#5](https://github.com/gmhoward9289-ops/xycalc/issues/5) are **closed**
+(known limitation / estimate — the ticket formula, the EBS 6.7× amplifier, and
+compression as the cache model's largest error term). [#8](https://github.com/gmhoward9289-ops/xycalc/issues/8)
+and [#9](https://github.com/gmhoward9289-ops/xycalc/issues/9) are also closed;
+cache-cliff relative-ops shape is **measured** (A1×2 + A2 at 1 GB) and does not
+mint a wt-cache sizing coefficient.
 
-- **[#2](https://github.com/gmhoward9289-ops/xycalc/issues/2)** — the ticket
-  model's formula assumes a pinned pool, and MongoDB 7.0 does not pin it. It
-  describes pre-7.0 and the ramp, not steady state.
-- **[#4](https://github.com/gmhoward9289-ops/xycalc/issues/4)** — the EBS
-  model's only amplifier is a guess of ours with a 6.7x band.
-- **[#5](https://github.com/gmhoward9289-ops/xycalc/issues/5)** — compression
-  is still the largest error term in the cache model; need production-shaped
-  `db.stats()`, not more synthetic base62.
-- **[#9](https://github.com/gmhoward9289-ops/xycalc/issues/9)** — cache-cliff
-  relative-ops shape is **measured** (A1×2 + A2 at 1 GB); no wt-cache *sizing*
-  coefficient (throttle ops ≠ hit-ratio). See investigation 006 FINDINGS.
-- **[#8](https://github.com/gmhoward9289-ops/xycalc/issues/8)** — two harnesses
-  have produced clean tables that measured nothing. Both guarded now; the next
-  one will invent a fourth way.
+Still open:
+
+- **[#18](https://github.com/gmhoward9289-ops/xycalc/issues/18)** — ClickHouse
+  part-count coefficients exist; a portable inserts/sec (Hz) floor does not.
+  Do not read the catalog as a validated sizing model.
+- **[#12](https://github.com/gmhoward9289-ops/xycalc/issues/12)** — is
+  investigation 003's flat throughput actually flat, or is a 25-second mean
+  hiding a checkpoint sawtooth?
+- **[#11](https://github.com/gmhoward9289-ops/xycalc/issues/11)** — at what
+  write rate does eviction conscript application threads?
 
 Contributions of real measurements are worth more here than contributions of
 code.

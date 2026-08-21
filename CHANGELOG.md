@@ -14,6 +14,8 @@ Corpus identity is `corpus_digest` on the exported page. See `docs/VERSIONING.md
 - Validation grade `reasonable` (calculator **Validated**) requires at least
   one observation inside the predicted band. n and MAE alone used to promote
   a 0-in-band model.
+- Occupancy-tab total-cache tick labels: 90 sits below the bar, trigger 95
+  above, so they do not overlap at desktop width.
 - `xycalc ingest` accepts MongoDB `db.stats()` / `serverStatus` JSON (file or
   stdin), prints the fields it mapped versus ignored, and runs `mongodb.wt-cache`
   when `storage_size` is in the extracted inputs (including `storageSize: 0`).
