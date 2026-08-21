@@ -81,6 +81,10 @@ the 0.8× erosion to Zipfian traffic without a second sweep.
 
 ## Do not promote yet
 
-No `cache.hit_ratio_by_oversubscription` coefficient until A1-r2 agrees on
-the steep band and A2 either confirms transfer or forces
-`applies_to: absolute-cache-class`.
+No `cache.hit_ratio_by_oversubscription` **coefficient** into `mongodb.wt-cache`
+until A1-r2 agrees on the steep band through the far ratios and A2 either
+confirms transfer or forces `applies_to: absolute-cache-class`.
+
+A1-r1 (+ knee-region A1-r2) **observations** are in the corpus and drive the
+site's Cache cliff tab as `provisional` relative-ops shape. That is a chart of
+measured legs, not a sizing input.
