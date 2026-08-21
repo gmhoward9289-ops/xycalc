@@ -132,6 +132,20 @@ No purpose-built server counter isolates "$lookup cost" as a single number. Prox
 
 Corpus holds ObjectId = 12 B and "prefer manual refs over DBRefs"; it does **not** hold a `$lookup` latency multiplier — none is published.
 
+## Alerting (vital subset)
+
+Full board + thresholds: [`recommendations.md`](recommendations.md)
+(Simple / Advanced / Evidence).
+
+| Priority | Signal | Suggested start |
+|---|---|---|
+| Page | Sustained `pages evicted by application threads` rate > 0 | 5 min |
+| Page | `read.out == totalTickets` and `queueLength > 0` | 2 min |
+| Ticket | Occupancy ≥ 90% | 15 min |
+| Ticket | Dirty ≥ 15% (headroom before 20% dirty trigger) | 10 min |
+
+Do not page on RSS alone. Occupancy reference lines: 80 / 90 / **95**.
+
 ## What would validate the models today
 
 The cheapest useful case needs no load generator — just a database small enough

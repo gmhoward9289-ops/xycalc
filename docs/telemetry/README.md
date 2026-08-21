@@ -21,6 +21,13 @@ obtainable* — those are findings, not gaps in the document.
 question cannot be had from the obvious place, that is worth knowing before
 building a dashboard around the obvious place.
 
+## Vital metrics and alerts
+
+Living recommendations — **Product core** (instance sizing), **Simple** /
+**Advanced** / **Evidence** (ops + catalogs) — live in
+[`recommendations.md`](recommendations.md). Per-system series contracts remain
+in `mongodb.md`, `ebs.md`, and `redis.md`.
+
 ## The import contract
 
 Whatever can be exported becomes `observation` rows. One row is one number, its

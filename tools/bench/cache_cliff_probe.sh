@@ -37,6 +37,32 @@ DEVICE_BYTE_MIN_FRAC="${PROBE_DEVICE_BYTE_MIN_FRAC:-0.10}"
 
 here="$(cd "$(dirname "$0")" && pwd)"
 
+# When the CLI is Windows docker.exe invoked from WSL, host paths must be
+# Windows-shaped or `docker cp` silently fails to place files in the container
+# (GetFileAttributesEx C:\mnt / missing /tmp/cache_cliff_probe.py).
+docker_host_path() {
+    local p="$1"
+    if command -v wslpath >/dev/null 2>&1 \
+        && docker version 2>/dev/null | grep -q 'OS/Arch:.*windows/'; then
+        wslpath -w "$p"
+    else
+        printf '%s\n' "$p"
+    fi
+}
+
+# docker.exe cannot docker-cp from the WSL distro's /tmp (lands as C:\tmp\...).
+# Keep host-side scratch on a DrvFs path when the CLI is Windows.
+_mktemp_host() {
+    if command -v wslpath >/dev/null 2>&1 \
+        && docker version 2>/dev/null | grep -q 'OS/Arch:.*windows/'; then
+        local dir="/mnt/c/Users/Owner/xycalc-results/.tmp"
+        mkdir -p "$dir"
+        mktemp "$dir/xy.XXXXXX"
+    else
+        mktemp
+    fi
+}
+
 root_src="$(df --output=source / | tail -1)"
 parent="$(lsblk -no PKNAME "$root_src" 2>/dev/null | head -1 || true)"
 dev="${PROBE_DEV:-$([ -n "$parent" ] && echo "/dev/$parent" || echo "$root_src")}"
@@ -103,6 +129,11 @@ cgroup_read_bytes() {
             echo 0
         fi
     ' 2>/dev/null || echo 0)"
+    # docker.exe / dead containers sometimes print OCI errors on stdout —
+    # arithmetic must see an integer only.
+    if ! [[ "${out:-}" =~ ^[0-9]+$ ]]; then
+        out=0
+    fi
     echo "${out:-0}"
 }
 
@@ -169,8 +200,8 @@ run_ratio() {
     local leg="${NAME_PREFIX}-r${ratio//./p}"
     local driver="${leg}-driver"
     local tmp_load tmp_probe
-    tmp_load="$(mktemp)"
-    tmp_probe="$(mktemp)"
+    tmp_load="$(_mktemp_host)"
+    tmp_probe="$(_mktemp_host)"
 
     echo "=== ratio ${ratio}x  (fresh mongod, direct_io attempt) ===" >&2
     start_mongod "$leg" true
@@ -180,7 +211,8 @@ run_ratio() {
     ACTIVE_DRIVER="$driver"
 
     docker exec "$driver" pip install --quiet --no-cache-dir pymongo >&2
-    docker cp "$here/cache_cliff_probe.py" "$driver:/tmp/cache_cliff_probe.py"
+    docker cp "$(docker_host_path "$here/cache_cliff_probe.py")" \
+        "$driver:/tmp/cache_cliff_probe.py"
 
     local common_env=(
         -e "PROBE_URI=mongodb://${leg}:27017"
@@ -208,8 +240,10 @@ run_ratio() {
 
     # Merge load + probe JSON with guard fields via a tiny python one-liner
     # on the driver (already has python).
-    docker cp "$tmp_load" "$driver:/tmp/load.json"
-    docker cp "$tmp_probe" "$driver:/tmp/probe.json"
+    # Prefer stdin pipe over `docker cp` — Windows docker.exe + WSL paths are
+    # unreliable for host→container copies of scratch files.
+    docker exec -i "$driver" sh -c 'cat > /tmp/load.json' <"$tmp_load"
+    docker exec -i "$driver" sh -c 'cat > /tmp/probe.json' <"$tmp_probe"
     docker exec -i \
         -e "DEVICE_DELTA=${device_delta}" \
         -e "WT_PAGE_SIZE=${WT_PAGE_SIZE}" \
