@@ -117,6 +117,32 @@ parameters:
       cache divided by operations. Near zero means the working set is resident;
       rising with oversubscription means each lookup pays for more device I/O.
 
+  - slug: cache.size_gb
+    label: WiredTiger cache size as configured (GB)
+    unit: GB
+    dimension: bytes
+    notes: >-
+      The --wiredTigerCacheSizeGB figure, decimal GB as mongod takes it.
+      Distinct from cache.size_bytes so a probe's 0.25 GB setting is not
+      silently rewritten as 268435456.
+
+  - slug: cache.oversubscription_ratio
+    label: dataSize divided by configured cache
+    unit: ratio
+    dimension: ratio
+    notes: >-
+      dataSize / wiredTigerCacheSize. 1.0 is "cache equals uncompressed data",
+      which is not the same as cache-resident under uniform point lookups.
+
+  - slug: cache.oversub_loglog_slope
+    label: Log-log slope of ops/s vs oversubscription
+    unit: ratio
+    dimension: ratio
+    notes: >-
+      Δ log(ops/s) / Δ log(dataSize/maxCache) between two adjacent probe
+      legs. Negative means throughput falls as the working set outgrows
+      the cache.
+
   # -- host -------------------------------------------------------------
   - slug: host.ram_bytes
     label: Host RAM
@@ -258,6 +284,15 @@ parameters:
     label: Storage latency per operation
     unit: seconds
     dimension: seconds
+
+  - slug: db.mean_latency_ms
+    label: Mean client-observed operation latency
+    unit: ms
+    dimension: seconds
+    notes: >-
+      Mean latency reported by the probe client (pymongo), not WiredTiger
+      hold time. Distinct from db.storage_latency_seconds: this is what
+      the caller waited, including admission-queue time.
 
   # -- Celery / Redis broker ---------------------------------------------
   - slug: queue.prefetch_reserved_tasks

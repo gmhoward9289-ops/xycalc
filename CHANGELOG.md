@@ -12,8 +12,8 @@ Corpus identity is `corpus_digest` on the exported page. See `docs/VERSIONING.md
 
 ## 0.2.0
 
-- Export and `Model` now carry each model's `notes` field (additive blob
-  surface for calculator education text already stored in corpus YAML)
+- Export occupancy/cache-cliff tabs from corpus YAML guides rather than
+  hardcoded Python (latency and cliff-shape figures are observation rows)
 
 ## 0.1.1
 
