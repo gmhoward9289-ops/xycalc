@@ -1,0 +1,95 @@
+observations:
+- slug: mongodb-compression-batch2-2026-08-21-sample_training-tweets-ratio
+  parameter: storage.compression_ratio
+  value: 2.544
+  unit: ratio
+  workload: sample_training.tweets, real document shapes, no live query load
+  notes: "dataSize / storageSize = 41,300,186 / 16,232,448 B, post-checkpoint. Applies\
+    \ to this data \u2014 compressibility is a property of the documents.  storageSize\
+    \ moved 396200.0% across the checkpoint (4,096->16,232,448 B); using the post-checkpoint\
+    \ value"
+  system: mongodb
+  machine_class: Docker mongo:7.0.39, public sample dataset
+  system_version: 7.0.39
+  observed_on: '2026-08-21'
+  source: obs-mongodb-compression-batch2-2026-08-21
+- slug: mongodb-compression-batch2-2026-08-21-sample_training-tweets-datasize
+  parameter: storage.collection_bytes_uncompressed
+  value: 41300186
+  unit: bytes
+  workload: sample_training.tweets
+  notes: db.stats().dataSize
+  system: mongodb
+  machine_class: Docker mongo:7.0.39, public sample dataset
+  system_version: 7.0.39
+  observed_on: '2026-08-21'
+  source: obs-mongodb-compression-batch2-2026-08-21
+- slug: mongodb-compression-batch2-2026-08-21-sample_training-tweets-storagesize
+  parameter: storage.collection_bytes_on_disk
+  value: 16232448
+  unit: bytes
+  workload: sample_training.tweets
+  notes: post-checkpoint storageSize
+  system: mongodb
+  machine_class: Docker mongo:7.0.39, public sample dataset
+  system_version: 7.0.39
+  observed_on: '2026-08-21'
+  source: obs-mongodb-compression-batch2-2026-08-21
+- slug: mongodb-compression-batch2-2026-08-21-sample_training-tweets-indexsize
+  parameter: storage.index_bytes_on_disk
+  value: 372736
+  unit: bytes
+  workload: sample_training.tweets
+  notes: totalIndexSize
+  system: mongodb
+  machine_class: Docker mongo:7.0.39, public sample dataset
+  system_version: 7.0.39
+  observed_on: '2026-08-21'
+  source: obs-mongodb-compression-batch2-2026-08-21
+- slug: mongodb-compression-batch2-2026-08-21-sample_training-grades-ratio
+  parameter: storage.compression_ratio
+  value: 3.494
+  unit: ratio
+  workload: sample_training.grades, real document shapes, no live query load
+  notes: "dataSize / storageSize = 22,500,000 / 6,438,912 B, post-checkpoint. Applies\
+    \ to this data \u2014 compressibility is a property of the documents.  storageSize\
+    \ moved 157100.0% across the checkpoint (4,096->6,438,912 B); using the post-checkpoint\
+    \ value"
+  system: mongodb
+  machine_class: Docker mongo:7.0.39, public sample dataset
+  system_version: 7.0.39
+  observed_on: '2026-08-21'
+  source: obs-mongodb-compression-batch2-2026-08-21
+- slug: mongodb-compression-batch2-2026-08-21-sample_training-grades-datasize
+  parameter: storage.collection_bytes_uncompressed
+  value: 22500000
+  unit: bytes
+  workload: sample_training.grades
+  notes: db.stats().dataSize
+  system: mongodb
+  machine_class: Docker mongo:7.0.39, public sample dataset
+  system_version: 7.0.39
+  observed_on: '2026-08-21'
+  source: obs-mongodb-compression-batch2-2026-08-21
+- slug: mongodb-compression-batch2-2026-08-21-sample_training-grades-storagesize
+  parameter: storage.collection_bytes_on_disk
+  value: 6438912
+  unit: bytes
+  workload: sample_training.grades
+  notes: post-checkpoint storageSize
+  system: mongodb
+  machine_class: Docker mongo:7.0.39, public sample dataset
+  system_version: 7.0.39
+  observed_on: '2026-08-21'
+  source: obs-mongodb-compression-batch2-2026-08-21
+- slug: mongodb-compression-batch2-2026-08-21-sample_training-grades-indexsize
+  parameter: storage.index_bytes_on_disk
+  value: 1564672
+  unit: bytes
+  workload: sample_training.grades
+  notes: totalIndexSize
+  system: mongodb
+  machine_class: Docker mongo:7.0.39, public sample dataset
+  system_version: 7.0.39
+  observed_on: '2026-08-21'
+  source: obs-mongodb-compression-batch2-2026-08-21
