@@ -34,7 +34,8 @@ IFS=',' read -r -a prefs <<< "$PREFETCHES"
 combined="$OUT/combined.jsonl"
 : > "$combined"
 
-for p in "${prefs[@]}"; p="${p// /}"; do
+for p in "${prefs[@]}"; do
+    p="${p// /}"
     echo "--- prefetch=$p $(date -Is) ---" >&2
     PROBE_PREFETCH="$p" \
       docker compose up -d --build --force-recreate worker >&2

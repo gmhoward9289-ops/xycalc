@@ -215,13 +215,22 @@ blockquote { margin: .4rem 0 0; padding-left: .7rem; border-left: 2px solid var(
 
 .scroll { overflow-x: auto; }
 .error { color: #b3261e; font-family: var(--mono); font-size: .85rem; }
-footer { margin-top: 3rem; padding-top: 1.25rem; border-top: 1px solid var(--line); font-size: .78rem; color: var(--muted); }
-footer p { margin: 0 0 .65rem; }
-footer p:last-of-type { margin-bottom: .85rem; }
-footer code { font-family: var(--mono); }
-footer .family { display: flex; flex-wrap: wrap; gap: 1.2rem; margin-top: .85rem; }
-footer .family a { color: var(--muted); text-decoration: none; }
+footer {
+  margin-top: 3rem; padding-top: 1.25rem; border-top: 1px solid var(--line);
+  font-size: .78rem; color: var(--muted); line-height: 1.55;
+}
+footer .meta { margin: 0 0 .45rem; }
+footer .meta code { font-family: var(--mono); font-size: .72rem; }
+footer .note { margin: 0; max-width: 40rem; }
+footer .note code { font-family: var(--mono); font-size: .72rem; }
+footer .family {
+  display: block; margin: 1rem 0 0; padding-top: .85rem;
+  border-top: 1px solid var(--line); line-height: 1.7;
+}
+footer .family .sep { margin: 0 .35rem; color: var(--line); user-select: none; }
+footer .family a { color: var(--muted); text-decoration: none; white-space: nowrap; }
 footer .family a:hover { color: var(--accent); text-decoration: underline; }
+footer .family > span:first-child { white-space: nowrap; }
 .tabs { display: flex; gap: .35rem; margin-bottom: 1.25rem; }
 .tab {
   background: transparent; color: var(--muted); border: 1px solid var(--line);
@@ -777,9 +786,9 @@ body.mode-advanced #simple-view { display: none !important; }
 </div><!-- /app -->
 
 <footer>
-  <p>Code Apache-2.0 · corpus CC BY 4.0 · <span id="provenance"></span></p>
-  <p>Everything above is computed in your browser from a corpus compiled at export
-  time. Nothing is sent anywhere. <code>xycalc why &lt;model&gt;</code> prints the same
+  <p class="meta">Code Apache-2.0 · corpus CC BY 4.0 · <span id="provenance"></span></p>
+  <p class="note">Computed in your browser from a corpus compiled at export time —
+  nothing is sent anywhere. <code>xycalc why &lt;model&gt;</code> prints the same
   citation chain in a terminal.</p>
   <!--__XYCALC_FAMILY_STRIP__-->
 </footer>

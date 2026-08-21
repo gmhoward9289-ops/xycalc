@@ -137,6 +137,13 @@ Two corrections fell out of one command:
   `removedFromQueue`. Those four are new in 7.0 and they measure this failure
   *directly* — the queue, and the time spent in it, rather than something you
   infer from tickets running out.
+
+  **Update 2026-08-21 (issue #7):** on MongoDB **8.0.29 and 8.2.12** the path
+  flipped again — `wiredTiger.concurrentTransactions` is gone and tickets live
+  under `queues.execution.{read,write}` (idle floor still 4). See the version
+  table in `docs/telemetry/mongodb.md` and
+  `data/observations/cooper-tickets-2026-08-21.yaml`. Harnesses use
+  `tools/bench/mongo_tickets.py` so both shapes resolve.
 - **"You have 128 tickets" is wrong on 7.0+, by 32x, in the dangerous
   direction.**
 
@@ -374,7 +381,7 @@ In order of how directly each one confirms this diagnosis:
 
 | Reading | Where | Says |
 |---|---|---|
-| `totalTickets`, and `out` against it | `serverStatus().wiredTiger.concurrentTransactions` — **not** `queues.execution`, which does not exist in 7.0.39 | whether the pool is exhausted, and **what N currently is**. Do not assume 128 |
+| `totalTickets`, and `out` against it | **7.0.x:** `serverStatus().wiredTiger.concurrentTransactions` (queues.execution absent). **8.0+:** `serverStatus().queues.execution` (concurrentTransactions absent — issue #7). | whether the pool is exhausted, and **what N currently is**. Do not assume 128 |
 | `totalTimeQueuedMicros`, `queueLength` | same object, new in 7.0 | the queue and the time spent in it, measured rather than inferred. Rising sharply while `out` is pinned is this failure with nothing left to interpret |
 | queued readers/writers | `serverStatus().globalLock.currentQueue` | how much demand is stacked behind the pool |
 | pages evicted by application threads | `wiredTiger.cache` | whether the feedback loop is running |

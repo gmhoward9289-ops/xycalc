@@ -57,16 +57,16 @@ TEMPLATE = STATIC / "calculator.html"
 EVALUATE_JS = STATIC / "evaluate.js"
 APP_JS = STATIC / "app.js"
 
-FAMILY_STRIP = """<div class="family">
-    <span>xycalc · a swamplink research property</span>
-    <a href="https://swamplink.com/">swamplink.com</a>
-    <a href="https://wings.swamplink.com/">wings — the chicken one</a>
-    <a href="https://foundation.swamplink.com/">foundation</a>
-    <a href="https://swamplink.com/data/plates/">plates — the surveillance one</a>
-    <a href="https://swamplink.com/data/trust/">ai trust</a>
-    <a href="https://swamplink.com/data/policy/">data policy</a>
+FAMILY_STRIP = """<nav class="family" aria-label="swamplink properties">
+    <span>xycalc · a swamplink research property</span><span class="sep" aria-hidden="true">·</span>
+    <a href="https://swamplink.com/">swamplink.com</a><span class="sep" aria-hidden="true">·</span>
+    <a href="https://wings.swamplink.com/">wings</a><span class="sep" aria-hidden="true">·</span>
+    <a href="https://foundation.swamplink.com/">foundation</a><span class="sep" aria-hidden="true">·</span>
+    <a href="https://swamplink.com/data/plates/">plates</a><span class="sep" aria-hidden="true">·</span>
+    <a href="https://swamplink.com/data/trust/">ai trust</a><span class="sep" aria-hidden="true">·</span>
+    <a href="https://swamplink.com/data/policy/">data policy</a><span class="sep" aria-hidden="true">·</span>
     <a href="https://blog.swamplink.com/">the blog</a>
-  </div>"""
+  </nav>"""
 
 # The ladder golden vectors are drawn from. Four magnitudes rather than one,
 # because the interesting arithmetic is at the ends: `floor_at` binds only on

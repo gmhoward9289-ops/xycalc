@@ -1,0 +1,21 @@
+coefficients:
+- slug: ebs.gp3-baseline-io-crossover-kib-emulated
+  parameter: io.io_size_crossover_kib
+  system: ebs
+  applies_to: "Docker blkio emulate gp3 baseline (3000 IOPS / 125 MiB/s) on reef 2026-08-21\
+    \ \u2014 not real EBS"
+  value: 64.0
+  confidence: measured
+  source: obs-reef-io-crossover-cgroup-2026-08-21
+  notes: fio QD32 randread. Predicted arithmetic 42.7 KiB; measured knee 64 KiB under
+    Docker Desktop virtio throttle.
+- slug: ebs.gp3-throughput-cap-io-crossover-kib-emulated
+  parameter: io.io_size_crossover_kib
+  system: ebs
+  applies_to: "Docker blkio emulate gp3 throughput-cap (10500 IOPS / 2000 MiB/s) on\
+    \ reef 2026-08-21 \u2014 not real EBS"
+  value: 256.0
+  confidence: measured
+  source: obs-reef-io-crossover-cgroup-2026-08-21
+  notes: fio QD32 randread. Predicted arithmetic ~195 KiB; measured knee 256 KiB.
+    Real gp3 is T9 Arm C (AWS).

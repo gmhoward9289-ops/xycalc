@@ -171,6 +171,13 @@ coefficients:
       few minutes under real load and divide the peak second by the mean. That
       replaces a 6.7x-wide guess with a fact, and it is fifteen minutes' work.
 
+      First harness measurement 2026-08-21 (cooper-burst-2026-08-21, COOPER
+      WSL2 isolated loop device, control median 1.005): steady batch median
+      peak/mean **1.59** (spread 1.08–4.68); Poisson bursty median **1.16**
+      (spread 1.10–12.59, max above value_hi, per-window ratio still climbing —
+      15 minutes may not settle that shape). Shape matters; one host is not
+      the population. Band and `estimate` grade deliberately unchanged.
+
   # -- gp2, still widely deployed ----------------------------------------
   - slug: ebs.gp2-baseline-iops-per-gib
     parameter: io.iops_per_gib

@@ -1,0 +1,16 @@
+validation:
+- model: mongodb.host-ram
+  case: cooper-hostram-2026-08-21-control
+  observation: cooper-hostram-2026-08-21-control-ram
+  inputs:
+    cache_size: 1516240896
+  at_term: os_reserve
+  actual: 4107272192
+  notes: >-
+    Unpinned mongo:7.0.39 on COOPER Docker Desktop (uncapped). Measured
+    default cache → model predicts host RAM; actual is hostInfo memSize as
+    MiB. Forward formula relError ≈ 0.03%. Distinct from the earlier reef /
+    agent-bench round-trips only in that this run was produced by the
+    dedicated hostram_probe harness with explicit no-override + guards.
+    Docker Desktop cannot supply a multi-size hostInfo sweep here — see
+    source notes.

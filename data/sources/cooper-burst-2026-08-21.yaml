@@ -1,0 +1,11 @@
+sources:
+- slug: obs-cooper-burst-2026-08-21
+  title: EBS burst-factor probe (peak-second vs mean-minute IOPS), 2026-08-21
+  publisher: xycalc measurement (COOPER)
+  retrieved_on: '2026-08-21'
+  source_type: benchmark
+  notes: "Produced by tools/bench/burst_probe.sh (fio --direct=1 on an isolated loop\
+    \ device) on COOPER WSL2 loop device. Control guard: ok (median 1.005). A benchmark's\
+    \ citation is its harness; this names it so the run can be reproduced. Measures\
+    \ the guest-driven peak/mean ratio \u2014 the same layer AWS's 'driven IOPS' language\
+    \ describes \u2014 not EBS's virtualized block layer itself."

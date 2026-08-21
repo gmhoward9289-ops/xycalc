@@ -6,7 +6,9 @@ reach a device that throttles on the peak second, and the throttle becomes a
 concurrency problem whose queue does not drain. Extended 2026-08-20/21 by
 investigations 004–007 (Celery amplification, Redis maxmemory conflict,
 provisional cache-cliff shape → measured (006), occupancy-band education,
-colocation share sweep (009), compression-shape sweep (010)). Landed markers below
+colocation share sweep (009), compression-shape sweep (010), Azure Premium
+SSD v2 ceiling control-plane validation (011), Celery concurrency-slots
+sizing (012)). Landed markers below
 are the source of truth for what is no longer “next.”
 
 Each entry below is a *designed experiment*, not a topic. It names the question,
@@ -116,6 +118,11 @@ this produces the curve; #5 places real data on it.
 
 ## T3 — At what write rate does eviction conscript application threads?
 
+**Status (2026-08-21).** Harness `eviction_probe` ran on reef (smokes). Dirty
+peak stayed ~2–3% with attribution `unclear` — write cgroup caps starved
+insert rate before dirty trigger; **no onset published**. Needs a full
+soak with looser write throttle / longer levels.
+
 **Question.** Investigation 001 carries `eviction_dirty_trigger` (20%) as a
 cited constraint that was never measured. At what sustained write rate does
 `pages evicted by application threads` leave zero?
@@ -141,6 +148,10 @@ is misleading.
 
 ## T4 — Is the flat throughput of investigation 003 actually flat?
 
+**Status (2026-08-21).** `PROBE_MODE=timeseries` harness live. First reef
+smokes refused (under-subscribed cache) or hit Docker DNS from WSL; Windows
+Git-Bash re-run in flight. No soak observations published yet.
+
 **Question.** WiredTiger checkpoints periodically. Does that show as a sawtooth
 in latency that a 25-second mean conceals?
 
@@ -162,6 +173,11 @@ a published finding. Both are worth having; the second is worth more.
 ---
 
 ## T5 — Do covered queries change the device load the way 001 assumes?
+
+**Status (2026-08-21).** Smoke on reef (`50k` docs): phase A residency/index
+ratio **~1.24**, phase B **~2.41**. Observations:
+`data/observations/reef-covered-query-smoke-2026-08-21.yaml`. Full soak
+still open.
 
 **Question.** `mongodb.wt-cache` treats in-cache index bytes as ≈ `indexSize`,
 because index prefix compression survives into cache while collection block
@@ -185,6 +201,10 @@ support for it.
 ---
 
 ## T6 — How much does prefetch hide the backlog?
+
+**Status (2026-08-21).** `sweep_prefetch.sh` fixed (bash for-loop). Reef
+smokes refused under-subscribed cache at 80k docs; 600k re-run in flight.
+No observations published yet.
 
 **Question.** A Celery worker reserves `prefetch_multiplier × concurrency`
 tasks. Those are off the queue but not running. How far does queue depth
@@ -244,6 +264,9 @@ of outcome — a documented disagreement between a vendor and its own users.
 
 ## T8 — Retry storms: does backoff actually help a stalled dependency?
 
+**Status (2026-08-21).** `run_stall_recover.sh` fixed (bash for-loop). Same
+oversub gate as T6; 600k re-run in flight. No observations published yet.
+
 **Question.** A dependency stalls, tasks time out, Celery retries. With
 no backoff, exponential backoff, and backoff with jitter — how much *additional*
 load does each put on the thing that is already failing?
@@ -266,6 +289,11 @@ time, which is what an incident actually cares about.
 ---
 
 ## T9 — When does throughput bind before IOPS?
+
+**Status (2026-08-21).** Investigation 017 — **Arms A–C done**. Arm A reef
+cgroup emulate (knees 64/256 KiB). Arm B native **V: SN770** ~33.5k IOPS /
+~269 MiB/s / 16 KiB crossover → `nvme-ssd.*`. Arm C real gp3 on temp
+`m6i.large` (torn down). See `docs/investigations/017-io-crossover/FINDINGS.md`.
 
 **Question.** At what I/O size does a gp3 volume hit its throughput ceiling
 before its IOPS ceiling — and what does a local NVMe do on the same workload?
@@ -290,6 +318,10 @@ figures for the `nvme-ssd` stub.
 ---
 
 ## T10 — ClickHouse: how few inserts per second is too many?
+
+**Status (2026-08-21).** Harness ready. Reef pulls of `23.3` blocked by Docker
+Desktop credential-helper / headless session; `:24`/`:24.8` present. Dual-image
+version-trap run still pending a clean 23.3 pull or pre-seeded image.
 
 **Question.** At what insert frequency does part count outrun merges and
 inserts start being delayed, then rejected?

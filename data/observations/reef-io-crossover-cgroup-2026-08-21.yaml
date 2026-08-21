@@ -1,0 +1,67 @@
+observations:
+- system: ebs
+  machine_class: reef Docker Desktop cgroup emulate gp3-baseline on /dev/sdd
+  system_version: fio+docker-desktop
+  observed_on: '2026-08-21'
+  source: obs-reef-io-crossover-cgroup-2026-08-21
+  slug: reef-io-xover-gp3-baseline-2026-08-21
+  parameter: io.io_size_crossover_kib
+  value: 64.0
+  unit: KiB
+  workload: fio randread QD32 sweep, throttle gp3-baseline
+  notes: measured crossover; predicted=42.666666666666664
+- system: ebs
+  machine_class: reef Docker Desktop cgroup emulate gp3-baseline on /dev/sdd
+  system_version: fio+docker-desktop
+  observed_on: '2026-08-21'
+  source: obs-reef-io-crossover-cgroup-2026-08-21
+  slug: reef-io-iops-gp3-baseline-2026-08-21
+  parameter: io.iops
+  value: 3000.8338003333333
+  unit: iops
+  workload: fio randread plateau gp3-baseline
+  notes: cgroup-throttled IOPS plateau
+- system: ebs
+  machine_class: reef Docker Desktop cgroup emulate gp3-baseline on /dev/sdd
+  system_version: fio+docker-desktop
+  observed_on: '2026-08-21'
+  source: obs-reef-io-crossover-cgroup-2026-08-21
+  slug: reef-io-tp-gp3-baseline-2026-08-21
+  parameter: io.throughput_mibps
+  value: 125.4228515625
+  unit: MiB/s
+  workload: fio randread plateau gp3-baseline
+  notes: cgroup-throttled throughput plateau
+- system: ebs
+  machine_class: reef Docker Desktop cgroup emulate gp3-throughput-cap on /dev/sdd
+  system_version: fio+docker-desktop
+  observed_on: '2026-08-21'
+  source: obs-reef-io-crossover-cgroup-2026-08-21
+  slug: reef-io-xover-gp3-throughput-cap-2026-08-21
+  parameter: io.io_size_crossover_kib
+  value: 256.0
+  unit: KiB
+  workload: fio randread QD32 sweep, throttle gp3-throughput-cap
+  notes: measured crossover; predicted=195.04761904761904
+- system: ebs
+  machine_class: reef Docker Desktop cgroup emulate gp3-throughput-cap on /dev/sdd
+  system_version: fio+docker-desktop
+  observed_on: '2026-08-21'
+  source: obs-reef-io-crossover-cgroup-2026-08-21
+  slug: reef-io-iops-gp3-throughput-cap-2026-08-21
+  parameter: io.iops
+  value: 10496.837097333333
+  unit: iops
+  workload: fio randread plateau gp3-throughput-cap
+  notes: cgroup-throttled IOPS plateau
+- system: ebs
+  machine_class: reef Docker Desktop cgroup emulate gp3-throughput-cap on /dev/sdd
+  system_version: fio+docker-desktop
+  observed_on: '2026-08-21'
+  source: obs-reef-io-crossover-cgroup-2026-08-21
+  slug: reef-io-tp-gp3-throughput-cap-2026-08-21
+  parameter: io.throughput_mibps
+  value: 1999.9996744791667
+  unit: MiB/s
+  workload: fio randread plateau gp3-throughput-cap
+  notes: cgroup-throttled throughput plateau
