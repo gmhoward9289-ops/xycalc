@@ -12,6 +12,10 @@ const OCC = APP.SIZE_PATH_FOOTNOTES["mongodb.wt-cache"].text;
 const TIX = APP.SIZE_PATH_FOOTNOTES["mongodb.ticket-throughput-ceiling"].text;
 const EBS = APP.SIZE_PATH_FOOTNOTES["ebs.iops-to-provision"].text;
 
+function hasSentence(hay, sentence) {
+  return hay.includes(sentence) || hay.includes(APP.esc(sentence));
+}
+
 assert.ok(OCC.includes("FINDINGS 006"));
 assert.ok(OCC.includes("FINDINGS 007"));
 assert.ok(OCC.includes("0.8→1.0"));
@@ -40,9 +44,9 @@ assert.ok(EBS.includes("1.59"));
 assert.ok(EBS.includes("1.16"));
 assert.ok(EBS.includes("12.59"));
 
-assert.ok(APP.cascadeStepFootnotesHtml("mongodb.wt-cache").includes(OCC));
-assert.ok(APP.cascadeStepFootnotesHtml("ebs.iops-to-provision").includes(EBS));
-assert.ok(APP.cascadeStepFootnotesHtml("mongodb.ticket-throughput-ceiling").includes(TIX));
+assert.ok(APP.cascadeStepFootnotesHtml("mongodb.wt-cache").includes(APP.esc(OCC)) || APP.cascadeStepFootnotesHtml("mongodb.wt-cache").includes(OCC));
+assert.ok(hasSentence(APP.cascadeStepFootnotesHtml("ebs.iops-to-provision"), EBS));
+assert.ok(hasSentence(APP.cascadeStepFootnotesHtml("mongodb.ticket-throughput-ceiling"), TIX));
 assert.strictEqual(APP.cascadeStepFootnotesHtml("mongodb.host-ram"), "");
 assert.strictEqual(APP.cascadeStepFootnotesHtml("nvd.storage-from-vuln-growth"), "");
 
@@ -68,22 +72,22 @@ assert.deepStrictEqual(sizeSlugs, [
 ]);
 
 const whatYouNeed = APP.sizePathFootnotesHtml(sizeChain.steps, "mongodb.size-to-instance");
-assert.ok(whatYouNeed.includes(OCC), whatYouNeed);
-assert.ok(whatYouNeed.includes(TIX), whatYouNeed);
-assert.ok(whatYouNeed.includes(EBS), whatYouNeed);
+assert.ok(hasSentence(whatYouNeed, OCC), whatYouNeed);
+assert.ok(hasSentence(whatYouNeed, TIX), whatYouNeed);
+assert.ok(hasSentence(whatYouNeed, EBS), whatYouNeed);
 
 const ebsOnly = XY.chainEvaluate(corpus, "ebs.microburst", { average_iops: "4000" });
 const ebsHtml = APP.sizePathFootnotesHtml(ebsOnly.steps, "ebs.microburst");
-assert.ok(ebsHtml.includes(EBS), ebsHtml);
-assert.ok(!ebsHtml.includes(OCC), ebsHtml);
-assert.ok(!ebsHtml.includes(TIX), ebsHtml);
+assert.ok(hasSentence(ebsHtml, EBS), ebsHtml);
+assert.ok(!hasSentence(ebsHtml, OCC), ebsHtml);
+assert.ok(!hasSentence(ebsHtml, TIX), ebsHtml);
 
 const paint = APP.simpleFirstPaintHtml(sizeChain, XY.formatQuantity);
-assert.ok(paint.footnotesHtml.includes(OCC));
-assert.ok(paint.footnotesHtml.includes(TIX));
-assert.ok(paint.footnotesHtml.includes(EBS));
-assert.ok(paint.html.includes(OCC));
-assert.ok(paint.html.includes(TIX));
-assert.ok(paint.html.includes(EBS));
+assert.ok(hasSentence(paint.footnotesHtml, OCC));
+assert.ok(hasSentence(paint.footnotesHtml, TIX));
+assert.ok(hasSentence(paint.footnotesHtml, EBS));
+assert.ok(hasSentence(paint.html, OCC));
+assert.ok(hasSentence(paint.html, TIX));
+assert.ok(hasSentence(paint.html, EBS));
 
 console.log("size path footnotes ok");

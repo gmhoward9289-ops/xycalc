@@ -271,7 +271,7 @@ const XYCALC_APP = (() => {
   const SIZE_PATH_FOOTNOTES = {
     "mongodb.wt-cache": {
       id: "occupancy-cliff",
-      text: "Occupancy / cache-cliff (FINDINGS 006, 007): performance erodes before 1.0×; steepest slope is 0.8→1.0 (log–log ≈ −3.8). 80% is a hold target, 95% is the conscription cliff. Not a new GB coefficient.",
+      text: "Occupancy / cache-cliff (FINDINGS 006 / FINDINGS 007): performance erodes before 1.0×; steepest slope is 0.8→1.0 (log–log ≈ −3.8). 80% is a hold target, 95% is the conscription cliff. Not a new GB coefficient.",
     },
     "mongodb.ticket-throughput-ceiling": {
       id: "tickets",

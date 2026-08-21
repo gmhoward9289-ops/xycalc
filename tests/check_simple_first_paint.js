@@ -52,6 +52,10 @@ function paint(size) {
   return { data, panel: APP.simpleFirstPaintHtml(data, XY.formatQuantity) };
 }
 
+function hasSentence(hay, sentence) {
+  return hay.includes(sentence) || hay.includes(APP.esc(sentence));
+}
+
 function assertHonesty(panel, label) {
   assert.ok(panel.ramText, label + ": expected a host-RAM figure, got " + JSON.stringify(panel.ramText));
   assert.ok(panel.weakest && panel.weakest.grade != null, label + ": missing weakest grade");
@@ -63,10 +67,10 @@ function assertHonesty(panel, label) {
   assert.ok(panel.html.includes(APP.SIMPLE_HONESTY_LINE), panel.html);
   assert.ok(panel.html.includes("simple-open-advanced"), panel.html);
   const fn = APP.SIZE_PATH_FOOTNOTES;
-  assert.ok(panel.html.includes(fn["mongodb.wt-cache"].text), panel.html);
-  assert.ok(panel.html.includes(fn["mongodb.ticket-throughput-ceiling"].text), panel.html);
-  assert.ok(panel.html.includes(fn["ebs.iops-to-provision"].text), panel.html);
-  assert.ok(panel.footnotesHtml.includes(fn["mongodb.wt-cache"].text), panel.footnotesHtml);
+  assert.ok(hasSentence(panel.html, fn["mongodb.wt-cache"].text), panel.html);
+  assert.ok(hasSentence(panel.html, fn["mongodb.ticket-throughput-ceiling"].text), panel.html);
+  assert.ok(hasSentence(panel.html, fn["ebs.iops-to-provision"].text), panel.html);
+  assert.ok(hasSentence(panel.footnotesHtml, fn["mongodb.wt-cache"].text), panel.footnotesHtml);
   assert.ok(APP.simpleRamHonestyOk(panel.ramText, panel.bannerHtml, panel.weakest), label);
   if (panel.weakest.grade !== "reasonable" || APP.zeroInBand(panel.weakest)) {
     assert.ok(!panel.html.includes("<strong>Validated</strong>"), panel.html);
