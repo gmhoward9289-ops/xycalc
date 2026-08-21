@@ -1,0 +1,43 @@
+sources:
+- slug: obs-mongodb-ticket-decay-cooper-2026-08-21
+  title: >-
+    MongoDB 7.0.40 ticket pool 64,150 climb with idle vs 1 Hz trickle cooldown
+    (issue #3 residual)
+  publisher: xycalc benchmark (COOPER / Docker Desktop)
+  retrieved_on: '2026-08-21'
+  source_type: benchmark
+  notes: >-
+    Full plan execution for docs/plans/issue-3-ticket-pool-convergence-and-decay.md
+    after the 2026-08-19 reduced-scope first pass. Two independent harness
+    invocations (separate containers, same PROBE_DOCS) so cooldown branches
+    are not contaminated by leftover state.
+
+    **Host.** COOPER (Windows), Docker Desktop. MongoDB 7.0.40. Block device
+    for the mongod container: PROBE_DEV=/dev/sdc with the harness's usual
+    8 MiB/s + 150 IOPS cgroup throttle. WiredTiger cache 0.25 GB, 1,500,000
+    documents, cacheOversubscription 4.22 on both runs. Harness:
+    tools/bench/ticket_probe.sh + ticket_probe.py with plan §4a/4b/4c
+    (raw series, automated convergence verdict, built-in cooldown on a
+    dedicated single-connection MongoClient).
+
+    **Phase 1 — idle cooldown (HZ=0).**
+    PROBE_LEVELS=64,150 PROBE_SECONDS=600 PROBE_COOLDOWN_SECONDS=900
+    PROBE_COOLDOWN_HEARTBEAT_HZ=0. Finished 2026-08-21T15:10:40Z.
+    totalPagesReadIntoCache 1,386,056 (nonzero). c=64: CONVERGED (late vs
+    prior 90s means within 0.5%), tickets 4->58 peak 71. c=150: STILL_MOVING
+    (relDelta 17.4%), tickets 65->73 peak 128 (== documented dynamic max),
+    outMax 118. Cooldown: ticketsStart=ticketsEnd=81 for 900.1s, 1785
+    samples, reachedFloor=false, samplerReadOutEverNonzero=false,
+    heartbeatOps=0.
+
+    **Phase 2 — trickle cooldown (HZ=1).**
+    Same climb env with PROBE_COOLDOWN_HEARTBEAT_HZ=1. Finished
+    2026-08-21T17:55:06Z. totalPagesReadIntoCache 1,653,302. c=64 and c=150
+    both STILL_MOVING; c=150 peak only 67 (different climb path than phase 1,
+    not a second claim about the 128 ceiling). Cooldown: tickets 50->50 for
+    900.1s, heartbeatOps=896 (~1 Hz), samplerReadOutEverNonzero=false,
+    reachedFloor=false. Flat at every plan checkpoint (30/60/120/300/600/900s).
+
+    Raw JSON (not in-repo; multi-hundred-KB series):
+    ~/xycalc-results/ticket-probe-convergence-decay-idle.json and
+    ...-trickle.json on COOPER.
