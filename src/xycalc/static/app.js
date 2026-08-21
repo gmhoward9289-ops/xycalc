@@ -82,11 +82,28 @@ const XYCALC_APP = (() => {
     return grid;
   }
 
+  function scenarioInputList(s) {
+    if (!s) return [];
+    if (s.input_sections && s.input_sections.length) {
+      const out = [];
+      for (const sec of s.input_sections) {
+        for (const inp of (sec.inputs || [])) out.push(inp);
+      }
+      return out;
+    }
+    return s.inputs || [];
+  }
+
   function scenarioRequiredFieldsMissing(inputs, values) {
     return (inputs || []).filter((i) => i.required).some((i) => {
       const v = values[i.key];
       return v == null || !String(v).trim();
     });
+  }
+
+  function effectiveYScale(requested, yMin) {
+    if (requested === "log" && yMin > 0) return "log";
+    return "linear";
   }
 
   function chartLayout(W, H, L, R, T, B) {
@@ -105,19 +122,33 @@ const XYCALC_APP = (() => {
     return (y) => T + ih - ((y - yMin) / (yMax - yMin)) * ih;
   }
 
-  function bindChartScrub(hit, svg, nearest, show, commit) {
+  function bindChartScrub(hit, svg, nearest, show, commit, sampleCount) {
+    const count = sampleCount == null ? 0 : sampleCount;
+    svg._scrub = {
+      nearest: nearest,
+      show: show,
+      commit: commit,
+      sampleCount: count,
+      idx: svg._scrub && svg._scrub.idx != null ? svg._scrub.idx : 0,
+    };
+    const reveal = (i) => {
+      const s = svg._scrub;
+      if (!s.sampleCount) return;
+      s.idx = Math.max(0, Math.min(s.sampleCount - 1, i));
+      s.show(s.idx);
+    };
     let dragging = false;
     if (commit) {
       hit.addEventListener("pointerdown", (e) => {
         dragging = true;
         svg.classList.add("dragging");
         try { hit.setPointerCapture(e.pointerId); } catch (_) {}
-        show(nearest(e.clientX));
+        reveal(svg._scrub.nearest(e.clientX));
       });
       hit.addEventListener("pointerup", (e) => {
-        const i = nearest(e.clientX);
-        show(i);
-        if (dragging) commit(i);
+        const i = svg._scrub.nearest(e.clientX);
+        reveal(i);
+        if (dragging && svg._scrub.commit) svg._scrub.commit(i);
         dragging = false;
         svg.classList.remove("dragging");
       });
@@ -126,7 +157,187 @@ const XYCALC_APP = (() => {
         svg.classList.remove("dragging");
       });
     }
-    hit.addEventListener("pointermove", (e) => show(nearest(e.clientX)));
+    hit.addEventListener("pointermove", (e) => reveal(svg._scrub.nearest(e.clientX)));
+    if (svg.dataset.keyScrub !== "1") {
+      svg.dataset.keyScrub = "1";
+      svg.setAttribute("tabindex", "0");
+      svg.addEventListener("keydown", (e) => {
+        const s = svg._scrub;
+        if (!s || !s.sampleCount) return;
+        if (e.key === "ArrowLeft" || e.key === "ArrowDown") {
+          e.preventDefault();
+          reveal(s.idx - 1);
+        } else if (e.key === "ArrowRight" || e.key === "ArrowUp") {
+          e.preventDefault();
+          reveal(s.idx + 1);
+        } else if (e.key === "Home") {
+          e.preventDefault();
+          reveal(0);
+        } else if (e.key === "End") {
+          e.preventDefault();
+          reveal(s.sampleCount - 1);
+        } else if (e.key === "Enter" && s.commit) {
+          e.preventDefault();
+          s.commit(s.idx);
+        }
+      });
+    }
+    return reveal;
+  }
+
+  const GRADE_RANK = { none: 0, thin: 1, reasonable: 2 };
+  const GRADE_LABEL = { none: "Unvalidated", thin: "Thinly validated", reasonable: "Validated" };
+  const GRADE_PILL = { none: "unvalidated", thin: "thinly validated", reasonable: "validated" };
+  const PERMALINK_RESERVED = ["mode", "tab", "model", "scenario", "available"];
+
+  function gradeSuffix(grade) {
+    const phrase = GRADE_PILL[grade];
+    return phrase ? " · " + phrase : "";
+  }
+
+  function weakestValidation(validations) {
+    let worst = null;
+    for (const v of validations || []) {
+      if (!v || v.grade == null) continue;
+      if (!worst || (GRADE_RANK[v.grade] ?? 0) < (GRADE_RANK[worst.grade] ?? 0)) worst = v;
+    }
+    return worst;
+  }
+
+  function occupancyMarkClass(pct, index) {
+    const bits = ["mark"];
+    if (index % 2) bits.push("below");
+    if (pct <= 8) bits.push("edge-start");
+    if (pct >= 92) bits.push("edge-end");
+    return bits.join(" ");
+  }
+
+  function interpolateCrossingXs(xs, ys, yTarget) {
+    if (!xs || !ys || yTarget == null || !isFinite(yTarget)) return [];
+    const out = [];
+    for (let i = 0; i < xs.length - 1; i++) {
+      const a = ys[i], b = ys[i + 1];
+      if (a == null || b == null || !isFinite(a) || !isFinite(b)) continue;
+      if (a === yTarget) {
+        out.push(xs[i]);
+        continue;
+      }
+      if ((a - yTarget) * (b - yTarget) >= 0) continue;
+      if (a === b) continue;
+      const t = (yTarget - a) / (b - a);
+      if (t <= 0 || t >= 1) continue;
+      const x0 = xs[i], x1 = xs[i + 1];
+      if (x0 > 0 && x1 > 0) out.push(x0 * Math.pow(x1 / x0, t));
+      else out.push(x0 + t * (x1 - x0));
+    }
+    if (xs.length && ys[ys.length - 1] === yTarget) out.push(xs[xs.length - 1]);
+    return out;
+  }
+
+  function coverageX(xs, ys, avail) {
+    const crosses = interpolateCrossingXs(xs, ys, avail);
+    if (crosses.length) return crosses[0];
+    if (ys && ys.length && ys.every((y) => y != null && y <= avail)) return xs[xs.length - 1];
+    return null;
+  }
+
+  function bandCoverageCaption(availLabel, xs, los, modes, his, avail, fmtX, inputLabel) {
+    if (avail == null || !xs || xs.length < 2) return "";
+    const modeX = coverageX(xs, modes, avail);
+    const hiX = coverageX(xs, his, avail);
+    const bits = [];
+    if (modeX != null) bits.push("the mode to ~" + fmtX(modeX));
+    if (hiX != null && hiX !== modeX) bits.push("the whole band to ~" + fmtX(hiX));
+    const ofWhat = inputLabel ? " (" + inputLabel + ")" : "";
+    if (bits.length) return availLabel + " covers " + bits.join(", ") + ofWhat;
+    const maxReq = Math.max.apply(null, his);
+    const minReq = Math.min.apply(null, los);
+    if (avail >= maxReq) return availLabel + " covers the whole swept range" + ofWhat;
+    if (avail < minReq) return availLabel + " sits below the whole band on this sweep";
+    return "";
+  }
+
+  function serializePermalink(state) {
+    const p = new URLSearchParams();
+    if (state.mode) p.set("mode", state.mode);
+    if (state.tab) p.set("tab", state.tab);
+    if (state.model) p.set("model", state.model);
+    if (state.scenario) p.set("scenario", state.scenario);
+    if (state.available) p.set("available", state.available);
+    const reserved = {};
+    for (const k of PERMALINK_RESERVED) reserved[k] = true;
+    for (const key of Object.keys(state.inputs || {})) {
+      const v = state.inputs[key];
+      if (v == null || v === "" || reserved[key]) continue;
+      p.set(key, String(v));
+    }
+    return p.toString();
+  }
+
+  function parsePermalink(hash) {
+    const raw = String(hash || "").replace(/^#/, "");
+    if (!raw) return null;
+    const p = new URLSearchParams(raw);
+    const out = { inputs: {} };
+    let any = false;
+    for (const key of PERMALINK_RESERVED) {
+      const v = p.get(key);
+      if (v) { out[key] = v; any = true; }
+    }
+    for (const pair of p.entries()) {
+      if (PERMALINK_RESERVED.indexOf(pair[0]) >= 0) continue;
+      if (pair[1] === "") continue;
+      out.inputs[pair[0]] = pair[1];
+      any = true;
+    }
+    return any ? out : null;
+  }
+
+  function normalizeTerm(s) {
+    const t = s.term || s;
+    return {
+      role: t.role,
+      label: t.label,
+      skipped: s.skipped,
+      skip_reason: s.skip_reason,
+      contribution: s.contribution,
+      mode: s.running ? s.running.mode : s.mode,
+      rationale: t.rationale,
+      confidence: t.confidence,
+      source: t.source,
+      source_url: t.source_url,
+      applies_to: t.applies_to,
+      quote: t.quote,
+    };
+  }
+
+  function formatCitation(block, meta) {
+    const lines = [];
+    lines.push("xycalc: " + (block.question || "").trim());
+    lines.push("");
+    if (block.mode) {
+      lines.push("Mode " + block.mode + (block.lo && block.hi ? "  band " + block.lo + " – " + block.hi : ""));
+    }
+    if (block.validation) lines.push("Validation: " + block.validation);
+    const terms = block.terms || [];
+    if (terms.length) {
+      lines.push("");
+      lines.push("Sources");
+      for (const t of terms) {
+        if (t.skipped) continue;
+        const src = t.source_url ? t.source + " <" + t.source_url + ">" : (t.source || "");
+        const bit = [t.label, t.contribution, src].filter(Boolean).join(" — ");
+        lines.push("- " + bit);
+        if (t.quote) lines.push("  \"" + String(t.quote).replace(/\s+/g, " ").trim() + "\"");
+      }
+    }
+    lines.push("");
+    lines.push(
+      "Corpus " + (meta.digest || "") +
+      " · xycalc " + (meta.version || "") +
+      " · " + (meta.git || "")
+    );
+    return lines.join("\n");
   }
 
   // Advanced/corpus parseBytes treats a bare number as bytes. Simple users
@@ -151,23 +362,146 @@ const XYCALC_APP = (() => {
     // hit the TDZ on `currentScenario` and leave the scenario form permanently
     // hidden (radio checked, workspace never opened).
 
+    function corpusMeta() {
+      return {
+        digest: CORPUS.corpus_digest,
+        version: CORPUS.xycalc_version,
+        git: CORPUS.xycalc_git,
+      };
+    }
+
+    function currentTab() {
+      return TABS.find((tab) => {
+        const el = $("tab-" + tab);
+        return el && !el.hidden;
+      }) || "scenario";
+    }
+
+    let writingHash = false;
+    let hashTimer = null;
+    let lastSingleCitation = "";
+    let lastScenarioCitation = "";
+
+    function permalinkState() {
+      const simple = document.body.classList.contains("mode-simple");
+      const state = { mode: simple ? "simple" : "advanced", inputs: {} };
+      if (simple) {
+        const size = $("simple-db-size") && $("simple-db-size").value.trim();
+        const vulns = $("simple-vulns") && $("simple-vulns").value.trim();
+        if (size) state.inputs.size = size;
+        if (vulns) state.inputs.vulns = vulns;
+        return state;
+      }
+      state.tab = currentTab();
+      if (state.tab === "single") {
+        state.model = $("model").value;
+        document.querySelectorAll("#inputs input").forEach((el) => {
+          if (el.value.trim()) state.inputs[el.dataset.key] = el.value.trim();
+        });
+        const avail = $("available").value.trim();
+        if (avail) state.available = avail;
+      } else if (state.tab === "scenario" && currentScenario) {
+        state.scenario = currentScenario.slug;
+        document.querySelectorAll("#scenario-inputs input").forEach((el) => {
+          if (el.value.trim()) state.inputs[el.dataset.key] = el.value.trim();
+        });
+      }
+      return state;
+    }
+
+    function writeHash() {
+      if (writingHash) return;
+      const next = "#" + serializePermalink(permalinkState());
+      if (location.hash === next || (location.hash === "" && next === "#")) return;
+      history.replaceState(null, "", next);
+    }
+
+    function scheduleHash() {
+      clearTimeout(hashTimer);
+      hashTimer = setTimeout(writeHash, 120);
+    }
+
+    function applyPermalink(parsed) {
+      if (!parsed) return false;
+      writingHash = true;
+      try {
+        const wantSimple = parsed.mode === "simple" && !parsed.tab && !parsed.model && !parsed.scenario;
+        if (wantSimple) {
+          setMode("simple", { persist: false });
+          if (parsed.inputs.size && $("simple-db-size")) $("simple-db-size").value = parsed.inputs.size;
+          if (parsed.inputs.vulns && $("simple-vulns")) $("simple-vulns").value = parsed.inputs.vulns;
+          calculateSimple();
+          return true;
+        }
+        setMode("advanced", { persist: false });
+        if (parsed.tab && TABS.indexOf(parsed.tab) >= 0) setTab(parsed.tab, { hash: false });
+        else if (parsed.model) setTab("single", { hash: false });
+        else if (parsed.scenario) setTab("scenario", { hash: false });
+        if (parsed.scenario) {
+          pickScenario(parsed.scenario);
+          for (const key of Object.keys(parsed.inputs)) {
+            const el = $("scn-in-" + key);
+            if (el) el.value = parsed.inputs[key];
+          }
+          maybeAuto();
+        } else if (!parsed.model || parsed.tab === "scenario") {
+          const scenarios = CORPUS.scenarios || [];
+          const def = scenarios.find((s) => s.default && !s.disabled) || scenarios.find((s) => !s.disabled);
+          if (def) pickScenario(def.slug);
+        }
+        if (parsed.model) {
+          $("model").value = parsed.model;
+          renderInputs();
+          for (const key of Object.keys(parsed.inputs)) {
+            const el = $("in-" + key);
+            if (el) el.value = parsed.inputs[key];
+          }
+          if (parsed.available) $("available").value = parsed.available;
+          calculate({ quiet: true });
+        }
+        return true;
+      } finally {
+        writingHash = false;
+        writeHash();
+      }
+    }
+
+    function copyCitation(text) {
+      const btn = document.activeElement;
+      const target = btn && btn.getAttribute && btn.getAttribute("data-copy-cite") ? btn : $("copy-cite");
+      const done = () => {
+        if (!target) return;
+        const prev = target.textContent;
+        target.textContent = "Copied";
+        setTimeout(() => { target.textContent = prev; }, 1600);
+      };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(done).catch(() => done());
+      } else {
+        done();
+      }
+    }
+
     function boot() {
       $("provenance").textContent =
         CORPUS.models.length + " models · corpus " + CORPUS.corpus_digest +
         " · exported by xycalc " + CORPUS.xycalc_version +
         " · " + CORPUS.xycalc_git;
-      $("model").innerHTML = MODELS.map((m) => `<option value="${esc(m.slug)}">${esc(m.question)}</option>`).join("");
+      $("model").innerHTML = MODELS.map((m) =>
+        `<option value="${esc(m.slug)}">${esc(m.question)}${esc(gradeSuffix(m.validation && m.validation.grade))}</option>`
+      ).join("");
       renderInputs();
       $("model").addEventListener("change", () => {
         renderInputs();
         scheduleSingleCalc();
+        scheduleHash();
       });
       $("go").addEventListener("click", calculate);
       $("sweep").addEventListener("change", drawChart);
       $("ylin").addEventListener("click", () => setScale("linear"));
       $("ylog").addEventListener("click", () => setScale("log"));
-      $("available").addEventListener("input", scheduleSingleCalc);
-      $("inputs").addEventListener("input", scheduleSingleCalc);
+      $("available").addEventListener("input", () => { scheduleSingleCalc(); scheduleHash(); });
+      $("inputs").addEventListener("input", () => { scheduleSingleCalc(); scheduleHash(); });
       document.querySelectorAll(".tab").forEach((btn) =>
         btn.addEventListener("click", () => setTab(btn.dataset.tab)));
       document.addEventListener("keydown", (e) => {
@@ -177,13 +511,32 @@ const XYCALC_APP = (() => {
           else if (!$("tab-scenario").hidden) calculateScenario(false);
         }
       });
+      document.addEventListener("click", (e) => {
+        const el = e.target && e.target.nodeType === 1 ? e.target : e.target && e.target.parentElement;
+        const btn = el && el.closest && el.closest("[data-copy-cite]");
+        if (!btn) return;
+        e.preventDefault();
+        const which = btn.getAttribute("data-copy-cite");
+        const text = which === "scenario" ? lastScenarioCitation : lastSingleCitation;
+        if (text) copyCitation(text);
+      });
+      window.addEventListener("hashchange", () => {
+        if (writingHash) return;
+        applyPermalink(parsePermalink(location.hash));
+      });
       bootMode();
       bootSimple();
       bootScenario();
       bootFlow();
       bootOccupancy();
       bootCacheCliff();
-      scheduleSingleCalc();
+      const restored = applyPermalink(parsePermalink(location.hash));
+      if (!restored) {
+        const scenarios = CORPUS.scenarios || [];
+        const def = scenarios.find((s) => s.default && !s.disabled) || scenarios.find((s) => !s.disabled);
+        if (def) pickScenario(def.slug);
+        scheduleSingleCalc();
+      }
     }
 
     const MODE_KEY = "xycalc.calcMode";
@@ -212,6 +565,7 @@ const XYCALC_APP = (() => {
         catch (_) { /* ignore */ }
       }
       if (simple) scheduleSimpleCalc();
+      scheduleHash();
     }
 
     function bootSimple() {
@@ -256,6 +610,7 @@ const XYCALC_APP = (() => {
         renderSimpleResult(data);
         const as = size !== sizeRaw ? ` (read as ${size})` : "";
         status.textContent = "Up to date" + as + " — change a field to recalculate.";
+        scheduleHash();
       } catch (e) {
         $("simple-result").hidden = true;
         err.hidden = false;
@@ -359,11 +714,12 @@ const XYCALC_APP = (() => {
       }
     }
 
-    function setTab(name) {
+    function setTab(name, opts) {
       TABS.forEach((tab) => {
         $("tab-" + tab).hidden = name !== tab;
         $("tab-btn-" + tab).classList.toggle("active", name === tab);
       });
+      if (!opts || opts.hash !== false) scheduleHash();
     }
 
     const SCENARIO_DEFAULTS = {
@@ -381,9 +737,20 @@ const XYCALC_APP = (() => {
     };
     let currentScenario = null;
     let scenarioCalcDirty = false; // eslint-disable-line no-unused-vars -- written on input; unread until a later packet
-    let openedMathOnce = false;
+
+    function scenarioGrade(s) {
+      const vals = [];
+      for (const st of s.steps || []) {
+        if ((st.kind || "model") !== "model" || !st.model) continue;
+        const m = MODELS.find((x) => x.slug === st.model);
+        if (m && m.validation) vals.push(m.validation);
+      }
+      return weakestValidation(vals);
+    }
 
     function renderScenarioOption(s) {
+      const weakest = !s.disabled ? scenarioGrade(s) : null;
+      const pill = weakest ? `<span class="grade-pill">${esc(gradeSuffix(weakest.grade))}</span>` : "";
       if (s.disabled) {
         return `<div class="scenario-opt stub disabled" data-slug="${esc(s.slug)}" role="note">
           <span class="stub-badge">Not modeled</span>
@@ -396,7 +763,7 @@ const XYCALC_APP = (() => {
       return `<label class="scenario-opt" data-slug="${esc(s.slug)}">
           <input type="radio" name="scenario" value="${esc(s.slug)}">
           <span>
-            <div class="label">${esc(s.label)}${s.default ? " <span class='help' style='display:inline'>(default)</span>" : ""}</div>
+            <div class="label">${esc(s.label)}${s.default ? " <span class='help' style='display:inline'>(default)</span>" : ""}${pill}</div>
             <div class="sub">${esc(s.summary || "")}</div>
           </span>
         </label>`;
@@ -442,8 +809,6 @@ const XYCALC_APP = (() => {
       $("scenario-picker").innerHTML = scenarios.map(renderScenarioOption).join("");
       wireScenarioPicker();
       $("scn-recalc").addEventListener("click", () => calculateScenario(false));
-      const def = scenarios.find((s) => s.default && !s.disabled) || scenarios.find((s) => !s.disabled);
-      if (def) pickScenario(def.slug);
     }
 
     function pickScenario(slug) {
@@ -480,10 +845,7 @@ const XYCALC_APP = (() => {
     }
 
     function scenarioInputCount(s) {
-      if (s.input_sections && s.input_sections.length) {
-        return s.input_sections.reduce((n, sec) => n + (sec.inputs || []).length, 0);
-      }
-      return (s.inputs || []).length;
+      return scenarioInputList(s).length;
     }
 
     function renderCitationSummary(data) {
@@ -517,7 +879,6 @@ const XYCALC_APP = (() => {
       $("scenario-summary").innerHTML = "";
       $("scenario-cascade").innerHTML = "";
       $("scn-error").hidden = true;
-      openedMathOnce = false;
 
       try {
         const hasInputs = scenarioInputCount(currentScenario) > 0;
@@ -544,7 +905,7 @@ const XYCALC_APP = (() => {
           if (el && !el.value) el.value = defaults[key];
         }
         document.querySelectorAll("#scenario-inputs input").forEach((el) => {
-          el.addEventListener("input", () => { scenarioCalcDirty = true; maybeAuto(); });
+          el.addEventListener("input", () => { scenarioCalcDirty = true; maybeAuto(); scheduleHash(); });
         });
         $("scn-recalc-status").textContent = "Fill required fields — sizing updates as you type.";
         maybeAuto();
@@ -558,12 +919,138 @@ const XYCALC_APP = (() => {
 
     function maybeAuto() {
       if (!currentScenario) return;
+      const fields = scenarioInputList(currentScenario);
       const values = {};
-      (currentScenario.inputs || []).forEach((i) => {
+      fields.forEach((i) => {
         const el = $("scn-in-" + i.key);
         values[i.key] = el ? el.value : null;
       });
-      if (!scenarioRequiredFieldsMissing(currentScenario.inputs, values)) calculateScenario(true);
+      if (!scenarioRequiredFieldsMissing(fields, values)) calculateScenario(true);
+    }
+
+    function renderValidationBanner(v) {
+      if (!v || !v.grade) return "";
+      const cls = v.grade === "reasonable" ? " reasonable" : "";
+      const label = GRADE_LABEL[v.grade] || v.grade;
+      return `<div class="validation${cls} ${esc(v.grade)}"><strong>${esc(label)}</strong> — ${esc(v.text || "")}</div>`;
+    }
+
+    function renderTermRows(steps, unit) {
+      return (steps || []).map((s) => {
+        const t = normalizeTerm(s);
+        if (t.skipped) return `<tr class="skipped">
+          <td><span class="role role-${esc(t.role)}">${esc(t.role)}</span><div class="term-label">${esc(t.label)}</div></td>
+          <td class="num">—</td><td class="num">${esc(t.skip_reason)}</td></tr>`;
+        const cite = t.source ? `
+          <div class="cite">
+            <span class="grade">${esc(t.confidence)}</span>
+            ${t.source_url ? `<a href="${esc(t.source_url)}" target="_blank" rel="noopener">${esc(t.source)}</a>` : esc(t.source)}
+            · ${esc(t.applies_to)}
+          </div>` : "";
+        const quote = t.quote ? `<details><summary>the sentence it was read from</summary>
+          <blockquote>${esc(t.quote)}</blockquote></details>` : "";
+        const running = t.mode == null ? "—" : esc(fmt(t.mode, unit));
+        return `<tr>
+          <td>
+            <span class="role role-${esc(t.role)}">${esc(t.role)}</span>
+            <div class="term-label">${esc(t.label)}</div>
+            <div class="cite">${esc(t.rationale || "")}</div>
+            ${cite}${quote}
+          </td>
+          <td class="num">${esc(t.contribution || "")}</td>
+          <td class="num">${running}</td>
+        </tr>`;
+      }).join("");
+    }
+
+    function renderCascadeModelStep(st, i) {
+      const table = (st.steps && st.steps.length)
+        ? `<div class="scroll"><table><thead><tr>
+             <th>Term</th><th style="text-align:right">Effect</th><th style="text-align:right">Running</th>
+           </tr></thead><tbody>${renderTermRows(st.steps, st.unit)}</tbody></table></div>`
+        : "";
+      const constraints = (st.constraints || []).map((c) => `
+        <div class="constraint-item">
+          <span class="v">${esc(fmt(c.value, c.unit))}</span>
+          <strong>${esc(c.label)}</strong>
+          ${c.rationale ? `<p>${esc(c.rationale)}</p>` : ""}
+          <div class="cite">${c.source_url ? `<a href="${esc(c.source_url)}" target="_blank" rel="noopener">${esc(c.source)}</a>` : esc(c.source || "")}</div>
+        </div>`).join("");
+      return `<div class="panel cascade-step">
+        <div class="help">Step ${i + 1}${st.model ? " · " + esc(st.model) : ""}</div>
+        <p>${esc(st.question || "")}</p>
+        <div class="answer"><div class="value">${esc(fmt(st.answer.mode, st.unit))}</div>
+        <div class="band">band ${esc(fmt(st.answer.lo, st.unit))} – ${esc(fmt(st.answer.hi, st.unit))}</div></div>
+        ${renderValidationBanner(st.validation)}
+        ${table}
+        ${constraints}
+      </div>`;
+    }
+
+    function citationFromEvaluate(model, result) {
+      const v = model.validation || {};
+      return formatCitation({
+        question: model.question,
+        mode: fmt(result.mode, result.unit),
+        lo: fmt(result.lo, result.unit),
+        hi: fmt(result.hi, result.unit),
+        validation: (GRADE_LABEL[v.grade] || v.grade || "") + (v.text ? " — " + v.text : ""),
+        terms: (result.steps || []).map((s) => {
+          const t = normalizeTerm(s);
+          return {
+            skipped: t.skipped,
+            label: t.label,
+            contribution: t.contribution,
+            source: t.source,
+            source_url: t.source_url,
+            quote: t.quote,
+          };
+        }),
+      }, corpusMeta());
+    }
+
+    function citationFromChain(data) {
+      const weakest = weakestValidation(
+        (data.steps || []).filter((st) => st.kind === "model").map((st) => st.validation)
+      );
+      const modelSteps = (data.steps || []).filter((st) => st.kind === "model" && st.answer);
+      const terms = [];
+      for (const st of modelSteps) {
+        for (const s of st.steps || []) {
+          const t = normalizeTerm(s);
+          terms.push({
+            skipped: t.skipped,
+            label: (st.model ? st.model + ": " : "") + t.label,
+            contribution: t.contribution,
+            source: t.source,
+            source_url: t.source_url,
+            quote: t.quote,
+          });
+        }
+      }
+      const primary = modelSteps[0];
+      const question = (currentScenario && currentScenario.label) || (primary && primary.question) || data.scenario;
+      let mode = "", lo = "", hi = "";
+      if (data.sizing_summary && data.sizing_summary.ram) {
+        const ram = data.sizing_summary.ram;
+        mode = fmt(ram.mode, ram.unit);
+        lo = fmt(ram.lo, ram.unit);
+        hi = fmt(ram.hi, ram.unit);
+      } else if (primary) {
+        mode = fmt(primary.answer.mode, primary.unit);
+        lo = fmt(primary.answer.lo, primary.unit);
+        hi = fmt(primary.answer.hi, primary.unit);
+      }
+      return formatCitation({
+        question: question,
+        mode: mode,
+        lo: lo,
+        hi: hi,
+        validation: weakest
+          ? (GRADE_LABEL[weakest.grade] || weakest.grade) + (weakest.text ? " — " + weakest.text : "")
+          : "",
+        terms: terms,
+      }, corpusMeta());
     }
 
     function calculateScenario(auto) {
@@ -598,24 +1085,28 @@ const XYCALC_APP = (() => {
         const funnelRows = ["nvd.storage-from-vuln-growth", "mongodb.wt-cache", "mongodb.host-ram"]
           .map((slug) => data.steps.find((st) => st.model === slug))
           .filter((st) => st && st.answer);
-        const fmax = Math.max(0, ...funnelRows.map((st) => st.answer.hi));
+        const fmax = Math.max(0, ...funnelRows.map((st) => st.answer.mode));
         const funnel = funnelRows.length > 1 ? funnelRows.map((st) => `<div class="funnel-row"><div>${esc(st.model)}</div>
-          <div class="funnel-track"><span style="width:${(st.answer.mode / fmax * 100).toFixed(1)}%"></span></div>
+          <div class="funnel-track"><span style="width:${fmax ? (st.answer.mode / fmax * 100).toFixed(1) : 0}%"></span></div>
           <div>${esc(fmt(st.answer.mode, st.unit))}</div></div>`).join("") : "";
+        const weakest = weakestValidation(
+          (data.steps || []).filter((st) => st.kind === "model").map((st) => st.validation)
+        );
+        const chainBanner = renderValidationBanner(weakest);
+        const citeBtn = `<div class="answer-tools"><button type="button" class="ghost" data-copy-cite="scenario">Copy as citation</button></div>`;
         const sizingBlock = (instSizing || perf || size)
           ? `<div class="panel sizing-summary"><h2>What you need</h2>
-          <div class="summary-grid">${instSizing}${perf}${size}</div>${funnel}</div>`
-          : renderCitationSummary(data);
+          <div class="summary-grid">${instSizing}${perf}${size}</div>${funnel}${chainBanner}${citeBtn}</div>`
+          : renderCitationSummary(data) + chainBanner + citeBtn;
         $("scenario-summary").innerHTML = sizingBlock;
+        lastScenarioCitation = citationFromChain(data);
         const citationOnly = !(instSizing || perf || size) && !!sizingBlock;
-        const open = citationOnly || (!auto && !openedMathOnce);
-        if (open) openedMathOnce = true;
+        const existing = $("scenario-cascade").querySelector("details");
+        const open = existing ? existing.open : true;
         $("scenario-cascade").innerHTML = `<details class="cascade-wrap"${open ? " open" : ""}>
           <summary>Show the math · ${data.steps.length} steps</summary>
           ${data.steps.map((st, i) => st.kind === "model"
-            ? `<div class="panel"><div class="help">Step ${i + 1}</div><p>${esc(st.question)}</p>
-               <div class="answer"><div class="value">${esc(fmt(st.answer.mode, st.unit))}</div>
-               <div class="band">band ${esc(fmt(st.answer.lo, st.unit))} – ${esc(fmt(st.answer.hi, st.unit))}</div></div></div>`
+            ? renderCascadeModelStep(st, i)
             : st.pick
               ? `<div class="panel">Step ${i + 1}: ${esc((st.pick.pick_mode && st.pick.pick_mode.name) || "custom sizing")}</div>`
               : st.gp3
@@ -625,6 +1116,7 @@ const XYCALC_APP = (() => {
         $("scn-recalc-status").textContent = citationOnly
           ? "Citation scenario — no fields to edit yet."
           : "Up to date — change any field to recalculate.";
+        scheduleHash();
         if (!auto) $("scenario-summary").scrollIntoView({behavior: "smooth", block: "start"});
       } catch (e) {
         $("scn-error").hidden = false;
@@ -688,6 +1180,9 @@ const XYCALC_APP = (() => {
       if (availRaw) {
         try { available = XY.parseBytes(availRaw); }
         catch (e) {
+          const st = $("single-recalc-status");
+          if (st) st.textContent = "Answer is not reflecting current inputs.";
+          $("result").hidden = true;
           if (!quiet) {
             $("error").textContent = e.message;
             $("error").hidden = false;
@@ -721,9 +1216,8 @@ const XYCALC_APP = (() => {
       }
 
       const v = $("validation");
-      const LABEL = { none: "Unvalidated", thin: "Thinly validated", reasonable: "Validated" };
       v.className = "validation " + m.validation.grade;
-      v.innerHTML = `<strong>${esc(LABEL[m.validation.grade])}</strong> — ${esc(m.validation.text)}`;
+      v.innerHTML = `<strong>${esc(GRADE_LABEL[m.validation.grade] || m.validation.grade)}</strong> — ${esc(m.validation.text)}`;
 
       if (available != null) {
         const h = XY.headroom(d, available);
@@ -742,30 +1236,8 @@ const XYCALC_APP = (() => {
         $("headroom").hidden = true;
       }
 
-      $("steps").innerHTML = d.steps.map((s) => {
-        const t = s.term;
-        if (s.skipped) return `<tr class="skipped">
-          <td><span class="role role-${esc(t.role)}">${esc(t.role)}</span><div class="term-label">${esc(t.label)}</div></td>
-          <td class="num">—</td><td class="num">${esc(s.skip_reason)}</td></tr>`;
-        const cite = t.source ? `
-          <div class="cite">
-            <span class="grade">${esc(t.confidence)}</span>
-            ${t.source_url ? `<a href="${esc(t.source_url)}" target="_blank" rel="noopener">${esc(t.source)}</a>` : esc(t.source)}
-            · ${esc(t.applies_to)}
-          </div>` : "";
-        const quote = t.quote ? `<details><summary>the sentence it was read from</summary>
-          <blockquote>${esc(t.quote)}</blockquote></details>` : "";
-        return `<tr>
-          <td>
-            <span class="role role-${esc(t.role)}">${esc(t.role)}</span>
-            <div class="term-label">${esc(t.label)}</div>
-            <div class="cite">${esc(t.rationale)}</div>
-            ${cite}${quote}
-          </td>
-          <td class="num">${esc(s.contribution)}</td>
-          <td class="num">${esc(fmt(s.mode, u))}</td>
-        </tr>`;
-      }).join("");
+      $("steps").innerHTML = renderTermRows(d.steps, u);
+      lastSingleCitation = citationFromEvaluate(m, d);
 
       $("constraints-panel").hidden = d.constraints.length === 0;
       $("constraints").innerHTML = d.constraints.map((c) => `
@@ -789,6 +1261,7 @@ const XYCALC_APP = (() => {
 
       $("result").hidden = false;
       drawChart();
+      scheduleHash();
     }
 
     function setScale(s) {
@@ -844,6 +1317,7 @@ const XYCALC_APP = (() => {
       if (s.xs.length < 2) {
         svg.innerHTML = "";
         $("chart-desc").textContent = "";
+        if ($("chart-cross")) { $("chart-cross").hidden = true; $("chart-cross").textContent = ""; }
         $("chart-note").textContent = "This input cannot be swept: every trial value failed to evaluate.";
         return;
       }
@@ -852,7 +1326,9 @@ const XYCALC_APP = (() => {
       let yMin = Math.min.apply(null, s.los);
       let yMax = Math.max.apply(null, s.his);
       if (avail != null) { yMin = Math.min(yMin, avail); yMax = Math.max(yMax, avail); }
-      const logY = YSCALE === "log" && yMin > 0;
+      const logY = effectiveYScale(YSCALE, yMin) === "log";
+      $("ylin").setAttribute("aria-pressed", String(!logY));
+      $("ylog").setAttribute("aria-pressed", String(logY));
       if (!logY) yMin = Math.min(0, yMin);
       else { yMin = yMin / 1.15; yMax = yMax * 1.15; }
       if (!logY) yMax = yMax * 1.05;
@@ -896,6 +1372,19 @@ const XYCALC_APP = (() => {
         const y = py(avail).toFixed(1);
         parts.push(`<line class="have-line" x1="${L}" x2="${W - R}" y1="${y}" y2="${y}"></line>`);
         parts.push(`<text class="have-label" x="${W - R}" y="${Number(y) - 5}" text-anchor="end">you have ${esc(fmt(avail, u))}</text>`);
+        const modeX = coverageX(s.xs, s.modes, avail);
+        const hiX = coverageX(s.xs, s.his, avail);
+        const loX = coverageX(s.xs, s.los, avail);
+        const ticksX = [
+          { x: hiX, label: "hi" },
+          { x: modeX, label: "mode" },
+          { x: loX, label: "lo" },
+        ].filter((t) => t.x != null && t.x >= xLo && t.x <= xHi);
+        for (const t of ticksX) {
+          const cx = px(t.x).toFixed(1);
+          parts.push(`<line class="cross-tick" x1="${cx}" x2="${cx}" y1="${Number(y) - 6}" y2="${Number(y) + 6}"></line>`);
+          parts.push(`<text class="cross-label" x="${cx}" y="${Number(y) + 16}" text-anchor="middle">${esc(t.label)} ${esc(fmt(t.x, s.unit))}</text>`);
+        }
       }
 
       // Where the value actually entered sits on the curve.
@@ -918,22 +1407,35 @@ const XYCALC_APP = (() => {
       const commit = (i) => {
         const el = $("in-" + s.key);
         if (!el) return;
-        el.value = fmt(s.xs[i], s.unit);
+        el.value = String(s.xs[i]);
         calculate();
       };
       const hit = svg.querySelector("#hit");
-      bindChartScrub(hit, svg, nearest, show, commit);
+      const reveal = bindChartScrub(hit, svg, nearest, show, commit, s.xs.length);
 
       const centreIdx = s.centre ? nearestIndex(s.xs, s.centre) : Math.floor(s.xs.length / 2);
-      show(centreIdx);
+      reveal(centreIdx);
+
+      const crossEl = $("chart-cross");
+      if (crossEl) {
+        const caption = avail != null
+          ? bandCoverageCaption(fmt(avail, u), s.xs, s.los, s.modes, s.his, avail, (x) => fmt(x, s.unit), s.label)
+          : "";
+        crossEl.textContent = caption;
+        crossEl.hidden = !caption;
+      }
 
       const ratio = s.his[centreIdx] / (s.los[centreIdx] || 1);
-      $("chart-note").textContent =
+      let note =
         `${s.label} swept from ${fmt(xLo, s.unit)} to ${fmt(xHi, s.unit)}; ` +
         `everything else held at what you entered. The shaded envelope is the band, ` +
         `not error bars — at the value you gave it spans a factor of ${ratio.toFixed(1)}.`;
+      if (YSCALE === "log" && !logY) {
+        note += " Y-axis is linear because a curve touches 0 (log is undefined).";
+      }
+      $("chart-note").textContent = note;
       svg.setAttribute("aria-label",
-        `${STATE.model.question} — ${s.label} on a log axis from ${fmt(xLo, s.unit)} to ${fmt(xHi, s.unit)}, ` +
+        `${STATE.model.question} — ${s.label} on a ${logY ? "log" : "linear"} axis from ${fmt(xLo, s.unit)} to ${fmt(xHi, s.unit)}, ` +
         `answer from ${fmt(s.modes[0], u)} to ${fmt(s.modes[s.modes.length - 1], u)}. The table below has the figures.`);
 
       $("sweep-h").textContent = s.label;
@@ -987,7 +1489,7 @@ const XYCALC_APP = (() => {
       }).join("");
 
       $("flow-model").innerHTML = MODELS.map((m) =>
-        `<option value="${esc(m.slug)}">${esc(m.slug)} — ${esc(m.question)}</option>`).join("");
+        `<option value="${esc(m.slug)}">${esc(m.slug)} — ${esc(m.question)}${esc(gradeSuffix(m.validation && m.validation.grade))}</option>`).join("");
       $("flow-model").addEventListener("change", renderFlowTerms);
       renderFlowTerms();
     }
@@ -1026,6 +1528,7 @@ const XYCALC_APP = (() => {
 
       if (target != null) {
         $("occ-mark-target").style.left = target + "%";
+        $("occ-mark-target").className = occupancyMarkClass(target, 0);
         $("occ-mark-target").textContent = "target " + target;
         document.querySelector("#occ-ladder .zone.hold").style.width = target + "%";
         document.querySelector("#occ-ladder .zone.workers").style.left = target + "%";
@@ -1034,14 +1537,19 @@ const XYCALC_APP = (() => {
       }
       if (trigger != null) {
         $("occ-mark-trigger").style.left = trigger + "%";
+        $("occ-mark-trigger").className = occupancyMarkClass(trigger, 1);
         $("occ-mark-trigger").textContent = "trigger " + trigger;
         document.querySelector("#occ-ladder .zone.danger").style.left = trigger + "%";
         document.querySelector("#occ-ladder .zone.danger").style.width = (100 - trigger) + "%";
       }
+      const ninety = $("occ-mark-ninety");
+      if (ninety) ninety.className = occupancyMarkClass(90, 1);
       if (dirtyTarget != null && dirtyTrigger != null) {
         $("occ-mark-dirty-target").style.left = dirtyTarget + "%";
+        $("occ-mark-dirty-target").className = occupancyMarkClass(dirtyTarget, 1);
         $("occ-mark-dirty-target").textContent = "dirty target " + dirtyTarget;
         $("occ-mark-dirty-trigger").style.left = dirtyTrigger + "%";
+        $("occ-mark-dirty-trigger").className = occupancyMarkClass(dirtyTrigger, 0);
         $("occ-mark-dirty-trigger").textContent = "dirty trigger " + dirtyTrigger;
         $("occ-dirty-hold").style.width = dirtyTarget + "%";
         $("occ-dirty-warn").style.left = dirtyTarget + "%";
@@ -1346,8 +1854,8 @@ const XYCALC_APP = (() => {
           `${esc(String(leg.ratio))}× <span class="dim">→</span> relative ops ${leg.relative_ops.toFixed(3)}` +
           ` <span class="dim">(${Math.round(leg.ops)} ops/s absolute)</span>${r2}${pages}`;
       };
-      bindChartScrub(svg.querySelector("#cliff-hit"), svg, nearest, show);
-      show(Math.max(0, xs.findIndex((x) => x >= 1)));
+      const revealCliff = bindChartScrub(svg.querySelector("#cliff-hit"), svg, nearest, show, null, xs.length);
+      revealCliff(Math.max(0, xs.findIndex((x) => x >= 1)));
 
       $("cliff-note").textContent =
         `Shaded band = steepest adjacent segment (${steep[0]}→${steep[1]}×). ` +
@@ -1386,9 +1894,21 @@ const XYCALC_APP = (() => {
     nearestPixelIndex: nearestPixelIndex,
     sweepBounds: sweepBounds,
     sweepGrid: sweepGrid,
+    scenarioInputList: scenarioInputList,
     scenarioRequiredFieldsMissing: scenarioRequiredFieldsMissing,
+    effectiveYScale: effectiveYScale,
     chartLayout: chartLayout,
     normalizeSimpleSize: normalizeSimpleSize,
+    gradeSuffix: gradeSuffix,
+    weakestValidation: weakestValidation,
+    occupancyMarkClass: occupancyMarkClass,
+    interpolateCrossingXs: interpolateCrossingXs,
+    coverageX: coverageX,
+    bandCoverageCaption: bandCoverageCaption,
+    serializePermalink: serializePermalink,
+    parsePermalink: parsePermalink,
+    formatCitation: formatCitation,
+    GRADE_LABEL: GRADE_LABEL,
   };
 })();
 

@@ -87,7 +87,42 @@ admin = client.admin
 def tickets() -> dict:
     # Verified paths: 7.0.39 → wiredTiger.concurrentTransactions;
     # 8.0.29 / 8.2.12 → queues.execution (issue #7). Helper covers both.
-    from mongo_tickets import execution_tickets
+    try:
+        import sys
+        from pathlib import Path as _P
+
+        _here = _P(__file__).resolve().parent
+        if str(_here) not in sys.path:
+            sys.path.insert(0, str(_here))
+        from mongo_tickets import execution_tickets
+    except ImportError:
+        def execution_tickets(server_status: dict) -> dict:
+            queues = server_status.get("queues") or {}
+            execution = queues.get("execution")
+            if execution is not None:
+                read = execution["read"]
+                write = execution["write"]
+                pri = read.get("normalPriority") or {}
+                return {
+                    "path": "queues.execution",
+                    "readTotal": int(read["totalTickets"]),
+                    "readOut": int(read["out"]),
+                    "writeTotal": int(write["totalTickets"]),
+                    "queueLength": int(pri.get("queueLength") or 0),
+                    "queuedMicros": int(pri.get("totalTimeQueuedMicros") or 0),
+                }
+            wt = server_status.get("wiredTiger") or {}
+            c = wt.get("concurrentTransactions") or {}
+            read = c.get("read") or {}
+            write = c.get("write") or {}
+            return {
+                "path": "wiredTiger.concurrentTransactions",
+                "readTotal": int(read.get("totalTickets") or 0),
+                "readOut": int(read.get("out") or 0),
+                "writeTotal": int(write.get("totalTickets") or 0),
+                "queueLength": int(read.get("queueLength") or 0),
+                "queuedMicros": int(read.get("totalTimeQueuedMicros") or 0),
+            }
 
     s = admin.command("serverStatus")
     t = execution_tickets(s)

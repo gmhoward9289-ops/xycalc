@@ -19,6 +19,11 @@ module.exports = [
         clearTimeout: "readonly",
         requestAnimationFrame: "readonly",
         localStorage: "readonly",
+        history: "readonly",
+        location: "readonly",
+        navigator: "readonly",
+        URLSearchParams: "readonly",
+        window: "readonly",
       },
     },
     rules: {

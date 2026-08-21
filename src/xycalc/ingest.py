@@ -37,6 +37,42 @@ DATE_KEYS = ("at", "localTime")
 
 TODO = "TODO"
 
+_MAP_TOOLS = None
+
+
+def _parameter_map():
+    """The one metric-name → parameter map. Grafana import and db.stats ingest
+    must not grow a second copy that can drift."""
+    global _MAP_TOOLS
+    if _MAP_TOOLS is None:
+        import sys
+        from pathlib import Path
+
+        tools_dir = Path(__file__).resolve().parents[2] / "tools"
+        if str(tools_dir) not in sys.path:
+            sys.path.insert(0, str(tools_dir))
+        import import_metrics_export as ime  # type: ignore
+
+        _MAP_TOOLS = (ime.load_map(), ime.resolve_mapping)
+    return _MAP_TOOLS
+
+
+def corpus_mapping(field: str) -> dict[str, str]:
+    """Look up a db.stats / cache field in tools/metrics_parameter_map.yaml.
+
+    Missing keys fail here rather than growing a parallel slug table in this
+    module.
+    """
+    mappings, resolve = _parameter_map()
+    hit = resolve(field, mappings, system=None, parameter=None)
+    if not hit:
+        raise IngestError(
+            f"{field!r} is not in tools/metrics_parameter_map.yaml. Add it "
+            f"there (and a parameter in data/parameters.yaml if needed) "
+            f"rather than inventing a slug in ingest.py."
+        )
+    return hit
+
 _OBS_HEADER = """\
 # Candidate observation skeleton from `xycalc ingest`.
 # This paste is NOT a cited corpus fact and has NOT been validated.
@@ -298,16 +334,17 @@ def extract_mongodb(dump: dict) -> Extraction:
                 FieldRead(_prefix(stats_path, "db"), ext.db_name, "database name")
             )
         mapping = (
-            ("storageSize", "storage_size", "storage.collection_bytes_on_disk",
+            ("storageSize", "storage_size",
              "mongodb.wt-cache --storage-size (compressed collection bytes)"),
-            ("indexSize", "index_size", "storage.index_bytes_on_disk",
+            ("indexSize", "index_size",
              "mongodb.wt-cache --index-size"),
-            ("dataSize", None, "storage.collection_bytes_uncompressed",
+            ("dataSize", None,
              "uncompressed bytes — NOT the model's --storage-size input"),
         )
-        for key, input_key, parameter, used_as in mapping:
+        for key, input_key, used_as in mapping:
             if key not in stats:
                 continue
+            hit = corpus_mapping(key)
             value = read_number(stats[key])
             setattr(ext, {
                 "storageSize": "storage_size",
@@ -321,25 +358,26 @@ def extract_mongodb(dump: dict) -> Extraction:
                     _prefix(stats_path, key),
                     value,
                     used_as,
-                    unit="bytes",
+                    unit=hit.get("unit") or "bytes",
                 )
             )
             ext.observations.append(
                 {
-                    "parameter": parameter,
+                    "parameter": hit["parameter"],
                     "value": value,
-                    "unit": "bytes",
+                    "unit": hit.get("unit") or "bytes",
                     "field": key,
                     "path": _prefix(stats_path, key),
                 }
             )
         if ext.data_size and ext.storage_size:
             ratio = round(ext.data_size / ext.storage_size, 3)
+            hit = corpus_mapping("dataSize/storageSize")
             ext.observations.append(
                 {
-                    "parameter": "storage.compression_ratio",
+                    "parameter": hit["parameter"],
                     "value": ratio,
-                    "unit": "ratio",
+                    "unit": hit.get("unit") or "ratio",
                     "field": "dataSize/storageSize",
                     "path": f"{_prefix(stats_path, 'dataSize')} / {_prefix(stats_path, 'storageSize')}",
                 }
@@ -360,19 +398,20 @@ def extract_mongodb(dump: dict) -> Extraction:
     if cache:
         if K_IN_CACHE in cache:
             ext.resident_cache = read_number(cache[K_IN_CACHE])
+            hit = corpus_mapping(K_IN_CACHE)
             ext.read.append(
                 FieldRead(
                     _prefix(cache_path, K_IN_CACHE),
                     ext.resident_cache,
                     "observation cache.size_bytes (resident contents, not configured size)",
-                    unit="bytes",
+                    unit=hit.get("unit") or "bytes",
                 )
             )
             ext.observations.append(
                 {
-                    "parameter": "cache.size_bytes",
+                    "parameter": hit["parameter"],
                     "value": ext.resident_cache,
-                    "unit": "bytes",
+                    "unit": hit.get("unit") or "bytes",
                     "field": K_IN_CACHE,
                     "path": _prefix(cache_path, K_IN_CACHE),
                 }

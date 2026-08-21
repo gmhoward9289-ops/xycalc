@@ -127,7 +127,13 @@ class TestHonestyInToolDescriptions:
             "scenario",
             "why",
             "import_metrics",
+            "ingest_dbstats",
         }
+        by_name = {t.name: (t.description or "") for t in listed.tools}
+        assert "Grafana" in by_name["import_metrics"] or "Prometheus" in by_name["import_metrics"]
+        assert "db.stats" in by_name["ingest_dbstats"]
+        assert "ingest_dbstats" in by_name["import_metrics"]
+        assert "import_metrics" in by_name["ingest_dbstats"]
         for tool in listed.tools:
             desc = tool.description or ""
             assert "unvalidated (n=0)" in desc, tool.name
@@ -237,11 +243,11 @@ class TestWhy:
         assert_validation_unavoidable(wt)
 
 
-class TestImportMetrics:
+class TestIngestDbstats:
     def test_paste_returns_candidate_extraction_and_sizing(self, db_path):
         fixture = Path(__file__).resolve().parent / "fixtures" / "ingest" / "mongodb-wrapped-numberlong.json"
         raw = fixture.read_text(encoding="utf-8")
-        result = call(db_path, "import_metrics", {"metrics": raw})
+        result = call(db_path, "ingest_dbstats", {"metrics": raw})
         body = payload(result)
         assert body["measurement"]["status"] == "candidate"
         assert body["measurement"]["cited"] is False
@@ -257,7 +263,7 @@ class TestImportMetrics:
         fixture = Path(__file__).resolve().parent / "fixtures" / "ingest" / "mongodb-serverstatus-nested.json"
         result = call(
             db_path,
-            "import_metrics",
+            "ingest_dbstats",
             {"metrics": fixture.read_text(encoding="utf-8"), "emit_observation": True},
         )
         body = payload(result)

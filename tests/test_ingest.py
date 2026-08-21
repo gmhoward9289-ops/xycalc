@@ -17,6 +17,7 @@ from xycalc.cli import main
 from xycalc.ingest import (
     TODO,
     IngestError,
+    _parameter_map,
     extract_mongodb,
     observation_skeleton,
     parse_metrics,
@@ -107,6 +108,25 @@ class TestExtractor:
             extract_mongodb({"foo": 1, "bar": 2})
         with pytest.raises(IngestError, match="not JSON"):
             parse_metrics("not json {")
+
+
+    def test_observation_parameters_come_from_the_shared_map(self):
+        """Grafana import and db.stats ingest share tools/metrics_parameter_map.yaml."""
+        ext = extract_mongodb(_dump(WRAPPED))
+        by_field = {row["field"]: row["parameter"] for row in ext.observations}
+        mappings, resolve = _parameter_map()
+        assert resolve("storageSize", mappings, system=None, parameter=None)[
+            "parameter"
+        ] == by_field["storageSize"]
+        assert resolve("dataSize", mappings, system=None, parameter=None)[
+            "parameter"
+        ] == by_field["dataSize"]
+        assert resolve("indexSize", mappings, system=None, parameter=None)[
+            "parameter"
+        ] == by_field["indexSize"]
+        assert resolve("bytes currently in the cache", mappings, system=None, parameter=None)[
+            "parameter"
+        ] == by_field["bytes currently in the cache"]
 
 
 class TestHonesty:

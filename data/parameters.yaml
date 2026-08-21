@@ -117,6 +117,32 @@ parameters:
       cache divided by operations. Near zero means the working set is resident;
       rising with oversubscription means each lookup pays for more device I/O.
 
+  - slug: cache.size_gb
+    label: WiredTiger cache size as configured (GB)
+    unit: GB
+    dimension: bytes
+    notes: >-
+      The --wiredTigerCacheSizeGB figure, decimal GB as mongod takes it.
+      Distinct from cache.size_bytes so a probe's 0.25 GB setting is not
+      silently rewritten as 268435456.
+
+  - slug: cache.oversubscription_ratio
+    label: dataSize divided by configured cache
+    unit: ratio
+    dimension: ratio
+    notes: >-
+      dataSize / wiredTigerCacheSize. 1.0 is "cache equals uncompressed data",
+      which is not the same as cache-resident under uniform point lookups.
+
+  - slug: cache.oversub_loglog_slope
+    label: Log-log slope of ops/s vs oversubscription
+    unit: ratio
+    dimension: ratio
+    notes: >-
+      Δ log(ops/s) / Δ log(dataSize/maxCache) between two adjacent probe
+      legs. Negative means throughput falls as the working set outgrows
+      the cache.
+
   # -- host -------------------------------------------------------------
   - slug: host.ram_bytes
     label: Host RAM
@@ -258,6 +284,15 @@ parameters:
     label: Storage latency per operation
     unit: seconds
     dimension: seconds
+
+  - slug: db.mean_latency_ms
+    label: Mean client-observed operation latency
+    unit: ms
+    dimension: seconds
+    notes: >-
+      Mean latency reported by the probe client (pymongo), not WiredTiger
+      hold time. Distinct from db.storage_latency_seconds: this is what
+      the caller waited, including admission-queue time.
 
   # -- Celery / Redis broker ---------------------------------------------
   - slug: queue.prefetch_reserved_tasks
@@ -503,3 +538,42 @@ parameters:
     notes: >-
       (1 + YoY growth/100)^years — precomputed bands for multi-year storage
       projection when the model engine cannot exponentiate in one step.
+
+  # -- ClickHouse MergeTree insert backpressure ---------------------------
+  - slug: clickhouse.active_parts_delay_threshold
+    label: Active parts per partition before insert delay
+    unit: count
+    dimension: count
+    notes: >-
+      MergeTree setting parts_to_delay_insert. When active parts in a single
+      partition reach this count, INSERTs are artificially slowed so merges can
+      catch up. Defaults jumped from 150 to 1000 at ClickHouse 23.6.
+
+  - slug: clickhouse.active_parts_throw_threshold
+    label: Active parts per partition before insert reject
+    unit: count
+    dimension: count
+    notes: >-
+      MergeTree setting parts_to_throw_insert. Above this active-part count in
+      one partition, INSERT raises "Too many parts". Defaults jumped from 300
+      to 3000 at ClickHouse 23.6.
+
+  - slug: clickhouse.max_insert_delay_seconds
+    label: Max artificial INSERT delay under part pressure
+    unit: seconds
+    dimension: seconds
+    notes: >-
+      MergeTree setting max_delay_to_insert — upper bound on how long ClickHouse
+      will sleep an INSERT when parts_to_delay_insert has been crossed.
+
+  - slug: clickhouse.max_avg_part_size_for_too_many_parts_bytes
+    label: Avg part size above which too-many-parts checks are skipped
+    unit: bytes
+    dimension: bytes
+    notes: >-
+      MergeTree setting max_avg_part_size_for_too_many_parts. When the average
+      active part in a partition is larger than this, parts_to_delay_insert and
+      parts_to_throw_insert do not delay or reject — ClickHouse's own escape
+      hatch for tables whose parts have already merged large (TB-scale tables
+      with healthy merges). The insert-frequency failure mode is about many
+      small parts, not about total table bytes.

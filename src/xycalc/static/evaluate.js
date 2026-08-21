@@ -24,17 +24,36 @@ const XY = (() => {
 
   class ModelError extends Error {}
 
+  // One decimal point, optional en-US thousands separators. `[0-9.]+` used to
+  // accept "1.2.3" (parseFloat silently returned 1.2) and to reject the comma
+  // in formatQuantity's "3,000 iops". parse and format have to be inverses or
+  // the calculator's own scrub-commit corrupts the answer.
+  const AMOUNT = /^\s*((?:[0-9]{1,3}(?:,[0-9]{3})+|[0-9]+)(?:\.[0-9]+)?|\.[0-9]+)\s*([a-zA-Z/%]*)\s*$/;
+
+  function splitAmount(text) {
+    const m = AMOUNT.exec(String(text));
+    if (!m) throw new ModelError("cannot read a size from '" + text + "'");
+    return { value: parseFloat(m[1].replace(/,/g, "")), unit: m[2] };
+  }
+
+  function parseNumber(text) {
+    if (typeof text === "number") return text;
+    try {
+      return splitAmount(text).value;
+    } catch (e) {
+      throw new ModelError("cannot read a number from '" + text + "'");
+    }
+  }
+
   // parse_bytes(). Decimal by default: that is what db.stats() reports and
   // what a vendor sizing table means. KiB/MiB/GiB honoured when written.
   function parseBytes(text) {
     if (typeof text === "number") return text;
-    const m = /^\s*([0-9.]+)\s*([a-zA-Z]*)\s*$/.exec(String(text));
-    if (!m) throw new ModelError("cannot read a size from '" + text + "'");
-    const value = parseFloat(m[1]);
-    const unit = m[2].toLowerCase();
-    if (!unit) return value;
-    if (!(unit in UNITS)) throw new ModelError("unknown unit '" + m[2] + "' in '" + text + "'");
-    return value * UNITS[unit];
+    const parts = splitAmount(text);
+    const unit = parts.unit.toLowerCase();
+    if (!unit) return parts.value;
+    if (!(unit in UNITS)) throw new ModelError("unknown unit '" + parts.unit + "' in '" + text + "'");
+    return parts.value * UNITS[unit];
   }
 
   // Python's ",.Nf": fixed decimals with thousands separators. Locale pinned to
@@ -110,7 +129,20 @@ const XY = (() => {
         if (spec.required) throw new ModelError(model.slug + ": input '" + key + "' is required");
         continue;
       }
-      out[key] = spec.unit === "bytes" ? parseBytes(raw) : parseFloat(raw);
+      try {
+        if (spec.unit === "bytes") {
+          out[key] = parseBytes(raw);
+        } else {
+          try {
+            out[key] = parseNumber(raw);
+          } catch (e) {
+            throw new ModelError(model.slug + ": '" + key + "' is not a number");
+          }
+        }
+      } catch (e) {
+        if (e instanceof ModelError) throw e;
+        throw new ModelError(model.slug + ": '" + key + "' is not a number");
+      }
       if (Number.isNaN(out[key])) throw new ModelError(model.slug + ": '" + key + "' is not a number");
     }
     return out;
@@ -461,11 +493,14 @@ const XY = (() => {
 
   function buildInstanceSizingSummary(presented, inputs) {
     const summary = {};
-    let host, inst, gp3, ebs;
+    let host, inst, azure, gp3, ebs;
     for (const s of presented) {
       if (s.kind === "model" && s.model === "mongodb.host-ram") host = s;
       else if (s.kind === "lookup" && s.gp3) gp3 = s;
-      else if (s.kind === "lookup" && s.pick) inst = s;
+      else if (s.kind === "lookup" && s.pick) {
+        if ((s.slug || "").indexOf("azure-vm") === 0) azure = s;
+        else if (!inst || s.slug === "aws-ec2.instance-select") inst = s;
+      }
       else if (s.kind === "model" && s.model === "ebs.iops-to-provision") ebs = s;
     }
     if (host && host.answer) {
@@ -482,6 +517,16 @@ const XY = (() => {
         instance_lo: pick.pick_lo && pick.pick_lo.name,
         instance_mode: pick.pick_mode && pick.pick_mode.name,
         instance_hi: pick.pick_hi && pick.pick_hi.name,
+      };
+    }
+    if (azure && azure.pick) {
+      const pick = azure.pick;
+      const name = (spec) => (spec == null ? null : spec.name);
+      summary.azure = {
+        lo: name(pick.pick_lo),
+        mode: name(pick.pick_mode),
+        hi: name(pick.pick_hi),
+        exceeds_pool: pick.exceeds_pool,
       };
     }
     if (gp3 && gp3.gp3) {
@@ -506,9 +551,9 @@ const XY = (() => {
     }
     const current = {};
     if (inputs.current_ram) current.ram = parseBytes(inputs.current_ram);
-    if (inputs.current_vcpu) current.vcpu = parseFloat(inputs.current_vcpu);
-    if (inputs.current_disk_iops) current.disk_iops = parseFloat(inputs.current_disk_iops);
-    if (inputs.current_disk_throughput) current.disk_throughput_mibps = parseFloat(inputs.current_disk_throughput);
+    if (inputs.current_vcpu) current.vcpu = parseNumber(inputs.current_vcpu);
+    if (inputs.current_disk_iops) current.disk_iops = parseNumber(inputs.current_disk_iops);
+    if (inputs.current_disk_throughput) current.disk_throughput_mibps = parseNumber(inputs.current_disk_throughput);
     if (Object.keys(current).length) summary.current = current;
     return summary;
   }
@@ -522,7 +567,7 @@ const XY = (() => {
     if (scenario.disabled) throw new ModelError(scenarioSlug + ": not yet modeled");
     const bySlug = {};
     for (const m of corpus.models) bySlug[m.slug] = m;
-    const catalog = corpus.instance_catalog || [];
+    const catalogs = corpus.instance_catalogs || { "aws-ec2": corpus.instance_catalog || [] };
     const coeffMode = corpus.coefficient_mode || {};
     const ceiling = corpus.default_instance_ceiling_bytes;
     const supplied = Object.assign({}, inputs);
@@ -630,7 +675,15 @@ const XY = (() => {
           }
           let modeInst = null;
           for (let i = out.length - 1; i >= 0; i--) {
-            if (out[i].pick && out[i].pick.pick_mode) { modeInst = out[i].pick.pick_mode; break; }
+            if (out[i].pick && out[i].pick.pick_mode && out[i].pick.pick_mode.ebs_bandwidth_gbps != null) {
+              modeInst = out[i].pick.pick_mode;
+              break;
+            }
+          }
+          if (!modeInst) {
+            for (let i = out.length - 1; i >= 0; i--) {
+              if (out[i].pick && out[i].pick.pick_mode) { modeInst = out[i].pick.pick_mode; break; }
+            }
           }
           const spec = attachInstanceEbs(gp3VolumeSpec(total), modeInst);
           out.push({
@@ -646,11 +699,14 @@ const XY = (() => {
         }
         if (lookup !== "instance_select") throw new ModelError("unknown lookup kind '" + lookup + "'");
         if (!previous) throw new ModelError("instance_select: no previous step's band to pick against");
+        const system = step.system || "aws-ec2";
+        const catalog = catalogs[system] || corpus.instance_catalog || [];
         const pick = selectInstance(previous, catalog, step.family, ceiling === 0 ? null : ceiling);
+        const slug = system + ".instance-select";
         out.push({
           kind: "lookup",
-          slug: "aws-ec2.instance-select",
-          lookup: "aws-ec2.instance-select",
+          slug: slug,
+          lookup: slug,
           chained: true,
           pick: pick,
           pick_mode: pick.pick_mode ? pick.pick_mode.name : null,
@@ -677,6 +733,7 @@ const XY = (() => {
   return {
     ModelError: ModelError,
     parseBytes: parseBytes,
+    parseNumber: parseNumber,
     formatBytes: formatBytes,
     formatQuantity: formatQuantity,
     formatG: formatG,
