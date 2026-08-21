@@ -1,0 +1,37 @@
+observations:
+  - slug: cooper-t3-dirty-peak-paced-256kib-2026-08-21
+    parameter: cache.tracked_dirty_pct_peak
+    value: 2.53
+    unit: percent
+    workload: >-
+      eviction_probe insert arm, PROBE_WRITE_BPS=262144 (256 KiB/s),
+      PROBE_WRITE_IOPS=64, PROBE_SECONDS=60, PROBE_RATES=8, journal=0,
+      paced workers=8, docBytes=4096
+    system: mongodb
+    machine_class: cooper Docker Desktop mongo:7.0.40
+    system_version: "7.0.40"
+    observed_on: "2026-08-21"
+    source: obs-cooper-eviction-probe-2026-08-21
+    notes: >-
+      Achieved rate pinned to device (64 docs/s ≈ 262144 B/s).
+      evictedByAppDelta=0; onsetDirtyPct=null; attribution=unclear.
+      Dirty stayed near dirty_target, never approached dirty_trigger 20%.
+
+  - slug: cooper-t3-dirty-peak-unpaced-flood-2026-08-21
+    parameter: cache.tracked_dirty_pct_peak
+    value: 2.58
+    unit: percent
+    workload: >-
+      eviction_probe insert arm unpaced, PROBE_WRITE_BPS=262144,
+      PROBE_WORKERS=32, PROBE_DOC_BYTES=1024, PROBE_SECONDS=90,
+      journal=0, PROBE_UNPACED=1
+    system: mongodb
+    machine_class: cooper Docker Desktop mongo:7.0.40
+    system_version: "7.0.40"
+    observed_on: "2026-08-21"
+    source: obs-cooper-eviction-probe-2026-08-21
+    notes: >-
+      Offered insert ~576 docs/s (~0.56 MiB/s raw) above the 256 KiB/s
+      throttle. dirtyPctPeak still 2.58%; occupancyPeak 22.1%;
+      evictedByAppDelta=0. Background eviction absorbed dirty bytes;
+      app-thread eviction never observed.

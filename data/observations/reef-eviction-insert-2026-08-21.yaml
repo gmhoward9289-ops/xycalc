@@ -1,0 +1,33 @@
+observations:
+- slug: reef-t3-dirty-peak-8x-32mib-2026-08-21
+  parameter: cache.tracked_dirty_pct_peak
+  value: 4.48
+  unit: percent
+  workload: >-
+    eviction_probe insert arm, PROBE_WRITE_BPS=33554432 (32 MiB/s),
+    PROBE_WRITE_IOPS=800, PROBE_SECONDS=45, PROBE_RATES=8, journal=0,
+    workers=8, docBytes=4096
+  system: mongodb
+  machine_class: reef Docker Desktop mongo:7.0.40
+  system_version: '7.0.40'
+  observed_on: '2026-08-21'
+  source: obs-reef-eviction-insert-2026-08-21
+  notes: >-
+    Highest dirty% in the reef insert-arm sweep. Occupancy peaked 81.6%;
+    evictedByAppDelta=0. Confirms 014: dirty stays near target, never
+    approaches the documented 20% trigger on this harness.
+- slug: reef-t3-dirty-peak-2x-32mib-2026-08-21
+  parameter: cache.tracked_dirty_pct_peak
+  value: 3.15
+  unit: percent
+  workload: >-
+    eviction_probe insert arm, PROBE_WRITE_BPS=33554432, rate 2x,
+    journal=0, 45s
+  system: mongodb
+  machine_class: reef Docker Desktop mongo:7.0.40
+  system_version: '7.0.40'
+  observed_on: '2026-08-21'
+  source: obs-reef-eviction-insert-2026-08-21
+  notes: >-
+    Occupancy peaked 82.03% while dirty was only 3.15%; app-thread eviction
+    stayed 0. Companion to cooper 014 observations.

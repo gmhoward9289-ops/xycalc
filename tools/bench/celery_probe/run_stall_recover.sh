@@ -15,19 +15,22 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
-if [ ! -b "${PROBE_DEV:-/dev/sda}" ]; then
-    echo "compose.yml throttles ${PROBE_DEV:-/dev/sda}, which is not a block device here." >&2
+if [ -z "${PROBE_DEV:-}" ] && [ ! -b /dev/sda ]; then
+    echo "compose.yml throttles PROBE_DEV (default /dev/sda), which is not a block device here." >&2
     exit 1
+fi
+if [ -n "${PROBE_DEV:-}" ] && [ ! -b "${PROBE_DEV}" ]; then
+    echo "note: PROBE_DEV=$PROBE_DEV is not a host block device; trusting Docker engine." >&2
 fi
 
 OUT="${OUT:-./stall-recover-$(date +%Y%m%d-%H%M%S)}"
 mkdir -p "$OUT"
 POLICIES="${PROBE_POLICIES:-none,immediate,exponential,jitter}"
-# Long enough that max_retries × backoff cannot also trip redelivery.
 export PROBE_VISIBILITY_TIMEOUT="${PROBE_VISIBILITY_TIMEOUT:-600}"
 export PROBE_STALL_MODE="${PROBE_STALL_MODE:-cgroup}"
+export PROBE_DOCS="${PROBE_DOCS:-800000}"
 
-echo "=== stall/recover sweep start $(date -Is) out=$OUT ===" >&2
+echo "=== stall/recover sweep start $(date -Is) out=$OUT docs=$PROBE_DOCS ===" >&2
 docker compose up -d --build redis bookkeeping mongo >&2
 
 # Resolve mongo container name for the driver.
@@ -64,11 +67,24 @@ for pol in "${pols[@]}"; do
         cat "$OUT/policy-${pol}.err" >&2 || true
         exit 1
     fi
-    python - "$log" "$pol" "$combined" <<'PY'
+    # Git Bash on Windows often has no usable host python for /v paths — use
+    # a one-shot container with the OUT dir mounted (same pattern as sweep_prefetch).
+    out_dir="$(cd "$(dirname "$combined")" && pwd)"
+    if out_win="$(cd "$out_dir" && pwd -W 2>/dev/null)"; then
+      mount_src="$out_win"
+    else
+      mount_src="$out_dir"
+    fi
+    docker run --rm -i -v "${mount_src}:/out" python:3.12-slim \
+      python - "/out/$(basename "$log")" "$pol" "/out/$(basename "$combined")" <<'PY'
 import json, sys
 path, policy, out = sys.argv[1], sys.argv[2], sys.argv[3]
 text = open(path, encoding="utf-8", errors="replace").read()
-doc = json.loads(text.split("===JSON===", 1)[1].strip())
+blob = text.split("===JSON===", 1)[1].strip()
+end = blob.find("\n=====")
+if end != -1:
+    blob = blob[:end]
+doc = json.loads(blob)
 doc["policySwept"] = policy
 with open(out, "a", encoding="utf-8") as f:
     f.write(json.dumps(doc, default=str) + "\n")

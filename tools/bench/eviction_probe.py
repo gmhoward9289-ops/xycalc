@@ -20,22 +20,28 @@ import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
 
-from pymongo import MongoClient
+from pymongo import MongoClient, WriteConcern
 
 URI = os.environ.get("PROBE_URI", "mongodb://127.0.0.1:27017")
 ARM = os.environ.get("PROBE_ARM", "insert").strip().lower()  # insert|update
 SECONDS = float(os.environ.get("PROBE_SECONDS", "180"))
 RATES = [float(x) for x in os.environ.get("PROBE_RATES", "0.25,0.5,1,2,4,8").split(",")]
-WRITE_BPS = int(os.environ.get("PROBE_WRITE_BPS", "4194304"))
+WRITE_BPS = int(os.environ.get("PROBE_WRITE_BPS", "33554432"))
 CACHE_GB = float(os.environ.get("PROBE_CACHE_GB", "0.25"))
-WORKERS = int(os.environ.get("PROBE_WORKERS", "4"))
-DOC_BYTES = int(os.environ.get("PROBE_DOC_BYTES", "1024"))
+WORKERS = int(os.environ.get("PROBE_WORKERS", "8"))
+DOC_BYTES = int(os.environ.get("PROBE_DOC_BYTES", "4096"))
 SAMPLE_S = float(os.environ.get("PROBE_SAMPLE_S", "1.5"))
-# Cap inserted bytes per level to ≤50% of WT cache (insert-arm guard).
-MAX_INSERT_FRAC = float(os.environ.get("PROBE_MAX_INSERT_CACHE_FRAC", "0.5"))
+# Cap inserted bytes per level. Default 2.0x cache so dirty% can approach 20%.
+MAX_INSERT_FRAC = float(os.environ.get("PROBE_MAX_INSERT_CACHE_FRAC", "2.0"))
+# Journal wait starves inserts under a write cgroup before dirty% climbs.
+JOURNAL = os.environ.get("PROBE_JOURNAL", "0").strip().lower() not in ("0", "false", "no", "")
+# Unpaced flood: ignore rate sleep; workers insert as fast as Mongo accepts.
+# Used to race dirty% ahead of background eviction under a tight write throttle.
+UNPACED = os.environ.get("PROBE_UNPACED", "0").strip().lower() not in ("0", "false", "no", "")
 
 client = MongoClient(URI, maxPoolSize=WORKERS + 8, serverSelectionTimeoutMS=30000)
-db = client.evictionprobe
+wc = WriteConcern(w=1, j=JOURNAL)
+db = client.get_database("evictionprobe", write_concern=wc)
 admin = client.admin
 
 
@@ -109,10 +115,11 @@ def run_level(rate_mult: float) -> dict:
         next_t = time.time()
         deadline = t0 + SECONDS
         while time.time() < deadline:
-            now = time.time()
-            if now < next_t:
-                time.sleep(min(next_t - now, 0.05))
-                continue
+            if not UNPACED:
+                now = time.time()
+                if now < next_t:
+                    time.sleep(min(next_t - now, 0.05))
+                    continue
             if ARM == "insert":
                 with lock:
                     i = next_id
@@ -124,7 +131,8 @@ def run_level(rate_mult: float) -> dict:
                 i = random.randrange(db.docs.estimated_document_count())
                 db.docs.update_one({"_id": i}, {"$set": {"pad": _pad(), "n": random.randrange(1e9)}})
             local += 1
-            next_t += interval
+            if not UNPACED:
+                next_t += interval
         with lock:
             ops += local
         return local
@@ -148,11 +156,20 @@ def run_level(rate_mult: float) -> dict:
             onset_dirty = s["dirtyPct"]
             break
 
+    achieved_write_bps = achieved * DOC_BYTES
+    # Throttle is only diagnostic if offered write pressure exceeds the cap.
+    throttle_pressure = achieved_write_bps >= WRITE_BPS * 0.8
+
     flags = []
     if not rate_ok:
         flags.append(f"achieved {achieved:.1f}/s vs target {target_docs_s:.1f}/s (>10%)")
     if dirty_peak < 1.0 and rate_mult >= 1.0:
         flags.append(f"dirty% never rose (peak {dirty_peak}) at rate_mult={rate_mult}")
+    if rate_mult >= 1.0 and not throttle_pressure:
+        flags.append(
+            f"offered write ~{achieved_write_bps/1e6:.2f} MiB/s below "
+            f"PROBE_WRITE_BPS={WRITE_BPS/1e6:.2f} MiB/s — throttle may not bind"
+        )
 
     # Attribution hint: dirty trigger vs overall occupancy trigger.
     attribution = "unclear"
@@ -169,7 +186,9 @@ def run_level(rate_mult: float) -> dict:
         "rateMultipleOfWriteBps": rate_mult,
         "targetDocsPerSecond": round(target_docs_s, 1),
         "achievedDocsPerSecond": round(achieved, 1),
+        "achievedWriteBps": round(achieved_write_bps, 1),
         "achievedRateOk": rate_ok,
+        "throttlePressureOk": throttle_pressure,
         "seconds": round(elapsed, 1),
         "ops": ops,
         "dirtyPctPeak": dirty_peak,
@@ -209,7 +228,11 @@ def main() -> int:
                 "arm": ARM,
                 "writeBps": WRITE_BPS,
                 "cacheGb": CACHE_GB,
+                "journal": JOURNAL,
+                "docBytes": DOC_BYTES,
+                "workers": WORKERS,
                 "secondsPerLevel": SECONDS,
+                "unpaced": UNPACED,
                 "results": results,
                 "at": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
             },

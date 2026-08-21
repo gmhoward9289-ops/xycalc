@@ -60,13 +60,22 @@ def cache_max() -> int:
 
 
 def tickets() -> dict:
-    import sys
-    from pathlib import Path
-
-    _bench = Path(__file__).resolve().parents[1]
-    if str(_bench) not in sys.path:
-        sys.path.insert(0, str(_bench))
-    from mongo_tickets import execution_tickets
+    try:
+        from mongo_tickets import execution_tickets
+    except ImportError:
+        def execution_tickets(server_status: dict) -> dict:
+            wt = (server_status.get("wiredTiger") or {})
+            c = wt.get("concurrentTransactions") or {}
+            read = c.get("read") or {}
+            write = c.get("write") or {}
+            return {
+                "path": "wiredTiger.concurrentTransactions",
+                "readTotal": int(read.get("totalTickets") or 0),
+                "readOut": int(read.get("out") or 0),
+                "writeTotal": int(write.get("totalTickets") or 0),
+                "queueLength": int(read.get("queueLength") or 0),
+                "queuedMicros": int(read.get("totalTimeQueuedMicros") or 0),
+            }
 
     s = mongo.admin.command("serverStatus")
     t = execution_tickets(s)

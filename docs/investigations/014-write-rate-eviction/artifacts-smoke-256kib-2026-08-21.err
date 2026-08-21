@@ -1,0 +1,12 @@
+note: PROBE_DEV=/dev/sde is not a host block device; trusting Docker engine.
+device      /dev/sde  ->  write 262144 B/s, 64 IOPS
+cache       0.25 GB wiredTiger, 640m container
+arm         insert
+mongo uri   mongodb://172.19.0.2:27017 (name=xycalc-eviction-probe-33124-1787329321)
+WARNING: Running pip as the 'root' user can result in broken permissions and conflicting behaviour with the system package manager, possibly rendering your system unusable. It is recommended to use a virtual environment instead: https://pip.pypa.io/warnings/venv. Use the --root-user-action option if you know what you are doing and want to suppress this warning.
+
+[notice] A new release of pip is available: 25.0.1 -> 26.2.1
+[notice] To update, run: pip install --upgrade pip
+eviction_probe MongoDB 7.0.40 arm=insert
+  level 8.0x write_bps ...
+    achieved 64.0/s  dirtyPeak 2.53%  occPeak 6.26%  evictΔ 0  unclear

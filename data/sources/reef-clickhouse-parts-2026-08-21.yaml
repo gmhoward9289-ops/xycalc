@@ -1,0 +1,13 @@
+sources:
+- slug: obs-reef-clickhouse-parts-2026-08-21
+  title: ClickHouse dual-image parts settings + non-onset on reef (T10)
+  publisher: xycalc project
+  version: tools/bench/clickhouse_probe.sh
+  retrieved_on: '2026-08-21'
+  source_type: benchmark
+  notes: >-
+    Investigation 020 / ROADMAP T10 via tools/bench/clickhouse_probe.sh.
+    clickhouse-server 23.3 vs 24.8 on reef Docker. PROBE_ROWS=500000 writers=16
+    batches 1/10/100. Settings differ (150/300 vs 1000/3000). batch=10 on 23.3
+    peaked 192 parts (crossed delay); batch=1 stayed ~18–19. Artifact:
+    docs/investigations/020-clickhouse-insert-parts/artifacts/reef-ch-dual-20260821.json

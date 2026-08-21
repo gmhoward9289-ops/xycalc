@@ -15,10 +15,14 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
-if [ ! -b "${PROBE_DEV:-/dev/sda}" ]; then
-    echo "compose.yml throttles ${PROBE_DEV:-/dev/sda}, which is not a block device here." >&2
-    echo "Edit blkio_config in compose.yml for this host, or run on reef/swamplink." >&2
+# Docker Desktop / Git Bash hosts often lack a real /dev node; trust PROBE_DEV.
+if [ -z "${PROBE_DEV:-}" ] && [ ! -b /dev/sda ]; then
+    echo "compose.yml throttles PROBE_DEV (default /dev/sda), which is not a block device here." >&2
+    echo "Set PROBE_DEV=/dev/xxx, or run on reef/swamplink." >&2
     exit 1
+fi
+if [ -n "${PROBE_DEV:-}" ] && [ ! -b "${PROBE_DEV}" ]; then
+    echo "note: PROBE_DEV=$PROBE_DEV is not a host block device; trusting Docker engine." >&2
 fi
 
 OUT="${OUT:-./prefetch-sweep-$(date +%Y%m%d-%H%M%S)}"
@@ -26,8 +30,9 @@ mkdir -p "$OUT"
 PREFETCHES="${PROBE_PREFETCHES:-1,2,4,8,16}"
 RATES="${PROBE_RATES:-400}"
 SECONDS_PER="${PROBE_SECONDS:-30}"
+export PROBE_DOCS="${PROBE_DOCS:-800000}"
 
-echo "=== prefetch sweep start $(date -Is) out=$OUT ===" >&2
+echo "=== prefetch sweep start $(date -Is) out=$OUT docs=$PROBE_DOCS ===" >&2
 docker compose up -d --build redis bookkeeping mongo >&2
 
 IFS=',' read -r -a prefs <<< "$PREFETCHES"
@@ -61,16 +66,29 @@ for p in "${prefs[@]}"; do
         exit 1
     fi
     # One JSON object per prefetch value for easy import.
-    python - "$log" "$p" "$combined" <<'PY'
+    # Git Bash on Windows often has no usable host python for /v paths — use
+    # a one-shot container with the OUT dir mounted.
+    out_dir="$(cd "$(dirname "$combined")" && pwd)"
+    # Docker Desktop needs a Windows-style bind for host mounts from Git Bash.
+    if out_win="$(cd "$out_dir" && pwd -W 2>/dev/null)"; then
+      mount_src="$out_win"
+    else
+      mount_src="$out_dir"
+    fi
+    docker run --rm -i -v "${mount_src}:/out" python:3.12-slim \
+      python - "/out/$(basename "$log")" "$p" "/out/$(basename "$combined")" <<'PY'
 import json, sys
 path, prefetch, out = sys.argv[1], sys.argv[2], sys.argv[3]
 text = open(path, encoding="utf-8", errors="replace").read()
 blob = text.split("===JSON===", 1)[1].strip()
+# Trim trailing markers if present.
+end = blob.find("\n=====")
+if end != -1:
+    blob = blob[:end]
 doc = json.loads(blob)
 doc["prefetchSwept"] = int(prefetch)
 with open(out, "a", encoding="utf-8") as f:
     f.write(json.dumps(doc, default=str) + "\n")
-# Print a one-line summary for humans.
 for r in doc.get("results", []):
     print(
         f"prefetch={prefetch} rate={r.get('targetRatePerSecond')} "
