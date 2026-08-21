@@ -146,8 +146,80 @@ class TestGrading:
         assert s["grade"] == "thin"
         assert "decomposing" in s["text"]
 
+    def test_zero_in_band_cannot_grade_reasonable_even_with_n_and_low_mae(
+        self, corpus, tmp_path
+    ):
+        """n=3 and MAE 0.8% used to print Validated / reasonable while
+        nothing landed in the band — mongodb.host-ram's live badge.
+
+        The rows are inserted after build so the pin is the grade rule, not
+        whether a particular model's documented constants still form a point
+        band. GRADE_LABEL maps reasonable → Validated, so this is the status
+        that must not reach the page."""
+        _clear_validation(corpus)
+        db = build(tmp_path / "v.db")
+        c = sqlite3.connect(db)
+        model_id = c.execute(
+            "SELECT id FROM model WHERE slug = ?", ("mongodb.host-ram",)
+        ).fetchone()[0]
+        for i in range(3):
+            c.execute(
+                """INSERT INTO validation (
+                       model_id, case_slug, inputs_json,
+                       predicted_lo, predicted_mode, predicted_hi,
+                       actual, within_band, error_pct
+                   ) VALUES (?, ?, '{}', 100, 100, 100, 100.8, 0, 0.8)""",
+                (model_id, f"zero-in-band-{i}"),
+            )
+        c.commit()
+        s = validation_status(c, "mongodb.host-ram")
+        c.close()
+        assert s["cases"] == 3
+        assert s["within_band"] == 0
+        assert s["mean_abs_error_pct"] == pytest.approx(0.8)
+        assert s["grade"] == "thin"
+        assert s["grade"] != "reasonable"
+        assert "none of the observations fell inside the predicted band" in s["text"]
+        assert "thinly validated" in s["text"]
+
+    def test_three_in_band_cases_with_small_error_can_be_reasonable(
+        self, corpus, tmp_path
+    ):
+        """The remaining path to the strongest grade: enough cases, small
+        error, and at least one observation inside the band."""
+        shipped = corpus.data / "validation"
+        if shipped.is_dir():
+            for f in shipped.glob("*.yaml"):
+                f.unlink()
+        rows = [
+            {
+                "model": "mongodb.wt-cache",
+                "case": f"unit-test-{i}",
+                "inputs": {"storage_size": 500e9, "index_size": 40e9},
+                "actual": 1290e9,
+                "at_term": "indexes",
+            }
+            for i in range(3)
+        ]
+        (corpus.local / "validation").mkdir(parents=True, exist_ok=True)
+        (corpus.local / "validation" / "case.yaml").write_text(
+            yaml.safe_dump({"validation": rows}), encoding="utf-8"
+        )
+        s = _status(build(tmp_path / "v.db"))
+        assert s["cases"] == 3
+        assert s["within_band"] == 3
+        assert s["mean_abs_error_pct"] == pytest.approx(0, abs=0.01)
+        assert s["grade"] == "reasonable"
+
     def test_the_shipped_corpus_does_not_claim_more_than_it_has(self, db_path):
-        """The real one: n=1 at 41.1%. Two independent reasons to be thin."""
+        """wt-cache is still thin (n and MAE). host-ram must not wear
+        Validated while every observation is outside the band."""
         s = _status(db_path)
         assert s["grade"] == "thin"
         assert "thinly validated" in s["text"]
+        host = _status(db_path, "mongodb.host-ram")
+        assert host["cases"] == 3
+        assert host["within_band"] == 0
+        assert host["grade"] == "thin"
+        assert host["grade"] != "reasonable"
+        assert "0 within band" in host["text"]

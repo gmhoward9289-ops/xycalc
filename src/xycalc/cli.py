@@ -6,6 +6,8 @@
     xycalc scenarios
     xycalc scenario mongodb.size-to-instance --storage-size 500GB --index-size 40GB
     xycalc why      mongodb.wt-cache
+    xycalc ingest   dump.json
+    xycalc ingest   dump.json --emit-observation candidate.yaml
     xycalc build
     xycalc audit
     xycalc gui
@@ -28,6 +30,12 @@ from pathlib import Path
 from . import audit as audit_mod
 from . import build as build_mod
 from .db import connect
+from .ingest import (
+    IngestError,
+    format_extraction,
+    is_published_corpus_path,
+    write_observation_files,
+)
 from .model import (
     DEFAULT_INSTANCE_CEILING,
     Model,
@@ -215,10 +223,10 @@ def cmd_headroom(args) -> int:
 
 
 def cmd_instance_select(args) -> int:
-    """Run any model on its own inputs, then look up its band against the
-    AWS instance catalog instead of collapsing it to one number first --
+    """Run any model on its own inputs, then look up its band against an
+    instance catalog instead of collapsing it to one number first --
     mirrors `headroom`'s shape, swapping a supplied `--available` for a
-    lookup against `data/coefficients/aws-ec2.yaml`."""
+    lookup against `data/coefficients/aws-ec2.yaml` or `azure-vm.yaml`."""
     conn = connect(args.db)
     model = _load(conn, args.model)
     values = {i["key"]: getattr(args, i["key"]) for i in model.inputs}
@@ -229,7 +237,7 @@ def cmd_instance_select(args) -> int:
         print(f"error: {e}", file=sys.stderr)
         return 2
 
-    catalog = load_instance_catalog(conn)
+    catalog = load_instance_catalog(conn, args.catalog)
     try:
         ceiling = parse_bytes(args.max_ram) if args.max_ram else None
         if ceiling == 0:  # explicit escape hatch: --max-ram 0 lifts the cap
@@ -258,7 +266,7 @@ def cmd_instance_select(args) -> int:
                 "pick_hi": sel["required_hi"],
             }[key]
             print(
-                f"  {label:<10} {spec.name:<24} "
+                f"  {label:<10} {spec.name:<28} "
                 f"{_fmt(spec.ram_bytes, result.unit)} RAM"
                 + (f", {spec.vcpu:g} vCPU" if spec.vcpu else "")
                 + f"  (+{_fmt(headroom_bytes, result.unit)} headroom)"
@@ -271,13 +279,12 @@ def cmd_instance_select(args) -> int:
             f"\n  NOTE  the high end of the band exceeds "
             + (
                 f"the {_fmt(ceiling, result.unit)} sizing ceiling "
-                f"(org policy, not an AWS limit — pass --max-ram to change it)."
+                f"(org policy, not a vendor limit — pass --max-ram to change it)."
                 if capped
                 else f"the largest instance in this pool "
                 f"({largest.name}, {_fmt(largest.ram_bytes, result.unit)})."
             )
-            + " No family is decided for sizing above that yet — this is a "
-            "placeholder, not a real recommendation."
+            + " Custom sizing, not a guessed SKU past the cited catalog."
         )
 
     _print_constraints(result)
@@ -374,7 +381,12 @@ def cmd_scenario(args) -> int:
                     f"usable throughput {spec['usable_throughput_mibps']:,.0f} MiB/s"
                 )
         else:
-            print(f"STEP {i} — smallest AWS instance covering the band above")
+            pool = (
+                "smallest Azure VM covering the band above"
+                if s.slug.startswith("azure-vm")
+                else "smallest AWS instance covering the band above"
+            )
+            print(f"STEP {i} — {pool}")
             pick = s.instance_pick
             for label, key in (
                 ("low end", "pick_lo"),
@@ -392,7 +404,7 @@ def cmd_scenario(args) -> int:
                 }[key]
                 headroom_bytes = spec.ram_bytes - need
                 print(
-                    f"  {label:<10} {spec.name:<24} {_fmt(spec.ram_bytes, prev_unit)} RAM"
+                    f"  {label:<10} {spec.name:<28} {_fmt(spec.ram_bytes, prev_unit)} RAM"
                     + (f", {spec.vcpu:g} vCPU" if spec.vcpu else "")
                     + (
                         f", EBS {spec.ebs_bandwidth_gbps:g} Gbps"
@@ -403,8 +415,8 @@ def cmd_scenario(args) -> int:
                 )
             if pick["exceeds_pool"]:
                 print(
-                    "\n  NOTE  the high end of the band exceeds this pool — no family is "
-                    "decided for sizing above that yet. Custom sizing, not a recommendation."
+                    "\n  NOTE  the high end of the band exceeds this pool — custom "
+                    "sizing, not a guessed SKU past the cited catalog."
                 )
 
     summary = build_instance_sizing_summary(steps, values)
@@ -421,6 +433,16 @@ def cmd_scenario(args) -> int:
                 f"  vCPU               {cpu['lo']} – {cpu['hi']}  "
                 f"(mode {cpu['mode']}, instance {cpu['instance_mode']})"
             )
+        if azure := summary.get("azure"):
+            print(
+                f"  Azure VM           {azure['lo']} – {azure['hi']}  "
+                f"(mode {azure['mode']})"
+            )
+            if azure.get("exceeds_pool"):
+                print(
+                    "  Azure NOTE         high end exceeds this pool — custom "
+                    "sizing, not a recommendation."
+                )
         if disk := summary.get("disk"):
             line = (
                 f"  gp3 disk           {disk['volume_gib']:,.1f} GiB; "
@@ -519,6 +541,110 @@ def cmd_export(args) -> int:
     return export_mod.main(argv)
 
 
+def cmd_ingest(args) -> int:
+    """Paste db.stats() / serverStatus JSON → model inputs + optional YAML.
+
+    The paste is a candidate. By default this command never writes the
+    corpus. ``--emit-observation`` writes candidate YAML outside ``data/``;
+    destinations under the published tree are refused unless
+    ``--force-corpus``.
+    """
+    from .ingest import extract_mongodb, observation_skeleton, parse_metrics
+    from .payloads import ingest_payload
+
+    if args.metrics in (None, "-", Path("-")):
+        raw = sys.stdin.read()
+    else:
+        raw = Path(args.metrics).read_text(encoding="utf-8")
+
+    emit_dest = args.emit_observation
+    if emit_dest is not None:
+        emit_dest = str(emit_dest)
+    if (
+        emit_dest
+        and emit_dest != "-"
+        and is_published_corpus_path(emit_dest)
+        and not args.force_corpus
+    ):
+        print(
+            "error: refusing to write under data/ (the published corpus that "
+            "xycalc.build compiles). Default ingest writes nothing. Pass "
+            "--emit-observation a path outside data/, or --force-corpus "
+            "if you really mean to write candidate YAML into the published "
+            "tree.",
+            file=sys.stderr,
+        )
+        return 2
+
+    conn = connect(args.db)
+    try:
+        body = ingest_payload(
+            conn,
+            raw,
+            model=args.model,
+            emit_observation=bool(emit_dest),
+            tag=args.tag,
+            workload=args.workload,
+            machine_class=args.machine_class,
+            publisher=args.publisher,
+            source_type=args.source_type,
+        )
+    except (IngestError, ModelError) as e:
+        print(f"error: {e}", file=sys.stderr)
+        conn.close()
+        return 2
+
+    dump = parse_metrics(raw)
+    extracted = extract_mongodb(dump)
+    report = format_extraction(extracted)
+    # YAML on stdout would be unusable mixed with the human report.
+    report_file = sys.stderr if emit_dest == "-" else sys.stdout
+    print(report, file=report_file)
+
+    if body.get("sizing"):
+        model = _load(conn, args.model)
+        try:
+            result = model.evaluate(extracted.model_inputs)
+        except ModelError as e:
+            print(f"error: {e}", file=sys.stderr)
+            conn.close()
+            return 2
+        import contextlib
+        import io
+
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            _print_breakdown(result, model)
+            _print_constraints(result)
+            _print_validation(conn, model.slug)
+            _print_reframe(model)
+        print(file=report_file)
+        print(buf.getvalue(), end="", file=report_file)
+
+    if emit_dest:
+        skeleton = observation_skeleton(
+            extracted,
+            tag=args.tag,
+            workload=args.workload,
+            machine_class=args.machine_class,
+            publisher=args.publisher,
+            source_type=args.source_type,
+        )
+        if emit_dest == "-":
+            from .ingest import render_observation_yaml
+
+            sys.stdout.write(render_observation_yaml(skeleton))
+        else:
+            written = write_observation_files(
+                skeleton, emit_dest, force_corpus=args.force_corpus
+            )
+            for path in written:
+                print(f"wrote {path}", file=report_file)
+
+    conn.close()
+    return 0
+
+
 def cmd_gui(args) -> int:
     try:
         import uvicorn
@@ -599,13 +725,18 @@ def build_parser(db: Path | None = None) -> argparse.ArgumentParser:
 
     sp = sub.add_parser(
         "instance-select",
-        help="which named AWS instance covers a model's required band",
+        help="which named instance covers a model's required band",
     )
     sp.add_argument("model")
     sp.add_argument(
+        "--catalog",
+        default="aws-ec2",
+        help="coefficient system to pick from: aws-ec2 (default) or azure-vm",
+    )
+    sp.add_argument(
         "--family",
         default=None,
-        help="filter the catalog by name prefix, e.g. r8i or u7i (default: whole catalog)",
+        help="filter the catalog by name prefix, e.g. r8i, Esv5, or Esv6 (default: whole catalog)",
     )
     sp.add_argument(
         "--max-ram",
@@ -613,8 +744,8 @@ def build_parser(db: Path | None = None) -> argparse.ArgumentParser:
         help=(
             "org policy ceiling, not an AWS spec — above this, report "
             f"'custom sizing' rather than naming an instance (default: "
-            f"{DEFAULT_INSTANCE_CEILING}, == r8i.48xlarge; pass a larger "
-            "value or 0 to lift it)"
+            f"{DEFAULT_INSTANCE_CEILING}, == u7inh-32tb.480xlarge; pass a larger "
+            "value or 0 to lift it; 1536GiB restores the old r8i.48xlarge cap)"
         ),
     )
     _add_model_flags(sp, db)
@@ -656,6 +787,67 @@ def build_parser(db: Path | None = None) -> argparse.ArgumentParser:
     sp.add_argument("--crumb", default=None, help="raw HTML inserted above the header")
     sp.set_defaults(func=cmd_export)
 
+    sp = sub.add_parser(
+        "ingest",
+        help="paste db.stats()/serverStatus JSON → model inputs and a candidate observation",
+    )
+    sp.add_argument(
+        "metrics",
+        nargs="?",
+        default="-",
+        help="JSON file, or - / omit to read stdin",
+    )
+    sp.add_argument(
+        "--model",
+        default="mongodb.wt-cache",
+        help="model to run on the extracted inputs (default: mongodb.wt-cache)",
+    )
+    sp.add_argument(
+        "--emit-observation",
+        nargs="?",
+        const="-",
+        default=None,
+        metavar="PATH",
+        help=(
+            "write a candidate observation YAML skeleton. PATH.yaml is one "
+            "combined file; a directory gets sources/ + observations/ "
+            "(corpus layout). Destinations under data/ (the published "
+            "corpus xycalc.build compiles) are refused unless "
+            "--force-corpus. Omit PATH to print YAML on stdout (report "
+            "goes to stderr). Default ingest writes nothing. Provenance "
+            "that cannot be derived is TODO, never invented."
+        ),
+    )
+    sp.add_argument(
+        "--force-corpus",
+        action="store_true",
+        help=(
+            "allow --emit-observation to write under data/. Without this "
+            "flag, ingest never writes the published corpus. MCP "
+            "ingest_dbstats never writes files."
+        ),
+    )
+    sp.add_argument(
+        "--tag",
+        help=(
+            "slug prefix for the skeleton (default: ingest-<db> or "
+            "ingest-<db>-<observed_on from the paste>; never today's date)"
+        ),
+    )
+    sp.add_argument("--workload", help="fills observation.workload; otherwise TODO")
+    sp.add_argument("--machine-class", help="fills observation.machine_class; otherwise TODO")
+    sp.add_argument("--publisher", help="fills source.publisher; otherwise TODO")
+    sp.add_argument(
+        "--source-type",
+        choices=["measured", "benchmark"],
+        default=None,
+        help=(
+            "measured (a running system) or benchmark (a committed harness). "
+            "Default: TODO — not invented as measured"
+        ),
+    )
+    sp.set_defaults(func=cmd_ingest)
+
     return p
 
 
@@ -675,6 +867,9 @@ def main(argv: list[str] | None = None) -> int:
     except build_mod.BuildError as e:
         print(f"corpus build failed: {e}", file=sys.stderr)
         return 1
+    except IngestError as e:
+        print(f"error: {e}", file=sys.stderr)
+        return 2
 
 
 if __name__ == "__main__":

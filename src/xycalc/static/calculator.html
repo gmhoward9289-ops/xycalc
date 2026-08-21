@@ -45,6 +45,8 @@
   --constraint: #6b6b6b;
   --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, sans-serif;
+  --btn-ink: #ffffff;
+  --error: #b3261e;
 }
 @media (prefers-color-scheme: dark) {
   :root {
@@ -54,6 +56,8 @@
     --stop-bg: #2d1715; --stop-line: #7a3229; --stop-ink: #f0a79b;
     --floor: #8fb0d9; --amplifier: #e0996b; --headroom: #7fc9a0;
     --constraint: #9a9793;
+    --btn-ink: #0e1a16;
+    --error: #ff8a80;
   }
 }
 * { box-sizing: border-box; }
@@ -93,7 +97,7 @@ input:focus, select:focus, button:focus-visible {
 .field { margin-bottom: 1rem; }
 .question { font-size: 1.05rem; margin: 0 0 1.25rem; }
 button {
-  background: var(--accent); color: #fff; border: 0; border-radius: 6px;
+  background: var(--accent); color: var(--btn-ink); border: 0; border-radius: 6px;
   padding: .6rem 1.2rem; font-size: .95rem; font-weight: 600; cursor: pointer;
 }
 button:hover { filter: brightness(1.1); }
@@ -214,7 +218,7 @@ blockquote { margin: .4rem 0 0; padding-left: .7rem; border-left: 2px solid var(
 .notes-body p:last-child { margin-bottom: 0; }
 
 .scroll { overflow-x: auto; }
-.error { color: #b3261e; font-family: var(--mono); font-size: .85rem; }
+.error { color: var(--error); font-family: var(--mono); font-size: .85rem; }
 footer {
   margin-top: 3rem; padding-top: 1.25rem; border-top: 1px solid var(--line);
   font-size: .78rem; color: var(--muted); line-height: 1.55;
@@ -284,7 +288,11 @@ svg.nvd-chart { width: 100%; height: auto; display: block; }
 .funnel-track span { display: block; height: 100%; background: var(--accent); opacity: .5; }
 .cascade-wrap { margin-top: .85rem; }
 .form-heading { font-size: .72rem; letter-spacing: .04em; color: var(--muted); margin: 0 0 .65rem; font-weight: 700; }
-@media (max-width: 42rem) { .input-grid, .nvd-layout { grid-template-columns: 1fr; } }
+@media (max-width: 42rem) {
+  .input-grid, .nvd-layout { grid-template-columns: 1fr; }
+  #occ-mark-ninety { display: none; }
+  .ladder .mark { font-size: .62rem; }
+}
 
 /* -- flow + occupancy tabs -- */
 .tabs { flex-wrap: wrap; }
@@ -326,6 +334,30 @@ svg.nvd-chart { width: 100%; height: auto; display: block; }
 .ladder .mark::after {
   content: ""; display: block; width: 2px; height: 2.4rem; background: var(--ink); margin: .15rem auto 0;
 }
+.ladder .mark.below {
+  top: calc(100% + .15rem);
+}
+.ladder .mark.below::after {
+  position: absolute;
+  left: 50%;
+  bottom: 100%;
+  height: 2.4rem;
+  width: 2px;
+  margin: 0 0 0 -1px;
+}
+.ladder .mark.edge-start { transform: translateX(0); }
+.ladder .mark.edge-start.below::after { left: 1px; margin: 0; }
+.ladder .mark.edge-end { transform: translateX(-100%); }
+.ladder .mark.edge-end.below::after { left: auto; right: 0; margin: 0; }
+
+/* Occupancy-tab tick labels only. Desktop: "90" and "trigger 95" both sat
+   below the bar and overlapped. Keep this block out of Simple/Advanced chrome
+   so it can merge with size-path footnote work. */
+#tab-occupancy .ladder {
+  margin-top: 1.75rem;
+  margin-bottom: 2.15rem;
+}
+
 .ladder .you {
   position: absolute; top: 0; bottom: 0; width: 3px; background: var(--accent);
   transform: translateX(-50%); border-radius: 2px;
@@ -351,7 +383,14 @@ svg.nvd-chart { width: 100%; height: auto; display: block; }
   display: grid; grid-template-columns: 1fr 1fr; gap: .85rem 1.1rem; margin-top: .25rem;
 }
 @media (max-width: 42rem) { .occ-inputs { grid-template-columns: 1fr; } }
-.ladder.dirty { margin-top: 1.75rem; }
+.ladder.dirty { margin-top: 1.75rem; margin-bottom: 2.1rem; }
+.answer-tools { margin-top: .85rem; text-align: center; }
+.cascade-step .answer { padding: .75rem 0 .25rem; }
+.cascade-step .answer .value { font-size: clamp(1.4rem, 5vw, 2rem); }
+.grade-pill { font-weight: 400; color: var(--muted); font-size: .78rem; }
+.crossing-caption { font-size: .82rem; color: var(--amplifier); margin: .45rem 0 0; }
+.cross-tick { stroke: var(--amplifier); stroke-width: 1.5; }
+.cross-label { fill: var(--amplifier); font-family: var(--mono); font-size: 9px; }
 .ladder .zone.dirty-hold { left: 0; background: color-mix(in srgb, var(--floor) 30%, transparent); }
 .ladder .zone.dirty-warn { background: color-mix(in srgb, var(--warn-ink) 30%, transparent); }
 .ladder .zone.dirty-danger { background: color-mix(in srgb, var(--stop-ink) 45%, transparent); }
@@ -376,7 +415,7 @@ svg.nvd-chart { width: 100%; height: auto; display: block; }
 /* -- Simple / Advanced (#54) -- */
 .mode-bar {
   display: flex; gap: .35rem; align-items: center;
-  margin: 0 0 1.25rem; flex-wrap: wrap;
+  margin: 0 0 .5rem; flex-wrap: wrap;
 }
 .mode-bar .mode-label {
   font-size: .75rem; text-transform: uppercase; letter-spacing: .06em;
@@ -386,11 +425,19 @@ svg.nvd-chart { width: 100%; height: auto; display: block; }
   background: transparent; color: var(--muted);
   border: 1px solid var(--line); font-weight: 600;
   padding: .4rem .9rem; font-size: .85rem; border-radius: 6px;
+  line-height: 1.2; cursor: pointer;
 }
+/* Match .tab.active — not a solid CTA fill (reads as a different, taller control). */
 .mode-btn[aria-pressed="true"] {
-  color: #fff; background: var(--accent); border-color: var(--accent);
+  color: var(--accent); border-color: var(--accent); background: transparent;
 }
-body.mode-simple .claim { display: none; }
+/* Reserve Advanced tab-row height in both modes so the panel below does not jump. */
+.view-subnav {
+  min-height: 2.35rem;
+  margin: 0 0 1.25rem;
+}
+.view-subnav .tabs { margin-bottom: 0; }
+body.mode-simple .view-subnav .tabs { display: none; }
 body.mode-simple #advanced-chrome { display: none !important; }
 body.mode-advanced #simple-view { display: none !important; }
 .simple-answer .band-row {
@@ -420,6 +467,24 @@ body.mode-advanced #simple-view { display: none !important; }
   font-size: .78rem; color: var(--muted); margin-top: .35rem;
 }
 .simple-pick.mode-pick { border-color: var(--accent); }
+.simple-pick .miss {
+  font-size: .72rem; color: var(--warn-ink); margin-top: .4rem; line-height: 1.35;
+}
+.simple-honesty {
+  border: 2px solid var(--stop-line); background: var(--stop-bg); color: var(--stop-ink);
+  border-radius: 8px; padding: .85rem .95rem; margin-top: .85rem; font-size: .9rem;
+}
+.simple-honesty p { margin: 0 0 .65rem; }
+.simple-honesty #simple-open-advanced {
+  color: var(--stop-ink); border-color: var(--stop-line); font-weight: 600;
+  padding: .4rem .75rem; font-size: .82rem;
+}
+.size-path-footnote {
+  font-size: .82rem; color: var(--muted); line-height: 1.45;
+  border-left: 3px solid var(--warn-line);
+  padding: .35rem 0 .35rem .75rem; margin: .75rem 0 0;
+}
+.sizing-summary .size-path-footnote:first-of-type { margin-top: 1rem; }
 </style>
 </head>
 <body class="mode-simple">
@@ -453,6 +518,15 @@ body.mode-advanced #simple-view { display: none !important; }
   <button type="button" class="mode-btn" id="mode-simple" aria-pressed="true">Simple</button>
   <button type="button" class="mode-btn" id="mode-advanced" aria-pressed="false">Advanced</button>
 </div>
+<div class="view-subnav" aria-label="Advanced sections">
+  <div class="tabs">
+    <button class="tab active" id="tab-btn-scenario" data-tab="scenario">Scenario</button>
+    <button class="tab" id="tab-btn-single" data-tab="single">Single question</button>
+    <button class="tab" id="tab-btn-flow" data-tab="flow">How it flows</button>
+    <button class="tab" id="tab-btn-occupancy" data-tab="occupancy">Occupancy bands</button>
+    <button class="tab" id="tab-btn-cliff" data-tab="cliff">Cache cliff</button>
+  </div>
+</div>
 
 <div id="simple-view">
   <div class="panel">
@@ -462,24 +536,9 @@ body.mode-advanced #simple-view { display: none !important; }
       <div class="help">Document count in your vuln collections today.</div>
     </div>
     <div class="field">
-      <label for="simple-vuln-storage">Vuln collection storageSize</label>
-      <input id="simple-vuln-storage" placeholder="e.g. 100 or 100GB" autocomplete="off">
-      <div class="help">Sum of storageSize for vuln collections only — not the whole database. Bare number = GB.</div>
-    </div>
-    <div class="field">
-      <label for="simple-devices">Device documents <span class="help" style="display:inline">optional</span></label>
-      <input id="simple-devices" placeholder="e.g. 10000" autocomplete="off">
-      <div class="help">Device (or asset) document count. Pair with avg on-disk bytes below.</div>
-    </div>
-    <div class="field">
-      <label for="simple-device-avg">Avg on-disk bytes per device <span class="help" style="display:inline">optional</span></label>
-      <input id="simple-device-avg" placeholder="e.g. 2MB or 2048" autocomplete="off">
-      <div class="help">storageSize ÷ count for the device family. Bare number = bytes.</div>
-    </div>
-    <div class="field">
-      <label for="simple-residual">Other data on disk today <span class="help" style="display:inline">optional</span></label>
-      <input id="simple-residual" placeholder="e.g. 50 or 50GB" autocomplete="off">
-      <div class="help">Residual collections (whole-DB storageSize minus vuln and device families). Does not grow with CVE counts. Bare number = GB.</div>
+      <label for="simple-vulns">Vulnerability records <span class="help" style="display:inline">optional</span></label>
+      <input id="simple-vulns" placeholder="e.g. 250000" autocomplete="off">
+      <div class="help">Optional. Size for this many records, scaled from today's bytes at the 250,000 corpus baseline. Leave blank to size today's footprint only.</div>
     </div>
     <p class="recalc-live" id="simple-status">Enter vuln count and storageSize — sizing updates as you type.</p>
     <p id="simple-error" class="error" hidden></p>
@@ -497,23 +556,14 @@ body.mode-advanced #simple-view { display: none !important; }
       </div>
       <div class="bandends" id="simple-bandends" hidden></div>
       <div class="simple-picks" id="simple-picks"></div>
+      <div class="band" id="simple-vuln-note" hidden></div>
       <div class="validation" id="simple-validation" hidden></div>
-      <p class="help" style="margin:.85rem 0 0">
-        <button type="button" class="ghost" id="simple-open-advanced">Open Advanced</button>
-        for indexes, foreign collections, growth targets, and the full breakdown.
-      </p>
+      <div id="simple-honesty-slot"></div>
     </div>
   </div>
 </div>
 
 <div id="advanced-chrome">
-<div class="tabs">
-  <button class="tab active" id="tab-btn-scenario" data-tab="scenario">Scenario</button>
-  <button class="tab" id="tab-btn-single" data-tab="single">Single question</button>
-  <button class="tab" id="tab-btn-flow" data-tab="flow">How it flows</button>
-  <button class="tab" id="tab-btn-occupancy" data-tab="occupancy">Occupancy bands</button>
-  <button class="tab" id="tab-btn-cliff" data-tab="cliff">Cache cliff</button>
-</div>
 
 <div id="tab-scenario">
   <div class="panel">
@@ -562,6 +612,9 @@ body.mode-advanced #simple-view { display: none !important; }
       <div class="value" id="answer"></div>
       <div class="band" id="band"></div>
     </div>
+    <div class="answer-tools">
+      <button type="button" class="ghost" id="copy-cite" data-copy-cite="single">Copy as citation</button>
+    </div>
 
     <div class="bandbar" id="bandbar" hidden>
       <div class="fill" id="bandfill"></div>
@@ -572,6 +625,7 @@ body.mode-advanced #simple-view { display: none !important; }
     <div id="headroom" hidden></div>
 
     <div class="validation" id="validation"></div>
+    <div id="single-model-footnotes"></div>
   </div>
 
   <div class="panel" id="chart-panel">
@@ -586,9 +640,10 @@ body.mode-advanced #simple-view { display: none !important; }
         <button type="button" class="ghost" id="ylog" aria-pressed="true">log</button>
       </div>
     </div>
-    <p class="chart-hint">Scrub the curve to preview; <kbd>click</kbd> or release a drag to set that input and recalculate.</p>
-    <svg class="chart" id="chart" viewBox="0 0 720 340" role="img" aria-labelledby="chart-desc"></svg>
-    <p id="chart-desc" class="chart-readout"></p>
+    <p class="chart-hint">Scrub the curve to preview; <kbd>click</kbd> or release a drag to set that input and recalculate. Focus the chart and use <kbd>←</kbd> <kbd>→</kbd> to step through samples.</p>
+    <svg class="chart" id="chart" viewBox="0 0 720 340" role="img" aria-label="Sizing sweep chart" tabindex="0"></svg>
+    <p id="chart-desc" class="chart-readout" aria-live="polite"></p>
+    <p class="crossing-caption" id="chart-cross" hidden></p>
     <p class="chart-note" id="chart-note"></p>
     <details>
       <summary>the numbers behind the curve</summary>
@@ -738,11 +793,7 @@ body.mode-advanced #simple-view { display: none !important; }
 
   <div class="panel">
     <h2 style="margin-top:0">Not the same cliff — MongoDB 7 tickets</h2>
-    <p style="margin:0 0 .65rem;font-size:.92rem;color:var(--muted)" id="occ-ticket-blurb">
-      Investigation 003 restated: under a device-bound load, <code>totalTickets</code>
-      can climb while ops/s stays flat and latency explodes. That is admission
-      contention, not an eviction-% problem — do not tune the wrong knob.
-    </p>
+    <p class="size-path-footnote" data-footnote="tickets" id="occ-ticket-blurb"></p>
     <div class="scroll">
       <table class="occ-table">
         <thead>
@@ -775,9 +826,9 @@ body.mode-advanced #simple-view { display: none !important; }
       <span class="status-pill" id="cliff-status">measured</span>
     </h2>
     <p style="margin:0 0 .5rem;font-size:.92rem;color:var(--muted)" id="cliff-verdict"></p>
-    <p class="chart-hint">X is <code>dataSize / maxCache</code>. Y is relative ops/s (1.0 at 0.5×). Scrub to read a point; absolute rates stay in the table.</p>
-    <svg class="chart" id="cliff-chart" viewBox="0 0 720 340" role="img" aria-labelledby="cliff-desc"></svg>
-    <p id="cliff-desc" class="chart-readout"></p>
+    <p class="chart-hint">X is <code>dataSize / maxCache</code>. Y is relative ops/s (1.0 at 0.5×). Scrub to read a point; absolute rates stay in the table. Focus the chart and use <kbd>←</kbd> <kbd>→</kbd> to step.</p>
+    <svg class="chart" id="cliff-chart" viewBox="0 0 720 340" role="img" aria-label="Cache cliff chart" tabindex="0"></svg>
+    <p id="cliff-desc" class="chart-readout" aria-live="polite"></p>
     <p class="chart-note" id="cliff-note"></p>
   </div>
   <div class="panel">

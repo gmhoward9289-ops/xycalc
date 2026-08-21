@@ -332,6 +332,19 @@ CREATE TABLE validation (
 );
 
 
+-- A calculator tab whose numbers all live on coefficient/observation rows.
+-- The YAML under data/guides/ is the source; spec_json is that document
+-- after build has checked every cited slug exists. export.py walks the
+-- spec and resolves refs — it does not restate the figures.
+CREATE TABLE guide (
+    id          INTEGER PRIMARY KEY,
+    slug        TEXT    NOT NULL UNIQUE,   -- occupancy_band, cache_cliff
+    spec_json   TEXT    NOT NULL,
+    origin      TEXT    NOT NULL DEFAULT 'corpus'
+                CHECK (origin IN ('corpus', 'local'))
+);
+
+
 -- ---------------------------------------------------------------------------
 -- Views
 -- ---------------------------------------------------------------------------

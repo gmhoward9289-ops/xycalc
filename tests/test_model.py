@@ -39,6 +39,14 @@ class TestParseBytes:
         with pytest.raises(ModelError, match="cannot read a size"):
             parse_bytes("about half a terabyte")
 
+    def test_thousands_separators_are_stripped(self):
+        assert parse_bytes("1,500 B") == 1500
+        assert parse_bytes("1,300.0 GB") == pytest.approx(1300 * 1000**3)
+
+    def test_two_decimal_points_are_rejected(self):
+        with pytest.raises(ModelError, match="cannot read a size"):
+            parse_bytes("1.2.3 GB")
+
     def test_malformed_numeric_size_is_model_error_not_value_error(self):
         """'1.2.3GB' matches the size regex but float() refuses it. That used
         to escape as ValueError and become an API 500."""
@@ -203,6 +211,22 @@ class TestUnitRendering:
 
         assert format_quantity(4000, "iops") == "4,000 iops"
 
+    def test_parse_is_the_inverse_of_format(self):
+        """Scrub-commit used to write format_quantity back into the input and
+        re-parse it. These two functions have to round-trip or the advertised
+        drag interaction is a 1000x error on any value ≥ 1,000."""
+        from xycalc.model import format_quantity, parse_number
+
+        for n in (1, 12, 999, 1000, 3000, 4000, 1_280, 1_000_000):
+            rendered = format_quantity(n, "iops")
+            assert parse_number(rendered) == n
+            assert "," in rendered or n < 1000
+        assert parse_bytes(format_quantity(500 * 1000**3, "bytes")) == pytest.approx(
+            500 * 1000**3
+        )
+        assert parse_bytes(format_bytes(1500)) == 1500
+        assert parse_number(format_quantity(12.5, "percent")) == pytest.approx(12.5)
+
     def test_an_iops_model_says_iops_in_every_step(self, conn):
         m = Model.load(conn, "ebs.iops-to-provision")
         r = m.evaluate({"average_iops": 4000})
@@ -301,6 +325,50 @@ class TestTicketCeiling:
         lower. The point is that the queue never drains."""
         assert "queued" in model.reframe
         assert "cliff" in model.reframe
+
+
+class TestCeleryRedisBrokerMaxmemory:
+    """Investigation 005 composed: name both failure modes, pick neither."""
+
+    @pytest.fixture
+    def model(self, conn):
+        return Model.load(conn, "celery.redis-broker-maxmemory")
+
+    def test_answer_is_two_documented_policies_not_a_byte_size(self, model):
+        r = model.evaluate({})
+        assert r.mode == pytest.approx(2.0)
+        assert r.lo == r.hi == r.mode
+        assert r.unit == "count"
+
+    def test_reframe_refuses_a_winner_and_names_the_alert(self, model):
+        text = model.reframe.lower()
+        assert "noeviction" in text
+        assert "allkeys-lru" in text
+        assert "used_memory/maxmemory" in text
+        assert "neither" in text
+
+    def test_both_measured_loss_rates_are_constraints(self, model):
+        by_key = {t.key: t for t in model.evaluate({}).constraints}
+        assert by_key["noeviction_task_loss"].coeff_mode == pytest.approx(1.0)
+        assert by_key["allkeys_lru_task_loss"].coeff_mode == pytest.approx(0.6872)
+
+
+class TestCeleryWorkerPrefetch:
+    @pytest.fixture
+    def model(self, conn):
+        return Model.load(conn, "celery.worker-prefetch")
+
+    def test_documented_formula_at_the_004_baseline(self, model):
+        r = model.evaluate({})
+        assert r.mode == pytest.approx(32.0)
+
+    def test_scales_with_concurrency(self, model):
+        assert model.evaluate({"concurrency": 1}).mode == pytest.approx(4.0)
+        assert model.evaluate({"concurrency": 16}).mode == pytest.approx(64.0)
+
+    def test_reframe_does_not_claim_more_workers_drain_faster(self, model):
+        assert "not a cited way to lift" in model.reframe
+
 
 
 class TestNvdStorageModel:

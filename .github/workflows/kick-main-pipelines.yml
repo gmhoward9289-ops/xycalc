@@ -1,0 +1,35 @@
+name: Kick main pipelines
+
+# CodeQL is a GitHub-hosted dynamic workflow, so it still runs when
+# github-actions[bot] squash-merges with GITHUB_TOKEN. Repo workflows
+# (ci, Codespell, Deploy calculator) do not: GitHub suppresses `push`
+# events from that token. This job is the durable backstop when
+# auto-merge.yml's wait-and-dispatch has already exited (slow PRs).
+#
+# workflow_dispatch is the documented GITHUB_TOKEN exception. Deploy
+# calculator still polls merge-gate checks before production.
+
+on:
+  workflow_run:
+    workflows: ["CodeQL"]
+    types: [completed]
+  workflow_dispatch:
+
+concurrency:
+  group: kick-main-pipelines
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  actions: write
+
+jobs:
+  kick:
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.head_branch == 'main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Dispatch missing main pipelines
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: bash .github/scripts/kick-main-pipelines.sh

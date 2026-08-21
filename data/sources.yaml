@@ -576,3 +576,64 @@ sources:
       the managed-disks pricing page summarises the range as 125–1,200 MB/s. The
       coefficients here follow this (the technical reference) page and record the
       tension rather than averaging it away.
+
+  - slug: clickhouse-mergetree-settings-v23.5
+    title: MergeTreeSettings.h — parts_to_delay_insert / parts_to_throw_insert
+    publisher: ClickHouse, Inc.
+    url: https://raw.githubusercontent.com/ClickHouse/ClickHouse/v23.5.1.3174-stable/src/Storages/MergeTree/MergeTreeSettings.h
+    version: ClickHouse v23.5.1.3174-stable
+    retrieved_on: '2026-08-21'
+    source_type: source_code
+    notes: >-
+      Pre-23.6 MergeTree defaults for insert backpressure: parts_to_delay_insert
+      150 and parts_to_throw_insert 300. Strongest citation for the low side of
+      the tenfold threshold change that investigation 012 / T10 demonstrates.
+      Version is the git tag in the URL, not a docs "latest" page.
+
+  - slug: clickhouse-mergetree-settings-v23.6
+    title: MergeTreeSettings.h — parts_to_delay_insert / parts_to_throw_insert
+    publisher: ClickHouse, Inc.
+    url: https://raw.githubusercontent.com/ClickHouse/ClickHouse/v23.6.1.1524-stable/src/Storages/MergeTree/MergeTreeSettings.h
+    version: ClickHouse v23.6.1.1524-stable
+    retrieved_on: '2026-08-21'
+    source_type: source_code
+    notes: >-
+      ClickHouse 23.6 raised the same defaults to parts_to_delay_insert 1000 and
+      parts_to_throw_insert 3000 — the high side of the version-drift example in
+      ROADMAP T10. Same header file as the v23.5 source; only the tag (and the
+      numbers) change. Confirmed still 1000/3000 at v24.3.1-lts on retrieval day.
+  - slug: azure-vm-esv5-series
+    title: Esv5 sizes series
+    publisher: Microsoft
+    url: https://learn.microsoft.com/en-us/azure/virtual-machines/sizes/memory-optimized/esv5-series
+    version: ms.date 2026-03-10 (azure-compute-docs git d84ab24ccc7b)
+    published_on: '2026-03-10'
+    retrieved_on: '2026-08-21'
+    source_type: vendor_doc
+    notes: >-
+      Microsoft Learn size page for the Esv5 memory-optimized family (Intel
+      Xeon, premium storage, no local temp disk). Basics table lists
+      Standard_E2s_v5 through Standard_E104is_v5 with vCPU and Memory (GB);
+      the host-specifications include on the same page states the series RAM
+      range as 16–672 GiB, matching those size numbers, so catalog RAM is
+      stored as binary GiB. Isolated Standard_E104is_v5 is listed on the page
+      but not catalogued here. Source markdown lives in MicrosoftDocs
+      azure-compute-docs (retrieved 2026-08-21); Learn was the citation target.
+
+
+  - slug: azure-vm-esv6-series
+    title: Esv6 sizes series
+    publisher: Microsoft
+    url: https://learn.microsoft.com/en-us/azure/virtual-machines/sizes/memory-optimized/esv6-series
+    version: ms.date 2026-03-10 (azure-compute-docs git d84ab24ccc7b)
+    published_on: '2026-03-10'
+    retrieved_on: '2026-08-21'
+    source_type: vendor_doc
+    notes: >-
+      Microsoft Learn size page for the Esv6 memory-optimized family (Intel
+      Xeon Platinum 8573C, premium storage, no local temp disk). Basics table
+      lists Standard_E2s_v6 through Standard_E192is_v6. The series summary
+      and host-spec include give 16–1024 GiB / up to 128 vCPU (Standard_E128s_v6);
+      isolated Standard_E192is_v6 (192 vCPU / 1,832 GB) is on the table but
+      disagrees with that include range and is not catalogued. Same GiB
+      treatment as Esv5. Source markdown in MicrosoftDocs azure-compute-docs.

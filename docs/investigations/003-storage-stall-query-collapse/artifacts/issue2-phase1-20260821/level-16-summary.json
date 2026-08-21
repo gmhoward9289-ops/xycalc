@@ -1,0 +1,62 @@
+{
+  "mode": "levels",
+  "version": "7.0.39",
+  "cache": {
+    "inCache": 207148619,
+    "maxCache": 268435456,
+    "readIntoCache": 31653,
+    "evictedByApp": 0,
+    "bytesWrittenFromCache": 1174036420
+  },
+  "secondsPerLevel": 300.0,
+  "docs": 1500000,
+  "storageSizeBytes": 1150844928,
+  "dataSizeBytes": 1134000000,
+  "cacheOversubscription": 4.22,
+  "totalPagesReadIntoCache": 31641,
+  "results": [
+    {
+      "concurrency": 16,
+      "seconds": 300.2,
+      "ops": 26117,
+      "opsPerSecond": 87.0,
+      "meanLatencyMs": 183.82,
+      "p95LatencyMs": 314.9,
+      "queueWaitMs": 5.2,
+      "holdTimeMs": 178.62,
+      "ticketsStart": 4,
+      "ticketsEnd": 18,
+      "ticketsMax": 19,
+      "outMax": 17,
+      "queueLengthMax": 11,
+      "queuedMicrosDelta": 135883280,
+      "pagesReadIntoCache": 31641,
+      "evictedByAppThreads": 0,
+      "bytesWrittenFromCacheDelta": 1916307,
+      "predictedCeiling": 103.4,
+      "predictedCeilingHold": 106.4,
+      "sampleCount": 586,
+      "convergence": {
+        "verdict": "CONVERGED_DEMAND_CAPPED",
+        "lateMean": 17.07,
+        "priorMean": 16.94,
+        "relDelta": 0.0074,
+        "windowSeconds": 90.0,
+        "tolerance": 0.05,
+        "demandCapped": true
+      },
+      "samplerErrors": 0,
+      "samplerFirstError": null,
+      "checkpointsObserved": 5,
+      "ckptSecondsObserved": 6,
+      "ckptOpsDuring": 521,
+      "ckptOpsOutside": 25596,
+      "ckptP50During": 199.73,
+      "ckptP50Outside": 199.16,
+      "ckptP99During": 407.7,
+      "ckptP99Outside": 404.98
+    }
+  ],
+  "cooldown": null,
+  "at": "2026-08-21T15:01:00+0000"
+}

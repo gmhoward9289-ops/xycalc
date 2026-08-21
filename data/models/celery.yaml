@@ -84,3 +84,263 @@ models:
         rationale: >-
           Even with acks_late=1 and visibility_timeout=2s, duplicateRatePct
           stayed 0 across the sweep.
+
+  - slug: celery.worker-prefetch
+    question: >-
+      How many tasks does this many Celery workers reserve off the Redis broker
+      before they even run?
+    system: celery
+    output: queue.prefetch_reserved_tasks
+
+    summary: >-
+      Documented Celery 5.4.0 formula only: reserved tasks = worker_prefetch_multiplier
+      × concurrency slots. This is how much work sits off the Redis LIST but is
+      not yet executing — not a drain-ceiling and not a recommendation to add
+      workers.
+
+    reframe: >-
+      "How many workers before we cannot drain" is not a number this corpus can
+      name. Investigation 004 measured a completion ceiling of ~82 tasks/s at
+      prefork c=8 on one throttled device; concurrency was swept as observations,
+      not turned into a generalized workers-to-throughput coefficient. Raising
+      concurrency is not a cited way to lift that ceiling.
+
+      What is documented is prefetch reservation. Default multiplier 4 means
+      eight workers hold 32 tasks off-queue at steady state. That reservation
+      is invisible to Redis LLEN and still occupies broker memory once acked
+      late or still queued. Use this figure to know the off-LIST occupancy,
+      then read celery.queue-amplification for what happens when arrivals
+      exceed the completion ceiling, and celery.redis-broker-maxmemory for
+      what happens when the LIST fills Redis.
+
+    notes: >-
+      Unvalidated (n=0). The multiplier is a Celery 5.4.0 default, not a
+      measurement of your fleet. Override worker_prefetch_multiplier in
+      production; this model uses the shipped default. The 004 baseline
+      concurrency was 8 — pass that if you want the reservation that matches
+      the drain and ceiling coefficients.
+
+    inputs:
+      - key: concurrency
+        label: Celery worker concurrency (prefork slots)
+        unit: count
+        required: false
+        default: 8
+        help: >-
+          worker_concurrency / celery -c. Optional; defaults to 8 because that
+          is the investigation 004 baseline the completion-ceiling and drain
+          coefficients apply to — not because 8 is a recommended fleet size.
+
+    terms:
+      - key: slots
+        label: Concurrency slots
+        role: floor
+        apply: input
+        input_key: concurrency
+        rationale: >-
+          Prefork pool size. The documented prefetch formula multiplies this
+          by worker_prefetch_multiplier; it is not a throughput prediction.
+
+      - key: prefetch_multiplier
+        label: Default worker_prefetch_multiplier
+        role: amplifier
+        apply: multiply
+        coefficient: celery.worker-prefetch-multiplier-default
+        rationale: >-
+          Celery 5.4.0 default is 4. Reserved tasks = multiplier × concurrency.
+          The sibling coefficient celery.prefetch-reserved-count stores the
+          same default multiplier and says to multiply by slots — this term
+          is that multiplication.
+
+      - key: completion_ceiling
+        label: Fleet completion ceiling under stall (not raised by more workers)
+        role: constraint
+        apply: note
+        coefficient: celery.queue-completion-ceiling-baseline
+        rationale: >-
+          ~82 tasks/s at c=8 on the 004 harness. Arrivals above this grow the
+          Redis backlog. Not a function of the concurrency you typed above —
+          the sweep did not land a workers-to-ceiling coefficient.
+
+      - key: acks_late_default
+        label: Default ack-before-execute (redelivery off)
+        role: constraint
+        apply: note
+        coefficient: celery.task-acks-late-default
+        rationale: >-
+          Shipped default is task_acks_late=False, so broker redelivery is
+          structurally unreachable. Investigation 004's duplicate-rate rows
+          require acks_late=1; this model does not assume that.
+
+  - slug: celery.redis-broker-maxmemory
+    question: >-
+      How much Redis maxmemory, and under which eviction policy, before Celery
+      loses queued tasks or workers cannot drain?
+    system: celery
+    output: broker.documented_maxmemory_policy_count
+
+    summary: >-
+      Celery 5.4.0 documents two Redis maxmemory-policy options as equally
+      valid. Investigation 005 measured both at the ceiling (16 MiB, 2048 B
+      payloads, Celery 5.4.0): neither is safe. This model reports the count
+      of documented options and names each failure mode — it does not pick a
+      winner or emit a byte size, because the corpus has no bytes-per-Celery-task
+      coefficient.
+
+    reframe: >-
+      The question as asked assumes there is a safe policy and a size on the
+      right side of it. Investigation 005's finding is that both policies
+      Celery documents fail, differently, once used_memory reaches maxmemory:
+
+      noeviction stalls the workers (0 worker starts) and loses the whole
+      batch (task-loss rate 1.0), with ~4.9% of producer send_task attempts
+      erroring at the ceiling.
+
+      allkeys-lru keeps workers busy (first consumption ~1s) while dropping
+      roughly two-thirds of tasks (task-loss rate 0.687). Producers see no
+      errors — the loss is silent.
+
+      Celery's docs present the two as equally valid. The numbers say neither
+      is a safe operating point. Do not pick a winner. The threshold to alert
+      on is used_memory/maxmemory, long before either mode; the 20% Redis FAQ
+      figure is free host RAM beyond whatever maxmemory you set, not that
+      in-Redis occupancy alert. Bytes per LIST element were not in public
+      docs and are not in this corpus — this model will not invent a maxmemory
+      from backlog depth.
+
+    notes: >-
+      Unvalidated (n=0). The loss and stall rates are measured coefficients
+      from one 16 MiB / 2048 B run per policy on swamplink 2026-08-20; they
+      are not interpolated to other payload sizes or maxmemory values. The
+      arithmetic here is only Celery's documented policy count. A new model
+      starts unvalidated; that is the normal state and must not be papered
+      over. What would move it: the three-arm sweep FINDINGS.md names, imported
+      as validation cases against this model.
+
+    terms:
+      - key: documented_policies
+        label: Celery-documented maxmemory-policy options (neither safe at the ceiling)
+        role: floor
+        apply: set_from_coefficient
+        coefficient: celery.redis-broker-maxmemory-policy-documented-count
+        rationale: >-
+          Celery 5.4.0 names exactly two policies, noeviction and allkeys-lru,
+          as the response to broker memory pressure. The answer is that count
+          because the measurements refuse a single safe size or a winner.
+
+      - key: noeviction_task_loss
+        label: noeviction failure — workers stall, 100% of the batch is lost
+        role: constraint
+        apply: note
+        coefficient: celery.redis-broker-noeviction-task-loss-rate
+        rationale: >-
+          Measured task-loss rate 1.0 at maxmemory=16 MiB, payload 2048 B,
+          policy=noeviction (Celery 5.4.0). Name this mode when alerting:
+          the queue does not drain and the batch is gone.
+
+      - key: noeviction_worker_starts
+        label: noeviction — worker consumes at OOM? (0 = stall)
+        role: constraint
+        apply: note
+        coefficient: celery.redis-broker-noeviction-worker-starts
+        rationale: >-
+          Worker-starts 0 while the broker was still at/over maxmemory.
+          Reproduces celery#5716's deadlock report on Celery 5.4.0, not only
+          on 4.3.0.
+
+      - key: noeviction_producer_errors
+        label: noeviction — producer send_task error rate at the ceiling
+        role: constraint
+        apply: note
+        coefficient: celery.redis-broker-noeviction-producer-error-rate
+        rationale: >-
+          4.9% of Phase-1 send_task attempts raised once Redis was at
+          maxmemory (154 errors, 3010 enqueued). Producers see some pressure;
+          workers still never start.
+
+      - key: allkeys_lru_task_loss
+        label: allkeys-lru failure — workers stay busy, ~68.7% of tasks vanish
+        role: constraint
+        apply: note
+        coefficient: celery.redis-broker-allkeys-lru-task-loss-rate
+        rationale: >-
+          Measured task-loss rate 0.687 at the same 16 MiB / 2048 B ceiling,
+          policy=allkeys-lru. 3010 of 4380 enqueued tasks never executed.
+          Name this mode when alerting: the fleet looks healthy while dropping
+          roughly two-thirds of the batch.
+
+      - key: allkeys_lru_worker_starts
+        label: allkeys-lru — worker consumes at OOM? (1 = busy)
+        role: constraint
+        apply: note
+        coefficient: celery.redis-broker-allkeys-lru-worker-starts
+        rationale: >-
+          Worker-starts 1, first consumption ~1s, while eviction was active.
+          Contrast with noeviction's stall — this is the silent-loss mode,
+          not a success.
+
+      - key: oom_stall_reported
+        label: Practitioner report of noeviction OOM queue stall
+        role: constraint
+        apply: note
+        coefficient: celery.redis-broker-noeviction-oom-stall-reported
+        rationale: >-
+          celery#5716 (Celery 4.3.0): workers could not even LLEN the queue
+          under noeviction OOM. Investigation 005 reproduced the stall on
+          5.4.0 rather than declaring the ticket stale.
+
+      - key: occupancy_alert
+        label: Alert on used_memory/maxmemory before either failure mode
+        role: constraint
+        apply: note
+        coefficient: redis.maxmemory-default-bytes
+        rationale: >-
+          Shipped Redis maxmemory default is 0 (no limit) until you set one.
+          Investigation 005's operational takeaway is to alert on
+          used_memory/maxmemory long before that ceiling is reached — the
+          policy choice only matters once you are already on fire. This
+          coefficient is the unlimited default, not an occupancy percentage;
+          no in-Redis alert threshold was measured, so none is invented here.
+
+      - key: host_ram_headroom
+        label: 20% free host RAM beyond maxmemory (provisioning, not the alert)
+        role: constraint
+        apply: note
+        coefficient: redis.maxmemory-free-ram-headroom-pct
+        rationale: >-
+          Redis FAQ rule of thumb: keep 20% of host RAM free beyond configured
+          maxmemory. That is how you size the box around whatever ceiling you
+          set. It is not the used_memory/maxmemory occupancy to alert on —
+          the coefficient's own notes say so.
+
+      - key: no_bytes_per_task
+        label: Empty-key overhead is not Celery task size
+        role: constraint
+        apply: note
+        coefficient: redis.empty-string-key-overhead-bytes
+        rationale: >-
+          MEMORY USAGE of an empty string key is 56 B — key metadata, not
+          per-LPUSH Celery payload. FINDINGS 005 still flags bytes per LIST
+          element as missing; backlog depth cannot be converted to maxmemory
+          without minting that figure.
+
+      - key: volatile_is_noeviction
+        label: volatile-* with no TTLs equals noeviction
+        role: constraint
+        apply: note
+        coefficient: redis.volatile-no-ttl-equals-noeviction
+        rationale: >-
+          With Celery's default task_ignore_result=True and no key TTLs,
+          volatile-lru is not a third policy. It is noeviction under another
+          name — 005's weakest-inference note, now vendor-backed.
+
+      - key: reads_vs_llen
+        label: Vendor says reads still work under noeviction OOM
+        role: constraint
+        apply: note
+        coefficient: redis.noeviction-reads-still-work
+        rationale: >-
+          Redis docs: GET still served when noeviction hits maxmemory.
+          celery#5716 reports LLEN failing with OOM inside a Celery pipeline.
+          Unresolved disagreement — both stay in the corpus; neither is
+          dropped to make a clean story.

@@ -72,6 +72,25 @@ assert.strictEqual(
 );
 assert.strictEqual(APP.scenarioRequiredFieldsMissing([], {}), false);
 
+const sectioned = {
+  input_sections: [
+    { title: "A", inputs: [{ key: "need", required: true }, { key: "opt", required: false }] },
+  ],
+  inputs: [],
+};
+assert.strictEqual(APP.scenarioInputList(sectioned).length, 2);
+assert.strictEqual(
+  APP.scenarioRequiredFieldsMissing(APP.scenarioInputList(sectioned), { need: "", opt: "1" }),
+  true,
+);
+assert.strictEqual(
+  APP.scenarioRequiredFieldsMissing(APP.scenarioInputList(sectioned), { need: "1", opt: "" }),
+  false,
+);
+assert.strictEqual(APP.effectiveYScale("log", 1), "log");
+assert.strictEqual(APP.effectiveYScale("log", 0), "linear");
+assert.strictEqual(APP.effectiveYScale("linear", 10), "linear");
+
 const lay = APP.chartLayout(720, 340, 78, 16, 16, 46);
 assert.strictEqual(lay.iw, 720 - 78 - 16);
 assert.strictEqual(lay.ih, 340 - 16 - 46);
@@ -89,5 +108,205 @@ assert.strictEqual(APP.normalizeSimpleAvgBytes("2KB"), "2KB");
 assert.strictEqual(APP.esc("<img src=x onerror=alert(1)>"), "&lt;img src=x onerror=alert(1)&gt;");
 assert.strictEqual(APP.esc('a&b"c'), "a&amp;b&quot;c");
 assert.strictEqual(APP.esc("it's"), "it&#39;s");
+
+assert.strictEqual(APP.gradeSuffix("none"), " · unvalidated");
+assert.strictEqual(APP.gradeSuffix("thin"), " · thinly validated");
+assert.strictEqual(APP.gradeSuffix("reasonable"), " · validated");
+assert.strictEqual(APP.gradeSuffix("mystery"), "");
+assert.strictEqual(APP.GRADE_LABEL.reasonable, "Validated");
+assert.strictEqual(APP.GRADE_LABEL.thin, "Thinly validated");
+
+// n=3, 0 within band must not render the strongest badge. Grade is assigned
+// in Python; this pins that only `reasonable` maps to Validated, so a thin
+// 0-in-band status cannot look like a pass on the Scenario step.
+const zeroInBand = {
+  grade: "thin",
+  text: "thinly validated (n=3, 0 within band, mean absolute error 0.8%) — none of the observations fell inside the predicted band",
+};
+const zeroBanner = APP.validationBannerInner(zeroInBand);
+assert.ok(zeroBanner.includes("Thinly validated"), zeroBanner);
+assert.ok(zeroBanner.includes("0 within band"), zeroBanner);
+assert.ok(!zeroBanner.includes("<strong>Validated</strong>"), zeroBanner);
+assert.ok(!APP.validationBannerHtml(zeroInBand).includes(" reasonable"), APP.validationBannerHtml(zeroInBand));
+
+const worst = APP.weakestValidation([
+  { grade: "reasonable", text: "ok" },
+  { grade: "none", text: "unchecked" },
+  { grade: "thin", text: "thin" },
+]);
+assert.strictEqual(worst.grade, "none");
+assert.strictEqual(APP.weakestValidation([]), null);
+
+assert.ok(APP.occupancyMarkClass(5, 1).includes("below"));
+assert.ok(APP.occupancyMarkClass(5, 1).includes("edge-start"));
+assert.ok(APP.occupancyMarkClass(20, 0).split(" ").indexOf("below") < 0);
+assert.ok(APP.occupancyMarkClass(95, 2).includes("edge-end"));
+// Occupancy total-cache ticks: 90 is odd (below), trigger 95 is even (above)
+// so the two labels do not share a row at desktop width.
+assert.ok(APP.occupancyMarkClass(90, 1).includes("below"));
+assert.ok(APP.occupancyMarkClass(95, 2).split(" ").indexOf("below") < 0);
+
+const xs = [100, 200, 400];
+const ys = [50, 100, 200];
+const crosses = APP.interpolateCrossingXs(xs, ys, 100);
+assert.strictEqual(crosses.length, 1);
+assert.ok(Math.abs(crosses[0] - 200) < 1e-9);
+assert.strictEqual(APP.coverageX(xs, ys, 200), 400);
+assert.strictEqual(APP.coverageX(xs, ys, 10), null);
+
+const cap = APP.bandCoverageCaption("256 GB", [1, 2, 4], [300, 200, 100], [400, 256, 120], [500, 300, 150], 256, (x) => String(x), "vulns");
+assert.ok(cap.includes("256 GB covers"));
+assert.ok(cap.includes("mode"));
+assert.ok(cap.includes("vulns"));
+
+const encoded = APP.serializePermalink({
+  mode: "advanced",
+  tab: "single",
+  model: "mongodb.wt-cache",
+  available: "256GB",
+  inputs: { storage_size: "500GB", index_size: "40GB" },
+});
+const parsed = APP.parsePermalink("#" + encoded);
+assert.strictEqual(parsed.mode, "advanced");
+assert.strictEqual(parsed.tab, "single");
+assert.strictEqual(parsed.model, "mongodb.wt-cache");
+assert.strictEqual(parsed.available, "256GB");
+assert.strictEqual(parsed.inputs.storage_size, "500GB");
+assert.strictEqual(APP.parsePermalink(""), null);
+assert.strictEqual(APP.parsePermalink("#"), null);
+
+// #115: Cache cliff's public slug is cache-cliff; the DOM id is tab-cliff.
+assert.strictEqual(APP.canonicalTab("cache-cliff"), "cliff");
+assert.strictEqual(APP.canonicalTab("cliff"), "cliff");
+assert.strictEqual(APP.canonicalTab("occupancy-bands"), "occupancy");
+assert.strictEqual(APP.canonicalTab("nope"), null);
+assert.strictEqual(APP.publicTab("cliff"), "cache-cliff");
+assert.strictEqual(APP.publicTab("occupancy"), "occupancy");
+
+const inboundCliff = APP.parsePermalink("#mode=advanced&tab=cache-cliff");
+assert.strictEqual(inboundCliff.mode, "advanced");
+assert.strictEqual(inboundCliff.tab, "cliff");
+const view = APP.permalinkView(inboundCliff);
+assert.deepStrictEqual(view, { mode: "advanced", tab: "cliff" });
+assert.strictEqual(APP.permalinkView(APP.parsePermalink("#mode=simple")).mode, "simple");
+assert.strictEqual(APP.permalinkView(APP.parsePermalink("#mode=simple")).tab, null);
+
+const cliffHash = APP.serializePermalink({ mode: "advanced", tab: "cliff", inputs: {} });
+assert.ok(cliffHash.includes("mode=advanced"), cliffHash);
+assert.ok(cliffHash.includes("tab=cache-cliff"), cliffHash);
+assert.ok(!cliffHash.includes("tab=scenario"), cliffHash);
+const cliffRoundTrip = APP.parsePermalink("#" + cliffHash);
+assert.strictEqual(cliffRoundTrip.mode, "advanced");
+assert.strictEqual(cliffRoundTrip.tab, "cliff");
+
+const href = APP.permalinkHref("#mode=advanced&tab=cache-cliff", {
+  pathname: "/tools/xycalc/calculator/",
+  search: "",
+});
+assert.strictEqual(href, "/tools/xycalc/calculator/#mode=advanced&tab=cache-cliff");
+
+// #113: known grade must render GRADE_LABEL + the corpus `text` clause, never
+// "reasonable —" with an empty tail (the Simple-mode field-name miss).
+const unvalidated = {
+  grade: "none",
+  text: "unvalidated (n=0) — no observation has ever been checked against this model",
+};
+const banner = APP.validationBannerInner(unvalidated);
+assert.ok(banner.includes("Unvalidated"), banner);
+assert.ok(banner.includes("unvalidated (n=0)"), banner);
+assert.ok(banner.includes("no observation has ever been checked against this model"), banner);
+assert.ok(!/^<strong>none<\/strong>/.test(banner), banner);
+assert.ok(!/— (<\/|$)/.test(banner.replace(/\s+/g, " ")), banner);
+
+const reasonable = {
+  grade: "reasonable",
+  text: "validated (n=12, 12 within band, mean absolute error 2.0%)",
+};
+const reasonableBanner = APP.validationBannerInner(reasonable);
+assert.ok(reasonableBanner.includes("Validated"), reasonableBanner);
+assert.ok(reasonableBanner.includes("validated (n=12"), reasonableBanner);
+assert.ok(!/^<strong>reasonable<\/strong>/.test(reasonableBanner), reasonableBanner);
+
+assert.strictEqual(APP.validationClause({ text: "from text", summary: "from summary" }), "from text");
+assert.strictEqual(APP.validationClause({ summary: "from summary" }), "from summary");
+assert.strictEqual(APP.validationClause({ note: "from note" }), "from note");
+assert.strictEqual(APP.validationClause({ grade: "reasonable" }), "");
+
+const xssBanner = APP.validationBannerInner({
+  grade: "none",
+  text: "<img src=x onerror=alert(1)>",
+});
+assert.ok(xssBanner.includes("&lt;img src=x onerror=alert(1)&gt;"), xssBanner);
+assert.ok(!xssBanner.includes("<img src"), xssBanner);
+
+const cite = APP.formatCitation({
+  question: "How much cache?",
+  mode: "180 GB",
+  lo: "90 GB",
+  hi: "320 GB",
+  validation: "Unvalidated — n=0",
+  terms: [{
+    label: "storageSize",
+    contribution: "× 0.5",
+    source: "MongoDB docs",
+    source_url: "https://example.invalid/wt",
+    quote: "Set cacheSizeGB to 50% of RAM.",
+  }],
+}, { digest: "abc", version: "0.0.0", git: "deadbee" });
+assert.ok(cite.includes("xycalc: How much cache?"));
+assert.ok(cite.includes("Mode 180 GB  band 90 GB – 320 GB"));
+assert.ok(cite.includes("Unvalidated"));
+assert.ok(cite.includes("MongoDB docs <https://example.invalid/wt>"));
+assert.ok(cite.includes("Set cacheSizeGB"));
+assert.ok(cite.includes("Corpus abc · xycalc 0.0.0 · deadbee"));
+assert.ok(!cite.includes("<script>"));
+
+assert.ok(APP.SIMPLE_HONESTY_LINE.includes("Not a buy size"));
+assert.ok(APP.SIMPLE_HONESTY_LINE.includes("open Advanced for sources"));
+assert.ok(APP.simpleHonestyBlockHtml().includes("simple-open-advanced"));
+assert.ok(APP.simpleHonestyBlockHtml().includes(APP.SIMPLE_HONESTY_LINE));
+
+const demoted = APP.displayValidation({
+  grade: "reasonable",
+  within_band: 0,
+  text: "validated (n=3, 0 within band, mean absolute error 0.8%)",
+});
+assert.strictEqual(demoted.grade, "thin");
+assert.ok(APP.zeroInBand({ text: "validated (n=3, 0 within band, MAE 0.8%)" }));
+assert.ok(!APP.zeroInBand({ grade: "reasonable", text: "validated (n=12, 12 within band)" }));
+
+const miss = APP.simpleCatalogMissReason({
+  exceeds_pool: true,
+  largest_in_pool: { name: "r8i.48xlarge", ram_bytes: 1536 * 1024 ** 3 },
+}, (n) => String(n) + "B");
+assert.ok(miss.includes("r8i.48xlarge"), miss);
+assert.ok(miss.includes("catalog has no fit"), miss);
+
+const chainWorst = APP.simpleWeakestValidation([
+  { kind: "model", validation: { grade: "reasonable", text: "validated (n=12, 12 within band)" } },
+  { kind: "lookup", validation: { grade: "none", text: "should ignore lookups" } },
+  { kind: "model", validation: { grade: "none", text: "unvalidated (n=0) — no observation has ever been checked against this model" } },
+]);
+assert.strictEqual(chainWorst.grade, "none");
+
+const okBanner = APP.validationBannerHtml({
+  grade: "none",
+  text: "unvalidated (n=0) — no observation has ever been checked against this model",
+});
+assert.ok(APP.simpleRamHonestyOk("120 GB", okBanner, {
+  grade: "none",
+  text: "unvalidated (n=0) — no observation has ever been checked against this model",
+}));
+assert.ok(!APP.simpleRamHonestyOk("120 GB", "<div>reasonable —</div>", { grade: "reasonable" }));
+
+assert.ok(APP.SIZE_PATH_FOOTNOTES["mongodb.wt-cache"].text.includes("FINDINGS 006"));
+assert.ok(APP.SIZE_PATH_FOOTNOTES["mongodb.ticket-throughput-ceiling"].text.includes("FINDINGS 003"));
+assert.ok(APP.SIZE_PATH_FOOTNOTES["ebs.iops-to-provision"].text.includes("cooper-burst-2026-08-21"));
+assert.strictEqual(APP.cascadeStepFootnotesHtml("mongodb.host-ram"), "");
+assert.deepStrictEqual(
+  APP.relatedFootnoteSlugs("mongodb.size-to-instance"),
+  ["mongodb.ticket-throughput-ceiling"],
+);
+assert.deepStrictEqual(APP.relatedFootnoteSlugs("ebs.microburst"), []);
 
 console.log("app helpers ok");

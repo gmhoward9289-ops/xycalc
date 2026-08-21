@@ -146,13 +146,16 @@ class TestInstanceSelectCeilingMessaging:
                 "2TB",
                 "--index-size",
                 "40GB",
+                "--max-ram",
+                "1536GiB",
             ],
             capsys,
         )
         assert rc == 0, err
         assert "org policy" in out
         assert "--max-ram" in out
-        assert "AWS limit" in out
+        assert "vendor limit" in out
+        assert "AWS limit" not in out
 
     def test_lifted_ceiling_uses_the_pool_message(self, db_path, capsys):
         rc, out, err = _run(
@@ -162,7 +165,7 @@ class TestInstanceSelectCeilingMessaging:
                 "instance-select",
                 "mongodb.wt-cache",
                 "--storage-size",
-                "8TB",
+                "10TB",
                 "--max-ram",
                 "0",
             ],

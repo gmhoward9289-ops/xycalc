@@ -1,0 +1,99 @@
+observations:
+# Issue #2 Phase 1 — isolated 300s levels. value = ticketsMax (peak);
+# notes carry ticketsEnd, ops/s, holdMs, convergence verdict.
+- slug: swamplink-2026-08-21-phase1-tickets-c16
+  system: mongodb
+  parameter: db.concurrency_tickets
+  value: 19
+  unit: tickets
+  workload: >-
+    ticket_probe Phase 1, concurrency=16 alone, 300s, throttled device
+    (8 MiB/s, 150 IOPS), 1.5M docs
+  machine_class: Hetzner CX shared vCPU, 7 GB RAM
+  system_version: 7.0.39
+  observed_on: '2026-08-21'
+  source: obs-mongodb-ticket-probe-phase1-swamplink-2026-08-21
+  notes: >-
+    ticketsStart=4 ticketsEnd=18 ticketsMax=19. Convergence
+    CONVERGED_DEMAND_CAPPED (lateMean=17.07, priorMean=16.94, relDelta=0.0074,
+    windowSeconds=90). opsPerSecond=87.0 holdTimeMs=178.62 queueWaitMs=5.2.
+    predictedCeilingHold (Nmax/L)=106.4; measured/predicted≈0.82.
+
+- slug: swamplink-2026-08-21-phase1-tickets-c32
+  system: mongodb
+  parameter: db.concurrency_tickets
+  value: 38
+  unit: tickets
+  workload: >-
+    ticket_probe Phase 1, concurrency=32 alone, 300s, throttled device
+    (8 MiB/s, 150 IOPS), 1.5M docs
+  machine_class: Hetzner CX shared vCPU, 7 GB RAM
+  system_version: 7.0.39
+  observed_on: '2026-08-21'
+  source: obs-mongodb-ticket-probe-phase1-swamplink-2026-08-21
+  notes: >-
+    ticketsStart=4 ticketsEnd=33 ticketsMax=38. Convergence
+    CONVERGED_DEMAND_CAPPED (lateMean=33.62, priorMean=33.72, relDelta=0.0028,
+    windowSeconds=90). opsPerSecond=100.7 holdTimeMs=294.97 queueWaitMs=22.55.
+    predictedCeilingHold=128.8; measured/predicted≈0.78 on Nmax, ≈0.90 on Nend.
+
+- slug: swamplink-2026-08-21-phase1-tickets-c64
+  system: mongodb
+  parameter: db.concurrency_tickets
+  value: 77
+  unit: tickets
+  workload: >-
+    ticket_probe Phase 1, concurrency=64 alone, 300s, throttled device
+    (8 MiB/s, 150 IOPS), 1.5M docs
+  machine_class: Hetzner CX shared vCPU, 7 GB RAM
+  system_version: 7.0.39
+  observed_on: '2026-08-21'
+  source: obs-mongodb-ticket-probe-phase1-swamplink-2026-08-21
+  notes: >-
+    ticketsStart=4 ticketsEnd=63 ticketsMax=77. Convergence
+    CONVERGED_DEMAND_CAPPED (lateMean=66.76, priorMean=66.63, relDelta=0.002,
+    windowSeconds=90). opsPerSecond=103.1 holdTimeMs=512.46 queueWaitMs=107.52.
+    predictedCeilingHold=150.3; measured/predicted≈0.69 on Nmax, ≈0.84 on Nend.
+    Peak exceeds offered concurrency (77>64), same shape as 2026-08-01/19.
+
+- slug: swamplink-2026-08-21-phase1-ops-c16
+  system: mongodb
+  parameter: db.ops_per_second
+  value: 87.0
+  unit: ops/s
+  workload: >-
+    ticket_probe Phase 1, concurrency=16 alone, 300s, throttled device
+    (8 MiB/s, 150 IOPS)
+  machine_class: Hetzner CX shared vCPU, 7 GB RAM
+  system_version: 7.0.39
+  observed_on: '2026-08-21'
+  source: obs-mongodb-ticket-probe-phase1-swamplink-2026-08-21
+  notes: Flat-under-concurrency band with c32/c64; demand-capped pool, not free ticket capacity.
+
+- slug: swamplink-2026-08-21-phase1-ops-c32
+  system: mongodb
+  parameter: db.ops_per_second
+  value: 100.7
+  unit: ops/s
+  workload: >-
+    ticket_probe Phase 1, concurrency=32 alone, 300s, throttled device
+    (8 MiB/s, 150 IOPS)
+  machine_class: Hetzner CX shared vCPU, 7 GB RAM
+  system_version: 7.0.39
+  observed_on: '2026-08-21'
+  source: obs-mongodb-ticket-probe-phase1-swamplink-2026-08-21
+  notes: Mid of Phase 1 ops band (~87–103). Device-causality Phase 2 still open.
+
+- slug: swamplink-2026-08-21-phase1-ops-c64
+  system: mongodb
+  parameter: db.ops_per_second
+  value: 103.1
+  unit: ops/s
+  workload: >-
+    ticket_probe Phase 1, concurrency=64 alone, 300s, throttled device
+    (8 MiB/s, 150 IOPS)
+  machine_class: Hetzner CX shared vCPU, 7 GB RAM
+  system_version: 7.0.39
+  observed_on: '2026-08-21'
+  source: obs-mongodb-ticket-probe-phase1-swamplink-2026-08-21
+  notes: Top of Phase 1 ops band. Hold time 512 ms — seats occupied waiting on the device.

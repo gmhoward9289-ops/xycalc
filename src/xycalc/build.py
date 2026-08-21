@@ -127,6 +127,7 @@ class Builder:
         self.coefficient: dict[str, int] = {}
         self.model: dict[str, int] = {}
         self.observation: dict[str, int] = {}
+        self.guide: dict[str, int] = {}
         self.counts: dict[str, int] = {}
         self.local_rows = 0
 
@@ -390,6 +391,74 @@ class Builder:
                 if origin == "local":
                     self.local_rows += 1
 
+    def guides(self):
+        """Calculator-tab structure. Figures are slugs, not literals.
+
+        Walks every observation/coefficient/model/source ref so a typo fails
+        at build with the file and slug, rather than as a blank cell on the
+        exported page.
+        """
+        for path, doc, origin in collect("guides"):
+            for row in doc.get("guides", []):
+                ctx = f"{path.name}:{row.get('slug', '?')}"
+                slug = row.get("slug")
+                if not slug:
+                    raise BuildError(f"{ctx}: guide needs a slug")
+                if slug in self.guide:
+                    raise BuildError(f"{ctx}: duplicate guide slug")
+                spec = {k: v for k, v in row.items() if k != "slug"}
+                self._check_guide_spec(spec, ctx)
+                self.guide[slug] = self.ins(
+                    "guide",
+                    slug=slug,
+                    spec_json=json.dumps(spec, sort_keys=True),
+                    origin=origin,
+                )
+                if origin == "local":
+                    self.local_rows += 1
+
+    def _check_guide_spec(self, node, ctx: str) -> None:
+        if isinstance(node, dict):
+            if "observation" in node:
+                slug = node["observation"]
+                if slug not in self.observation:
+                    raise BuildError(
+                        f"{ctx}: unknown observation '{slug}'. Known include: "
+                        f"{', '.join(sorted(self.observation)[:6]) or '(none loaded)'}"
+                    )
+            if "coefficient" in node:
+                slug = node["coefficient"]
+                if slug not in self.coefficient:
+                    raise BuildError(
+                        f"{ctx}: unknown coefficient '{slug}'. Known include: "
+                        f"{', '.join(sorted(self.coefficient)[:6]) or '(none loaded)'}"
+                    )
+            kind = node.get("kind")
+            if kind in {"table", "series"}:
+                for i, row in enumerate(node.get("rows") or []):
+                    self._check_guide_spec(row, f"{ctx}/row[{i}]")
+                for item in node.get("relative") or []:
+                    self._check_guide_spec(item, ctx)
+                for item in node.get("derive") or []:
+                    self._check_guide_spec(item, ctx)
+                return
+            if kind == "format":
+                self._check_guide_spec(node.get("values") or {}, f"{ctx}/values")
+                return
+            for key, val in node.items():
+                if key in ("observation", "coefficient", "kind"):
+                    continue
+                if key in ("model", "ticket_model") and isinstance(val, str):
+                    if val not in self.model:
+                        raise BuildError(f"{ctx}: unknown model '{val}'")
+                if key in ("source", "ticket_source") and isinstance(val, str):
+                    if val not in self.source:
+                        raise BuildError(f"{ctx}: unknown source '{val}'")
+                self._check_guide_spec(val, ctx)
+        elif isinstance(node, list):
+            for item in node:
+                self._check_guide_spec(item, ctx)
+
     def validations(self):
         """Recompute every validation case against the model as it stands now.
 
@@ -459,6 +528,7 @@ class Builder:
         self.coefficients()
         self.models()
         self.observations()
+        self.guides()
         self.validations()
 
 
