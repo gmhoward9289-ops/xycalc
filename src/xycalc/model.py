@@ -167,6 +167,7 @@ class Model:
     system: str
     summary: str | None
     reframe: str | None
+    notes: str | None
     output_unit: str
     output_parameter: str
     inputs: list[dict]
@@ -247,6 +248,7 @@ class Model:
             system=row["system_slug"],
             summary=row["summary"],
             reframe=row["reframe"],
+            notes=row["notes"] if "notes" in row.keys() else None,
             output_unit=row["out_unit"],
             output_parameter=row["out_param"],
             inputs=inputs,

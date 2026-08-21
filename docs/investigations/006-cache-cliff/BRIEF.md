@@ -4,8 +4,8 @@
 throughput degrade smoothly or fall off a knee? If a knee, where — at
 1.0× cache, or later?
 
-**Status:** harness in progress (`tools/bench/cache_cliff_probe.py` /
-`.sh`). Not yet run.
+**Status:** A1-r1 complete on swamplink-eu; A1-r2 + A2 transfer in flight
+(2026-08-21). Draft FINDINGS in this directory.
 
 **Expected confidence ceiling:** `measured` for any knee (or documented
 absence) from this benchmark. Absolute ops/s and latency are artifacts of

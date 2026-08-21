@@ -122,6 +122,7 @@ def _model_dict(conn: sqlite3.Connection, slug: str) -> dict:
         "system": m.system,
         "summary": m.summary,
         "reframe": m.reframe,
+        "notes": m.notes,
         "output_unit": m.output_unit,
         "output_parameter": m.output_parameter,
         "inputs": [
