@@ -522,6 +522,20 @@ def occupancy_band_guide(conn: sqlite3.Connection) -> dict:
     }
 
 
+def _instance_catalog_dicts(conn: sqlite3.Connection, system: str = "aws-ec2") -> list[dict]:
+    return [
+        {
+            "name": i.name,
+            "ram_bytes": i.ram_bytes,
+            "vcpu": i.vcpu,
+            "ebs_bandwidth_gbps": i.ebs_bandwidth_gbps,
+            "source_title": i.source_title,
+            "source_url": i.source_url,
+        }
+        for i in load_instance_catalog(conn, system)
+    ]
+
+
 def corpus_blob(conn: sqlite3.Connection) -> dict:
     slugs = Model.all(conn)
     models = [_model_dict(conn, s) for s in slugs]
@@ -539,17 +553,11 @@ def corpus_blob(conn: sqlite3.Connection) -> dict:
         "models": models,
         "golden": golden,
         "scenarios": describe_scenarios(conn),
-        "instance_catalog": [
-            {
-                "name": i.name,
-                "ram_bytes": i.ram_bytes,
-                "vcpu": i.vcpu,
-                "ebs_bandwidth_gbps": i.ebs_bandwidth_gbps,
-                "source_title": i.source_title,
-                "source_url": i.source_url,
-            }
-            for i in load_instance_catalog(conn)
-        ],
+        "instance_catalog": _instance_catalog_dicts(conn, "aws-ec2"),
+        "instance_catalogs": {
+            "aws-ec2": _instance_catalog_dicts(conn, "aws-ec2"),
+            "azure-vm": _instance_catalog_dicts(conn, "azure-vm"),
+        },
         "coefficient_mode": {
             row[0]: row[1]
             for row in conn.execute("SELECT slug, value_mode FROM coefficient")

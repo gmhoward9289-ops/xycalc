@@ -159,6 +159,8 @@ def test_export_blob_carries_scenario_chain(blob):
     assert inst["nvd_chart"]["annual"][0]["count"] == 28818
     assert inst["nvd_chart"]["annual"][2]["microsoft"] == 1255
     assert blob["instance_catalog"]
+    assert blob["instance_catalogs"]["azure-vm"]
+    assert any(i["name"].startswith("Esv6.") for i in blob["instance_catalogs"]["azure-vm"])
     assert blob["scenario_golden"]
 
 
