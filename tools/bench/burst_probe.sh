@@ -91,9 +91,13 @@ fio_run batch --rw=write --bs=1m --iodepth=8 --runtime="$RUNTIME"
 fio_run bursty --rw=randread --bs=4k --iodepth=8 --rate_iops=400 \
   --rate_process=poisson --runtime="$RUNTIME"
 
+# Not `exec`: the cleanup trap (losetup -d + rm of the scratch image) must run on
+# exit, and exec would replace this shell before it could fire, leaking the loop
+# device and a 20 GiB file.
 echo "analysing ..." >&2
-exec "$PY" "$here/burst_probe_analyze.py" \
+"$PY" "$here/burst_probe_analyze.py" \
   "control=$OUT/control_iops.1.log" \
   "batch=$OUT/batch_iops.1.log" \
   "bursty=$OUT/bursty_iops.1.log" \
   --machine "${PROBE_MACHINE:-$(uname -n)}"
+exit $?
