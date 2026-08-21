@@ -37,6 +37,11 @@ WHERE name IN (
 | Point-lookup / scan latency under load | **Yes** | Working set, marks, filesystem cache. A 300k-row probe does **not** predict 1 TB read latency — compare only like-with-like (same harness keys: `meanLatencyMs` / `p95LatencyMs` / `opsPerSecond` as Mongo `ticket_probe` / `occupancy_band_probe`). |
 
 `mongodb.wt-cache` takes `--storage-size` because cache need scales with uncompressed data. `clickhouse.parts-insert-ceiling` does **not** take a TB input — that would be the wrong model of this failure.
+
+```sql
+SELECT value FROM system.settings WHERE name = 'async_insert';
+```
+
 ## Part pressure during a load
 
 | Series | Unit | Agg | Window | Status | Why |
