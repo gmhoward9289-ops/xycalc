@@ -144,12 +144,77 @@ const encoded = APP.serializePermalink({
   inputs: { storage_size: "500GB", index_size: "40GB" },
 });
 const parsed = APP.parsePermalink("#" + encoded);
+assert.strictEqual(parsed.mode, "advanced");
 assert.strictEqual(parsed.tab, "single");
 assert.strictEqual(parsed.model, "mongodb.wt-cache");
 assert.strictEqual(parsed.available, "256GB");
 assert.strictEqual(parsed.inputs.storage_size, "500GB");
 assert.strictEqual(APP.parsePermalink(""), null);
 assert.strictEqual(APP.parsePermalink("#"), null);
+
+// #115: Cache cliff's public slug is cache-cliff; the DOM id is tab-cliff.
+assert.strictEqual(APP.canonicalTab("cache-cliff"), "cliff");
+assert.strictEqual(APP.canonicalTab("cliff"), "cliff");
+assert.strictEqual(APP.canonicalTab("occupancy-bands"), "occupancy");
+assert.strictEqual(APP.canonicalTab("nope"), null);
+assert.strictEqual(APP.publicTab("cliff"), "cache-cliff");
+assert.strictEqual(APP.publicTab("occupancy"), "occupancy");
+
+const inboundCliff = APP.parsePermalink("#mode=advanced&tab=cache-cliff");
+assert.strictEqual(inboundCliff.mode, "advanced");
+assert.strictEqual(inboundCliff.tab, "cliff");
+const view = APP.permalinkView(inboundCliff);
+assert.deepStrictEqual(view, { mode: "advanced", tab: "cliff" });
+assert.strictEqual(APP.permalinkView(APP.parsePermalink("#mode=simple")).mode, "simple");
+assert.strictEqual(APP.permalinkView(APP.parsePermalink("#mode=simple")).tab, null);
+
+const cliffHash = APP.serializePermalink({ mode: "advanced", tab: "cliff", inputs: {} });
+assert.ok(cliffHash.includes("mode=advanced"), cliffHash);
+assert.ok(cliffHash.includes("tab=cache-cliff"), cliffHash);
+assert.ok(!cliffHash.includes("tab=scenario"), cliffHash);
+const cliffRoundTrip = APP.parsePermalink("#" + cliffHash);
+assert.strictEqual(cliffRoundTrip.mode, "advanced");
+assert.strictEqual(cliffRoundTrip.tab, "cliff");
+
+const href = APP.permalinkHref("#mode=advanced&tab=cache-cliff", {
+  pathname: "/tools/xycalc/calculator/",
+  search: "",
+});
+assert.strictEqual(href, "/tools/xycalc/calculator/#mode=advanced&tab=cache-cliff");
+
+// #113: known grade must render GRADE_LABEL + the corpus `text` clause, never
+// "reasonable —" with an empty tail (the Simple-mode field-name miss).
+const unvalidated = {
+  grade: "none",
+  text: "unvalidated (n=0) — no observation has ever been checked against this model",
+};
+const banner = APP.validationBannerInner(unvalidated);
+assert.ok(banner.includes("Unvalidated"), banner);
+assert.ok(banner.includes("unvalidated (n=0)"), banner);
+assert.ok(banner.includes("no observation has ever been checked against this model"), banner);
+assert.ok(!/^<strong>none<\/strong>/.test(banner), banner);
+assert.ok(!/— (<\/|$)/.test(banner.replace(/\s+/g, " ")), banner);
+
+const reasonable = {
+  grade: "reasonable",
+  text: "validated (n=12, 12 within band, mean absolute error 2.0%)",
+};
+const reasonableBanner = APP.validationBannerInner(reasonable);
+assert.ok(reasonableBanner.includes("Validated"), reasonableBanner);
+assert.ok(reasonableBanner.includes("validated (n=12"), reasonableBanner);
+assert.ok(!/^<strong>reasonable<\/strong>/.test(reasonableBanner), reasonableBanner);
+
+assert.strictEqual(APP.validationClause({ text: "from text", summary: "from summary" }), "from text");
+assert.strictEqual(APP.validationClause({ summary: "from summary" }), "from summary");
+assert.strictEqual(APP.validationClause({ note: "from note" }), "from note");
+assert.strictEqual(APP.validationClause({ grade: "reasonable" }), "");
+
+const xssBanner = APP.validationBannerInner({
+  grade: "none",
+  text: "<img src=x onerror=alert(1)>",
+});
+assert.ok(xssBanner.includes("&lt;img src=x onerror=alert(1)&gt;"), xssBanner);
+assert.ok(!xssBanner.includes("<img src"), xssBanner);
 
 const cite = APP.formatCitation({
   question: "How much cache?",
