@@ -51,6 +51,12 @@ POLL_S = float(os.environ.get("PROBE_POLL_S", "0.25"))
 # merges isolates the parts_to_* ceilings themselves — required to demonstrate
 # the 23.6 10× jump. Recorded in JSON; not a silent default for Claim A.
 STOP_MERGES = os.environ.get("PROBE_STOP_MERGES", "0") in ("1", "true", "TRUE", "yes")
+# Fraction of time merges are allowed to run (0..1). 1.0 = continuous merges;
+# 0.0 with STOP_MERGES is cleaner than duty-cycle 0. Used when continuous
+# merges keep up on fast boxes but we still need guard 3 without a permanent
+# SYSTEM STOP MERGES (FINDINGS: deliberate merge-throttle).
+MERGE_DUTY_CYCLE = float(os.environ.get("PROBE_MERGE_DUTY_CYCLE", "1"))
+MERGE_DUTY_PERIOD_S = float(os.environ.get("PROBE_MERGE_DUTY_PERIOD_S", "2"))
 TABLE = "probe"
 
 
@@ -62,7 +68,7 @@ def _env_int(name: str) -> int | None:
 
 
 def throttle_meta() -> dict:
-    """Block-IO cgroup limits applied by clickhouse_probe.sh (may be empty)."""
+    """Block-IO / merge-pool knobs applied by clickhouse_probe.sh (may be empty)."""
     meta = {
         "dev": os.environ.get("PROBE_THROTTLE_DEV", "") or None,
         "dataDir": os.environ.get("PROBE_DATA_DIR", "") or None,
@@ -70,6 +76,12 @@ def throttle_meta() -> dict:
         "readBps": _env_int("PROBE_READ_BPS"),
         "writeIops": _env_int("PROBE_WRITE_IOPS"),
         "readIops": _env_int("PROBE_READ_IOPS"),
+        "backgroundPoolSize": _env_int("PROBE_BACKGROUND_POOL_SIZE"),
+        "fsyncInserts": (
+            True
+            if os.environ.get("PROBE_FSYNC_INSERTS", "").lower() in ("1", "true", "yes")
+            else None
+        ),
     }
     return {k: v for k, v in meta.items() if v is not None}
 
@@ -80,12 +92,17 @@ EXPECTED = {
 
 
 def connect():
+    # Slow-disk / merge-pressure runs can stall HTTP for seconds; keep the
+    # client from aborting mid-insert with the vague "Unexpected Http Driver
+    # Exception" that hides whether parts were accumulating.
+    timeout = float(os.environ.get("PROBE_HTTP_TIMEOUT_S", "120"))
     return clickhouse_connect.get_client(
         host=HOST,
         port=PORT,
         username=USER,
         password=PASSWORD,
         settings={"async_insert": 0},
+        send_receive_timeout=timeout,
     )
 
 
@@ -141,12 +158,57 @@ def recreate_table(client) -> None:
         f"CREATE TABLE {TABLE} (id UInt64, pad String) "
         f"ENGINE = MergeTree() ORDER BY id"
     )
+    # Force fsync after every insert so tiny parts hit the block device (and
+    # any cgroup throttle) instead of sitting only in page cache. Optional —
+    # merges-on + slow-disk runs need this; STOP MERGES dual runs do not.
+    if os.environ.get("PROBE_FSYNC_INSERTS", "").lower() in ("1", "true", "yes"):
+        # 23.x: boolean fsync_after_insert. 24.x also has min_*_for_fsync_after_insert.
+        # Prefer the boolean — present on both sides we probe.
+        try:
+            client.command(
+                f"ALTER TABLE {TABLE} MODIFY SETTING fsync_after_insert = 1"
+            )
+        except Exception as exc:  # noqa: BLE001
+            raise SystemExit(
+                f"REFUSING TO RUN: PROBE_FSYNC_INSERTS=1 but could not enable "
+                f"fsync_after_insert: {exc}"
+            ) from exc
     if STOP_MERGES:
         # Isolates the part-count ceiling from merge throughput. Without this,
         # a 2 vCPU container consolidates tiny parts faster than writers create
         # them and guard 3 refuses forever — that is a merge-speed finding, not
         # a threshold finding. Dual-image threshold confirmation needs this on.
         client.command("SYSTEM STOP MERGES")
+    elif MERGE_DUTY_CYCLE < 1.0:
+        # Start stopped; duty-cycle thread will START/STOP. Avoid a merge race
+        # before the first insert.
+        client.command("SYSTEM STOP MERGES")
+
+
+def merge_duty_loop(stop: threading.Event) -> None:
+    """Allow merges only MERGE_DUTY_CYCLE of each MERGE_DUTY_PERIOD_S window."""
+    if MERGE_DUTY_CYCLE >= 1.0 or STOP_MERGES:
+        return
+    duty = max(0.0, min(MERGE_DUTY_CYCLE, 1.0))
+    period = max(MERGE_DUTY_PERIOD_S, 0.2)
+    on_s = period * duty
+    off_s = period - on_s
+    client = connect()
+    while not stop.is_set():
+        if on_s > 0:
+            try:
+                client.command("SYSTEM START MERGES")
+            except Exception:  # noqa: BLE001
+                pass
+            stop.wait(on_s)
+        if stop.is_set():
+            break
+        try:
+            client.command("SYSTEM STOP MERGES")
+        except Exception:  # noqa: BLE001
+            pass
+        if off_s > 0:
+            stop.wait(off_s)
 
 
 def parts_snapshot(client) -> dict:
@@ -201,6 +263,9 @@ def run_step(batch_size: int, delay_threshold: int, max_avg_part_bytes: int) -> 
     events_before = insert_event_counters(client)
 
     stop = threading.Event()
+    duty_thread = threading.Thread(target=merge_duty_loop, args=(stop,), daemon=True)
+    if not STOP_MERGES and MERGE_DUTY_CYCLE < 1.0:
+        duty_thread.start()
     lock = threading.Lock()
     next_id = 0
     max_readable_id = 0  # exclusive upper bound of ids known inserted
@@ -382,6 +447,8 @@ def run_step(batch_size: int, delay_threshold: int, max_avg_part_bytes: int) -> 
         "max_avg_part_size_for_too_many_parts": max_avg_part_bytes,
         "too_many_parts_check_active": check_active,
         "merges_stopped": STOP_MERGES,
+        "merge_duty_cycle": MERGE_DUTY_CYCLE if not STOP_MERGES else 0.0,
+        "merge_duty_period_s": MERGE_DUTY_PERIOD_S if not STOP_MERGES and MERGE_DUTY_CYCLE < 1.0 else None,
         "crossed_delay_threshold": crossed_delay,
         "parts_per_ok_insert": round(parts_per_insert, 4) if parts_per_insert is not None else None,
         "event_deltas": event_deltas,
@@ -456,6 +523,10 @@ def main() -> None:
         "rows": ROWS,
         "step_cap_s": STEP_CAP_S,
         "merges_stopped": STOP_MERGES,
+        "merge_duty_cycle": MERGE_DUTY_CYCLE if not STOP_MERGES else 0.0,
+        "merge_duty_period_s": (
+            MERGE_DUTY_PERIOD_S if not STOP_MERGES and MERGE_DUTY_CYCLE < 1.0 else None
+        ),
         "throttle": throttle_meta(),
         "settings": live,
         "steps": steps,
