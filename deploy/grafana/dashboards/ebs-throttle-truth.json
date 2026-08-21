@@ -1,0 +1,77 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "graphTooltip": 1,
+  "id": null,
+  "panels": [
+    {
+      "title": "Volume exceeded? (max â€” never avg the 0/1)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "targets": [
+        {
+          "expr": "aws_ebs_volume_iops_exceeded_check_maximum",
+          "legendFormat": "VolumeIOPSExceededCheck",
+          "refId": "A"
+        },
+        {
+          "expr": "aws_ebs_volume_throughput_exceeded_check_maximum",
+          "legendFormat": "VolumeThroughputExceededCheck",
+          "refId": "B"
+        }
+      ]
+    },
+    {
+      "title": "Instance EBS exceeded? (dual ceiling)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "targets": [
+        {
+          "expr": "aws_ebs_instance_ebs_iops_exceeded_check_maximum",
+          "legendFormat": "InstanceEBS*ExceededCheck",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "title": "Queue + latency",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "targets": [
+        {
+          "expr": "aws_ebs_volume_queue_length_average",
+          "legendFormat": "VolumeQueueLength",
+          "refId": "A"
+        },
+        {
+          "expr": "aws_ebs_volume_total_read_time_average",
+          "legendFormat": "read latency",
+          "refId": "B"
+        }
+      ]
+    },
+    {
+      "title": "Stalled IO",
+      "type": "stat",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "targets": [
+        {
+          "expr": "aws_ebs_volume_stalled_io_check_maximum",
+          "legendFormat": "VolumeStalledIOCheck",
+          "refId": "A"
+        }
+      ]
+    }
+  ],
+  "schemaVersion": 39,
+  "tags": ["xycalc", "ebs"],
+  "time": { "from": "now-6h", "to": "now" },
+  "timezone": "browser",
+  "title": "xycalc - EBS throttle truth",
+  "uid": "xycalc-ebs-throttle",
+  "version": 1
+}

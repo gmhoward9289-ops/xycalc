@@ -146,3 +146,51 @@ observations:
     sustaining 117.7 ops/s against a device rate-limited to 150 IOPS.
     Cumulative queued time was 302.2s inside the 25.8s window (necessarily
     spread across concurrent operations, not literal wall time).
+
+# -- db.mean_latency_ms: the same windows, as their own rows -----------------
+# Lifted out of the ops/s notes so the occupancy tab does not scrape
+# "Mean latency 9.19ms" with a regex. Same source, same windows.
+- slug: swamplink-2026-08-01-latency-c1
+  system: mongodb
+  parameter: db.mean_latency_ms
+  value: 9.19
+  unit: ms
+  workload: random point lookups by _id, 1 thread, throttled device (8 MiB/s, 150 IOPS)
+  machine_class: Hetzner CX shared vCPU, 7 GB RAM
+  system_version: 7.0.39
+  observed_on: '2026-08-01'
+  source: obs-mongodb-ticket-probe-swamplink-2026-08-01
+  notes: Mean client latency at concurrency 1. No queueing.
+- slug: swamplink-2026-08-01-latency-c8
+  system: mongodb
+  parameter: db.mean_latency_ms
+  value: 70.14
+  unit: ms
+  workload: random point lookups by _id, 8 threads, throttled device (8 MiB/s, 150 IOPS)
+  machine_class: Hetzner CX shared vCPU, 7 GB RAM
+  system_version: 7.0.39
+  observed_on: '2026-08-01'
+  source: obs-mongodb-ticket-probe-swamplink-2026-08-01
+  notes: Mean client latency at concurrency 8 (7.6x the c=1 latency). Queueing has begun.
+- slug: swamplink-2026-08-01-latency-c32
+  system: mongodb
+  parameter: db.mean_latency_ms
+  value: 274.93
+  unit: ms
+  workload: random point lookups by _id, 32 threads, throttled device (8 MiB/s, 150 IOPS)
+  machine_class: Hetzner CX shared vCPU, 7 GB RAM
+  system_version: 7.0.39
+  observed_on: '2026-08-01'
+  source: obs-mongodb-ticket-probe-swamplink-2026-08-01
+  notes: Mean client latency at concurrency 32. Not on the occupancy-tab ladder; recorded so the figure is not trapped in ops/s notes.
+- slug: swamplink-2026-08-01-latency-c64
+  system: mongodb
+  parameter: db.mean_latency_ms
+  value: 535.51
+  unit: ms
+  workload: random point lookups by _id, 64 threads, throttled device (8 MiB/s, 150 IOPS)
+  machine_class: Hetzner CX shared vCPU, 7 GB RAM
+  system_version: 7.0.39
+  observed_on: '2026-08-01'
+  source: obs-mongodb-ticket-probe-swamplink-2026-08-01
+  notes: Mean client latency at concurrency 64 (58x the c=1 latency).

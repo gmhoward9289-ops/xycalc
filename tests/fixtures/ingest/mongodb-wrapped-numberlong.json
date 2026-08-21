@@ -1,0 +1,27 @@
+{
+  "stats": {
+    "db": "events",
+    "collections": 1,
+    "views": 0,
+    "objects": 12840312,
+    "avgObjSize": 412,
+    "dataSize": {"$numberLong": "1250000000000"},
+    "storageSize": {"$numberLong": "500000000000"},
+    "indexes": 6,
+    "indexSize": {"$numberLong": "40000000000"},
+    "totalSize": {"$numberLong": "540000000000"},
+    "scaleFactor": 1,
+    "fsUsedSize": {"$numberLong": "1800000000000"},
+    "fsTotalSize": {"$numberLong": "4000000000000"},
+    "ok": 1
+  },
+  "cache": {
+    "bytes currently in the cache": {"high": 0, "low": -2147483648, "unsigned": false},
+    "maximum bytes configured": {"high": 2, "low": 0, "unsigned": false},
+    "tracked dirty bytes in the cache": 1048576,
+    "pages currently held in the cache": 81200,
+    "pages evicted by application threads": 12
+  },
+  "version": "7.0.14",
+  "at": "2026-07-15T18:22:01.000Z"
+}

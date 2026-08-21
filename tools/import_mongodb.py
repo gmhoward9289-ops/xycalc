@@ -33,6 +33,8 @@ from pathlib import Path
 
 import yaml
 
+from xycalc.ingest import IngestError, read_number
+
 ROOT = Path(__file__).resolve().parent.parent
 
 # The serverStatus keys this reads. Spelled out because they contain spaces and
@@ -45,27 +47,14 @@ K_DIRTY = "tracked dirty bytes in the cache"
 def num(v):
     """Read a number that may have arrived as a 64-bit wrapper.
 
-    mongosh's JSON.stringify does not emit plain integers for NumberLong. It
-    emits `{"low": ..., "high": ..., "unsigned": ...}` -- a two's-complement
-    pair -- and EJSON emits `{"$numberLong": "..."}`. Observed in the wild on
-    2026-07-31: `maximum bytes configured` came back as
-    `{'high': 0, 'low': -2147483648, 'unsigned': False}`, which is 2 GiB, and
-    which a naive reader would take as -2147483648 or crash on.
-
-    The crash is the good outcome. Silently importing a negative cache size as
-    a measurement is the bad one, and it is the reason this is a function
-    rather than a cast at the call site.
+    Delegates to ``xycalc.ingest.read_number`` so CLI import and ``xycalc
+    ingest`` cannot disagree about mongosh NumberLong / EJSON. SystemExit
+    stays the importer's loud-failure contract.
     """
-    if isinstance(v, bool):
-        raise SystemExit(f"expected a number, got a boolean: {v!r}")
-    if isinstance(v, (int, float)):
-        return v
-    if isinstance(v, dict):
-        if "$numberLong" in v:
-            return int(v["$numberLong"])
-        if "low" in v and "high" in v:
-            return (int(v["high"]) << 32) + (int(v["low"]) & 0xFFFFFFFF)
-    raise SystemExit(f"cannot read a number from {v!r}")
+    try:
+        return read_number(v)
+    except IngestError as e:
+        raise SystemExit(str(e)) from e
 
 
 def _get(d: dict, key: str, ctx: str):

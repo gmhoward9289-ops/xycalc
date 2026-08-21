@@ -8,7 +8,7 @@ investigations 004–007 (Celery amplification, Redis maxmemory conflict,
 provisional cache-cliff shape → measured (006), occupancy-band education,
 colocation share sweep (009), compression-shape sweep (010), Azure Premium
 SSD v2 ceiling control-plane validation (011), Celery concurrency-slots
-sizing (012), write-rate / dirty-trigger mechanism check (014)). Landed markers below
+sizing (012), write-rate / dirty-trigger mechanism check (014), Celery prefetch (019), ClickHouse parts (020), stall-retry (021), checkpoint sawtooth (022)). Landed markers below
 are the source of truth for what is no longer “next.”
 
 Each entry below is a *designed experiment*, not a topic. It names the question,
@@ -330,12 +330,14 @@ figures for the `nvme-ssd` stub.
 
 ## T10 — ClickHouse: how few inserts per second is too many?
 
-**Status (2026-08-21).** Investigation 020 **complete** (settings trap +
-partial onset). Dual images on reef: **23.3** delay/throw **150/300**,
-**24.8** **1000/3000**. batch=10 on 23.3 peaked **192** parts (crossed
-delay); 24.8 peaked **22**. batch=1 never crossed either. See
+**Status (2026-08-21).** Investigation 012 (cloud agent, merges-off) + 020
+(reef dual-image) **complete**. Live `parts_to_*` match corpus
+(150/300 → 1000/3000). Reef: batch=10 on **23.3** peaked **192** parts
+(crossed delay); **24.8** peaked **22**. See
+`docs/investigations/012-clickhouse-insert-batch-floor/FINDINGS.md` and
 `docs/investigations/020-clickhouse-insert-parts/FINDINGS.md`;
-`data/observations/reef-clickhouse-parts-2026-08-21.yaml`.
+`data/observations/reef-clickhouse-parts-2026-08-21.yaml`. Model
+`clickhouse.parts-insert-ceiling` still `unvalidated (n=0)` vs production.
 
 **Question.** At what insert frequency does part count outrun merges and
 inserts start being delayed, then rejected?

@@ -1,0 +1,130 @@
+observations:
+# T6 / issue #14 — prefetch sweep at 400/s × 30s, concurrency=8.
+# Understatement values are end-of-load exact:
+#   (enqueued − completedDuringLoad) − queueDepthAtEnd
+- slug: swamplink-2026-08-21-prefetch1-understatement
+  system: celery
+  parameter: queue.outstanding_understatement
+  value: 71
+  unit: tasks
+  workload: >-
+    celery_probe prefetch=1 concurrency=8, target 400/s for 30s, acks defaults,
+    throttled Mongo behind the fleet
+  machine_class: Hetzner CX shared vCPU, 7 GB RAM
+  system_version: Celery 5.4.0
+  observed_on: '2026-08-21'
+  source: obs-celery-prefetch-swamplink-2026-08-21
+  notes: >-
+    End-of-load understatement. expectedReserved=prefetch×c=8. queueDepthMax=9883,
+    throughputPerSecond=63.3, drainTimedOut=true (completedTotal=11862/12000).
+    Low-prefetch anomaly vs expected 8 — see FINDINGS.
+
+- slug: swamplink-2026-08-21-prefetch2-understatement
+  system: celery
+  parameter: queue.outstanding_understatement
+  value: 23
+  unit: tasks
+  workload: >-
+    celery_probe prefetch=2 concurrency=8, target 400/s for 30s
+  machine_class: Hetzner CX shared vCPU, 7 GB RAM
+  system_version: Celery 5.4.0
+  observed_on: '2026-08-21'
+  source: obs-celery-prefetch-swamplink-2026-08-21
+  notes: >-
+    End-of-load understatement vs expectedReserved=16. queueDepthMax=8996,
+    throughputPerSecond=94.6, drainTimedOut=true.
+
+- slug: swamplink-2026-08-21-prefetch4-understatement
+  system: celery
+  parameter: queue.outstanding_understatement
+  value: 40
+  unit: tasks
+  workload: >-
+    celery_probe prefetch=4 concurrency=8, target 400/s for 30s
+  machine_class: Hetzner CX shared vCPU, 7 GB RAM
+  system_version: Celery 5.4.0
+  observed_on: '2026-08-21'
+  source: obs-celery-prefetch-swamplink-2026-08-21
+  notes: >-
+    End-of-load understatement vs expectedReserved=32. queueDepthMax=8912,
+    throughputPerSecond=97.0, drainTimedOut=true.
+
+- slug: swamplink-2026-08-21-prefetch8-understatement
+  system: celery
+  parameter: queue.outstanding_understatement
+  value: 64
+  unit: tasks
+  workload: >-
+    celery_probe prefetch=8 concurrency=8, target 400/s for 30s
+  machine_class: Hetzner CX shared vCPU, 7 GB RAM
+  system_version: Celery 5.4.0
+  observed_on: '2026-08-21'
+  source: obs-celery-prefetch-swamplink-2026-08-21
+  notes: >-
+    End-of-load understatement equals expectedReserved=64 exactly.
+    queueDepthMax=8291, throughputPerSecond=116.9, drainSeconds=70.6.
+
+- slug: swamplink-2026-08-21-prefetch16-understatement
+  system: celery
+  parameter: queue.outstanding_understatement
+  value: 121
+  unit: tasks
+  workload: >-
+    celery_probe prefetch=16 concurrency=8, target 400/s for 30s
+  machine_class: Hetzner CX shared vCPU, 7 GB RAM
+  system_version: Celery 5.4.0
+  observed_on: '2026-08-21'
+  source: obs-celery-prefetch-swamplink-2026-08-21
+  notes: >-
+    End-of-load understatement ≈ expectedReserved=128 (121). queueDepthMax=8196,
+    throughputPerSecond=118.2, drainSeconds=72.1.
+
+- slug: swamplink-2026-08-21-prefetch1-backlog-max
+  system: celery
+  parameter: queue.backlog_depth_max
+  value: 9883
+  unit: tasks
+  workload: celery_probe prefetch=1 concurrency=8, 400/s × 30s
+  machine_class: Hetzner CX shared vCPU, 7 GB RAM
+  system_version: Celery 5.4.0
+  observed_on: '2026-08-21'
+  source: obs-celery-prefetch-swamplink-2026-08-21
+  notes: Highest visible LLEN in the prefetch sweep — workers reserve least off-queue.
+
+- slug: swamplink-2026-08-21-prefetch16-backlog-max
+  system: celery
+  parameter: queue.backlog_depth_max
+  value: 8196
+  unit: tasks
+  workload: celery_probe prefetch=16 concurrency=8, 400/s × 30s
+  machine_class: Hetzner CX shared vCPU, 7 GB RAM
+  system_version: Celery 5.4.0
+  observed_on: '2026-08-21'
+  source: obs-celery-prefetch-swamplink-2026-08-21
+  notes: >-
+    Lowest visible LLEN in the sweep while understatement is highest — LLEN
+    understates outstanding most when prefetch is largest.
+
+- slug: swamplink-2026-08-21-prefetch8-drain-seconds
+  system: celery
+  parameter: queue.drain_seconds
+  value: 70.6
+  unit: seconds
+  workload: celery_probe prefetch=8 concurrency=8, 400/s × 30s then drain
+  machine_class: Hetzner CX shared vCPU, 7 GB RAM
+  system_version: Celery 5.4.0
+  observed_on: '2026-08-21'
+  source: obs-celery-prefetch-swamplink-2026-08-21
+  notes: Drain while device stays throttled; completedTotal matched enqueued.
+
+- slug: swamplink-2026-08-21-prefetch16-drain-seconds
+  system: celery
+  parameter: queue.drain_seconds
+  value: 72.1
+  unit: seconds
+  workload: celery_probe prefetch=16 concurrency=8, 400/s × 30s then drain
+  machine_class: Hetzner CX shared vCPU, 7 GB RAM
+  system_version: Celery 5.4.0
+  observed_on: '2026-08-21'
+  source: obs-celery-prefetch-swamplink-2026-08-21
+  notes: Drain seconds nearly flat vs prefetch=8 once the fleet is fed.

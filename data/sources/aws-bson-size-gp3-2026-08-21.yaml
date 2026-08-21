@@ -1,0 +1,14 @@
+sources:
+  - slug: obs-aws-bson-size-gp3-2026-08-21
+    title: "Arm 3: BSON ~1 MiB vs ~15 MiB random reads on real gp3"
+    publisher: xycalc project (benchmark harness, committed)
+    version: tools/bench/bson_doc_size_probe.py + _aws_bson_size_launch.sh
+    retrieved_on: "2026-08-21"
+    source_type: benchmark
+    notes: >-
+      Investigation 002 Arm 3 via tools/bench/bson_doc_size_probe.py and
+      tools/bench/_aws_bson_size_launch.sh. m6i.large + 100 GiB gp3 (3000/125),
+      mongo:7 --wiredTigerCacheSizeGB 0.5 on the data volume. Same ~2× oversub
+      at avgObjSize ≈1 MiB and ≈15 MiB. Instance i-0e1a27f7814e548c1,
+      us-east-2; torn down same day. Results:
+      tmp/xycalc-bson-size-20260821/results/bson-size-summary.json.

@@ -1,0 +1,110 @@
+observations:
+# -- Issue #3 residual (2026-08-21): plan §4 climb 64,150 + idle vs trickle
+# cooldown on COOPER Docker Desktop, MongoDB 7.0.40. Companion to
+# swamplink-ticket-decay-2026-08-19 (c=64 only, idle-only cooldown). --
+
+# -- Convergence: peak totalTickets at each level (idle-cooldown run) --
+- slug: cooper-2026-08-21-tickets-c64-600s-idle-run
+  system: mongodb
+  parameter: db.concurrency_tickets
+  value: 71
+  unit: tickets
+  workload: >-
+    random point lookups by _id, 64 threads, throttled device (8 MiB/s, 150
+    IOPS), 600s hold; automated verdict CONVERGED (late/prior 90s means
+    within 0.5%)
+  machine_class: COOPER Docker Desktop, Windows host
+  system_version: 7.0.40
+  observed_on: '2026-08-21'
+  source: obs-mongodb-ticket-decay-cooper-2026-08-21
+  notes: >-
+    Peak read.totalTickets over the window: 4 -> 71 (ticketsEnd 58). Verdict
+    CONVERGED with lateMean 57.88 vs priorMean 58.16 (relDelta 0.0049). ops/s
+    1605, mean latency 39.86 ms. Demand at 64 cannot alone prove the
+    algorithm's ceiling; see the c=150 row.
+
+- slug: cooper-2026-08-21-tickets-c150-600s-idle-run
+  system: mongodb
+  parameter: db.concurrency_tickets
+  value: 128
+  unit: tickets
+  workload: >-
+    random point lookups by _id, 150 threads, throttled device (8 MiB/s, 150
+    IOPS), 600s hold after the c=64 level; automated verdict STILL_MOVING
+  machine_class: COOPER Docker Desktop, Windows host
+  system_version: 7.0.40
+  observed_on: '2026-08-21'
+  source: obs-mongodb-ticket-decay-cooper-2026-08-21
+  notes: >-
+    Peak 128 (the documented throughputProbing max), ticketsStart 65,
+    ticketsEnd 73, outMax 118. Verdict STILL_MOVING: lateMean 81.84 vs
+    priorMean 69.69 (relDelta 0.174). The pool CAN reach 128 under headroom
+    above the documented max, but a 600s hold did not print CONVERGED at a
+    plateau there — end-of-window mean was still moving. ops/s 653.2, mean
+    latency 229.49 ms. queuedMicrosDelta large (see source).
+
+# -- Cooldown hold values (value = tickets held for the full window) --
+- slug: cooper-2026-08-21-tickets-idle-cooldown-900s
+  system: mongodb
+  parameter: db.concurrency_tickets
+  value: 81
+  unit: tickets
+  workload: >-
+    zero client operations after the 64,150 climb; dedicated single-connection
+    sampler, PROBE_COOLDOWN_HEARTBEAT_HZ=0, 900s
+  machine_class: COOPER Docker Desktop, Windows host
+  system_version: 7.0.40
+  observed_on: '2026-08-21'
+  source: obs-mongodb-ticket-decay-cooper-2026-08-21
+  notes: >-
+    ticketsStart=ticketsEnd=81 at every plan checkpoint (30/60/120/300/600/900s).
+    1785 samples, reachedFloor=false, samplerReadOutEverNonzero=false,
+    heartbeatOps=0. Replicates the 2026-08-19 swamplink idle freeze on a
+    second host and a longer full-900s window (was 611s there).
+
+- slug: cooper-2026-08-21-tickets-trickle-cooldown-900s
+  system: mongodb
+  parameter: db.concurrency_tickets
+  value: 50
+  unit: tickets
+  workload: >-
+    1 find_one/s heartbeat on a dedicated thread after a separate 64,150
+    climb; PROBE_COOLDOWN_HEARTBEAT_HZ=1, 900s
+  machine_class: COOPER Docker Desktop, Windows host
+  system_version: 7.0.40
+  observed_on: '2026-08-21'
+  source: obs-mongodb-ticket-decay-cooper-2026-08-21
+  notes: >-
+    ticketsStart=ticketsEnd=50 flat at every checkpoint through 900s.
+    heartbeatOps=896 (~1 Hz), samplerReadOutEverNonzero=false,
+    reachedFloor=false. The plan's comparison branch: a low nonzero trickle
+    did NOT drive the pool back toward the floor of 4 on this timescale.
+    Do not invent mongodb.tickets-probing-requires-traffic from this pair —
+    idle and trickle both froze; 1 ops/s was not enough to reverse the climb.
+
+# -- Throughput at the levels that answer convergence (idle-run) --
+- slug: cooper-2026-08-21-opsec-c64-600s-idle-run
+  system: mongodb
+  parameter: db.ops_per_second
+  value: 1605.0
+  unit: ops/s
+  workload: random point lookups by _id, 64 threads, throttled device, 600s
+  machine_class: COOPER Docker Desktop, Windows host
+  system_version: 7.0.40
+  observed_on: '2026-08-21'
+  source: obs-mongodb-ticket-decay-cooper-2026-08-21
+  notes: Mean latency 39.86 ms. Companion ticket observation peaked at 71.
+
+- slug: cooper-2026-08-21-opsec-c150-600s-idle-run
+  system: mongodb
+  parameter: db.ops_per_second
+  value: 653.2
+  unit: ops/s
+  workload: random point lookups by _id, 150 threads, throttled device, 600s
+  machine_class: COOPER Docker Desktop, Windows host
+  system_version: 7.0.40
+  observed_on: '2026-08-21'
+  source: obs-mongodb-ticket-decay-cooper-2026-08-21
+  notes: >-
+    Mean latency 229.49 ms. Throughput fell vs c=64 under deeper queueing
+    while the ticket pool was still moving (STILL_MOVING, peak 128).

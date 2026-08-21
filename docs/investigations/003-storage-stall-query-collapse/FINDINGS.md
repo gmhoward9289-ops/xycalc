@@ -353,25 +353,42 @@ does not.
 instance "rests." That is still true for an instance idle a long time, but it
 is not a safe assumption for an instance that was recently busy — this run's
 own pool sat at 64 for at least 611 seconds after its load ended, nowhere
-near the floor. A new coefficient,
-`mongodb.tickets-idle-hold-seconds-min` (611s, `confidence: practitioner`,
-n=1), and a new model term (`no_idle_decay`) record this. Read the ticket
-count after an incident rather than assuming it has settled.
+near the floor. A coefficient,
+`mongodb.tickets-idle-hold-seconds-min` (now 900s after the 2026-08-21
+replication, `confidence: practitioner`), and a model term (`no_idle_decay`)
+record this. Read the ticket count after an incident rather than assuming
+it has settled.
 
-**What is still open.** Whether a low, nonzero trickle of subsequent traffic
-would drive the pool back down — the plan's other cooldown branch, not run in
-this pass — and on what timescale if so. Also open: the `64,150` convergence
-run. **Harness residual (2026-08-21):** `ticket_probe.py` now emits the raw
-`series`, prints an automated `convergence` verdict (`CONVERGED` /
-`STILL_MOVING` / `CONVERGED_DEMAND_CAPPED`), and supports
-`PROBE_COOLDOWN_SECONDS` + `PROBE_COOLDOWN_HEARTBEAT_HZ` on a dedicated
-single-connection client (plan §4a/4b/4c). The `64,150` + idle/trickle pair
-still needs a Docker host run; unit coverage for the verdict math is in
-`tests/test_ticket_probe_convergence.py`. This first pass answered the two
-questions the issue asked well enough to close its immediate concern (the
-pool does not evaporate back to 4 the moment an incident ends), but the full
-plan is not yet executed and issue #2 still wants the `64,150` result
-specifically.
+**What was still open after the first pass — closed 2026-08-21 on COOPER.**
+Full plan run (`PROBE_LEVELS=64,150`, 600s/level, 900s cooldown), harness
+§4a/4b/4c, two containers: idle (HZ=0) then trickle (HZ=1). MongoDB 7.0.40,
+Docker Desktop, same 8 MiB/s + 150 IOPS throttle and 4.22× oversub as before.
+Data: `data/observations/cooper-ticket-decay-2026-08-21.yaml`,
+`data/sources/cooper-ticket-decay-2026-08-21.yaml`.
+
+**Convergence under headroom.** At c=64 the idle run printed `CONVERGED`
+(peak 71, end ~58). At c=150 it printed `STILL_MOVING` while peaking at
+**128** (the documented dynamic max) with `outMax` 118 — so the pool *can*
+reach the documented ceiling when offered demand exceeds it, but a single
+600s window did not settle into a flat plateau there (late vs prior 90s
+means still ~17% apart; ticketsEnd 73). Do not read "peak 128" as
+"converged at 128."
+
+**Decay — idle replicated; trickle also froze.** Idle cooldown held
+`totalTickets` at **81 for the full 900s** (`samplerReadOutEverNonzero=
+false`), matching the 2026-08-19 freeze on a second host. Trickle at
+**1 find_one/s** (~896 heartbeat ops over 900s) held at **50** flat at every
+plan checkpoint — also no movement toward the floor of 4. The plan's §6
+coefficient `mongodb.tickets-probing-requires-traffic` is **not** landed:
+that name only fitted if idle froze and trickle decayed. Both froze; 1 Hz
+is not enough reverse signal on this timescale. A rate sweep during cooldown
+would be a different experiment (plan §8). `mongodb.tickets-idle-hold-
+seconds-min` is raised to **900s** and now cites both hosts.
+
+Issue #2 still has to choose among its options with this measurement in
+hand: the pool can hit 128 under load, does not return to 4 on idle *or* on
+a thin post-incident trickle, and "resting at 4" remains a long-idle
+property only.
 
 ---
 

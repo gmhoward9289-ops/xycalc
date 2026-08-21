@@ -1,0 +1,107 @@
+models:
+  - slug: clickhouse.parts-insert-ceiling
+    question: >-
+      At how many active parts per partition does ClickHouse start rejecting
+      inserts?
+    system: clickhouse
+    output: clickhouse.active_parts_throw_threshold
+
+    summary: >-
+      Returns the default parts_to_throw_insert ceiling for ClickHouse 23.6 and
+      later (3000). Pre-23.6 was 300 — a tenfold jump that decides whether a
+      streaming loader survives. Delay begins earlier (1000 vs 150).
+
+    reframe: >-
+      People usually ask this as an insert-frequency question: "will switching
+      from hourly batches to row-at-a-time streaming break ingestion?" The
+      portable answer ClickHouse actually ships is a part-count ceiling, not
+      an inserts/sec number. Frequency drives how fast you create parts;
+      merges and hardware decide whether you stay under the ceiling.
+
+      Defaults before 23.6 were parts_to_delay_insert=150 and
+      parts_to_throw_insert=300. From 23.6 they are 1000 and 3000. A figure
+      written without that version pin is worse than useless — the same
+      streaming pattern that was rejected on 23.5 can succeed on 24.x until
+      parts climb an order of magnitude further.
+
+      Table size (1 GB vs 500 GB vs 1 TB) is the wrong scale input for this
+      model — unlike mongodb.wt-cache, which takes storage_size. ClickHouse
+      disables the delay/throw checks when average part size in the partition
+      exceeds max_avg_part_size_for_too_many_parts (10 GiB before 23.6, 1 GiB
+      from 23.6). The source comment says that is deliberate so "hundreds of
+      terabytes in a single table" can exist once parts have merged large.
+      So: a mature TB table with healthy large parts often never hits this
+      ceiling; a small or newly streamed table of tiny parts hits it at the
+      same part counts whether the eventual dataset is 5 GB or 5 TB. The
+      dangerous case is high insert frequency creating many small parts, not
+      "the database is big."
+
+      This model answers the count ceiling for the regime where the check is
+      still active. The measured insert-frequency floor for a specific box is
+      investigation 012's benchmark (tools/bench/clickhouse_probe.sh) and must
+      carry hardware-scoped applies_to when it lands — merge throughput does
+      not travel. That probe intentionally creates small parts; it does not
+      simulate a warmed 1 TB MergeTree.
+
+    notes: >-
+      unvalidated (n=0). Thresholds are code-read from MergeTreeSettings.h,
+      not yet confirmed against a live system.merge_tree_settings query in a
+      published observation. Probe harness exists; dual-image sweep outstanding.
+
+    terms:
+      - key: reject_ceiling_23_6
+        label: Default parts_to_throw_insert on ClickHouse >=23.6
+        role: floor
+        apply: set_from_coefficient
+        coefficient: clickhouse.parts-to-throw-insert-23.6-plus
+        rationale: >-
+          The hard reject: above this many active parts in one partition,
+          INSERT raises Too many parts. Primary answer for current releases.
+
+      - key: delay_threshold_23_6
+        label: Default parts_to_delay_insert on ClickHouse >=23.6
+        role: constraint
+        apply: note
+        coefficient: clickhouse.parts-to-delay-insert-23.6-plus
+        rationale: >-
+          Inserts are artificially slowed before they are rejected. Delay
+          engages at 1000 active parts — well before the 3000 throw ceiling.
+
+      - key: reject_ceiling_pre_23_6
+        label: Default parts_to_throw_insert before ClickHouse 23.6
+        role: constraint
+        apply: note
+        coefficient: clickhouse.parts-to-throw-insert-pre-23.6
+        rationale: >-
+          Was 300. Same streaming loader that fits under 3000 on 24.x can hit
+          this on 23.5 with one-tenth the part accumulation.
+
+      - key: delay_threshold_pre_23_6
+        label: Default parts_to_delay_insert before ClickHouse 23.6
+        role: constraint
+        apply: note
+        coefficient: clickhouse.parts-to-delay-insert-pre-23.6
+        rationale: >-
+          Was 150. The low side of the version-drift demonstration that makes
+          applies_to a build gate rather than bureaucracy.
+
+      - key: max_sleep
+        label: Cap on artificial INSERT delay
+        role: constraint
+        apply: note
+        coefficient: clickhouse.max-delay-to-insert-seconds
+        rationale: >-
+          max_delay_to_insert defaults to 1 second on both sides of 23.6.
+          Latency rise alone is not proof of part-pressure delay — require
+          part-count crossing and server-side evidence.
+
+      - key: large_parts_disable_check
+        label: Avg part size above which delay/throw do not bind (>=23.6)
+        role: constraint
+        apply: note
+        coefficient: clickhouse.max-avg-part-size-for-too-many-parts-23.6-plus
+        rationale: >-
+          1 GiB average part size (10 GiB before 23.6). Past this, ClickHouse
+          skips the too-many-parts insert backpressure so large merged tables
+          can grow to hundreds of terabytes. Compare average part size, not
+          total table bytes, before treating the 3000 ceiling as binding.
