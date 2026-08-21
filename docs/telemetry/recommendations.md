@@ -20,6 +20,8 @@ only in `FINDINGS.md` or a chat.
 
 Per-series telemetry contracts stay in [`mongodb.md`](mongodb.md),
 [`ebs.md`](ebs.md), [`redis.md`](redis.md). Instance catalogs live as
+coefficients under `data/coefficients/` (`aws-ec2` and `azure-vm` Esv5/Esv6);
+bare-metal is the remaining catalog gap named below.
 coefficients under `data/coefficients/` (`aws-ec2`, `azure-vm`); the
 bare-metal catalog is the remaining product gap named below.
 
@@ -85,7 +87,7 @@ Skip → [Evidence](#evidence-view) for understandings U15+ and open catalog wor
 |---|---|
 | Disk + index (or projected) footprint | Host RAM band → **three instance picks** (lo/mode/hi) + key specs |
 | Optional "RAM / vCPU / disk I have today" | Headroom vs the band — keep / grow / custom |
-| Provider | Today: **AWS r8i**. Azure VM and bare metal: not in the picker yet (see Product core). |
+| Provider | Simple view today: **AWS r8i**. Azure Esv5/Esv6 catalog ships for `instance_select` / CLI `--catalog azure-vm` and the size-to-instance Azure row. Bare metal: not in the picker yet (see Product core). |
 
 CLI / GUI: `xycalc scenario mongodb.size-to-instance …` or the Scenario tab.
 
@@ -396,6 +398,7 @@ follow from rows here.
 |---|---|
 | 2026-08-21 | Azure Esv5/Esv6 catalog shipped (`azure-vm`); U17 / product-core table: only bare-metal remains the catalog gap |
 | 2026-08-21 | Docs pass: U13 → provisional (006 A1 shape); README Status/open/next + ROADMAP landed markers for 004–007 |
+| 2026-08-21 | Azure VM Esv5/Esv6 catalog is shipped (PR #98); Product core Gap row was stale. Bare-metal still a gap. Simple picker still r8i. |
 | 2026-08-21 | Landed 006 A1-r2+A2 + 009 T11 AWS share sweep; U13 → measured; calculator Cache cliff status measured |
 | 2026-08-21 | Renamed Research layer → **Evidence** (not "belief") |
 | 2026-08-21 | Product core: instance sizing (AWS/Azure/bare metal, named picks + spec ranges) locked as primary deliverable; U15–U18 |

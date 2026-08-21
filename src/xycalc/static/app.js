@@ -1841,7 +1841,7 @@ const XYCALC_APP = (() => {
       }
       if (trigger != null) {
         $("occ-mark-trigger").style.left = trigger + "%";
-        $("occ-mark-trigger").className = occupancyMarkClass(trigger, 1);
+        $("occ-mark-trigger").className = occupancyMarkClass(trigger, 2);
         $("occ-mark-trigger").textContent = "trigger " + trigger;
         document.querySelector("#occ-ladder .zone.danger").style.left = trigger + "%";
         document.querySelector("#occ-ladder .zone.danger").style.width = (100 - trigger) + "%";

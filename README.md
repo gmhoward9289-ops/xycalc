@@ -275,6 +275,25 @@ capture.
 ## What is open
 
 Tracked as [issues](https://github.com/gmhoward9289-ops/xycalc/issues). The
+short version, worst first. [#2](https://github.com/gmhoward9289-ops/xycalc/issues/2),
+[#4](https://github.com/gmhoward9289-ops/xycalc/issues/4), and
+[#5](https://github.com/gmhoward9289-ops/xycalc/issues/5) are **closed**
+(known limitation / estimate — the ticket formula, the EBS 6.7× amplifier, and
+compression as the cache model's largest error term). [#8](https://github.com/gmhoward9289-ops/xycalc/issues/8)
+and [#9](https://github.com/gmhoward9289-ops/xycalc/issues/9) are also closed;
+cache-cliff relative-ops shape is **measured** (A1×2 + A2 at 1 GB) and does not
+mint a wt-cache sizing coefficient.
+
+Still open:
+
+- **[#18](https://github.com/gmhoward9289-ops/xycalc/issues/18)** — ClickHouse
+  part-count coefficients exist; a portable inserts/sec (Hz) floor does not.
+  Do not read the catalog as a validated sizing model.
+- **[#12](https://github.com/gmhoward9289-ops/xycalc/issues/12)** — is
+  investigation 003's flat throughput actually flat, or is a 25-second mean
+  hiding a checkpoint sawtooth?
+- **[#11](https://github.com/gmhoward9289-ops/xycalc/issues/11)** — at what
+  write rate does eviction conscript application threads?
 short version, worst first:
 
 - **Bare-metal class** is still a stub (`data/systems.yaml`). AWS `r8i` and

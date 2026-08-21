@@ -20,6 +20,7 @@ node_modules/
 
 # Local bench scratch (sweep logs, downloaded JSON, etc.). Not corpus data.
 tmp/
+/tmp-*
 
 .DS_Store
 
