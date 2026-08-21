@@ -171,6 +171,11 @@ widening a band to swallow a measurement is how a corpus stops meaning
 anything. What it does establish is a floor — high-entropy collections exist
 and the published band does not reach them.
 
+**Update 2026-08-21 (issue #5 Track A).** Six public sample collections under
+snappy on 7.0.39 measured `dataSize/storageSize` between **1.73× and 3.49×**
+(obs-mongodb-compression-2026-08-21 / batch2) — all inside the 1.5–3.5 band,
+spread across most of it. Band not narrowed; production samples still welcome.
+
 **2. In-cache bytes exceeded `dataSize + indexSize` by 13.9%**, and this one is
 about the model. Given the *measured* uncompressed size, predicted contents were
 0.356 GB against 0.413 GB resident. The cache holds more than document and index

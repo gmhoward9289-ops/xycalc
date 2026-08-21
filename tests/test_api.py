@@ -94,6 +94,17 @@ class TestSizing:
         ).json()
         assert "covered" in body["headroom"]["verdict"]
 
+    def test_get_hints_at_post_instead_of_demanding_underscore(self, client):
+        """GET used to declare ``**_``, which FastAPI treated as a required
+        query parameter named ``_`` and answered 422. The stub is a 400 that
+        points at POST, including when a caller sends leftover query params."""
+        r = client.get(
+            "/api/sizing/mongodb.wt-cache",
+            params={"storage_size": "500GB", "index_size": "40GB"},
+        )
+        assert r.status_code == 400
+        assert r.json()["detail"] == "use POST /api/sizing"
+
     def test_unknown_model_is_404(self, client):
         assert client.post("/api/sizing", json={"model": "nope"}).status_code == 404
 
@@ -105,6 +116,29 @@ class TestSizing:
         r = client.post(
             "/api/sizing",
             json={"model": "mongodb.wt-cache", "inputs": {"storage_size": "loads"}},
+        )
+        assert r.status_code == 422
+
+    def test_malformed_numeric_size_is_422_not_500(self, client):
+        r = client.post(
+            "/api/sizing",
+            json={"model": "mongodb.wt-cache", "inputs": {"storage_size": "1.2.3GB"}},
+        )
+        assert r.status_code == 422
+
+    def test_unreadable_scalar_is_422_not_500(self, client):
+        r = client.post(
+            "/api/sizing",
+            json={
+                "model": "ebs.iops-to-provision",
+                "inputs": {"average_iops": "abc"},
+            },
+        )
+        assert r.status_code == 422
+
+    def test_non_string_available_is_422_not_500(self, client):
+        r = client.post(
+            "/api/sizing", json={**SIZING, "available": ["4TB"]}
         )
         assert r.status_code == 422
 
@@ -149,6 +183,7 @@ class TestPage:
         assert 'data-tab="flow"' in html
         assert 'data-tab="occupancy"' in html
         assert 'data-tab="cliff"' in html
+        assert 'id="simple-view"' in html
         assert "occupancy_band" in html
         assert "cache_cliff" in html
         assert "mongodb.wt-cache" in html

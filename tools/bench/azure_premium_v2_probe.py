@@ -84,6 +84,8 @@ def run_fio(
 ) -> dict[str, Any]:
     bs = f"{int(bs_kib)}k" if bs_kib == int(bs_kib) else f"{bs_kib}k"
     engine = "windowsaio" if platform.system() == "Windows" else "libaio"
+    # --size is required when the target file does not yet exist (fresh mount).
+    # Runtime still caps the timed job; size only bounds the file footprint.
     cmd = [
         "fio",
         "--name=azprobe",
@@ -93,6 +95,7 @@ def run_fio(
         f"--ioengine={engine}",
         f"--iodepth={iodepth}",
         f"--bs={bs}",
+        "--size=1G",
         f"--runtime={runtime}",
         "--time_based",
         "--group_reporting",

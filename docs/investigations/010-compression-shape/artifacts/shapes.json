@@ -1,0 +1,42 @@
+[
+  {
+    "shape": "pure-random",
+    "path": "/tmp/xycalc-shape-full/shapes/pure-random.jsonl",
+    "docs": 164716,
+    "raw_bytes": 300001442,
+    "sha256": "6d59a64354b1abeccc65cadf74b46b72f8bf8030b49350b0e1f98826b6c5e37a",
+    "gzip_proxy_ratio": 1.3381
+  },
+  {
+    "shape": "random-repeated-fields",
+    "path": "/tmp/xycalc-shape-full/shapes/random-repeated-fields.jsonl",
+    "docs": 316240,
+    "raw_bytes": 300000650,
+    "sha256": "e98658511dacc69ac5ea80a702ee90f272f22e63ae313d8251117acca40604df",
+    "gzip_proxy_ratio": 1.3837
+  },
+  {
+    "shape": "low-cardinality-enums",
+    "path": "/tmp/xycalc-shape-full/shapes/low-cardinality-enums.jsonl",
+    "docs": 2447229,
+    "raw_bytes": 300000018,
+    "sha256": "bb25e3a9ce56a3fe29ce8469ab4cf8c8f7be14dd5a311f573b0344b123feef20",
+    "gzip_proxy_ratio": 33.1782
+  },
+  {
+    "shape": "realistic-mixed",
+    "path": "/tmp/xycalc-shape-full/shapes/realistic-mixed.jsonl",
+    "docs": 526070,
+    "raw_bytes": 300000565,
+    "sha256": "49ec0cd33c699b430ba849019d7ee42e507ea0c07b90fffa0f0dc3677be55d80",
+    "gzip_proxy_ratio": 2.1218
+  },
+  {
+    "shape": "near-duplicate",
+    "path": "/tmp/xycalc-shape-full/shapes/near-duplicate.jsonl",
+    "docs": 1707464,
+    "raw_bytes": 300000018,
+    "sha256": "5df24789fdf2b956f0bff00ff36d75aff9aece15b26aca7e2f9e5da9917386e9",
+    "gzip_proxy_ratio": 57.7432
+  }
+]

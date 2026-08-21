@@ -59,7 +59,11 @@ def parse_bytes(text: str | float | int) -> float:
     m = re.fullmatch(r"\s*([0-9.]+)\s*([a-zA-Z]*)\s*", str(text))
     if not m:
         raise ModelError(f"cannot read a size from {text!r}")
-    value, unit = float(m.group(1)), m.group(2).lower()
+    try:
+        value = float(m.group(1))
+    except ValueError:
+        raise ModelError(f"cannot read a size from {text!r}") from None
+    unit = m.group(2).lower()
     if not unit:
         return value
     if unit not in _UNITS:
@@ -380,13 +384,16 @@ class Model:
                 # and the answer stops looking uncertain when it still is. That
                 # is honest -- the bound really does determine the value -- but
                 # it must be visible, so the step records whether it happened.
+                # Only annotate when THIS bound collapsed a real band; a scalar
+                # input already made lo == hi before we got here.
+                was_point = lo == hi
                 if term.apply == "floor_at":
                     lo, mode, hi = max(lo, clo), max(mode, cmode), max(hi, chi)
                     contribution = f"≥ {format_quantity(cmode, in_unit)}"
                 else:
                     lo, mode, hi = min(lo, clo), min(mode, cmode), min(hi, chi)
                     contribution = f"≤ {format_quantity(cmode, in_unit)}"
-                if lo == hi:
+                if lo == hi and not was_point:
                     contribution += " (band collapsed)"
 
             elif term.apply == "set_from_coefficient":
@@ -412,16 +419,19 @@ class Model:
                 cap_lo = clo * 1024 / io_size
                 cap_mode = cmode * 1024 / io_size
                 cap_hi = chi * 1024 / io_size
+                was_point = lo == hi
                 lo, mode, hi = (
                     min(lo, cap_lo),
                     min(mode, cap_mode),
                     min(hi, cap_hi),
                 )
+                # The input is I/O size; the cap is IOPS (or whatever the
+                # model outputs). Label it with the output unit, not in_unit.
                 contribution = (
-                    f"≤ {format_quantity(cap_mode, in_unit)} "
+                    f"≤ {format_quantity(cap_mode, self.output_unit)} "
                     f"({cmode:g} MiB/s ÷ {io_size:g} KiB/op)"
                 )
-                if lo == hi:
+                if lo == hi and not was_point:
                     contribution += " (band collapsed)"
 
             elif term.apply == "add_fraction":
@@ -463,7 +473,14 @@ class Model:
                 if spec["required"]:
                     raise ModelError(f"{self.slug}: input '{key}' is required")
                 continue
-            out[key] = parse_bytes(raw) if spec["unit"] == "bytes" else float(raw)
+            try:
+                out[key] = (
+                    parse_bytes(raw) if spec["unit"] == "bytes" else float(raw)
+                )
+            except (TypeError, ValueError):
+                raise ModelError(
+                    f"{self.slug}: input '{key}' is not a number ({raw!r})"
+                ) from None
         return out
 
     @staticmethod
@@ -866,6 +883,7 @@ class ScenarioStepResult:
     gp3_spec: dict | None = None
     headroom: dict | None = None
     assumed_inputs: dict | None = None
+    assumed_note: str | None = None
 
 
 def gp3_volume_spec(volume_bytes: float) -> dict:
@@ -1147,6 +1165,7 @@ def chain_evaluate(
                 model=model,
                 result=composed,
                 assumed_inputs=assumed or None,
+                assumed_note=(step.get("assumed_note") if assumed else None),
             )
             if available is not None and step is last_bytes_step:
                 step_result.headroom = headroom(composed, available)

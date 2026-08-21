@@ -66,6 +66,10 @@ RETRY_POLICY = os.environ.get("PROBE_RETRY_POLICY", "none")  # none|immediate|ex
 RETRY_BASE_DELAY = float(os.environ.get("PROBE_RETRY_BASE_DELAY", "1"))
 RETRY_MAX_DELAY = float(os.environ.get("PROBE_RETRY_MAX_DELAY", "60"))
 RETRY_DEADLINE = float(os.environ.get("PROBE_RETRY_DEADLINE", "120"))
+# Server-side op deadline (ms). Client socket timeouts leave the ticket held;
+# max_time_ms cancels the op on the server. Calibrate via smoke — not copied
+# from investigation 003's thread-probe latencies.
+MAX_TIME_MS = int(os.environ.get("PROBE_MAX_TIME_MS", "500"))
 
 IGNORE_RESULT = os.environ.get("PROBE_IGNORE_RESULT", "1") == "1"
 RESULT_EXPIRES = int(os.environ.get("PROBE_RESULT_EXPIRES", "300"))
@@ -143,9 +147,12 @@ def lookup(self):
         first_attempt = float(first_attempt)
 
     try:
-        mongo.ticketprobe.docs.find_one({"_id": random.randrange(DOCS)})
+        mongo.ticketprobe.docs.find_one(
+            {"_id": random.randrange(DOCS)}, max_time_ms=MAX_TIME_MS
+        )
     except PyMongoError as exc:
         r.incr("probe:retries")
+        r.incr(f"probe:retry_reason:{type(exc).__name__}")
         countdown = _retry_countdown(self.request.retries)
         deadline_hit = time.time() - first_attempt >= RETRY_DEADLINE
         if countdown is None or deadline_hit:

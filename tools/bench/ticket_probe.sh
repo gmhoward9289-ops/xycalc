@@ -5,6 +5,19 @@
 #   ./tools/bench/ticket_probe.sh                        # full run, ~4 minutes
 #   PROBE_SECONDS=6 PROBE_DOCS=30000 ./ticket_probe.sh   # smoke run
 #
+# Issue #3 residual (convergence series + cooldown):
+#   PROBE_LEVELS=64,150 PROBE_SECONDS=600 \
+#   PROBE_COOLDOWN_SECONDS=900 PROBE_COOLDOWN_HEARTBEAT_HZ=0 \
+#     ./tools/bench/ticket_probe.sh > /tmp/ticket-probe-idle.json
+#   PROBE_LEVELS=64,150 PROBE_SECONDS=600 \
+#   PROBE_COOLDOWN_SECONDS=900 PROBE_COOLDOWN_HEARTBEAT_HZ=1 \
+#     ./tools/bench/ticket_probe.sh > /tmp/ticket-probe-trickle.json
+#
+# Issue #12 / T4 (checkpoint sawtooth soak, 1s buckets):
+#   PROBE_MODE=timeseries PROBE_LEVELS=8 PROBE_SECONDS=480 \
+#     ./tools/bench/ticket_probe.sh > /tmp/ticket-probe-timeseries.json
+#   # smoke: PROBE_MODE=timeseries PROBE_LEVELS=8 PROBE_SECONDS=30 PROBE_DOCS=30000 ...
+#
 # Throttling is scoped to THIS CONTAINER ONLY, via the block-IO cgroup. The host
 # may be serving other things; saturating its disk to answer a question about
 # MongoDB would be an outage caused by curiosity. Scoping also makes the induced
@@ -18,6 +31,11 @@
 # Prints the probe's JSON to stdout after a ===JSON=== marker. Removes both
 # containers and the network on exit, success or failure.
 set -euo pipefail
+
+# Git Bash (MSYS) rewrites absolute Unix paths on docker.exe argv
+# (/tmp/foo -> C:/Users/.../Temp/foo). Disable that for this script.
+export MSYS_NO_PATHCONV=1
+export MSYS2_ARG_CONV_EXCL='*'
 
 # Unique per run. The names used to be a fixed default, and `cleanup` runs at
 # STARTUP as well as on exit -- so a second run beginning while a first was
@@ -47,15 +65,37 @@ READ_IOPS="${PROBE_READ_IOPS:-150}"
 MEMORY="${PROBE_MEMORY:-640m}"
 
 here="$(cd "$(dirname "$0")" && pwd)"
-
+# Prefer a Windows path for docker.exe host-side args under Git Bash.
+if here_win="$(cd "$(dirname "$0")" && pwd -W 2>/dev/null)"; then
+    :
+elif command -v cygpath >/dev/null 2>&1; then
+    here_win="$(cygpath -w "$here")"
+else
+    here_win="$here"
+fi
+probe_py="${here_win%/}\\ticket_probe.py"
+# Fallback when not on Windows / pwd -W unavailable.
+if [ ! -f "$probe_py" ] && [ ! -f "${here}/ticket_probe.py" ]; then
+    echo "cannot find ticket_probe.py next to $0" >&2
+    exit 1
+fi
+if [ ! -f "$probe_py" ]; then
+    probe_py="${here}/ticket_probe.py"
+fi
 # The block-IO cgroup limit needs a whole device, not a partition.
 root_src="$(df --output=source / | tail -1)"
 parent="$(lsblk -no PKNAME "$root_src" 2>/dev/null | head -1 || true)"
 dev="${PROBE_DEV:-$([ -n "$parent" ] && echo "/dev/$parent" || echo "$root_src")}"
-if [ ! -b "$dev" ]; then
+# Git Bash / Windows hosts have no real /dev block nodes even when Docker
+# Desktop's Linux VM does. An explicit PROBE_DEV is trusted; docker will fail
+# loudly if the device is wrong inside the engine.
+if [ -z "${PROBE_DEV:-}" ] && [ ! -b "$dev" ]; then
     echo "no block device to throttle (tried '$dev' from '$root_src')." >&2
     echo "Set PROBE_DEV=/dev/xxx explicitly." >&2
     exit 1
+fi
+if [ -n "${PROBE_DEV:-}" ] && [ ! -b "$dev" ]; then
+    echo "note: PROBE_DEV=$dev is not a host block device; trusting Docker engine." >&2
 fi
 
 cleanup() {
@@ -101,13 +141,49 @@ docker run -d --name "$DRIVER" --network "$NET" \
     -e PROBE_SECONDS="${PROBE_SECONDS:-25}" \
     -e PROBE_DOCS="${PROBE_DOCS:-1500000}" \
     -e PROBE_LEVELS="${PROBE_LEVELS:-1,2,4,8,16,32,64}" \
+    -e PROBE_MODE="${PROBE_MODE:-levels}" \
+    -e PROBE_SAMPLE_S="${PROBE_SAMPLE_S:-}" \
+    -e PROBE_MIN_CHECKPOINTS="${PROBE_MIN_CHECKPOINTS:-4}" \
+    -e PROBE_COOLDOWN_SECONDS="${PROBE_COOLDOWN_SECONDS:-0}" \
+    -e PROBE_COOLDOWN_HEARTBEAT_HZ="${PROBE_COOLDOWN_HEARTBEAT_HZ:-0}" \
+    -e PROBE_CONVERGENCE_WINDOW_S="${PROBE_CONVERGENCE_WINDOW_S:-90}" \
+    -e PROBE_CONVERGENCE_TOL="${PROBE_CONVERGENCE_TOL:-0.05}" \
     "$PY_IMAGE" sleep infinity >/dev/null
 
 docker exec "$DRIVER" pip install --quiet --no-cache-dir pymongo >&2
-docker cp "$here/ticket_probe.py" "$DRIVER:/tmp/ticket_probe.py"
-docker exec \
-    -e PROBE_URI="mongodb://${NAME}:27017" \
-    -e PROBE_SECONDS="${PROBE_SECONDS:-25}" \
-    -e PROBE_DOCS="${PROBE_DOCS:-1500000}" \
-    -e PROBE_LEVELS="${PROBE_LEVELS:-1,2,4,8,16,32,64}" \
-    "$DRIVER" python /tmp/ticket_probe.py
+docker cp "$probe_py" "${DRIVER}:/tmp/ticket_probe.py"
+# Optional helper module (ticket path abstraction); ignore if absent.
+if [ -f "${here_win%/}\\mongo_tickets.py" ]; then
+    docker cp "${here_win%/}\\mongo_tickets.py" "${DRIVER}:/tmp/mongo_tickets.py"
+elif [ -f "${here}/mongo_tickets.py" ]; then
+    docker cp "${here}/mongo_tickets.py" "${DRIVER}:/tmp/mongo_tickets.py"
+fi
+
+# Detached exec + file capture: Docker Desktop named-pipe `docker exec`
+# often 500s mid-run on long probes. Poll files instead.
+env_args=(
+    -e "PROBE_URI=mongodb://${NAME}:27017"
+    -e "PROBE_SECONDS=${PROBE_SECONDS:-25}"
+    -e "PROBE_DOCS=${PROBE_DOCS:-1500000}"
+    -e "PROBE_LEVELS=${PROBE_LEVELS:-1,2,4,8,16,32,64}"
+    -e "PROBE_MODE=${PROBE_MODE:-levels}"
+    -e "PROBE_SAMPLE_S=${PROBE_SAMPLE_S:-}"
+    -e "PROBE_MIN_CHECKPOINTS=${PROBE_MIN_CHECKPOINTS:-4}"
+    -e "PROBE_COOLDOWN_SECONDS=${PROBE_COOLDOWN_SECONDS:-0}"
+    -e "PROBE_COOLDOWN_HEARTBEAT_HZ=${PROBE_COOLDOWN_HEARTBEAT_HZ:-0}"
+    -e "PROBE_CONVERGENCE_WINDOW_S=${PROBE_CONVERGENCE_WINDOW_S:-90}"
+    -e "PROBE_CONVERGENCE_TOL=${PROBE_CONVERGENCE_TOL:-0.05}"
+)
+docker exec -d -w /tmp "${env_args[@]}" "$DRIVER" \
+    sh -c 'python /tmp/ticket_probe.py > /tmp/probe.out 2>/tmp/probe.err; echo $? > /tmp/probe.exit'
+echo "probe launched detached in $DRIVER; polling /tmp/probe.exit ..." >&2
+while ! docker exec "$DRIVER" test -f /tmp/probe.exit >/dev/null 2>&1; do
+    # stream latest stderr lines so the operator sees progress
+    docker exec "$DRIVER" sh -c 'tail -n 3 /tmp/probe.err 2>/dev/null' >&2 || true
+    sleep 15
+done
+exit_code="$(docker exec "$DRIVER" cat /tmp/probe.exit | tr -d '\r\n')"
+docker exec "$DRIVER" cat /tmp/probe.err >&2 || true
+docker exec "$DRIVER" cat /tmp/probe.out || true
+exit "${exit_code:-1}"
+

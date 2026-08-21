@@ -1,0 +1,10 @@
+{
+  "private": true,
+  "description": "Dev-only ESLint for src/xycalc/static/*.js. Not an npm-published package.",
+  "devDependencies": {
+    "eslint": "^9.33.0"
+  },
+  "scripts": {
+    "lint:js": "eslint src/xycalc/static/app.js"
+  }
+}

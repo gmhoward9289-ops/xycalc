@@ -212,7 +212,9 @@ const XY = (() => {
       } else if (term.apply === "floor_at" || term.apply === "cap_at") {
         // A bound applies to each end independently and can COLLAPSE the band.
         // Honest -- the bound really does determine the value -- but it has to
-        // be visible, so the step says so.
+        // be visible, so the step says so. Only when THIS bound collapsed a
+        // real band; a scalar input may already have made lo === hi.
+        const wasPoint = lo === hi;
         if (term.apply === "floor_at") {
           lo = Math.max(lo, clo); mode = Math.max(mode, cmode); hi = Math.max(hi, chi);
           contribution = "≥ " + formatQuantity(cmode, inUnit);
@@ -220,7 +222,7 @@ const XY = (() => {
           lo = Math.min(lo, clo); mode = Math.min(mode, cmode); hi = Math.min(hi, chi);
           contribution = "≤ " + formatQuantity(cmode, inUnit);
         }
-        if (lo === hi) contribution += " (band collapsed)";
+        if (lo === hi && !wasPoint) contribution += " (band collapsed)";
 
       } else if (term.apply === "set_from_coefficient") {
         lo = clo; mode = cmode; hi = chi;
@@ -240,10 +242,11 @@ const XY = (() => {
         const capLo = clo * 1024 / ioSize;
         const capMode = cmode * 1024 / ioSize;
         const capHi = chi * 1024 / ioSize;
+        const wasPoint = lo === hi;
         lo = Math.min(lo, capLo); mode = Math.min(mode, capMode); hi = Math.min(hi, capHi);
-        contribution = "≤ " + formatQuantity(capMode, inUnit) +
+        contribution = "≤ " + formatQuantity(capMode, model.output_unit) +
           " (" + formatG(cmode) + " MiB/s ÷ " + formatG(ioSize) + " KiB/op)";
-        if (lo === hi) contribution += " (band collapsed)";
+        if (lo === hi && !wasPoint) contribution += " (band collapsed)";
 
       } else if (term.apply === "add_fraction") {
         lo *= (1 + clo / 100); mode *= (1 + cmode / 100); hi *= (1 + chi / 100);
@@ -705,6 +708,7 @@ const XY = (() => {
     headroom: headroom,
     checkGolden: checkGolden,
     chainEvaluate: chainEvaluate,
+    selectInstance: selectInstance,
   };
 })();
 

@@ -1,0 +1,25 @@
+sources:
+- slug: obs-mongodb-tickets-cooper-2026-08-21
+  title: MongoDB 8.0.29 / 8.2.12 ticket telemetry location, idle instances
+  publisher: xycalc measurement (COOPER)
+  retrieved_on: '2026-08-21'
+  source_type: measured
+  notes: >-
+    Docker mongo:8.0 and mongo:8.2, versions confirmed via db.version() as
+    8.0.29 and 8.2.12 (not assumed from the tag). Idle settle 20–30s after
+    ping, then serverStatus().
+
+    Finding (falsifies "nothing moved since 7.0.39"):
+    wiredTiger.concurrentTransactions is ABSENT on both 8.0.29 and 8.2.12.
+    Tickets live under serverStatus().queues.execution.{read,write}, which
+    DID NOT exist on 7.0.39. Idle totalTickets remains 4 for read and write
+    on both versions — the throughputProbing floor is unchanged; only the
+    field path relocated. Queue counters (queueLength, totalTimeQueuedMicros,
+    addedToQueue, removedFromQueue) moved under
+    queues.execution.{read,write}.{normalPriority,exempt} rather than sitting
+    directly on the read/write object as they did under concurrentTransactions
+    on 7.0. queues.ingress also exists (totalTickets 1000000) and is a
+    different admission layer — do not confuse it with execution tickets.
+
+    Method: tools/bench/_run_tickets_8x.sh + _run_tickets_8x_deep.sh. Raw
+    dumps kept locally as tmp-reef-status/deep-8.{0,2}.json (not corpus).

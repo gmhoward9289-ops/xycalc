@@ -39,6 +39,14 @@ class TestParseBytes:
         with pytest.raises(ModelError, match="cannot read a size"):
             parse_bytes("about half a terabyte")
 
+    def test_malformed_numeric_size_is_model_error_not_value_error(self):
+        """'1.2.3GB' matches the size regex but float() refuses it. That used
+        to escape as ValueError and become an API 500."""
+        with pytest.raises(ModelError, match="cannot read a size"):
+            parse_bytes("1.2.3GB")
+        with pytest.raises(ModelError, match="cannot read a size"):
+            parse_bytes("1.2.3")
+
 
 class TestWiredTigerCacheModel:
     @pytest.fixture
@@ -97,6 +105,10 @@ class TestWiredTigerCacheModel:
     def test_unknown_input_is_rejected(self, model):
         with pytest.raises(ModelError, match="unknown input"):
             model.evaluate({"storage_size": "500GB", "shard_count": 4})
+
+    def test_malformed_byte_input_is_model_error(self, model):
+        with pytest.raises(ModelError, match="storage_size|cannot read a size"):
+            model.evaluate({"storage_size": "1.2.3GB"})
 
     def test_every_term_either_reads_an_input_or_cites_a_source(self, model):
         """The invariant, checked at the level a reader cares about: no number
@@ -194,8 +206,34 @@ class TestUnitRendering:
     def test_an_iops_model_says_iops_in_every_step(self, conn):
         m = Model.load(conn, "ebs.iops-to-provision")
         r = m.evaluate({"average_iops": 4000})
-        assert "B" not in r.steps[0].contribution
-        assert "iops" in r.steps[0].contribution
+        for step in r.steps:
+            assert "B" not in step.contribution, step.contribution
+            if step.skipped:
+                continue
+            # The input step formats a quantity; the burst-factor multiply
+            # is a dimensionless ratio and has no unit to get wrong.
+            if step.term.apply == "input":
+                assert "iops" in step.contribution
+
+        # The bug lived on cap_at_throughput: the cap is IOPS but was labeled
+        # with the I/O-size input's unit. 64 KiB on baseline gp3 is 2,000 IOPS.
+        cap = Model.load(conn, "ebs.gp3-iops-at-io-size")
+        r = cap.evaluate({"io_size_kib": 64})
+        for step in r.steps:
+            if step.skipped:
+                continue
+            head = step.contribution.split("(")[0]
+            assert "iops" in head, step.contribution
+            assert "KiB" not in head, step.contribution
+
+        nvme = Model.load(conn, "nvme-ssd.random-read-at-io-size")
+        r = nvme.evaluate({"io_size_kib": 64})
+        for step in r.steps:
+            if step.skipped:
+                continue
+            head = step.contribution.split("(")[0]
+            assert "iops" in head, step.contribution
+            assert "KiB" not in head, step.contribution
 
 
 class TestTicketCeiling:
@@ -236,6 +274,14 @@ class TestTicketCeiling:
     def test_zero_latency_is_refused_rather_than_reported_as_infinite(self, model):
         with pytest.raises(ModelError, match="cannot be zero"):
             model.evaluate({"storage_latency_seconds": 0, "tickets": 128})
+
+    def test_malformed_scalar_is_model_error_not_value_error(self, model):
+        with pytest.raises(ModelError, match="storage_latency_seconds"):
+            model.evaluate({"storage_latency_seconds": "abc", "tickets": 128})
+        with pytest.raises(ModelError, match="tickets"):
+            model.evaluate({"storage_latency_seconds": 0.001, "tickets": "1.2.3"})
+        with pytest.raises(ModelError, match="tickets"):
+            model.evaluate({"storage_latency_seconds": 0.001, "tickets": ["128"]})
 
     def test_the_floor_is_rendered_in_tickets_not_in_the_output_unit(self, model):
         """Tickets divided by seconds gives ops/s; the tickets were never
@@ -338,6 +384,16 @@ class TestBounds:
         assert r.lo == r.mode == r.hi
         step = next(s for s in r.steps if s.term.key == "minimum_cache")
         assert "band collapsed" in step.contribution
+
+    def test_already_a_point_is_not_called_collapsed(self, conn):
+        """cap_at_throughput used to append '(band collapsed)' whenever the
+        result was a point, including when scalar inputs had already made
+        lo == hi before the bound ran."""
+        m = Model.load(conn, "ebs.gp3-iops-at-io-size")
+        r = m.evaluate({"io_size_kib": 64, "provisioned_iops": 3000})
+        assert r.lo == r.mode == r.hi
+        step = next(s for s in r.steps if s.term.apply == "cap_at_throughput")
+        assert "band collapsed" not in step.contribution
 
     def test_a_bounding_term_must_not_be_role_constraint(self, conn):
         """The evaluator skips constraint-role terms entirely, so a floor_at

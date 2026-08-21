@@ -6,7 +6,7 @@ reach a device that throttles on the peak second, and the throttle becomes a
 concurrency problem whose queue does not drain. Extended 2026-08-20/21 by
 investigations 004–007 (Celery amplification, Redis maxmemory conflict,
 provisional cache-cliff shape → measured (006), occupancy-band education,
-colocation share sweep (009)). Landed markers below
+colocation share sweep (009), compression-shape sweep (010)). Landed markers below
 are the source of truth for what is no longer “next.”
 
 Each entry below is a *designed experiment*, not a topic. It names the question,
@@ -78,6 +78,13 @@ host RAM. Same trap that cost two runs in investigation 003.
 ---
 
 ## T2 — Compression ratio as a function of data shape
+
+**Status (2026-08-21).** Investigation 010 **complete**. Five synthetic
+shapes × snappy/zstd/zlib on swamplink (`mongo:7.0.39`) and **reef**
+(`mongo:7`, V: work). Snappy ratios **~0.99–9.22** — wider than the
+1.5–3.5 practitioner band at both ends. Gzip-proxy rank matched
+expected order; band **not** rewritten (synthetic extremes ≠
+population). See `docs/investigations/010-compression-shape/FINDINGS.md`.
 
 **Question.** How does the snappy ratio move between high-entropy and
 structured documents, and where in that range do real collections sit?

@@ -45,11 +45,6 @@ from .model import (
     validation_status,
 )
 
-# NOT the decimal "1.5TB" a casual reading would suggest, which would be
-# slightly smaller and wrongly exclude the boundary instance itself. Revisit
-# once a >1.5TB family is chosen -- see the comment block at the end of
-# data/coefficients/aws-ec2.yaml.
-
 BAR = "─" * 68
 
 
@@ -346,11 +341,10 @@ def cmd_scenario(args) -> int:
                     f"{k}={v:g}" if isinstance(v, (int, float)) else f"{k}={v}"
                     for k, v in s.assumed_inputs.items()
                 )
-                print(
-                    f"  assumed            {assumed} "
-                    "(not measured — peak-second IOPS still applied so a "
-                    "microburst cannot stall storage tickets)"
-                )
+                line = f"  assumed            {assumed}"
+                if s.assumed_note:
+                    line += f" ({s.assumed_note})"
+                print(line)
             _print_breakdown(s.result, s.model)
             _print_constraints(s.result)
             _print_validation(conn, s.model.slug)
@@ -568,8 +562,11 @@ def _add_model_flags(parser: argparse.ArgumentParser, db: Path | None) -> None:
     flags. A flag belonging to another model is simply never read.
     """
     try:
-        conn = connect(db, autobuild=False)
-    except (FileNotFoundError, sqlite3.Error):
+        # Autobuild so a fresh clone can run the README quick start before
+        # `xycalc build`. `build`/`audit` still parse if the corpus cannot
+        # be compiled yet — those subparsers do not need model flags.
+        conn = connect(db, autobuild=True)
+    except (FileNotFoundError, sqlite3.Error, build_mod.BuildError):
         return
     seen: dict[str, str] = {}
     for r in conn.execute(

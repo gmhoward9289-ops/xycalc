@@ -15,11 +15,112 @@ eviction-target coefficient under real pressure), and
 formula against a host's actual RAM, no dataset needed). See each for its own
 README/comments.
 
+**Wave 1–2 roadmap harnesses (build on COOPER; measure on reef):**
+
+| Ticket | Harness | Issue plan |
+|---|---|---|
+| T4 | `ticket_probe.sh` `PROBE_MODE=timeseries` | `docs/plans/issue-12-checkpoint-sawtooth.md` |
+| T6 | `celery_probe/sweep_prefetch.sh` | `docs/plans/issue-14-celery-prefetch-backlog.md` |
+| T8 | `celery_probe/run_stall_recover.sh` | `docs/plans/issue-16-retry-backoff-amplification.md` |
+| T3 | `eviction_probe.sh` | `docs/plans/issue-11-write-rate-eviction-trigger.md` |
+| T5 | `covered_query_probe.sh` | `docs/plans/issue-13-covered-query-index-residency.md` |
+| T10 | `clickhouse_probe.sh` (pins CH 23.x + 24.x) | `docs/plans/issue-18-clickhouse-insert-batch-floor.md` |
+| T9c | `_aws_t9c_launch.sh` / `_aws_t9c_monitor.sh` (scaffold; no launch by default) | plan Wave 3 |
+
 **Multi-GB fio scratch** (`.probe-io-test.bin`, gitignored) may stay on
 **COOPER or lynx** only. Do not leave it on **swamplink** — `io_crossover_smoke.sh`
 refuses a default path there; if you must smoke on swamplink, set
 `PROBE_FILE=/tmp/...` and delete after. Distilled YAML/JSON findings still
 commit as usual; never sync the binary to GitHub.
+
+### ticket_probe timeseries (T4 / #12)
+
+```bash
+# Full soak: c=8, ≥8 min, 1s latency buckets + checkpoint series
+PROBE_MODE=timeseries PROBE_LEVELS=8 PROBE_SECONDS=480 \
+  ./tools/bench/ticket_probe.sh > /tmp/ticket-timeseries.json
+
+# Smoke
+PROBE_MODE=timeseries PROBE_LEVELS=8 PROBE_SECONDS=30 PROBE_DOCS=30000 \
+  ./tools/bench/ticket_probe.sh
+```
+
+Guards refuse a "flat" conclusion if sampler errors > 0, fewer than 4
+checkpoints were observed, `ckptRunning` never toggled, or checkpoint-active
+seconds show no `bytesWrittenFromCache` growth (clean-cache no-op).
+
+### celery prefetch sweep (T6 / #14)
+
+```bash
+cd tools/bench/celery_probe
+docker compose up -d --build redis bookkeeping mongo
+PROBE_RATES=400 PROBE_SECONDS=30 ./sweep_prefetch.sh
+```
+
+Retains `sampleSeries` with `enqueuedSoFar` / `outstanding` / `understatement`.
+Idempotent load skips reinsert after the first driver invocation.
+
+### celery stall/recover (T8 / #16)
+
+```bash
+cd tools/bench/celery_probe
+./run_stall_recover.sh
+# smoke (pause fallback — total outage, not slow I/O):
+PROBE_STALL_MODE=pause PROBE_BASELINE_SECONDS=8 PROBE_STALL_SECONDS=12 \
+  PROBE_POLICIES=none,immediate PROBE_RATES=50 PROBE_DOCS=800000 \
+  ./run_stall_recover.sh
+```
+
+Uses `PROBE_RETRY_POLICY` (`none|immediate|exponential|jitter`) with
+`max_time_ms` on `find_one`. Visibility timeout defaults high so broker
+redelivery does not confound retries.
+
+### eviction_probe (T3 / #11)
+
+```bash
+./tools/bench/eviction_probe.sh
+PROBE_ARM=update ./tools/bench/eviction_probe.sh
+PROBE_SECONDS=20 PROBE_RATES=0.5,1,2 ./tools/bench/eviction_probe.sh  # smoke
+```
+
+Write-rate sweep as multiples of `--device-write-bps`; samples dirty% vs
+overall occupancy vs app-thread eviction.
+
+### covered_query_probe (T5 / #13)
+
+```bash
+./tools/bench/covered_query_probe.sh
+PROBE_DOCS=50000 ./tools/bench/covered_query_probe.sh  # smoke
+```
+
+Restarts mongod between load and measurement; `explain()` must certify covered
+vs FETCH before trusting residency deltas.
+
+### clickhouse_probe (T10 / #18)
+
+```bash
+./tools/bench/clickhouse_probe.sh
+PROBE_ROWS=50000 PROBE_BATCHES=1,10,100 PROBE_STEP_TIMEOUT=30 \
+  ./tools/bench/clickhouse_probe.sh  # smoke
+```
+
+Default images: `clickhouse/clickhouse-server:23.3` and `:24.8`. Refuses if the
+two images report identical `parts_to_*_insert` defaults, or if batch=1 never
+crosses `parts_to_delay_insert`.
+
+### AWS T9 Arm C scaffold (Wave 3)
+
+```bash
+# Default: write PLAN.txt only — does not create EC2 resources
+./tools/bench/_aws_t9c_launch.sh
+
+# Real launch only when Arm A+B done and George confirmed:
+CONFIRM_T9C_LAUNCH=1 T9_ARM_AB_DONE=1 ./tools/bench/_aws_t9c_launch.sh
+# Then (before long probe): bash tools/bench/_aws_t9c_monitor.sh
+```
+
+`m6i.large` + dedicated gp3 data volume; watcher terminates on DONE/FAIL and
+enforces a soft max-hours cap (~$5).
 
 ### cache_cliff_probe (T1 / #9)
 
