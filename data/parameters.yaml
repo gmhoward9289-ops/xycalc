@@ -50,6 +50,26 @@ parameters:
     unit: ratio
     dimension: ratio
 
+  - slug: storage.self_compression_proxy_ratio
+    label: Gzip self-compression proxy (raw ÷ gzip-9)
+    unit: ratio
+    dimension: ratio
+    notes: >-
+      A property of the raw document bytes that an operator can measure with
+      mongoexport + gzip -9, without WiredTiger internals. Used as the x-axis
+      for the manufactured compression-shape curve (investigation 010 / T2).
+
+  - slug: storage.covered_query_residency_ratio
+    label: Covered-query residency / indexSize ratio
+    unit: ratio
+    dimension: ratio
+    notes: >-
+      WiredTiger bytes brought into cache by an index-covered query path,
+      divided by db.stats().indexSize for the indexes that path touched.
+      Investigation 005 / T5: values near 1.0 support treating in-cache index
+      bytes as ≈ indexSize; values well above 1.0 would imply an expansion
+      term (see plan issue-13).
+
   # -- WiredTiger cache -------------------------------------------------
   - slug: cache.size_bytes
     label: WiredTiger cache size

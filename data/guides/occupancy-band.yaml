@@ -62,7 +62,7 @@ guides:
           occ_mean_at_90:
             observation: swamplink-2026-08-21-occ90-occupancy
             as: occ_90_slug
-        - label: confirm 25 s #1
+        - label: "confirm 25 s #1"
           ops_at_80:
             observation: swamplink-2026-08-21-occ80-ops-confirm1
             as: ops_80_slug
@@ -75,7 +75,7 @@ guides:
           occ_mean_at_90:
             observation: swamplink-2026-08-21-occ90-occupancy-confirm1
             as: occ_90_slug
-        - label: confirm 25 s #2
+        - label: "confirm 25 s #2"
           ops_at_80:
             observation: swamplink-2026-08-21-occ80-ops-confirm2
             as: ops_80_slug
@@ -129,7 +129,9 @@ guides:
         dirtyPct: 100 * c['tracked dirty bytes in the cache'] / max,
         appEvict: c['pages evicted by application threads'],
         unable: c['eviction server unable to reach eviction goal'],
-        tickets: s.wiredTiger.concurrentTransactions.read.totalTickets,
+        tickets: (s.queues && s.queues.execution)
+          ? s.queues.execution.read.totalTickets
+          : s.wiredTiger.concurrentTransactions.read.totalTickets,
         tcmallocHeap: t.heap_size,
         tcmallocAllocated: t.current_allocated_bytes || t.total_allocated_bytes
       });

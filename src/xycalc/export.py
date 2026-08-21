@@ -44,6 +44,7 @@ from .model import (
     ModelError,
     chain_evaluate,
     describe_scenarios,
+    format_quantity,
     get_scenario,
     load_instance_catalog,
     parse_bytes,
@@ -54,17 +55,18 @@ from .model import (
 STATIC = Path(__file__).parent / "static"
 TEMPLATE = STATIC / "calculator.html"
 EVALUATE_JS = STATIC / "evaluate.js"
+APP_JS = STATIC / "app.js"
 
-FAMILY_STRIP = """<div class="family">
-    <span>xycalc · a swamplink research property</span>
-    <a href="https://swamplink.com/">swamplink.com</a>
-    <a href="https://wings.swamplink.com/">wings — the chicken one</a>
-    <a href="https://foundation.swamplink.com/">foundation</a>
-    <a href="https://swamplink.com/data/plates/">plates — the surveillance one</a>
-    <a href="https://swamplink.com/data/trust/">ai trust</a>
-    <a href="https://swamplink.com/data/policy/">data policy</a>
+FAMILY_STRIP = """<nav class="family" aria-label="swamplink properties">
+    <span>xycalc · a swamplink research property</span><span class="sep" aria-hidden="true">·</span>
+    <a href="https://swamplink.com/">swamplink.com</a><span class="sep" aria-hidden="true">·</span>
+    <a href="https://wings.swamplink.com/">wings</a><span class="sep" aria-hidden="true">·</span>
+    <a href="https://foundation.swamplink.com/">foundation</a><span class="sep" aria-hidden="true">·</span>
+    <a href="https://swamplink.com/data/plates/">plates</a><span class="sep" aria-hidden="true">·</span>
+    <a href="https://swamplink.com/data/trust/">ai trust</a><span class="sep" aria-hidden="true">·</span>
+    <a href="https://swamplink.com/data/policy/">data policy</a><span class="sep" aria-hidden="true">·</span>
     <a href="https://blog.swamplink.com/">the blog</a>
-  </div>"""
+  </nav>"""
 
 # The ladder golden vectors are drawn from. Four magnitudes rather than one,
 # because the interesting arithmetic is at the ends: `floor_at` binds only on
@@ -87,6 +89,11 @@ SCENARIO_GOLDEN_INPUTS = {
 
 class ExportError(Exception):
     pass
+
+
+# The calculator banners these with human labels. A new grade that is not in
+# this set used to render as "undefined —" in the page's most important strip.
+KNOWN_VALIDATION_GRADES = frozenset({"none", "thin", "reasonable"})
 
 
 def _term_dict(t) -> dict:
@@ -116,6 +123,14 @@ def _term_dict(t) -> dict:
 
 def _model_dict(conn: sqlite3.Connection, slug: str) -> dict:
     m = Model.load(conn, slug)
+    validation = validation_status(conn, slug)
+    grade = validation.get("grade")
+    if grade not in KNOWN_VALIDATION_GRADES:
+        raise ExportError(
+            f"{slug}: validation grade {grade!r} is not in "
+            f"{sorted(KNOWN_VALIDATION_GRADES)}; the calculator has no label "
+            "for it and would render 'undefined —'"
+        )
     return {
         "slug": m.slug,
         "question": m.question,
@@ -137,7 +152,7 @@ def _model_dict(conn: sqlite3.Connection, slug: str) -> dict:
             for i in m.inputs
         ],
         "terms": [_term_dict(t) for t in m.terms],
-        "validation": validation_status(conn, slug),
+        "validation": validation,
     }
 
 
@@ -179,6 +194,26 @@ def golden_vectors(conn: sqlite3.Connection, slug: str) -> list[dict]:
                 }
             )
     return out
+
+
+def browser_string_path_vector(conn: sqlite3.Connection) -> dict:
+    """The path the calculator actually sends: a formatted display string.
+
+    Ladder vectors carry Python numbers, which is why scrub-commit's
+    '3,000 iops' → parseFloat → 3 never showed up as a golden failure.
+    """
+    slug = "ebs.iops-to-provision"
+    m = Model.load(conn, slug)
+    displayed = format_quantity(4000, "iops")
+    r = m.evaluate({"average_iops": displayed})
+    return {
+        "model": slug,
+        "inputs": {"average_iops": displayed},
+        "lo": r.lo,
+        "mode": r.mode,
+        "hi": r.hi,
+        "contributions": [s.contribution for s in r.steps],
+    }
 
 
 def scenario_golden_vectors(conn: sqlite3.Connection) -> list[dict]:
@@ -397,6 +432,20 @@ def render_guides(conn: sqlite3.Connection) -> dict[str, dict]:
     return out
 
 
+def _instance_catalog_dicts(conn: sqlite3.Connection, system: str = "aws-ec2") -> list[dict]:
+    return [
+        {
+            "name": i.name,
+            "ram_bytes": i.ram_bytes,
+            "vcpu": i.vcpu,
+            "ebs_bandwidth_gbps": i.ebs_bandwidth_gbps,
+            "source_title": i.source_title,
+            "source_url": i.source_url,
+        }
+        for i in load_instance_catalog(conn, system)
+    ]
+
+
 def corpus_blob(conn: sqlite3.Connection) -> dict:
     slugs = Model.all(conn)
     models = [_model_dict(conn, s) for s in slugs]
@@ -408,23 +457,18 @@ def corpus_blob(conn: sqlite3.Connection) -> dict:
             "no golden vectors could be generated — the export refuses to ship "
             "a page whose arithmetic nothing checks"
         )
+    golden.append(browser_string_path_vector(conn))
     blob = {
         "xycalc_version": __version__,
         "xycalc_git": git_identity(),
         "models": models,
         "golden": golden,
         "scenarios": describe_scenarios(conn),
-        "instance_catalog": [
-            {
-                "name": i.name,
-                "ram_bytes": i.ram_bytes,
-                "vcpu": i.vcpu,
-                "ebs_bandwidth_gbps": i.ebs_bandwidth_gbps,
-                "source_title": i.source_title,
-                "source_url": i.source_url,
-            }
-            for i in load_instance_catalog(conn)
-        ],
+        "instance_catalog": _instance_catalog_dicts(conn, "aws-ec2"),
+        "instance_catalogs": {
+            "aws-ec2": _instance_catalog_dicts(conn, "aws-ec2"),
+            "azure-vm": _instance_catalog_dicts(conn, "azure-vm"),
+        },
         "coefficient_mode": {
             row[0]: row[1]
             for row in conn.execute("SELECT slug, value_mode FROM coefficient")
@@ -443,6 +487,7 @@ def corpus_blob(conn: sqlite3.Connection) -> dict:
 def render(blob: dict, crumb: str | None = None) -> str:
     template = TEMPLATE.read_text(encoding="utf-8")
     js = EVALUATE_JS.read_text(encoding="utf-8")
+    app_js = APP_JS.read_text(encoding="utf-8")
 
     payload = json.dumps(blob, sort_keys=True, separators=(",", ":"), allow_nan=False)
     # `</script>` inside a JSON string would end the block early and hand the
@@ -452,11 +497,13 @@ def render(blob: dict, crumb: str | None = None) -> str:
 
     html = template.replace("/*__XYCALC_CORPUS_JSON__*/", payload)
     html = html.replace("/*__XYCALC_EVALUATE_JS__*/", js)
+    html = html.replace("/*__XYCALC_APP_JS__*/", app_js)
     html = html.replace("<!--__XYCALC_CRUMB__-->", crumb or "")
     html = html.replace("<!--__XYCALC_FAMILY_STRIP__-->", FAMILY_STRIP)
     for marker in (
         "__XYCALC_CORPUS_JSON__",
         "__XYCALC_EVALUATE_JS__",
+        "__XYCALC_APP_JS__",
         "__XYCALC_CRUMB__",
         "__XYCALC_FAMILY_STRIP__",
     ):

@@ -44,10 +44,36 @@ class ModelError(Exception):
     pass
 
 
-# Mirrors build.py's own DATA computation rather than importing it, so this
-# module has no dependency on the build pipeline -- a scenario only ever
-# references models that build.py has already loaded into the database.
-_SCENARIOS_PATH = Path(__file__).parent.parent.parent / "data" / "scenarios.yaml"
+# One decimal point, optional en-US thousands separators. `[0-9.]+` used to
+# accept "1.2.3" (Python then threw; JS parseFloat silently returned 1.2) and
+# to reject the comma in format_quantity's "3,000 iops". parse and format have
+# to be inverses or the calculator's own scrub-commit corrupts the answer.
+_AMOUNT = re.compile(
+    r"\s*((?:[0-9]{1,3}(?:,[0-9]{3})+|[0-9]+)(?:\.[0-9]+)?|\.[0-9]+)"
+    r"\s*([a-zA-Z/%]*)\s*"
+)
+
+
+def _split_amount(text: str) -> tuple[float, str]:
+    m = _AMOUNT.fullmatch(text)
+    if not m:
+        raise ModelError(f"cannot read a size from {text!r}")
+    return float(m.group(1).replace(",", "")), m.group(2)
+
+
+def parse_number(text: str | float | int) -> float:
+    """Scalar half of parse_bytes: strip thousands separators, one decimal.
+
+    format_quantity(3000, "iops") is "3,000 iops"; this reads it back as 3000
+    rather than 3. Units are ignored — the number is what the model wants.
+    """
+    if isinstance(text, (int, float)):
+        return float(text)
+    try:
+        value, _unit = _split_amount(str(text))
+    except ModelError:
+        raise ModelError(f"cannot read a number from {text!r}") from None
+    return value
 
 
 def parse_bytes(text: str | float | int) -> float:
@@ -56,15 +82,19 @@ def parse_bytes(text: str | float | int) -> float:
     when written explicitly."""
     if isinstance(text, (int, float)):
         return float(text)
-    m = re.fullmatch(r"\s*([0-9.]+)\s*([a-zA-Z]*)\s*", str(text))
-    if not m:
-        raise ModelError(f"cannot read a size from {text!r}")
-    value, unit = float(m.group(1)), m.group(2).lower()
+    value, unit_raw = _split_amount(str(text))
+    unit = unit_raw.lower()
     if not unit:
         return value
     if unit not in _UNITS:
-        raise ModelError(f"unknown unit {m.group(2)!r} in {text!r}")
+        raise ModelError(f"unknown unit {unit_raw!r} in {text!r}")
     return value * _UNITS[unit]
+
+
+# Mirrors build.py's own DATA computation rather than importing it, so this
+# module has no dependency on the build pipeline -- a scenario only ever
+# references models that build.py has already loaded into the database.
+_SCENARIOS_PATH = Path(__file__).parent.parent.parent / "data" / "scenarios.yaml"
 
 
 # Units whose fractional part is noise. "1,280.00 ops/s" implies a precision
@@ -380,13 +410,16 @@ class Model:
                 # and the answer stops looking uncertain when it still is. That
                 # is honest -- the bound really does determine the value -- but
                 # it must be visible, so the step records whether it happened.
+                # Only annotate when THIS bound collapsed a real band; a scalar
+                # input already made lo == hi before we got here.
+                was_point = lo == hi
                 if term.apply == "floor_at":
                     lo, mode, hi = max(lo, clo), max(mode, cmode), max(hi, chi)
                     contribution = f"≥ {format_quantity(cmode, in_unit)}"
                 else:
                     lo, mode, hi = min(lo, clo), min(mode, cmode), min(hi, chi)
                     contribution = f"≤ {format_quantity(cmode, in_unit)}"
-                if lo == hi:
+                if lo == hi and not was_point:
                     contribution += " (band collapsed)"
 
             elif term.apply == "set_from_coefficient":
@@ -412,16 +445,19 @@ class Model:
                 cap_lo = clo * 1024 / io_size
                 cap_mode = cmode * 1024 / io_size
                 cap_hi = chi * 1024 / io_size
+                was_point = lo == hi
                 lo, mode, hi = (
                     min(lo, cap_lo),
                     min(mode, cap_mode),
                     min(hi, cap_hi),
                 )
+                # The input is I/O size; the cap is IOPS (or whatever the
+                # model outputs). Label it with the output unit, not in_unit.
                 contribution = (
-                    f"≤ {format_quantity(cap_mode, in_unit)} "
+                    f"≤ {format_quantity(cap_mode, self.output_unit)} "
                     f"({cmode:g} MiB/s ÷ {io_size:g} KiB/op)"
                 )
-                if lo == hi:
+                if lo == hi and not was_point:
                     contribution += " (band collapsed)"
 
             elif term.apply == "add_fraction":
@@ -463,7 +499,20 @@ class Model:
                 if spec["required"]:
                     raise ModelError(f"{self.slug}: input '{key}' is required")
                 continue
-            out[key] = parse_bytes(raw) if spec["unit"] == "bytes" else float(raw)
+            try:
+                if spec["unit"] == "bytes":
+                    out[key] = parse_bytes(raw)
+                else:
+                    try:
+                        out[key] = parse_number(raw)
+                    except ModelError:
+                        raise ModelError(
+                            f"{self.slug}: input '{key}' is not a number ({raw!r})"
+                        ) from None
+            except (TypeError, ValueError):
+                raise ModelError(
+                    f"{self.slug}: input '{key}' is not a number ({raw!r})"
+                ) from None
         return out
 
     @staticmethod
@@ -601,7 +650,7 @@ def select_instance(
     erase that distinction.
 
     `family` filters the catalog by name prefix (case-insensitive), e.g.
-    "r8i" or "u7i". Raises if the filtered pool is empty.
+    "r8i", "Esv5", or "Esv6". Raises if the filtered pool is empty.
 
     `ceiling_bytes` is an operational policy cutoff, not a vendor fact --
     r8i itself goes to 3,072 GiB (r8i.96xlarge), but an org can decide to
@@ -866,6 +915,7 @@ class ScenarioStepResult:
     gp3_spec: dict | None = None
     headroom: dict | None = None
     assumed_inputs: dict | None = None
+    assumed_note: str | None = None
 
 
 def gp3_volume_spec(volume_bytes: float) -> dict:
@@ -924,6 +974,7 @@ def build_instance_sizing_summary(
     """Roll RAM, CPU, and gp3 disk into one panel for the instance-sizing scenario."""
     host: ScenarioStepResult | None = None
     inst: ScenarioStepResult | None = None
+    azure: ScenarioStepResult | None = None
     gp3: ScenarioStepResult | None = None
     ebs: ScenarioStepResult | None = None
     for s in steps:
@@ -932,7 +983,10 @@ def build_instance_sizing_summary(
         elif s.kind == "lookup" and s.gp3_spec is not None:
             gp3 = s
         elif s.kind == "lookup" and s.instance_pick is not None:
-            inst = s
+            if s.slug.startswith("azure-vm"):
+                azure = s
+            elif inst is None or s.slug == "aws-ec2.instance-select":
+                inst = s
         elif s.kind == "model" and s.slug == "ebs.iops-to-provision":
             ebs = s
 
@@ -960,6 +1014,19 @@ def build_instance_sizing_summary(
             "instance_lo": None if pick["pick_lo"] is None else pick["pick_lo"].name,
             "instance_mode": None if pick["pick_mode"] is None else pick["pick_mode"].name,
             "instance_hi": None if pick["pick_hi"] is None else pick["pick_hi"].name,
+        }
+
+    if azure and azure.instance_pick:
+        ap = azure.instance_pick
+
+        def azure_name(spec) -> str | None:
+            return None if spec is None else spec.name
+
+        summary["azure"] = {
+            "lo": azure_name(ap["pick_lo"]),
+            "mode": azure_name(ap["pick_mode"]),
+            "hi": azure_name(ap["pick_hi"]),
+            "exceeds_pool": ap["exceeds_pool"],
         }
 
     if gp3 and gp3.gp3_spec:
@@ -1000,7 +1067,7 @@ def build_instance_sizing_summary(
         if out_key == "ram":
             current[out_key] = parse_bytes(raw)
         else:
-            current[out_key] = float(raw)
+            current[out_key] = parse_number(raw)
     if current:
         summary["current"] = current
 
@@ -1130,6 +1197,7 @@ def chain_evaluate(
                 model=model,
                 result=composed,
                 assumed_inputs=assumed or None,
+                assumed_note=(step.get("assumed_note") if assumed else None),
             )
             if available is not None and step is last_bytes_step:
                 step_result.headroom = headroom(composed, available)
@@ -1155,10 +1223,19 @@ def chain_evaluate(
                         "gp3_spec: need at least one on-disk size input "
                         f"among {', '.join(keys)}"
                     )
-                inst = next((s for s in reversed(out) if s.instance_pick), None)
                 mode_inst = None
-                if inst and inst.instance_pick:
-                    mode_inst = inst.instance_pick.get("pick_mode")
+                for prior in reversed(out):
+                    if not prior.instance_pick:
+                        continue
+                    candidate = prior.instance_pick.get("pick_mode")
+                    if candidate is not None and candidate.ebs_bandwidth_gbps is not None:
+                        mode_inst = candidate
+                        break
+                if mode_inst is None:
+                    for prior in reversed(out):
+                        if prior.instance_pick and prior.instance_pick.get("pick_mode"):
+                            mode_inst = prior.instance_pick["pick_mode"]
+                            break
                 out.append(
                     ScenarioStepResult(
                         kind="lookup",
@@ -1173,7 +1250,8 @@ def chain_evaluate(
                 raise ModelError(f"unknown lookup kind '{lookup}'")
             if previous is None:
                 raise ModelError("instance_select: no previous step's band to pick against")
-            catalog = load_instance_catalog(conn, "aws-ec2")
+            system = step.get("system") or "aws-ec2"
+            catalog = load_instance_catalog(conn, system)
             ceiling = parse_bytes(step.get("max_ram", DEFAULT_INSTANCE_CEILING))
             pick = select_instance(
                 previous,
@@ -1183,7 +1261,7 @@ def chain_evaluate(
             )
             out.append(
                 ScenarioStepResult(
-                    kind="lookup", slug="aws-ec2.instance-select", chained=True,
+                    kind="lookup", slug=f"{system}.instance-select", chained=True,
                     instance_pick=pick,
                 )
             )

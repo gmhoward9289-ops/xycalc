@@ -1,0 +1,13 @@
+sources:
+- slug: obs-reef-compression-shape-2026-08-21
+  title: T2 compression shape sweep on reef (replication)
+  publisher: xycalc project (benchmark harness, committed)
+  retrieved_on: '2026-08-21'
+  source_type: benchmark
+  notes: >-
+    Harness: tools/bench/compression_shape_probe (Investigation 010
+    replication) on reef Docker mongo:7. Work/results on V: (WD BLACK SN770).
+    Same five shapes x snappy/zstd/zlib as the swamplink run; snappy
+    ~0.99-9.22, verdict wider-than-band. Does not narrow
+    mongodb.compression-ratio-snappy. See
+    docs/investigations/010-compression-shape/FINDINGS.md.

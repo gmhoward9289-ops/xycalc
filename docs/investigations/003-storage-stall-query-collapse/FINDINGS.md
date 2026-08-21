@@ -137,6 +137,13 @@ Two corrections fell out of one command:
   `removedFromQueue`. Those four are new in 7.0 and they measure this failure
   *directly* — the queue, and the time spent in it, rather than something you
   infer from tickets running out.
+
+  **Update 2026-08-21 (issue #7):** on MongoDB **8.0.29 and 8.2.12** the path
+  flipped again — `wiredTiger.concurrentTransactions` is gone and tickets live
+  under `queues.execution.{read,write}` (idle floor still 4). See the version
+  table in `docs/telemetry/mongodb.md` and
+  `data/observations/cooper-tickets-2026-08-21.yaml`. Harnesses use
+  `tools/bench/mongo_tickets.py` so both shapes resolve.
 - **"You have 128 tickets" is wrong on 7.0+, by 32x, in the dangerous
   direction.**
 
@@ -354,12 +361,17 @@ count after an incident rather than assuming it has settled.
 **What is still open.** Whether a low, nonzero trickle of subsequent traffic
 would drive the pool back down — the plan's other cooldown branch, not run in
 this pass — and on what timescale if so. Also open: the `64,150` convergence
-run, and the harness-level instrumentation (raw sample series, an automated
-convergence verdict) the plan specifies in its §4a/4b, none of which landed
-here. This pass answered the two questions the issue asked well enough to
-close its immediate concern (the pool does not evaporate back to 4 the moment
-an incident ends), but the full plan is not yet executed and issue #2 still
-wants the `64,150` result specifically.
+run. **Harness residual (2026-08-21):** `ticket_probe.py` now emits the raw
+`series`, prints an automated `convergence` verdict (`CONVERGED` /
+`STILL_MOVING` / `CONVERGED_DEMAND_CAPPED`), and supports
+`PROBE_COOLDOWN_SECONDS` + `PROBE_COOLDOWN_HEARTBEAT_HZ` on a dedicated
+single-connection client (plan §4a/4b/4c). The `64,150` + idle/trickle pair
+still needs a Docker host run; unit coverage for the verdict math is in
+`tests/test_ticket_probe_convergence.py`. This first pass answered the two
+questions the issue asked well enough to close its immediate concern (the
+pool does not evaporate back to 4 the moment an incident ends), but the full
+plan is not yet executed and issue #2 still wants the `64,150` result
+specifically.
 
 ---
 
@@ -369,7 +381,7 @@ In order of how directly each one confirms this diagnosis:
 
 | Reading | Where | Says |
 |---|---|---|
-| `totalTickets`, and `out` against it | `serverStatus().wiredTiger.concurrentTransactions` — **not** `queues.execution`, which does not exist in 7.0.39 | whether the pool is exhausted, and **what N currently is**. Do not assume 128 |
+| `totalTickets`, and `out` against it | **7.0.x:** `serverStatus().wiredTiger.concurrentTransactions` (queues.execution absent). **8.0+:** `serverStatus().queues.execution` (concurrentTransactions absent — issue #7). | whether the pool is exhausted, and **what N currently is**. Do not assume 128 |
 | `totalTimeQueuedMicros`, `queueLength` | same object, new in 7.0 | the queue and the time spent in it, measured rather than inferred. Rising sharply while `out` is pinned is this failure with nothing left to interpret |
 | queued readers/writers | `serverStatus().globalLock.currentQueue` | how much demand is stacked behind the pool |
 | pages evicted by application threads | `wiredTiger.cache` | whether the feedback loop is running |

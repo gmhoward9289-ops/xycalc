@@ -1,0 +1,29 @@
+observations:
+- slug: cooper-burst-2026-08-21-batch
+  system: ebs
+  parameter: io.peak_to_mean_ratio
+  value: 1.586
+  unit: ratio
+  workload: fio steady sequential write, iodepth 8, uncapped
+  machine_class: COOPER WSL2 loop device
+  system_version: loop device, fio --direct=1
+  observed_on: '2026-08-21'
+  source: obs-cooper-burst-2026-08-21
+  notes: "Median of 15 per-minute peak/mean ratios; spread 1.079\u20134.681 (min\u2013\
+    max), mean 293.1 IOPS, peak 488.0 IOPS. Recorded as evidence for ebs.peak-to-mean-iops-ratio;\
+    \ the coefficient is NOT narrowed on one host's runs."
+- slug: cooper-burst-2026-08-21-bursty
+  system: ebs
+  parameter: io.peak_to_mean_ratio
+  value: 1.158
+  unit: ratio
+  workload: fio Poisson-arrival random read, rate_iops=400, iodepth 8
+  machine_class: COOPER WSL2 loop device
+  system_version: loop device, fio --direct=1
+  observed_on: '2026-08-21'
+  source: obs-cooper-burst-2026-08-21
+  notes: "Median of 15 per-minute peak/mean ratios; spread 1.104\u201312.588 (min\u2013\
+    max), mean 399.3 IOPS, peak 7650.0 IOPS. Per-window ratio still climbing \u2014\
+    \ may not have converged in this window (see plan \xA72). Recorded as evidence\
+    \ for ebs.peak-to-mean-iops-ratio; the coefficient is NOT narrowed on one host's\
+    \ runs."

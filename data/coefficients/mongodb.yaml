@@ -84,6 +84,13 @@ coefficients:
       holds more of the database than the WiredTiger cache does, which is the
       mechanical reason the vendor advises against raising the split.
 
+      Forward-checked 2026-08-21 on unpinned mongo:7.0.39 (cooper-hostram):
+      cache matched 0.5 × (RAM − 1 GiB) within ~0.03% when hostInfo agreed
+      with the RAM mongod used. On Docker Desktop, a 2 GiB --memory cgroup
+      sized the cache correctly while hostInfo still reported the ~4 GiB VM —
+      container sizing can diverge from hostInfo; see
+      obs-cooper-hostram-2026-08-21.
+
   - slug: mongodb.cache-default-reserve-bytes
     parameter: host.default_reserve_bytes
     system: mongodb
@@ -117,6 +124,22 @@ coefficients:
       measured on log data, which compresses far better than a collection that
       is mostly ObjectIds, numbers and short keys. The low end is there for
       exactly that case.
+
+      Survived contact with several real (demo-curated) document shapes on
+      snappy, MongoDB 7.0.39 — issue #5 Track A, obs-mongodb-compression-2026-08-21
+      and obs-mongodb-compression-batch2-2026-08-21: sample ratios 1.73–3.49
+      (mflix 1.75, airbnb 1.73, companies 2.21, tweets 2.54, inspections 2.78,
+      grades 3.49). All inside 1.5–3.5; spread uses most of the band. Band not
+      narrowed on Track A alone.
+
+      Investigation 010 / T2 (obs-swamplink-compression-shape-2026-08-21)
+      manufactured the synthetic extremes on the same MongoDB 7.0.39: snappy
+      ratios 0.99 (pure-random) through 9.17 (near-duplicate). That is wider
+      than this band at both ends. The band is kept as a practitioner prior
+      for application-shaped data; synthetic extremes are documented, not
+      folded into lo/hi. Prefer db.stats() whenever available. One earlier
+      synthetic high-entropy point at 1.42× sits with the T2 floor (~1.0).
+      Production db.stats() samples (Track B) remain welcome.
 
       If you can run db.stats() against the real database, do — dataSize is
       the measured answer and beats this range outright. This coefficient is
@@ -175,7 +198,9 @@ coefficients:
   - slug: mongodb.tickets-probing-floor
     parameter: db.concurrency_tickets
     system: mongodb
-    applies_to: MongoDB >=7.0 (throughputProbingMinConcurrency default)
+    applies_to: >-
+      MongoDB >=7.0 through 8.2.12 (throughputProbingMinConcurrency default;
+      value confirmed idle on 7.0.39, 8.0.29, 8.2.12)
     value: 4
     confidence: practitioner
     source: percona-mongodb-concurrency-algorithm
@@ -190,14 +215,19 @@ coefficients:
       A 32x range in the term that divides into the throughput ceiling — and
       the floor is where an idle instance SITS. Measured on MongoDB 7.0.39
       (swamplink, 2026-07-31): read and write pools both reported
-      totalTickets = 4 at rest. So on 7.0+ the pre-7.0 assumption of "128
-      tickets" is not a conservative simplification, it is wrong by 32x in the
-      dangerous direction.
+      totalTickets = 4 at rest. Confirmed again on idle 8.0.29 and 8.2.12
+      (cooper-2026-08-21-*-tickets-idle-8.*): same floor of 4.
+
+      Field path moved between majors. On 7.0.39 the figure is under
+      wiredTiger.concurrentTransactions; on 8.0.29 and 8.2.12 that object is
+      gone and the same numbers live under queues.execution.{read,write}.
+      See docs/telemetry/mongodb.md and obs-mongodb-tickets-cooper-2026-08-21.
 
       Kept at `practitioner` rather than promoted to `measured` because the
       observation confirms the resting VALUE while Percona is the source for it
-      being the algorithm's documented floor. The observation is recorded
-      separately as swamplink-2026-07-31-read-tickets-idle.
+      being the algorithm's documented floor. The observations are recorded
+      separately (swamplink-2026-07-31-*-tickets-idle,
+      cooper-2026-08-21-*-tickets-idle-8.*).
 
       Still open, and it is the difference between a bad hour and an outage:
       whether the algorithm climbs from the floor under load, and whether it
@@ -207,7 +237,9 @@ coefficients:
   - slug: mongodb.tickets-probing-cap
     parameter: db.concurrency_tickets
     system: mongodb
-    applies_to: MongoDB >=7.0 (throughputProbingMaxConcurrency default)
+    applies_to: >-
+      MongoDB >=7.0 through 8.2.12 (throughputProbingMaxConcurrency default;
+      telemetry path confirmed on 7.0.39 / 8.0.29 / 8.2.12)
     value: 128
     confidence: practitioner
     source: percona-mongodb-concurrency-algorithm
@@ -215,7 +247,9 @@ coefficients:
       The ceiling of the dynamic range, unchanged from the old static value —
       so 7.0 did not raise the maximum, it lowered the typical. Percona notes
       the algorithm "starts with a much lower baseline number of available
-      tickets" than the pre-7.0 constant.
+      tickets" than the pre-7.0 constant. Cap applies_to is capped at the
+      last version whose ticket telemetry path was checked (8.2.12); the
+      documented max itself was not re-probed under load on 8.x.
 
   - slug: mongodb.tickets-idle-hold-seconds-min
     parameter: db.concurrency_tickets

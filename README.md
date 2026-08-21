@@ -78,6 +78,21 @@ xycalc export --out page.html    # the calculator as one static file
 Flags for `sizing`, `headroom`, and `scenario` are generated from each model's
 (or scenario's) declared inputs, so **a new model is YAML, never code**.
 
+## MCP
+
+The same surface as MCP tools, so an assistant answers WITH the citation chain
+instead of from vibes. Optional extra — no new runtime dependency on the core:
+
+```bash
+pip install -e ".[mcp]"
+```
+
+Entry point `xycalc-mcp` (stdio). Tools: `list_models`, `sizing`, `headroom`,
+`scenario`, `why`. Every result carries the lo/mode/hi band, unit-labeled
+steps, per-term sources/quotes/versions, the verbatim validation grade, and
+`corpus_digest`. Unvalidated models say `unvalidated (n=0)` in the result;
+omitting that would read as a validated answer.
+
 ## The calculator
 
 `xycalc gui` serves it from FastAPI; `xycalc export` writes the same page as a
@@ -249,14 +264,11 @@ Designed experiments live in
 [#9–#18](https://github.com/gmhoward9289-ops/xycalc/labels/roadmap). T1b
 (occupancy band) and T7 (Redis broker eviction) have **landed** as
 investigations 007 and 005. T1 (cache cliff) and T11 (colocation share) landed
-in investigations 006 and 009.
-A2 is the remaining gate.
+in investigations 006 and 009. A2 transferred the A1 shape at 1.0 GB cache —
+not a remaining gate, though it still does not mint a wt-cache coefficient.
 
-The three most likely to overturn something already published:
+The experiments most likely to overturn something already published:
 
-- **[#9](https://github.com/gmhoward9289-ops/xycalc/issues/9) / A2** — does
-  the oversubscription *shape* transfer at a larger cache? If not, the A1
-  curve is a throttle story, not a cache story.
 - **[#12](https://github.com/gmhoward9289-ops/xycalc/issues/12)** — is
   investigation 003's flat throughput actually flat, or is a 25-second mean
   hiding a checkpoint sawtooth? If so, this corpus made at small scale the same

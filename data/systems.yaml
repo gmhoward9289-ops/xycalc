@@ -62,7 +62,9 @@ systems:
       key overhead (56 B), eviction/listpack defaults, and FAQ 20% host
       headroom (documented). Investigation 005 (T7): maxmemory policy conflict
       in corpus; measured loss/stall rates import from evict_probe via
-      tools/import_evict_probe.py.
+      tools/import_evict_probe.py. Scenario redis.celery-broker composes those
+      with investigation 004 drain/ceiling — it names both failure modes and
+      does not pick a winner.
 
   - slug: celery
     label: Celery
@@ -103,11 +105,15 @@ systems:
     label: Azure VMs (memory-optimized)
     category: hardware
     notes: >-
-      Stub. Required peer of aws-ec2 for the core instance-sizing product:
-      same pick-per-band-end contract (lo/mode/hi named SKUs + RAM/vCPU/disk
-      caps), not a different math. Premium SSD v2 lives under azure-disks;
-      this system is the VM SKU catalog. See docs/telemetry/recommendations.md
-      Product core (U17).
+      Peer of aws-ec2 for the core instance-sizing product: same
+      pick-per-band-end contract (lo/mode/hi named SKUs + RAM/vCPU). Catalog
+      is Esv5 and Esv6 (premium storage, no local temp disk) in
+      data/coefficients/azure-vm.yaml. `--family Esv5` / `--family Esv6`
+      filter by name prefix. Esv5 tops out at Standard_E96s_v5 (672 GiB);
+      Esv6 at Standard_E128s_v6 (1,024 GiB) in this catalog. Isolated SKUs
+      and other E-family variants are omitted until sourced the same way.
+      Premium SSD v2 disk math stays under azure-disks. Bare-metal is a
+      separate stub. See docs/telemetry/recommendations.md Product core (U17).
 
   - slug: bare-metal
     label: Bare metal / colo host classes

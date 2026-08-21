@@ -1,0 +1,571 @@
+observations:
+- slug: reef-compression-shape-2026-08-21-pure-random-snappy-ratio
+  parameter: storage.compression_ratio
+  value: 0.9905
+  unit: ratio
+  workload: synthetic shape=pure-random block_compressor=snappy
+  notes: dataSize/storageSize = 302,912,724/305,831,936 B, post-checkpoint. shape=pure-random
+    compressor=snappy. gzip-9 proxy on raw export sample = 1.3381.
+  system: mongodb
+  machine_class: 'reef Docker mongo:7, WD BLACK SN770 work on V:'
+  system_version: '7.0'
+  observed_on: '2026-08-21'
+  source: obs-reef-compression-shape-2026-08-21
+- slug: reef-compression-shape-2026-08-21-pure-random-snappy-datasize
+  parameter: storage.collection_bytes_uncompressed
+  value: 302912724
+  unit: bytes
+  workload: synthetic shape=pure-random block_compressor=snappy
+  notes: collection stats size (uncompressed)
+  system: mongodb
+  machine_class: 'reef Docker mongo:7, WD BLACK SN770 work on V:'
+  system_version: '7.0'
+  observed_on: '2026-08-21'
+  source: obs-reef-compression-shape-2026-08-21
+- slug: reef-compression-shape-2026-08-21-pure-random-snappy-storagesize
+  parameter: storage.collection_bytes_on_disk
+  value: 305831936
+  unit: bytes
+  workload: synthetic shape=pure-random block_compressor=snappy
+  notes: post-checkpoint storageSize
+  system: mongodb
+  machine_class: 'reef Docker mongo:7, WD BLACK SN770 work on V:'
+  system_version: '7.0'
+  observed_on: '2026-08-21'
+  source: obs-reef-compression-shape-2026-08-21
+- slug: reef-compression-shape-2026-08-21-pure-random-zstd-ratio
+  parameter: storage.compression_ratio
+  value: 1.2293
+  unit: ratio
+  workload: synthetic shape=pure-random block_compressor=zstd
+  notes: dataSize/storageSize = 302,912,724/246,411,264 B, post-checkpoint. shape=pure-random
+    compressor=zstd. gzip-9 proxy on raw export sample = 1.3381.
+  system: mongodb
+  machine_class: 'reef Docker mongo:7, WD BLACK SN770 work on V:'
+  system_version: '7.0'
+  observed_on: '2026-08-21'
+  source: obs-reef-compression-shape-2026-08-21
+- slug: reef-compression-shape-2026-08-21-pure-random-zstd-datasize
+  parameter: storage.collection_bytes_uncompressed
+  value: 302912724
+  unit: bytes
+  workload: synthetic shape=pure-random block_compressor=zstd
+  notes: collection stats size (uncompressed)
+  system: mongodb
+  machine_class: 'reef Docker mongo:7, WD BLACK SN770 work on V:'
+  system_version: '7.0'
+  observed_on: '2026-08-21'
+  source: obs-reef-compression-shape-2026-08-21
+- slug: reef-compression-shape-2026-08-21-pure-random-zstd-storagesize
+  parameter: storage.collection_bytes_on_disk
+  value: 246411264
+  unit: bytes
+  workload: synthetic shape=pure-random block_compressor=zstd
+  notes: post-checkpoint storageSize
+  system: mongodb
+  machine_class: 'reef Docker mongo:7, WD BLACK SN770 work on V:'
+  system_version: '7.0'
+  observed_on: '2026-08-21'
+  source: obs-reef-compression-shape-2026-08-21
+- slug: reef-compression-shape-2026-08-21-pure-random-zlib-ratio
+  parameter: storage.compression_ratio
+  value: 1.2121
+  unit: ratio
+  workload: synthetic shape=pure-random block_compressor=zlib
+  notes: dataSize/storageSize = 302,912,724/249,917,440 B, post-checkpoint. shape=pure-random
+    compressor=zlib. gzip-9 proxy on raw export sample = 1.3381.
+  system: mongodb
+  machine_class: 'reef Docker mongo:7, WD BLACK SN770 work on V:'
+  system_version: '7.0'
+  observed_on: '2026-08-21'
+  source: obs-reef-compression-shape-2026-08-21
+- slug: reef-compression-shape-2026-08-21-pure-random-zlib-datasize
+  parameter: storage.collection_bytes_uncompressed
+  value: 302912724
+  unit: bytes
+  workload: synthetic shape=pure-random block_compressor=zlib
+  notes: collection stats size (uncompressed)
+  system: mongodb
+  machine_class: 'reef Docker mongo:7, WD BLACK SN770 work on V:'
+  system_version: '7.0'
+  observed_on: '2026-08-21'
+  source: obs-reef-compression-shape-2026-08-21
+- slug: reef-compression-shape-2026-08-21-pure-random-zlib-storagesize
+  parameter: storage.collection_bytes_on_disk
+  value: 249917440
+  unit: bytes
+  workload: synthetic shape=pure-random block_compressor=zlib
+  notes: post-checkpoint storageSize
+  system: mongodb
+  machine_class: 'reef Docker mongo:7, WD BLACK SN770 work on V:'
+  system_version: '7.0'
+  observed_on: '2026-08-21'
+  source: obs-reef-compression-shape-2026-08-21
+- slug: reef-compression-shape-2026-08-21-random-repeated-fields-snappy-ratio
+  parameter: storage.compression_ratio
+  value: 0.9873
+  unit: ratio
+  workload: synthetic shape=random-repeated-fields block_compressor=snappy
+  notes: dataSize/storageSize = 307,701,520/311,668,736 B, post-checkpoint. shape=random-repeated-fields
+    compressor=snappy. gzip-9 proxy on raw export sample = 1.3837.
+  system: mongodb
+  machine_class: 'reef Docker mongo:7, WD BLACK SN770 work on V:'
+  system_version: '7.0'
+  observed_on: '2026-08-21'
+  source: obs-reef-compression-shape-2026-08-21
+- slug: reef-compression-shape-2026-08-21-random-repeated-fields-snappy-datasize
+  parameter: storage.collection_bytes_uncompressed
+  value: 307701520
+  unit: bytes
+  workload: synthetic shape=random-repeated-fields block_compressor=snappy
+  notes: collection stats size (uncompressed)
+  system: mongodb
+  machine_class: 'reef Docker mongo:7, WD BLACK SN770 work on V:'
+  system_version: '7.0'
+  observed_on: '2026-08-21'
+  source: obs-reef-compression-shape-2026-08-21
+- slug: reef-compression-shape-2026-08-21-random-repeated-fields-snappy-storagesize
+  parameter: storage.collection_bytes_on_disk
+  value: 311668736
+  unit: bytes
+  workload: synthetic shape=random-repeated-fields block_compressor=snappy
+  notes: post-checkpoint storageSize
+  system: mongodb
+  machine_class: 'reef Docker mongo:7, WD BLACK SN770 work on V:'
+  system_version: '7.0'
+  observed_on: '2026-08-21'
+  source: obs-reef-compression-shape-2026-08-21
+- slug: reef-compression-shape-2026-08-21-random-repeated-fields-zstd-ratio
+  parameter: storage.compression_ratio
+  value: 1.3611
+  unit: ratio
+  workload: synthetic shape=random-repeated-fields block_compressor=zstd
+  notes: dataSize/storageSize = 307,701,520/226,074,624 B, post-checkpoint. shape=random-repeated-fields
+    compressor=zstd. gzip-9 proxy on raw export sample = 1.3837.
+  system: mongodb
+  machine_class: 'reef Docker mongo:7, WD BLACK SN770 work on V:'
+  system_version: '7.0'
+  observed_on: '2026-08-21'
+  source: obs-reef-compression-shape-2026-08-21
+- slug: reef-compression-shape-2026-08-21-random-repeated-fields-zstd-datasize
+  parameter: storage.collection_bytes_uncompressed
+  value: 307701520
+  unit: bytes
+  workload: synthetic shape=random-repeated-fields block_compressor=zstd
+  notes: collection stats size (uncompressed)
+  system: mongodb
+  machine_class: 'reef Docker mongo:7, WD BLACK SN770 work on V:'
+  system_version: '7.0'
+  observed_on: '2026-08-21'
+  source: obs-reef-compression-shape-2026-08-21
+- slug: reef-compression-shape-2026-08-21-random-repeated-fields-zstd-storagesize
+  parameter: storage.collection_bytes_on_disk
+  value: 226074624
+  unit: bytes
+  workload: synthetic shape=random-repeated-fields block_compressor=zstd
+  notes: post-checkpoint storageSize
+  system: mongodb
+  machine_class: 'reef Docker mongo:7, WD BLACK SN770 work on V:'
+  system_version: '7.0'
+  observed_on: '2026-08-21'
+  source: obs-reef-compression-shape-2026-08-21
+- slug: reef-compression-shape-2026-08-21-random-repeated-fields-zlib-ratio
+  parameter: storage.compression_ratio
+  value: 1.3673
+  unit: ratio
+  workload: synthetic shape=random-repeated-fields block_compressor=zlib
+  notes: dataSize/storageSize = 307,701,520/225,050,624 B, post-checkpoint. shape=random-repeated-fields
+    compressor=zlib. gzip-9 proxy on raw export sample = 1.3837.
+  system: mongodb
+  machine_class: 'reef Docker mongo:7, WD BLACK SN770 work on V:'
+  system_version: '7.0'
+  observed_on: '2026-08-21'
+  source: obs-reef-compression-shape-2026-08-21
+- slug: reef-compression-shape-2026-08-21-random-repeated-fields-zlib-datasize
+  parameter: storage.collection_bytes_uncompressed
+  value: 307701520
+  unit: bytes
+  workload: synthetic shape=random-repeated-fields block_compressor=zlib
+  notes: collection stats size (uncompressed)
+  system: mongodb
+  machine_class: 'reef Docker mongo:7, WD BLACK SN770 work on V:'
+  system_version: '7.0'
+  observed_on: '2026-08-21'
+  source: obs-reef-compression-shape-2026-08-21
+- slug: reef-compression-shape-2026-08-21-random-repeated-fields-zlib-storagesize
+  parameter: storage.collection_bytes_on_disk
+  value: 225050624
+  unit: bytes
+  workload: synthetic shape=random-repeated-fields block_compressor=zlib
+  notes: post-checkpoint storageSize
+  system: mongodb
+  machine_class: 'reef Docker mongo:7, WD BLACK SN770 work on V:'
+  system_version: '7.0'
+  observed_on: '2026-08-21'
+  source: obs-reef-compression-shape-2026-08-21
+- slug: reef-compression-shape-2026-08-21-low-cardinality-enums-snappy-ratio
+  parameter: storage.compression_ratio
+  value: 3.9089
+  unit: ratio
+  workload: synthetic shape=low-cardinality-enums block_compressor=snappy
+  notes: dataSize/storageSize = 354,032,457/90,570,752 B, post-checkpoint. shape=low-cardinality-enums
+    compressor=snappy. gzip-9 proxy on raw export sample = 33.1782.
+  system: mongodb
+  machine_class: 'reef Docker mongo:7, WD BLACK SN770 work on V:'
+  system_version: '7.0'
+  observed_on: '2026-08-21'
+  source: obs-reef-compression-shape-2026-08-21
+- slug: reef-compression-shape-2026-08-21-low-cardinality-enums-snappy-datasize
+  parameter: storage.collection_bytes_uncompressed
+  value: 354032457
+  unit: bytes
+  workload: synthetic shape=low-cardinality-enums block_compressor=snappy
+  notes: collection stats size (uncompressed)
+  system: mongodb
+  machine_class: 'reef Docker mongo:7, WD BLACK SN770 work on V:'
+  system_version: '7.0'
+  observed_on: '2026-08-21'
+  source: obs-reef-compression-shape-2026-08-21
+- slug: reef-compression-shape-2026-08-21-low-cardinality-enums-snappy-storagesize
+  parameter: storage.collection_bytes_on_disk
+  value: 90570752
+  unit: bytes
+  workload: synthetic shape=low-cardinality-enums block_compressor=snappy
+  notes: post-checkpoint storageSize
+  system: mongodb
+  machine_class: 'reef Docker mongo:7, WD BLACK SN770 work on V:'
+  system_version: '7.0'
+  observed_on: '2026-08-21'
+  source: obs-reef-compression-shape-2026-08-21
+- slug: reef-compression-shape-2026-08-21-low-cardinality-enums-zstd-ratio
+  parameter: storage.compression_ratio
+  value: 6.8031
+  unit: ratio
+  workload: synthetic shape=low-cardinality-enums block_compressor=zstd
+  notes: dataSize/storageSize = 354,032,457/52,039,680 B, post-checkpoint. shape=low-cardinality-enums
+    compressor=zstd. gzip-9 proxy on raw export sample = 33.1782.
+  system: mongodb
+  machine_class: 'reef Docker mongo:7, WD BLACK SN770 work on V:'
+  system_version: '7.0'
+  observed_on: '2026-08-21'
+  source: obs-reef-compression-shape-2026-08-21
+- slug: reef-compression-shape-2026-08-21-low-cardinality-enums-zstd-datasize
+  parameter: storage.collection_bytes_uncompressed
+  value: 354032457
+  unit: bytes
+  workload: synthetic shape=low-cardinality-enums block_compressor=zstd
+  notes: collection stats size (uncompressed)
+  system: mongodb
+  machine_class: 'reef Docker mongo:7, WD BLACK SN770 work on V:'
+  system_version: '7.0'
+  observed_on: '2026-08-21'
+  source: obs-reef-compression-shape-2026-08-21
+- slug: reef-compression-shape-2026-08-21-low-cardinality-enums-zstd-storagesize
+  parameter: storage.collection_bytes_on_disk
+  value: 52039680
+  unit: bytes
+  workload: synthetic shape=low-cardinality-enums block_compressor=zstd
+  notes: post-checkpoint storageSize
+  system: mongodb
+  machine_class: 'reef Docker mongo:7, WD BLACK SN770 work on V:'
+  system_version: '7.0'
+  observed_on: '2026-08-21'
+  source: obs-reef-compression-shape-2026-08-21
+- slug: reef-compression-shape-2026-08-21-low-cardinality-enums-zlib-ratio
+  parameter: storage.compression_ratio
+  value: 9.105
+  unit: ratio
+  workload: synthetic shape=low-cardinality-enums block_compressor=zlib
+  notes: dataSize/storageSize = 354,032,457/38,883,328 B, post-checkpoint. shape=low-cardinality-enums
+    compressor=zlib. gzip-9 proxy on raw export sample = 33.1782.
+  system: mongodb
+  machine_class: 'reef Docker mongo:7, WD BLACK SN770 work on V:'
+  system_version: '7.0'
+  observed_on: '2026-08-21'
+  source: obs-reef-compression-shape-2026-08-21
+- slug: reef-compression-shape-2026-08-21-low-cardinality-enums-zlib-datasize
+  parameter: storage.collection_bytes_uncompressed
+  value: 354032457
+  unit: bytes
+  workload: synthetic shape=low-cardinality-enums block_compressor=zlib
+  notes: collection stats size (uncompressed)
+  system: mongodb
+  machine_class: 'reef Docker mongo:7, WD BLACK SN770 work on V:'
+  system_version: '7.0'
+  observed_on: '2026-08-21'
+  source: obs-reef-compression-shape-2026-08-21
+- slug: reef-compression-shape-2026-08-21-low-cardinality-enums-zlib-storagesize
+  parameter: storage.collection_bytes_on_disk
+  value: 38883328
+  unit: bytes
+  workload: synthetic shape=low-cardinality-enums block_compressor=zlib
+  notes: post-checkpoint storageSize
+  system: mongodb
+  machine_class: 'reef Docker mongo:7, WD BLACK SN770 work on V:'
+  system_version: '7.0'
+  observed_on: '2026-08-21'
+  source: obs-reef-compression-shape-2026-08-21
+- slug: reef-compression-shape-2026-08-21-realistic-mixed-snappy-ratio
+  parameter: storage.compression_ratio
+  value: 1.4321
+  unit: ratio
+  workload: synthetic shape=realistic-mixed block_compressor=snappy
+  notes: dataSize/storageSize = 314,695,070/219,742,208 B, post-checkpoint. shape=realistic-mixed
+    compressor=snappy. gzip-9 proxy on raw export sample = 2.1218.
+  system: mongodb
+  machine_class: 'reef Docker mongo:7, WD BLACK SN770 work on V:'
+  system_version: '7.0'
+  observed_on: '2026-08-21'
+  source: obs-reef-compression-shape-2026-08-21
+- slug: reef-compression-shape-2026-08-21-realistic-mixed-snappy-datasize
+  parameter: storage.collection_bytes_uncompressed
+  value: 314695070
+  unit: bytes
+  workload: synthetic shape=realistic-mixed block_compressor=snappy
+  notes: collection stats size (uncompressed)
+  system: mongodb
+  machine_class: 'reef Docker mongo:7, WD BLACK SN770 work on V:'
+  system_version: '7.0'
+  observed_on: '2026-08-21'
+  source: obs-reef-compression-shape-2026-08-21
+- slug: reef-compression-shape-2026-08-21-realistic-mixed-snappy-storagesize
+  parameter: storage.collection_bytes_on_disk
+  value: 219742208
+  unit: bytes
+  workload: synthetic shape=realistic-mixed block_compressor=snappy
+  notes: post-checkpoint storageSize
+  system: mongodb
+  machine_class: 'reef Docker mongo:7, WD BLACK SN770 work on V:'
+  system_version: '7.0'
+  observed_on: '2026-08-21'
+  source: obs-reef-compression-shape-2026-08-21
+- slug: reef-compression-shape-2026-08-21-realistic-mixed-zstd-ratio
+  parameter: storage.compression_ratio
+  value: 1.9805
+  unit: ratio
+  workload: synthetic shape=realistic-mixed block_compressor=zstd
+  notes: dataSize/storageSize = 314,695,070/158,896,128 B, post-checkpoint. shape=realistic-mixed
+    compressor=zstd. gzip-9 proxy on raw export sample = 2.1218.
+  system: mongodb
+  machine_class: 'reef Docker mongo:7, WD BLACK SN770 work on V:'
+  system_version: '7.0'
+  observed_on: '2026-08-21'
+  source: obs-reef-compression-shape-2026-08-21
+- slug: reef-compression-shape-2026-08-21-realistic-mixed-zstd-datasize
+  parameter: storage.collection_bytes_uncompressed
+  value: 314695070
+  unit: bytes
+  workload: synthetic shape=realistic-mixed block_compressor=zstd
+  notes: collection stats size (uncompressed)
+  system: mongodb
+  machine_class: 'reef Docker mongo:7, WD BLACK SN770 work on V:'
+  system_version: '7.0'
+  observed_on: '2026-08-21'
+  source: obs-reef-compression-shape-2026-08-21
+- slug: reef-compression-shape-2026-08-21-realistic-mixed-zstd-storagesize
+  parameter: storage.collection_bytes_on_disk
+  value: 158896128
+  unit: bytes
+  workload: synthetic shape=realistic-mixed block_compressor=zstd
+  notes: post-checkpoint storageSize
+  system: mongodb
+  machine_class: 'reef Docker mongo:7, WD BLACK SN770 work on V:'
+  system_version: '7.0'
+  observed_on: '2026-08-21'
+  source: obs-reef-compression-shape-2026-08-21
+- slug: reef-compression-shape-2026-08-21-realistic-mixed-zlib-ratio
+  parameter: storage.compression_ratio
+  value: 1.8768
+  unit: ratio
+  workload: synthetic shape=realistic-mixed block_compressor=zlib
+  notes: dataSize/storageSize = 314,695,070/167,677,952 B, post-checkpoint. shape=realistic-mixed
+    compressor=zlib. gzip-9 proxy on raw export sample = 2.1218.
+  system: mongodb
+  machine_class: 'reef Docker mongo:7, WD BLACK SN770 work on V:'
+  system_version: '7.0'
+  observed_on: '2026-08-21'
+  source: obs-reef-compression-shape-2026-08-21
+- slug: reef-compression-shape-2026-08-21-realistic-mixed-zlib-datasize
+  parameter: storage.collection_bytes_uncompressed
+  value: 314695070
+  unit: bytes
+  workload: synthetic shape=realistic-mixed block_compressor=zlib
+  notes: collection stats size (uncompressed)
+  system: mongodb
+  machine_class: 'reef Docker mongo:7, WD BLACK SN770 work on V:'
+  system_version: '7.0'
+  observed_on: '2026-08-21'
+  source: obs-reef-compression-shape-2026-08-21
+- slug: reef-compression-shape-2026-08-21-realistic-mixed-zlib-storagesize
+  parameter: storage.collection_bytes_on_disk
+  value: 167677952
+  unit: bytes
+  workload: synthetic shape=realistic-mixed block_compressor=zlib
+  notes: post-checkpoint storageSize
+  system: mongodb
+  machine_class: 'reef Docker mongo:7, WD BLACK SN770 work on V:'
+  system_version: '7.0'
+  observed_on: '2026-08-21'
+  source: obs-reef-compression-shape-2026-08-21
+- slug: reef-compression-shape-2026-08-21-near-duplicate-snappy-ratio
+  parameter: storage.compression_ratio
+  value: 9.2203
+  unit: ratio
+  workload: synthetic shape=near-duplicate block_compressor=snappy
+  notes: dataSize/storageSize = 331,248,016/35,926,016 B, post-checkpoint. shape=near-duplicate
+    compressor=snappy. gzip-9 proxy on raw export sample = 57.7432.
+  system: mongodb
+  machine_class: 'reef Docker mongo:7, WD BLACK SN770 work on V:'
+  system_version: '7.0'
+  observed_on: '2026-08-21'
+  source: obs-reef-compression-shape-2026-08-21
+- slug: reef-compression-shape-2026-08-21-near-duplicate-snappy-datasize
+  parameter: storage.collection_bytes_uncompressed
+  value: 331248016
+  unit: bytes
+  workload: synthetic shape=near-duplicate block_compressor=snappy
+  notes: collection stats size (uncompressed)
+  system: mongodb
+  machine_class: 'reef Docker mongo:7, WD BLACK SN770 work on V:'
+  system_version: '7.0'
+  observed_on: '2026-08-21'
+  source: obs-reef-compression-shape-2026-08-21
+- slug: reef-compression-shape-2026-08-21-near-duplicate-snappy-storagesize
+  parameter: storage.collection_bytes_on_disk
+  value: 35926016
+  unit: bytes
+  workload: synthetic shape=near-duplicate block_compressor=snappy
+  notes: post-checkpoint storageSize
+  system: mongodb
+  machine_class: 'reef Docker mongo:7, WD BLACK SN770 work on V:'
+  system_version: '7.0'
+  observed_on: '2026-08-21'
+  source: obs-reef-compression-shape-2026-08-21
+- slug: reef-compression-shape-2026-08-21-near-duplicate-zstd-ratio
+  parameter: storage.compression_ratio
+  value: 27.2202
+  unit: ratio
+  workload: synthetic shape=near-duplicate block_compressor=zstd
+  notes: dataSize/storageSize = 331,248,016/12,169,216 B, post-checkpoint. shape=near-duplicate
+    compressor=zstd. gzip-9 proxy on raw export sample = 57.7432.
+  system: mongodb
+  machine_class: 'reef Docker mongo:7, WD BLACK SN770 work on V:'
+  system_version: '7.0'
+  observed_on: '2026-08-21'
+  source: obs-reef-compression-shape-2026-08-21
+- slug: reef-compression-shape-2026-08-21-near-duplicate-zstd-datasize
+  parameter: storage.collection_bytes_uncompressed
+  value: 331248016
+  unit: bytes
+  workload: synthetic shape=near-duplicate block_compressor=zstd
+  notes: collection stats size (uncompressed)
+  system: mongodb
+  machine_class: 'reef Docker mongo:7, WD BLACK SN770 work on V:'
+  system_version: '7.0'
+  observed_on: '2026-08-21'
+  source: obs-reef-compression-shape-2026-08-21
+- slug: reef-compression-shape-2026-08-21-near-duplicate-zstd-storagesize
+  parameter: storage.collection_bytes_on_disk
+  value: 12169216
+  unit: bytes
+  workload: synthetic shape=near-duplicate block_compressor=zstd
+  notes: post-checkpoint storageSize
+  system: mongodb
+  machine_class: 'reef Docker mongo:7, WD BLACK SN770 work on V:'
+  system_version: '7.0'
+  observed_on: '2026-08-21'
+  source: obs-reef-compression-shape-2026-08-21
+- slug: reef-compression-shape-2026-08-21-near-duplicate-zlib-ratio
+  parameter: storage.compression_ratio
+  value: 13.8288
+  unit: ratio
+  workload: synthetic shape=near-duplicate block_compressor=zlib
+  notes: dataSize/storageSize = 331,248,016/23,953,408 B, post-checkpoint. shape=near-duplicate
+    compressor=zlib. gzip-9 proxy on raw export sample = 57.7432.
+  system: mongodb
+  machine_class: 'reef Docker mongo:7, WD BLACK SN770 work on V:'
+  system_version: '7.0'
+  observed_on: '2026-08-21'
+  source: obs-reef-compression-shape-2026-08-21
+- slug: reef-compression-shape-2026-08-21-near-duplicate-zlib-datasize
+  parameter: storage.collection_bytes_uncompressed
+  value: 331248016
+  unit: bytes
+  workload: synthetic shape=near-duplicate block_compressor=zlib
+  notes: collection stats size (uncompressed)
+  system: mongodb
+  machine_class: 'reef Docker mongo:7, WD BLACK SN770 work on V:'
+  system_version: '7.0'
+  observed_on: '2026-08-21'
+  source: obs-reef-compression-shape-2026-08-21
+- slug: reef-compression-shape-2026-08-21-near-duplicate-zlib-storagesize
+  parameter: storage.collection_bytes_on_disk
+  value: 23953408
+  unit: bytes
+  workload: synthetic shape=near-duplicate block_compressor=zlib
+  notes: post-checkpoint storageSize
+  system: mongodb
+  machine_class: 'reef Docker mongo:7, WD BLACK SN770 work on V:'
+  system_version: '7.0'
+  observed_on: '2026-08-21'
+  source: obs-reef-compression-shape-2026-08-21
+- slug: reef-compression-shape-2026-08-21-pure-random-gzip-proxy
+  parameter: storage.self_compression_proxy_ratio
+  value: 1.3381
+  unit: ratio
+  workload: gzip -9 sample of synthetic shape=pure-random JSONL
+  notes: Measurable property of the raw bytes; axis for placing a real collection
+    on the manufactured curve without WT internals.
+  system: mongodb
+  machine_class: 'reef Docker mongo:7, WD BLACK SN770 work on V:'
+  system_version: '7.0'
+  observed_on: '2026-08-21'
+  source: obs-reef-compression-shape-2026-08-21
+- slug: reef-compression-shape-2026-08-21-random-repeated-fields-gzip-proxy
+  parameter: storage.self_compression_proxy_ratio
+  value: 1.3837
+  unit: ratio
+  workload: gzip -9 sample of synthetic shape=random-repeated-fields JSONL
+  notes: Measurable property of the raw bytes; axis for placing a real collection
+    on the manufactured curve without WT internals.
+  system: mongodb
+  machine_class: 'reef Docker mongo:7, WD BLACK SN770 work on V:'
+  system_version: '7.0'
+  observed_on: '2026-08-21'
+  source: obs-reef-compression-shape-2026-08-21
+- slug: reef-compression-shape-2026-08-21-low-cardinality-enums-gzip-proxy
+  parameter: storage.self_compression_proxy_ratio
+  value: 33.1782
+  unit: ratio
+  workload: gzip -9 sample of synthetic shape=low-cardinality-enums JSONL
+  notes: Measurable property of the raw bytes; axis for placing a real collection
+    on the manufactured curve without WT internals.
+  system: mongodb
+  machine_class: 'reef Docker mongo:7, WD BLACK SN770 work on V:'
+  system_version: '7.0'
+  observed_on: '2026-08-21'
+  source: obs-reef-compression-shape-2026-08-21
+- slug: reef-compression-shape-2026-08-21-realistic-mixed-gzip-proxy
+  parameter: storage.self_compression_proxy_ratio
+  value: 2.1218
+  unit: ratio
+  workload: gzip -9 sample of synthetic shape=realistic-mixed JSONL
+  notes: Measurable property of the raw bytes; axis for placing a real collection
+    on the manufactured curve without WT internals.
+  system: mongodb
+  machine_class: 'reef Docker mongo:7, WD BLACK SN770 work on V:'
+  system_version: '7.0'
+  observed_on: '2026-08-21'
+  source: obs-reef-compression-shape-2026-08-21
+- slug: reef-compression-shape-2026-08-21-near-duplicate-gzip-proxy
+  parameter: storage.self_compression_proxy_ratio
+  value: 57.7432
+  unit: ratio
+  workload: gzip -9 sample of synthetic shape=near-duplicate JSONL
+  notes: Measurable property of the raw bytes; axis for placing a real collection
+    on the manufactured curve without WT internals.
+  system: mongodb
+  machine_class: 'reef Docker mongo:7, WD BLACK SN770 work on V:'
+  system_version: '7.0'
+  observed_on: '2026-08-21'
+  source: obs-reef-compression-shape-2026-08-21

@@ -45,11 +45,6 @@ from .model import (
     validation_status,
 )
 
-# NOT the decimal "1.5TB" a casual reading would suggest, which would be
-# slightly smaller and wrongly exclude the boundary instance itself. Revisit
-# once a >1.5TB family is chosen -- see the comment block at the end of
-# data/coefficients/aws-ec2.yaml.
-
 BAR = "─" * 68
 
 
@@ -220,10 +215,10 @@ def cmd_headroom(args) -> int:
 
 
 def cmd_instance_select(args) -> int:
-    """Run any model on its own inputs, then look up its band against the
-    AWS instance catalog instead of collapsing it to one number first --
+    """Run any model on its own inputs, then look up its band against an
+    instance catalog instead of collapsing it to one number first --
     mirrors `headroom`'s shape, swapping a supplied `--available` for a
-    lookup against `data/coefficients/aws-ec2.yaml`."""
+    lookup against `data/coefficients/aws-ec2.yaml` or `azure-vm.yaml`."""
     conn = connect(args.db)
     model = _load(conn, args.model)
     values = {i["key"]: getattr(args, i["key"]) for i in model.inputs}
@@ -234,7 +229,7 @@ def cmd_instance_select(args) -> int:
         print(f"error: {e}", file=sys.stderr)
         return 2
 
-    catalog = load_instance_catalog(conn)
+    catalog = load_instance_catalog(conn, args.catalog)
     try:
         ceiling = parse_bytes(args.max_ram) if args.max_ram else None
         if ceiling == 0:  # explicit escape hatch: --max-ram 0 lifts the cap
@@ -263,7 +258,7 @@ def cmd_instance_select(args) -> int:
                 "pick_hi": sel["required_hi"],
             }[key]
             print(
-                f"  {label:<10} {spec.name:<24} "
+                f"  {label:<10} {spec.name:<28} "
                 f"{_fmt(spec.ram_bytes, result.unit)} RAM"
                 + (f", {spec.vcpu:g} vCPU" if spec.vcpu else "")
                 + f"  (+{_fmt(headroom_bytes, result.unit)} headroom)"
@@ -276,7 +271,7 @@ def cmd_instance_select(args) -> int:
             f"\n  NOTE  the high end of the band exceeds "
             + (
                 f"the {_fmt(ceiling, result.unit)} sizing ceiling "
-                f"(org policy, not an AWS limit — pass --max-ram to change it)."
+                f"(org policy, not a vendor limit — pass --max-ram to change it)."
                 if capped
                 else f"the largest instance in this pool "
                 f"({largest.name}, {_fmt(largest.ram_bytes, result.unit)})."
@@ -346,11 +341,10 @@ def cmd_scenario(args) -> int:
                     f"{k}={v:g}" if isinstance(v, (int, float)) else f"{k}={v}"
                     for k, v in s.assumed_inputs.items()
                 )
-                print(
-                    f"  assumed            {assumed} "
-                    "(not measured — peak-second IOPS still applied so a "
-                    "microburst cannot stall storage tickets)"
-                )
+                line = f"  assumed            {assumed}"
+                if s.assumed_note:
+                    line += f" ({s.assumed_note})"
+                print(line)
             _print_breakdown(s.result, s.model)
             _print_constraints(s.result)
             _print_validation(conn, s.model.slug)
@@ -380,7 +374,12 @@ def cmd_scenario(args) -> int:
                     f"usable throughput {spec['usable_throughput_mibps']:,.0f} MiB/s"
                 )
         else:
-            print(f"STEP {i} — smallest AWS instance covering the band above")
+            pool = (
+                "smallest Azure VM covering the band above"
+                if s.slug.startswith("azure-vm")
+                else "smallest AWS instance covering the band above"
+            )
+            print(f"STEP {i} — {pool}")
             pick = s.instance_pick
             for label, key in (
                 ("low end", "pick_lo"),
@@ -398,7 +397,7 @@ def cmd_scenario(args) -> int:
                 }[key]
                 headroom_bytes = spec.ram_bytes - need
                 print(
-                    f"  {label:<10} {spec.name:<24} {_fmt(spec.ram_bytes, prev_unit)} RAM"
+                    f"  {label:<10} {spec.name:<28} {_fmt(spec.ram_bytes, prev_unit)} RAM"
                     + (f", {spec.vcpu:g} vCPU" if spec.vcpu else "")
                     + (
                         f", EBS {spec.ebs_bandwidth_gbps:g} Gbps"
@@ -427,6 +426,16 @@ def cmd_scenario(args) -> int:
                 f"  vCPU               {cpu['lo']} – {cpu['hi']}  "
                 f"(mode {cpu['mode']}, instance {cpu['instance_mode']})"
             )
+        if azure := summary.get("azure"):
+            print(
+                f"  Azure VM           {azure['lo']} – {azure['hi']}  "
+                f"(mode {azure['mode']})"
+            )
+            if azure.get("exceeds_pool"):
+                print(
+                    "  Azure NOTE         high end exceeds this pool — custom "
+                    "sizing, not a recommendation."
+                )
         if disk := summary.get("disk"):
             line = (
                 f"  gp3 disk           {disk['volume_gib']:,.1f} GiB; "
@@ -553,8 +562,11 @@ def _add_model_flags(parser: argparse.ArgumentParser, db: Path | None) -> None:
     flags. A flag belonging to another model is simply never read.
     """
     try:
-        conn = connect(db, autobuild=False)
-    except (FileNotFoundError, sqlite3.Error):
+        # Autobuild so a fresh clone can run the README quick start before
+        # `xycalc build`. `build`/`audit` still parse if the corpus cannot
+        # be compiled yet — those subparsers do not need model flags.
+        conn = connect(db, autobuild=True)
+    except (FileNotFoundError, sqlite3.Error, build_mod.BuildError):
         return
     seen: dict[str, str] = {}
     for r in conn.execute(
@@ -602,13 +614,18 @@ def build_parser(db: Path | None = None) -> argparse.ArgumentParser:
 
     sp = sub.add_parser(
         "instance-select",
-        help="which named AWS instance covers a model's required band",
+        help="which named instance covers a model's required band",
     )
     sp.add_argument("model")
     sp.add_argument(
+        "--catalog",
+        default="aws-ec2",
+        help="coefficient system to pick from: aws-ec2 (default) or azure-vm",
+    )
+    sp.add_argument(
         "--family",
         default=None,
-        help="filter the catalog by name prefix, e.g. r8i or u7i (default: whole catalog)",
+        help="filter the catalog by name prefix, e.g. r8i, Esv5, or Esv6 (default: whole catalog)",
     )
     sp.add_argument(
         "--max-ram",

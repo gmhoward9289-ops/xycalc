@@ -2,7 +2,8 @@
 
 **Investigated:** 2026-07-31 · **Model:** `mongodb.wt-cache`, `mongodb.host-ram`
 · **Validation:** `mongodb.wt-cache` n=1, within band, +41.1% at the mode.
-`mongodb.host-ram` still unvalidated. See *First contact with a real database*
+`mongodb.host-ram` thinly validated (see cooper-hostram-2026-08-21 and earlier
+reef/agent cases). See *First contact with a real database*
 below — the 41% decomposes into two very different things.
 
 ---
@@ -171,6 +172,11 @@ widening a band to swallow a measurement is how a corpus stops meaning
 anything. What it does establish is a floor — high-entropy collections exist
 and the published band does not reach them.
 
+**Update 2026-08-21 (issue #5 Track A).** Six public sample collections under
+snappy on 7.0.39 measured `dataSize/storageSize` between **1.73× and 3.49×**
+(obs-mongodb-compression-2026-08-21 / batch2) — all inside the 1.5–3.5 band,
+spread across most of it. Band not narrowed; production samples still welcome.
+
 **2. In-cache bytes exceeded `dataSize + indexSize` by 13.9%**, and this one is
 about the model. Given the *measured* uncompressed size, predicted contents were
 0.356 GB against 0.413 GB resident. The cache holds more than document and index
@@ -201,8 +207,13 @@ db.version()
 ```
 
 `docs/telemetry/mongodb.md` lists the full series. `xy-observe` imports them.
-`mongodb.host-ram` remains unvalidated and will stay so until an instance runs
-with the default cache split rather than an explicitly pinned size.
+`mongodb.host-ram` remains thinly validated. The dedicated
+`tools/bench/hostram_probe.sh` run on COOPER (2026-08-21) confirmed the
+forward default-split formula within 0.03% on an unpinned `mongo:7.0.39`, and
+also showed that on Docker Desktop `hostInfo().memSizeMB` can disagree with
+the cgroup limit WiredTiger actually used for the split — multi-size
+hostInfo-honest checks still want a Linux host. See
+`obs-cooper-hostram-2026-08-21`.
 
 ---
 

@@ -24,11 +24,21 @@ while (true) {
     break;
   }
   const s = db.adminCommand({serverStatus: 1});
-  const c = s.wiredTiger.concurrentTransactions;
+  // 7.0: wiredTiger.concurrentTransactions; 8.0+: queues.execution (issue #7)
+  const exec = (s.queues && s.queues.execution)
+    ? s.queues.execution
+    : s.wiredTiger.concurrentTransactions;
+  const read = exec.read;
   const g = s.globalLock;
-  const readTotal = c.read.totalTickets;
-  const readOut = c.read.out;
-  const queueLength = c.read.queueLength === undefined ? 0 : c.read.queueLength;
+  const readTotal = read.totalTickets;
+  const readOut = read.out;
+  let queueLength = 0;
+  if (read.queueLength !== undefined) {
+    queueLength = read.queueLength;
+  } else if (read.normalPriority && read.normalPriority.queueLength !== undefined) {
+    const q = read.normalPriority.queueLength;
+    queueLength = (typeof q === "object") ? (q.low || 0) : q;
+  }
 
   print(JSON.stringify({
     t: now / 1000,

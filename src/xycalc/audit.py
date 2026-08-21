@@ -3,12 +3,13 @@ visible check rather than a line buried in a test log.
 
     python -m xycalc.audit
 
-Three gates. The first two exit non-zero; the third never does.
+Gates. The first two plus the unit check exit non-zero; validation never does.
 
   1. CITATION   every coefficient resolves to a real source.
   2. VERSION    every coefficient names what it applies to.
   3. VALIDATION every model reports its error against real observations, or
                 declares itself unvalidated.
+  4. UNITS      every observation.unit equals its parameter's unit.
 
 Gate 3 reports and never fails on purpose. A model that has never been checked
 against a running system is not broken — it is new, and that is the normal
@@ -98,6 +99,21 @@ def audit(db_path: Path = DEFAULT_DB, rebuild: bool = True) -> int:
         failures.append(
             f"model '{r['slug']}' has no floor term — nothing for its "
             f"amplifiers to multiply"
+        )
+
+    # -- units: an observation in the wrong unit poisons error percentages --
+    unit_mismatch = _rows(
+        conn,
+        "SELECT o.slug AS slug, o.unit AS obs_unit, "
+        "       p.slug AS parameter, p.unit AS param_unit "
+        "FROM observation o "
+        "JOIN parameter p ON p.id = o.parameter_id "
+        "WHERE o.unit != p.unit",
+    )
+    for r in unit_mismatch:
+        failures.append(
+            f"observation '{r['slug']}' unit '{r['obs_unit']}' does not match "
+            f"parameter '{r['parameter']}' unit '{r['param_unit']}'"
         )
 
     # -- report -----------------------------------------------------------
