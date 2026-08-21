@@ -1,0 +1,190 @@
+observations:
+- slug: mongodb-compression-2026-08-21-sample_mflix-movies-ratio
+  parameter: storage.compression_ratio
+  value: 1.749
+  unit: ratio
+  workload: sample_mflix.movies, real document shapes, no live query load
+  notes: "dataSize / storageSize = 37,619,160 / 21,512,192 B, post-checkpoint. Applies\
+    \ to this data \u2014 compressibility is a property of the documents.  storageSize\
+    \ moved 525100.0% across the checkpoint (4,096->21,512,192 B); using the post-checkpoint\
+    \ value"
+  system: mongodb
+  machine_class: Docker mongo:7.0.39, public sample dataset
+  system_version: 7.0.39
+  observed_on: '2026-08-21'
+  source: obs-mongodb-compression-2026-08-21
+- slug: mongodb-compression-2026-08-21-sample_mflix-movies-datasize
+  parameter: storage.collection_bytes_uncompressed
+  value: 37619160
+  unit: bytes
+  workload: sample_mflix.movies
+  notes: db.stats().dataSize
+  system: mongodb
+  machine_class: Docker mongo:7.0.39, public sample dataset
+  system_version: 7.0.39
+  observed_on: '2026-08-21'
+  source: obs-mongodb-compression-2026-08-21
+- slug: mongodb-compression-2026-08-21-sample_mflix-movies-storagesize
+  parameter: storage.collection_bytes_on_disk
+  value: 21512192
+  unit: bytes
+  workload: sample_mflix.movies
+  notes: post-checkpoint storageSize
+  system: mongodb
+  machine_class: Docker mongo:7.0.39, public sample dataset
+  system_version: 7.0.39
+  observed_on: '2026-08-21'
+  source: obs-mongodb-compression-2026-08-21
+- slug: mongodb-compression-2026-08-21-sample_mflix-movies-indexsize
+  parameter: storage.index_bytes_on_disk
+  value: 499712
+  unit: bytes
+  workload: sample_mflix.movies
+  notes: totalIndexSize
+  system: mongodb
+  machine_class: Docker mongo:7.0.39, public sample dataset
+  system_version: 7.0.39
+  observed_on: '2026-08-21'
+  source: obs-mongodb-compression-2026-08-21
+- slug: mongodb-compression-2026-08-21-sample_airbnb-listingsAndReviews-ratio
+  parameter: storage.compression_ratio
+  value: 1.729
+  unit: ratio
+  workload: sample_airbnb.listingsAndReviews, real document shapes, no live query
+    load
+  notes: "dataSize / storageSize = 94,362,187 / 54,575,104 B, post-checkpoint. Applies\
+    \ to this data \u2014 compressibility is a property of the documents.  storageSize\
+    \ moved 1332300.0% across the checkpoint (4,096->54,575,104 B); using the post-checkpoint\
+    \ value"
+  system: mongodb
+  machine_class: Docker mongo:7.0.39, public sample dataset
+  system_version: 7.0.39
+  observed_on: '2026-08-21'
+  source: obs-mongodb-compression-2026-08-21
+- slug: mongodb-compression-2026-08-21-sample_airbnb-listingsAndReviews-datasize
+  parameter: storage.collection_bytes_uncompressed
+  value: 94362187
+  unit: bytes
+  workload: sample_airbnb.listingsAndReviews
+  notes: db.stats().dataSize
+  system: mongodb
+  machine_class: Docker mongo:7.0.39, public sample dataset
+  system_version: 7.0.39
+  observed_on: '2026-08-21'
+  source: obs-mongodb-compression-2026-08-21
+- slug: mongodb-compression-2026-08-21-sample_airbnb-listingsAndReviews-storagesize
+  parameter: storage.collection_bytes_on_disk
+  value: 54575104
+  unit: bytes
+  workload: sample_airbnb.listingsAndReviews
+  notes: post-checkpoint storageSize
+  system: mongodb
+  machine_class: Docker mongo:7.0.39, public sample dataset
+  system_version: 7.0.39
+  observed_on: '2026-08-21'
+  source: obs-mongodb-compression-2026-08-21
+- slug: mongodb-compression-2026-08-21-sample_airbnb-listingsAndReviews-indexsize
+  parameter: storage.index_bytes_on_disk
+  value: 151552
+  unit: bytes
+  workload: sample_airbnb.listingsAndReviews
+  notes: totalIndexSize
+  system: mongodb
+  machine_class: Docker mongo:7.0.39, public sample dataset
+  system_version: 7.0.39
+  observed_on: '2026-08-21'
+  source: obs-mongodb-compression-2026-08-21
+- slug: mongodb-compression-2026-08-21-sample_training-companies-ratio
+  parameter: storage.compression_ratio
+  value: 2.214
+  unit: ratio
+  workload: sample_training.companies, real document shapes, no live query load
+  notes: "dataSize / storageSize = 36,475,858 / 16,474,112 B, post-checkpoint. Applies\
+    \ to this data \u2014 compressibility is a property of the documents.  storageSize\
+    \ moved 402100.0% across the checkpoint (4,096->16,474,112 B); using the post-checkpoint\
+    \ value"
+  system: mongodb
+  machine_class: Docker mongo:7.0.39, public sample dataset
+  system_version: 7.0.39
+  observed_on: '2026-08-21'
+  source: obs-mongodb-compression-2026-08-21
+- slug: mongodb-compression-2026-08-21-sample_training-companies-datasize
+  parameter: storage.collection_bytes_uncompressed
+  value: 36475858
+  unit: bytes
+  workload: sample_training.companies
+  notes: db.stats().dataSize
+  system: mongodb
+  machine_class: Docker mongo:7.0.39, public sample dataset
+  system_version: 7.0.39
+  observed_on: '2026-08-21'
+  source: obs-mongodb-compression-2026-08-21
+- slug: mongodb-compression-2026-08-21-sample_training-companies-storagesize
+  parameter: storage.collection_bytes_on_disk
+  value: 16474112
+  unit: bytes
+  workload: sample_training.companies
+  notes: post-checkpoint storageSize
+  system: mongodb
+  machine_class: Docker mongo:7.0.39, public sample dataset
+  system_version: 7.0.39
+  observed_on: '2026-08-21'
+  source: obs-mongodb-compression-2026-08-21
+- slug: mongodb-compression-2026-08-21-sample_training-companies-indexsize
+  parameter: storage.index_bytes_on_disk
+  value: 180224
+  unit: bytes
+  workload: sample_training.companies
+  notes: totalIndexSize
+  system: mongodb
+  machine_class: Docker mongo:7.0.39, public sample dataset
+  system_version: 7.0.39
+  observed_on: '2026-08-21'
+  source: obs-mongodb-compression-2026-08-21
+- slug: mongodb-compression-2026-08-21-sample_training-inspections-ratio
+  parameter: storage.compression_ratio
+  value: 2.775
+  unit: ratio
+  workload: sample_training.inspections, real document shapes, no live query load
+  notes: "dataSize / storageSize = 22,153,565 / 7,983,104 B, post-checkpoint. Applies\
+    \ to this data \u2014 compressibility is a property of the documents.  storageSize\
+    \ moved 194800.0% across the checkpoint (4,096->7,983,104 B); using the post-checkpoint\
+    \ value"
+  system: mongodb
+  machine_class: Docker mongo:7.0.39, public sample dataset
+  system_version: 7.0.39
+  observed_on: '2026-08-21'
+  source: obs-mongodb-compression-2026-08-21
+- slug: mongodb-compression-2026-08-21-sample_training-inspections-datasize
+  parameter: storage.collection_bytes_uncompressed
+  value: 22153565
+  unit: bytes
+  workload: sample_training.inspections
+  notes: db.stats().dataSize
+  system: mongodb
+  machine_class: Docker mongo:7.0.39, public sample dataset
+  system_version: 7.0.39
+  observed_on: '2026-08-21'
+  source: obs-mongodb-compression-2026-08-21
+- slug: mongodb-compression-2026-08-21-sample_training-inspections-storagesize
+  parameter: storage.collection_bytes_on_disk
+  value: 7983104
+  unit: bytes
+  workload: sample_training.inspections
+  notes: post-checkpoint storageSize
+  system: mongodb
+  machine_class: Docker mongo:7.0.39, public sample dataset
+  system_version: 7.0.39
+  observed_on: '2026-08-21'
+  source: obs-mongodb-compression-2026-08-21
+- slug: mongodb-compression-2026-08-21-sample_training-inspections-indexsize
+  parameter: storage.index_bytes_on_disk
+  value: 1224704
+  unit: bytes
+  workload: sample_training.inspections
+  notes: totalIndexSize
+  system: mongodb
+  machine_class: Docker mongo:7.0.39, public sample dataset
+  system_version: 7.0.39
+  observed_on: '2026-08-21'
+  source: obs-mongodb-compression-2026-08-21
