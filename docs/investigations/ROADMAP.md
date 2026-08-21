@@ -21,6 +21,13 @@ Before believing any result below, ask the question that would have caught every
 instance: **would this produce a plausible table if the environment were
 healthy?** If yes, the experiment has no guard and is not ready to run.
 
+**Proving shapes without huge machines.** When the question is a scaling
+*curve* (cache oversubscription, IOPS↔throughput knee, concurrency/queue),
+run the ladder in
+[`docs/plans/inference-sizing-curves.md`](../plans/inference-sizing-curves.md):
+ratio x-axis, two absolute sizes before claiming transfer, one cliff per
+sweep. Absolute capacity still needs the box class you care about.
+
 ---
 
 ## T1 — Where is the cache cliff, and is it a cliff?

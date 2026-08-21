@@ -1,0 +1,36 @@
+<!--
+  Example for a real S3 bucket. Copy to storage.local.xml (gitignored) and edit.
+  Endpoint must include the bucket and end with // (bucket root).
+
+    CLICKHOUSE_STORAGE_XML=./clickhouse/config.d/storage.local.xml \
+    SKIP_MINIO=1 ./run.sh
+-->
+<clickhouse>
+    <storage_configuration>
+        <disks>
+            <s3>
+                <type>s3</type>
+                <endpoint>https://s3.us-east-1.amazonaws.com/YOUR_BUCKET//</endpoint>
+                <access_key_id>YOUR_ACCESS_KEY</access_key_id>
+                <secret_access_key>YOUR_SECRET_KEY</secret_access_key>
+                <region>us-east-1</region>
+                <metadata_path>/var/lib/clickhouse/disks/s3/</metadata_path>
+            </s3>
+            <s3_cache>
+                <type>cache</type>
+                <disk>s3</disk>
+                <path>/var/lib/clickhouse/disks/s3_cache/</path>
+                <max_size>2Gi</max_size>
+            </s3_cache>
+        </disks>
+        <policies>
+            <s3_main>
+                <volumes>
+                    <main>
+                        <disk>s3</disk>
+                    </main>
+                </volumes>
+            </s3_main>
+        </policies>
+    </storage_configuration>
+</clickhouse>

@@ -1,0 +1,33 @@
+<!--
+  ClickHouse MergeTree parts land on an S3-compatible disk (MinIO by default).
+  Endpoint form is http://host:port/bucket// — trailing double slash marks the
+  bucket root (ClickHouse MinIO docs). Credentials match compose.yml defaults.
+-->
+<clickhouse>
+    <storage_configuration>
+        <disks>
+            <s3>
+                <type>s3</type>
+                <endpoint>http://minio:9000/clickhouse//</endpoint>
+                <access_key_id>minioadmin</access_key_id>
+                <secret_access_key>minioadminpassword</secret_access_key>
+                <metadata_path>/var/lib/clickhouse/disks/s3/</metadata_path>
+            </s3>
+            <s3_cache>
+                <type>cache</type>
+                <disk>s3</disk>
+                <path>/var/lib/clickhouse/disks/s3_cache/</path>
+                <max_size>2Gi</max_size>
+            </s3_cache>
+        </disks>
+        <policies>
+            <s3_main>
+                <volumes>
+                    <main>
+                        <disk>s3</disk>
+                    </main>
+                </volumes>
+            </s3_main>
+        </policies>
+    </storage_configuration>
+</clickhouse>
