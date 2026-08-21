@@ -458,11 +458,29 @@ const XYCALC_APP = (() => {
   }
 
   function occupancyMarkClass(pct, index) {
+    // Three vertical slots, not two: index 0 = above the bar, 1 = below,
+    // 2 = a second row above. Parity-only stagger put total-cache "trigger 95"
+    // on the same row as "target 80" (#132) after #130 moved it off "90".
     const bits = ["mark"];
     if (index % 2) bits.push("below");
+    else if (index >= 2) bits.push("high");
     if (pct <= 8) bits.push("edge-start");
     if (pct >= 92) bits.push("edge-end");
     return bits.join(" ");
+  }
+
+  function setOccupancyMark(el, pct, index, text) {
+    if (!el) return;
+    if (pct != null) el.style.left = pct + "%";
+    el.className = occupancyMarkClass(pct, index);
+    let lab = el.querySelector(".mark-label");
+    if (!lab) {
+      lab = document.createElement("span");
+      lab.className = "mark-label";
+      el.textContent = "";
+      el.appendChild(lab);
+    }
+    if (text != null) lab.textContent = text;
   }
 
   function interpolateCrossingXs(xs, ys, yTarget) {
@@ -1831,30 +1849,21 @@ const XYCALC_APP = (() => {
       const dirtyTrigger = L.eviction_dirty_trigger && L.eviction_dirty_trigger.value;
 
       if (target != null) {
-        $("occ-mark-target").style.left = target + "%";
-        $("occ-mark-target").className = occupancyMarkClass(target, 0);
-        $("occ-mark-target").textContent = "target " + target;
+        setOccupancyMark($("occ-mark-target"), target, 0, "target " + target);
         document.querySelector("#occ-ladder .zone.hold").style.width = target + "%";
         document.querySelector("#occ-ladder .zone.workers").style.left = target + "%";
         document.querySelector("#occ-ladder .zone.workers").style.width =
           ((trigger != null ? trigger : 95) - target) + "%";
       }
       if (trigger != null) {
-        $("occ-mark-trigger").style.left = trigger + "%";
-        $("occ-mark-trigger").className = occupancyMarkClass(trigger, 2);
-        $("occ-mark-trigger").textContent = "trigger " + trigger;
+        setOccupancyMark($("occ-mark-trigger"), trigger, 2, "trigger " + trigger);
         document.querySelector("#occ-ladder .zone.danger").style.left = trigger + "%";
         document.querySelector("#occ-ladder .zone.danger").style.width = (100 - trigger) + "%";
       }
-      const ninety = $("occ-mark-ninety");
-      if (ninety) ninety.className = occupancyMarkClass(90, 1);
+      setOccupancyMark($("occ-mark-ninety"), 90, 1, "90");
       if (dirtyTarget != null && dirtyTrigger != null) {
-        $("occ-mark-dirty-target").style.left = dirtyTarget + "%";
-        $("occ-mark-dirty-target").className = occupancyMarkClass(dirtyTarget, 1);
-        $("occ-mark-dirty-target").textContent = "dirty target " + dirtyTarget;
-        $("occ-mark-dirty-trigger").style.left = dirtyTrigger + "%";
-        $("occ-mark-dirty-trigger").className = occupancyMarkClass(dirtyTrigger, 0);
-        $("occ-mark-dirty-trigger").textContent = "dirty trigger " + dirtyTrigger;
+        setOccupancyMark($("occ-mark-dirty-target"), dirtyTarget, 1, "dirty target " + dirtyTarget);
+        setOccupancyMark($("occ-mark-dirty-trigger"), dirtyTrigger, 0, "dirty trigger " + dirtyTrigger);
         $("occ-dirty-hold").style.width = dirtyTarget + "%";
         $("occ-dirty-warn").style.left = dirtyTarget + "%";
         $("occ-dirty-warn").style.width = (dirtyTrigger - dirtyTarget) + "%";
@@ -2210,6 +2219,7 @@ const XYCALC_APP = (() => {
     gradeSuffix: gradeSuffix,
     weakestValidation: weakestValidation,
     occupancyMarkClass: occupancyMarkClass,
+    setOccupancyMark: setOccupancyMark,
     interpolateCrossingXs: interpolateCrossingXs,
     coverageX: coverageX,
     bandCoverageCaption: bandCoverageCaption,

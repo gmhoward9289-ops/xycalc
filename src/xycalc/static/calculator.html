@@ -290,7 +290,6 @@ svg.nvd-chart { width: 100%; height: auto; display: block; }
 .form-heading { font-size: .72rem; letter-spacing: .04em; color: var(--muted); margin: 0 0 .65rem; font-weight: 700; }
 @media (max-width: 42rem) {
   .input-grid, .nvd-layout { grid-template-columns: 1fr; }
-  #occ-mark-ninety { display: none; }
   .ladder .mark { font-size: .62rem; }
 }
 
@@ -350,12 +349,48 @@ svg.nvd-chart { width: 100%; height: auto; display: block; }
 .ladder .mark.edge-end { transform: translateX(-100%); }
 .ladder .mark.edge-end.below::after { left: auto; right: 0; margin: 0; }
 
-/* Occupancy-tab tick labels only. Desktop: "90" and "trigger 95" both sat
-   below the bar and overlapped. Keep this block out of Simple/Advanced chrome
-   so it can merge with size-path footnote work. */
+/* Occupancy-tab ticks only. Pin the tick at left%; put the text in
+   .mark-label so 80 / 90 / 95 can occupy three rows without dragging the
+   tick (parity stagger only has two rows — #132). Keep this block out of
+   Simple/Advanced chrome. */
 #tab-occupancy .ladder {
-  margin-top: 1.75rem;
+  margin-top: 2.55rem;
   margin-bottom: 2.15rem;
+}
+#tab-occupancy .ladder .mark {
+  top: 0;
+  bottom: 0;
+  width: 0;
+  transform: none;
+}
+#tab-occupancy .ladder .mark::after {
+  position: absolute;
+  left: -1px;
+  top: 0;
+  bottom: 0;
+  height: auto;
+  width: 2px;
+  margin: 0;
+}
+#tab-occupancy .ladder .mark-label {
+  position: absolute;
+  left: 0;
+  top: -1.15rem;
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+#tab-occupancy .ladder .mark.below .mark-label {
+  top: auto;
+  bottom: -1.15rem;
+}
+#tab-occupancy .ladder .mark.high .mark-label {
+  top: -2.25rem;
+}
+#tab-occupancy .ladder .mark.edge-start .mark-label {
+  transform: translateX(0);
+}
+#tab-occupancy .ladder .mark.edge-end .mark-label {
+  transform: translateX(-100%);
 }
 
 .ladder .you {
@@ -731,9 +766,9 @@ body.mode-advanced #simple-view { display: none !important; }
       <div class="zone hold"></div>
       <div class="zone workers"></div>
       <div class="zone danger"></div>
-      <div class="mark" id="occ-mark-target" style="left:80%">target 80</div>
-      <div class="mark" id="occ-mark-ninety" style="left:90%">90</div>
-      <div class="mark" id="occ-mark-trigger" style="left:95%">trigger 95</div>
+      <div class="mark" id="occ-mark-target" style="left:80%"><span class="mark-label">target 80</span></div>
+      <div class="mark below" id="occ-mark-ninety" style="left:90%"><span class="mark-label">90</span></div>
+      <div class="mark high" id="occ-mark-trigger" style="left:95%"><span class="mark-label">trigger 95</span></div>
       <div class="you" id="occ-you" hidden></div>
     </div>
     <p class="form-heading">Dirty occupancy (write path)</p>
@@ -741,8 +776,8 @@ body.mode-advanced #simple-view { display: none !important; }
       <div class="zone dirty-hold" id="occ-dirty-hold"></div>
       <div class="zone dirty-warn" id="occ-dirty-warn"></div>
       <div class="zone dirty-danger" id="occ-dirty-danger"></div>
-      <div class="mark" id="occ-mark-dirty-target" style="left:5%">dirty target 5</div>
-      <div class="mark" id="occ-mark-dirty-trigger" style="left:20%">dirty trigger 20</div>
+      <div class="mark below" id="occ-mark-dirty-target" style="left:5%"><span class="mark-label">dirty target 5</span></div>
+      <div class="mark" id="occ-mark-dirty-trigger" style="left:20%"><span class="mark-label">dirty trigger 20</span></div>
       <div class="you dirty" id="occ-dirty-you" hidden></div>
     </div>
     <div class="occ-inputs">

@@ -5,6 +5,8 @@ Corpus identity is `corpus_digest` on the exported page. See `docs/VERSIONING.md
 
 ## 0.5.0
 
+- Occupancy-band total-cache labels (target 80, 90, trigger 95) use three
+  vertical rows so they stay readable at desktop width and ~375px (#132).
 - `xycalc export` writes landing sidecars next to the calculator HTML:
   `og.png` (1200×630 sweep chart with the band envelope and “what you
   already have” line) and `stamp.html` (model count, `corpus_digest`,
