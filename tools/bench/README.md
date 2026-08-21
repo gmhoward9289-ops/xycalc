@@ -8,7 +8,8 @@ same workload driven by a Celery fleet instead of raw threads),
 `s3_stack/` (same four services with ClickHouse on S3/MinIO — `./run.sh` smoke,
 `./perf.sh` for idle/loaded/under_load measurement),
 `clickhouse_probe.sh` (investigation 012 / T10 — fixed-row batch-size sweep
-against MergeTree part thresholds on pre- and post-23.6 images),
+against MergeTree part thresholds on pre- and post-23.6 images; on **reef**
+use `reef_run_t10_clickhouse.ps1` for continuous merges-on with data on `V:`),
 `mongodb_load.js` (seeds a collection sized to fit comfortably in cache, for
 validating the decompression/index terms), `mongodb_saturated_cache.sh` (seeds
 a collection deliberately larger than the configured cache, for validating the
