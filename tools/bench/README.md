@@ -65,6 +65,24 @@ credits. The device-identity guard refuses to record a case if fio measured
 faster than the settable ceiling — the tell that it hit the local NVMe temp
 disk instead of the managed disk.
 
+### compression_probe (issue #5 — real snappy compression samples)
+
+```bash
+./tools/bench/compression_probe.sh > compression.json   # Docker, no cloud cost
+python tools/import_compression_probe.py compression.json \
+    --machine-class "Docker mongo:7.0.39, sample dataset"
+```
+
+Loads MongoDB's public sample collections into a pinned `mongo:7.0.39`, adds a
+secondary index, forces a checkpoint, and measures `dataSize/storageSize` — the
+snappy ratio the corpus has only ever measured synthetically (its largest single
+error term). `compression_probe.py` runs all four plan guards before trusting a
+ratio: creationString must be snappy, storageSize must be post-checkpoint, the
+collection must clear a ~20 MB floor, and a lone `_id` index is flagged. Records
+observations + a `mongodb.wt-cache` validation case (at_term=indexes); writes no
+coefficient. Needs Docker with network egress; no cloud cost. See
+`docs/plans/issue-5-real-compression-samples.md`.
+
 ## Before you believe a result
 
 Both harnesses above have separately produced a clean, plausible table that
