@@ -1,6 +1,6 @@
 # Arm 1 — EBS ExceededChecks + guest iostat (2026-08-21)
 
-**Status:** guest side landed; CloudWatch ExceededChecks **empty at first pull** (lag / never published — re-pull later). Striping deferred.
+**Status:** guest + observation YAML landed; CloudWatch ExceededChecks **still empty after re-pull** (publish quirk, not lag). Striping deferred.
 
 | | |
 |---|---|
@@ -28,13 +28,9 @@ fio aggregate: under IOPS=1999 (rate-limited); over IOPS=3016 (QD64, latency ~21
 
 **Important for the 0-under / 1-over hypothesis:** under *mean* stayed below 3000, but under *peak second was 5609*. If `VolumeIOPSExceededCheck` means any second in the minute, under is **not** expected to stay at 0. Do not treat "0 under" as the success criterion once CW lands.
 
-## CloudWatch (pulled shortly after teardown; re-pull still empty)
+## CloudWatch (immediate pull + re-pull 2026-08-21 evening — still empty)
 
-`ListMetrics` still lists ExceededChecks + `VolumeAvgIOPS` for this VolumeId, but **no datapoints** yet for:
-
-- `VolumeIOPSExceededCheck`
-- `VolumeThroughputExceededCheck`
-- `VolumeAvgIOPS`
+`VolumeIOPSExceededCheck` / `VolumeThroughputExceededCheck` / `VolumeAvgIOPS`: **n=0** datapoints on both pulls. Classic `VolumeReadOps` / `VolumeWriteOps` / `VolumeQueueLength` **did** land (see table).
 
 Classic ops **did** land (Sum / minute ≈ ops in that minute):
 
@@ -50,18 +46,16 @@ So the volume was busy; ExceededCheck emptiness is lag or publish quirk, not "no
 
 Re-pull: `bash tools/bench/_aws_ebs_xcheck_pull_cw.sh`
 
-## Spend (same pull)
+## Spend (re-check at land)
 
 | Meter | Value |
 |---|---|
-| SwampLink budget | **$0** / $125 |
-| xycalc-hard-cap | **$0** / $150 |
+| SwampLink budget | **$0** / $20 (console; soft alert) |
+| xycalc-hard-cap | **$0** / $150 (campaign hard) |
 | Free-tier remaining credits | **$200** |
 | CE UnblendedCost MTD | **$0** (estimated) |
 | Live EC2/EBS inventory | 0 instances, 0 volumes |
 
-Launch gate: actual well under $100 and credits well above $50 — further arms allowed under campaign caps.
-
 ## Corpus landing
 
-Guest peak/mean and mean IOPS written as observations (`data/observations/aws-ebs-xcheck-20260821.yaml`). **No** ExceededCheck 0/1 rows — nothing to cite until CW returns values.
+Guest peak/mean + mean IOPS: `data/observations/aws-ebs-xcheck-2026-08-21.yaml` + `data/sources/aws-ebs-xcheck-2026-08-21.yaml`. **No** ExceededCheck 0/1 rows — CW never published them for this volume.
