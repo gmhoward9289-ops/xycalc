@@ -2,10 +2,11 @@
 <!--
   GENERATED FILE — do not edit.
 
-  Written by `xycalc export` from the corpus in
-  https://github.com/gmhoward9289-ops/xycalc. Editing it here means the next
-  export silently reverts the change; edit src/xycalc/static/calculator.html
-  (or the YAML under data/) in that repo and re-export instead.
+  Written by `xycalc export` (and by `xycalc gui` via the same render path)
+  from the corpus in https://github.com/gmhoward9289-ops/xycalc. Editing the
+  *exported* site file means the next deploy silently reverts the change; edit
+  src/xycalc/static/calculator.html (or the YAML under data/) in that repo and
+  re-export instead.
 
       xycalc export --out <this file>
 
@@ -254,6 +255,67 @@ svg.nvd-chart { width: 100%; height: auto; display: block; }
 .cascade-wrap { margin-top: .85rem; }
 .form-heading { font-size: .72rem; letter-spacing: .04em; color: var(--muted); margin: 0 0 .65rem; font-weight: 700; }
 @media (max-width: 42rem) { .input-grid, .nvd-layout { grid-template-columns: 1fr; } }
+
+/* -- flow + occupancy tabs -- */
+.tabs { flex-wrap: wrap; }
+.flow-chain { display: flex; flex-direction: column; gap: .35rem; margin: .75rem 0 0; }
+.flow-step {
+  border: 1px solid var(--line); border-radius: 6px; padding: .7rem .85rem; background: var(--bg);
+}
+.flow-step .kind {
+  font-family: var(--mono); font-size: .68rem; text-transform: uppercase; letter-spacing: .06em;
+  color: var(--muted);
+}
+.flow-step .name { font-weight: 600; margin: .15rem 0; }
+.flow-step .feed { font-size: .8rem; color: var(--muted); }
+.flow-arrow {
+  text-align: center; font-size: .75rem; color: var(--muted); letter-spacing: .02em;
+}
+.term-chip {
+  display: inline-block; font-size: .72rem; font-family: var(--mono);
+  border: 1px solid var(--line); border-radius: 4px; padding: .15rem .4rem; margin: .15rem .25rem .15rem 0;
+}
+.term-chip.floor { border-color: var(--floor); color: var(--floor); }
+.term-chip.amplifier { border-color: var(--amplifier); color: var(--amplifier); }
+.term-chip.headroom { border-color: var(--headroom); color: var(--headroom); }
+.term-chip.constraint { border-color: var(--constraint); color: var(--constraint); }
+.ladder {
+  position: relative; height: 2.4rem; background: var(--line); border-radius: 6px;
+  margin: 1rem 0 1.5rem; overflow: visible;
+}
+.ladder .zone {
+  position: absolute; top: 0; bottom: 0; opacity: .55;
+}
+.ladder .zone.hold { left: 0; width: 80%; background: color-mix(in srgb, var(--headroom) 35%, transparent); }
+.ladder .zone.workers { left: 80%; width: 15%; background: color-mix(in srgb, var(--warn-ink) 28%, transparent); }
+.ladder .zone.danger { left: 95%; width: 5%; background: color-mix(in srgb, var(--stop-ink) 40%, transparent); }
+.ladder .mark {
+  position: absolute; top: -1.1rem; transform: translateX(-50%);
+  font-family: var(--mono); font-size: .7rem; color: var(--muted); white-space: nowrap;
+}
+.ladder .mark::after {
+  content: ""; display: block; width: 2px; height: 2.4rem; background: var(--ink); margin: .15rem auto 0;
+}
+.ladder .you {
+  position: absolute; top: 0; bottom: 0; width: 3px; background: var(--accent);
+  transform: translateX(-50%); border-radius: 2px;
+}
+.occ-place { font-size: .92rem; margin: .5rem 0 0; }
+.occ-place strong { color: var(--accent); }
+.occ-table { width: 100%; border-collapse: collapse; font-size: .85rem; }
+.occ-table th {
+  text-align: left; font-size: .72rem; text-transform: uppercase; letter-spacing: .04em;
+  color: var(--muted); border-bottom: 1px solid var(--line); padding: .35rem .4rem .35rem 0;
+}
+.occ-table td { border-bottom: 1px solid var(--line); padding: .45rem .4rem .45rem 0; font-family: var(--mono); }
+.occ-table td.lab { font-family: var(--sans); }
+.var-grid { display: grid; gap: .65rem; }
+.var-card {
+  border: 1px solid var(--line); border-radius: 6px; padding: .7rem .85rem; background: var(--bg);
+}
+.var-card .k { font-family: var(--mono); font-size: .78rem; color: var(--accent); }
+.var-card .v { font-family: var(--mono); font-size: 1.15rem; font-weight: 600; margin: .2rem 0; }
+.var-card p { margin: 0; font-size: .82rem; color: var(--muted); }
 [hidden] { display: none !important; }
 </style>
 </head>
@@ -286,6 +348,8 @@ svg.nvd-chart { width: 100%; height: auto; display: block; }
 <div class="tabs">
   <button class="tab active" id="tab-btn-scenario" data-tab="scenario">Scenario</button>
   <button class="tab" id="tab-btn-single" data-tab="single">Single question</button>
+  <button class="tab" id="tab-btn-flow" data-tab="flow">How it flows</button>
+  <button class="tab" id="tab-btn-occupancy" data-tab="occupancy">Occupancy bands</button>
 </div>
 
 <div id="tab-scenario">
@@ -406,6 +470,85 @@ svg.nvd-chart { width: 100%; height: auto; display: block; }
   </div>
   </div>
 </div>
+
+<div id="tab-flow" hidden>
+  <div class="panel">
+    <h2 style="margin-top:0">How sizing flows</h2>
+    <p style="margin:0 0 .75rem;font-size:.92rem;color:var(--muted)">
+      Scenarios chain models. Each arrow carries the <em>whole band</em> (low / mode / high),
+      never just the mode. Inside a model, terms stack as floors, amplifiers, and headroom
+      until constraints (shown but not multiplied in).
+    </p>
+    <div style="font-size:.8rem;color:var(--muted)">
+      <span class="term-chip floor">floor</span>
+      <span class="term-chip amplifier">amplifier</span>
+      <span class="term-chip headroom">headroom</span>
+      <span class="term-chip constraint">constraint</span>
+    </div>
+  </div>
+  <div id="flow-scenarios"></div>
+  <div class="panel">
+    <h2 style="margin-top:0">Pick a model — term order</h2>
+    <div class="field">
+      <label for="flow-model">Model</label>
+      <select id="flow-model"></select>
+    </div>
+    <div id="flow-terms"></div>
+  </div>
+</div>
+
+<div id="tab-occupancy" hidden>
+  <div class="panel">
+    <h2 style="margin-top:0">WiredTiger occupancy ladder</h2>
+    <p style="margin:0 0 .5rem;font-size:.92rem;color:var(--muted)">
+      Investigation 007 — where measured cache occupancy sits relative to
+      <code>eviction_target</code> (hold) and <code>eviction_trigger</code> (app threads).
+      Paste a live occupancy % to place yourself on the ladder.
+    </p>
+    <div class="ladder" id="occ-ladder" aria-hidden="true">
+      <div class="zone hold"></div>
+      <div class="zone workers"></div>
+      <div class="zone danger"></div>
+      <div class="mark" id="occ-mark-target" style="left:80%">target 80</div>
+      <div class="mark" id="occ-mark-ninety" style="left:90%">90</div>
+      <div class="mark" id="occ-mark-trigger" style="left:95%">trigger 95</div>
+      <div class="you" id="occ-you" hidden></div>
+    </div>
+    <div class="field">
+      <label for="occ-pct">Measured occupancy % <span class="help" style="display:inline">bytes currently ÷ maximum bytes configured × 100</span></label>
+      <input id="occ-pct" type="number" min="0" max="100" step="0.1" placeholder="e.g. 87.5" autocomplete="off">
+    </div>
+    <p class="occ-place" id="occ-place">Enter a percentage to see which band you are in.</p>
+  </div>
+
+  <div class="panel">
+    <h2 style="margin-top:0">Documented knobs</h2>
+    <div class="var-grid" id="occ-vars"></div>
+  </div>
+
+  <div class="panel">
+    <h2 style="margin-top:0">Measured 80 → 90 (swamplink)</h2>
+    <p style="font-size:.82rem;color:var(--muted);margin:0 0 .75rem" id="occ-verdict"></p>
+    <div class="scroll">
+      <table class="occ-table">
+        <thead>
+          <tr>
+            <th>Pass</th>
+            <th style="text-align:right">ops/s @80</th>
+            <th style="text-align:right">ops/s @90</th>
+            <th style="text-align:right">Δ ops</th>
+            <th style="text-align:right">occ @80</th>
+            <th style="text-align:right">occ @90</th>
+          </tr>
+        </thead>
+        <tbody id="occ-passes"></tbody>
+      </table>
+    </div>
+    <p class="help" id="occ-reef" style="margin-top:.75rem"></p>
+    <button type="button" class="ghost" id="occ-open-wt" style="margin-top:.75rem">Open wt-cache sizing + notes →</button>
+  </div>
+</div>
+
 </div>
 
 <footer>
@@ -454,17 +597,23 @@ function boot() {
   document.addEventListener("keydown", (e) => {
     if (e.key === "Enter" && e.target.tagName === "INPUT") {
       if (!$("tab-single").hidden) calculate();
-      else calculateScenario(false);
+      else if (!$("tab-scenario").hidden) calculateScenario(false);
     }
   });
   bootScenario();
+  bootFlow();
+  bootOccupancy();
 }
 
 function setTab(name) {
   $("tab-scenario").hidden = name !== "scenario";
   $("tab-single").hidden = name !== "single";
+  $("tab-flow").hidden = name !== "flow";
+  $("tab-occupancy").hidden = name !== "occupancy";
   $("tab-btn-scenario").classList.toggle("active", name === "scenario");
   $("tab-btn-single").classList.toggle("active", name === "single");
+  $("tab-btn-flow").classList.toggle("active", name === "flow");
+  $("tab-btn-occupancy").classList.toggle("active", name === "occupancy");
 }
 
 const SCENARIO_DEFAULTS = {
@@ -1045,6 +1194,183 @@ function nearestIndex(xs, x) {
     if (d < bestD) { bestD = d; best = i; }
   }
   return best;
+}
+
+// -- How it flows -----------------------------------------------------------
+
+function stepTitle(st) {
+  if ((st.kind || "model") === "model") return st.model;
+  if (st.lookup === "instance_select") return `instance pick (${st.family || "pool"})`;
+  if (st.lookup === "gp3_spec") return "gp3 volume spec";
+  return st.lookup || st.kind || "step";
+}
+
+function stepFeed(st) {
+  const feed = st.feed;
+  if (!feed) return "";
+  if (feed === "previous") return "fed from previous band (whole lo/mode/hi)";
+  const parts = Object.entries(feed).map(([k, v]) =>
+    `${k} ← ${v === "previous" ? "previous band" : v}`);
+  return parts.length ? "feed: " + parts.join(", ") : "";
+}
+
+function bootFlow() {
+  const scenarios = (CORPUS.scenarios || []).filter((s) => !s.disabled);
+  $("flow-scenarios").innerHTML = scenarios.map((s) => {
+    const steps = s.steps || [];
+    const chain = steps.map((st, i) => {
+      const arrow = i ? `<div class="flow-arrow">↓ band flows (all three ends)</div>` : "";
+      return `${arrow}<div class="flow-step">
+        <div class="kind">${esc(st.kind || "model")}</div>
+        <div class="name">${esc(stepTitle(st))}</div>
+        ${stepFeed(st) ? `<div class="feed">${esc(stepFeed(st))}</div>` : ""}
+      </div>`;
+    }).join("");
+    return `<div class="panel">
+      <h2 style="margin-top:0">${esc(s.label)}</h2>
+      <p class="help" style="margin:0">${esc(s.summary || "")}</p>
+      <div class="flow-chain">${chain || "<p class='help'>No steps.</p>"}</div>
+    </div>`;
+  }).join("");
+
+  $("flow-model").innerHTML = MODELS.map((m) =>
+    `<option value="${esc(m.slug)}">${esc(m.slug)} — ${esc(m.question)}</option>`).join("");
+  $("flow-model").addEventListener("change", renderFlowTerms);
+  renderFlowTerms();
+}
+
+function renderFlowTerms() {
+  const m = MODELS.find((x) => x.slug === $("flow-model").value);
+  if (!m) { $("flow-terms").innerHTML = ""; return; }
+  const chips = (m.terms || []).map((t) => {
+    const apply = t.apply ? ` · ${t.apply}` : "";
+    const coeff = t.coefficient
+      ? ` · ${t.coeff_mode}${t.unit === "percent" ? "%" : ""}`
+      : (t.input_key ? ` · input:${t.input_key}` : "");
+    return `<div class="flow-step">
+      <span class="term-chip ${esc(t.role)}">${esc(t.role)}</span>
+      <strong>${esc(t.label)}</strong>
+      <div class="feed">${esc(t.key)}${esc(apply)}${esc(coeff)}</div>
+      <div class="help">${esc((t.rationale || "").replace(/\s+/g, " ").slice(0, 220))}${(t.rationale || "").length > 220 ? "…" : ""}</div>
+    </div>`;
+  }).join("");
+  $("flow-terms").innerHTML = chips || "<p class='help'>No terms.</p>";
+}
+
+// -- Occupancy bands --------------------------------------------------------
+
+function bootOccupancy() {
+  const g = CORPUS.occupancy_band;
+  if (!g) {
+    $("occ-verdict").textContent = "Occupancy-band guide missing from this export.";
+    return;
+  }
+  const L = g.ladder || {};
+  const target = L.eviction_target && L.eviction_target.value;
+  const trigger = L.eviction_trigger && L.eviction_trigger.value;
+  if (target != null) {
+    $("occ-mark-target").style.left = target + "%";
+    $("occ-mark-target").textContent = "target " + target;
+    document.querySelector(".ladder .zone.hold").style.width = target + "%";
+    document.querySelector(".ladder .zone.workers").style.left = target + "%";
+    document.querySelector(".ladder .zone.workers").style.width = (trigger - target) + "%";
+  }
+  if (trigger != null) {
+    $("occ-mark-trigger").style.left = trigger + "%";
+    $("occ-mark-trigger").textContent = "trigger " + trigger;
+    document.querySelector(".ladder .zone.danger").style.left = trigger + "%";
+    document.querySelector(".ladder .zone.danger").style.width = (100 - trigger) + "%";
+  }
+
+  const cards = [
+    ["eviction_target", L.eviction_target, "Occupancy WT works to hold"],
+    ["eviction_trigger", L.eviction_trigger, "App threads start eviction"],
+    ["dirty_target", L.eviction_dirty_target, "Dirty-page hold"],
+    ["dirty_trigger", L.eviction_dirty_trigger, "Writers stall on dirty eviction"],
+  ].filter(([, c]) => c).map(([label, c, blurb]) => `
+    <div class="var-card">
+      <div class="k">${esc(label)}</div>
+      <div class="v">${esc(String(c.value))}${c.value <= 100 ? "%" : ""}</div>
+      <p>${esc(blurb)}. ${esc(c.applies_to || "")}</p>
+    </div>`).join("");
+  $("occ-vars").innerHTML = cards;
+
+  $("occ-verdict").textContent = g.verdict || "";
+  $("occ-passes").innerHTML = (g.passes || []).map((p) => {
+    const d = p.ops_delta_pct;
+    const dTxt = d == null ? "—" : ((d > 0 ? "+" : "") + d.toFixed(2) + "%");
+    return `<tr>
+      <td class="lab">${esc(p.label)}</td>
+      <td style="text-align:right">${p.ops_at_80.toFixed(1)}</td>
+      <td style="text-align:right">${p.ops_at_90.toFixed(1)}</td>
+      <td style="text-align:right">${esc(dTxt)}</td>
+      <td style="text-align:right">${p.occ_mean_at_80.toFixed(2)}%</td>
+      <td style="text-align:right">${p.occ_mean_at_90.toFixed(2)}%</td>
+    </tr>`;
+  }).join("");
+
+  if (g.reef_saturated_occupancy_pct != null) {
+    $("occ-reef").textContent =
+      `Reef saturated-scan occupancy under default target: ${g.reef_saturated_occupancy_pct}% ` +
+      `(observation reef-mongo-bench-2026-08-19-eviction-target-actual).`;
+  }
+
+  $("occ-pct").addEventListener("input", placeOccupancy);
+  $("occ-open-wt").addEventListener("click", () => {
+    setTab("single");
+    $("model").value = g.model || "mongodb.wt-cache";
+    renderInputs();
+    const storage = $("in-storage_size");
+    const index = $("in-index_size");
+    if (storage && !storage.value) storage.value = "500GB";
+    if (index && !index.value) index.value = "40GB";
+    calculate();
+    requestAnimationFrame(() => {
+      const panel = $("notes-panel");
+      if (panel && !panel.hidden) panel.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  });
+}
+
+function placeOccupancy() {
+  const raw = $("occ-pct").value.trim();
+  const you = $("occ-you");
+  if (!raw) {
+    you.hidden = true;
+    $("occ-place").textContent = "Enter a percentage to see which band you are in.";
+    return;
+  }
+  const pct = Number(raw);
+  if (!isFinite(pct) || pct < 0 || pct > 100) {
+    you.hidden = true;
+    $("occ-place").textContent = "Need a number between 0 and 100.";
+    return;
+  }
+  you.hidden = false;
+  you.style.left = pct + "%";
+  const g = CORPUS.occupancy_band || {};
+  const L = g.ladder || {};
+  const target = (L.eviction_target && L.eviction_target.value) || 80;
+  const trigger = (L.eviction_trigger && L.eviction_trigger.value) || 95;
+  let band, advice;
+  if (pct < target - 5) {
+    band = "below target";
+    advice = "Cache has spare headroom relative to the default hold — or the working set is not resident yet.";
+  } else if (pct < target + 5) {
+    band = "near eviction_target (healthy hold)";
+    advice = "Background workers are doing their job. Size cache ≈ working_set ÷ 0.8 so you stay here under load.";
+  } else if (pct < 90) {
+    band = "worker band (above target, before 90)";
+    advice = "Workers are active above the hold point. Raising target toward 90 fills the cache fuller but is not a throughput lever.";
+  } else if (pct < trigger) {
+    band = "danger approach (90 → trigger)";
+    advice = "Closer to app-thread conscription than to a healthy hold. Watch pages evicted by application threads and disk.";
+  } else {
+    band = "at/past eviction_trigger";
+    advice = "Application threads are (or will be) doing eviction — latency, not OOM. Raise IOPS, shrink working set, or enlarge cache.";
+  }
+  $("occ-place").innerHTML =
+    `<strong>${pct.toFixed(1)}%</strong> — ${esc(band)}. ${esc(advice)}`;
 }
 
 // Round tick values so the axis reads in figures a person would say out loud
