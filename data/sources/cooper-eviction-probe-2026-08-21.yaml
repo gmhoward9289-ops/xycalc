@@ -1,0 +1,26 @@
+sources:
+  - slug: obs-cooper-eviction-probe-2026-08-21
+    title: "T3 write-rate vs dirty trigger (cooper Docker Desktop)"
+    publisher: xycalc project (benchmark harness, committed)
+    version: tools/bench/eviction_probe.py
+    retrieved_on: "2026-08-21"
+    source_type: benchmark
+    notes: >-
+      Investigation 014 / ROADMAP T3 via tools/bench/eviction_probe.py and
+      tools/bench/eviction_probe.sh. MongoDB 7.0.40, --wiredTigerCacheSizeGB
+      0.25, journal off, Docker --device-write-bps on /dev/sde (data volume).
+      Artifact: docs/investigations/014-write-rate-eviction/artifacts-smoke-256kib-2026-08-21.json.
+      Reef wave12 smokes (32 MiB/s) corroborated dirty peaks ~3-4% with
+      evictedByAppDelta=0 before this tighter throttle run.
+
+  - slug: mongodb-manual-wiredtiger-v7.0-checkpoints
+    title: "WiredTiger Storage Engine (MongoDB 7.0) — checkpoints"
+    publisher: MongoDB, Inc.
+    url: https://www.mongodb.com/docs/v7.0/core/wiredtiger/
+    version: MongoDB 7.0 manual
+    retrieved_on: "2026-08-21"
+    source_type: vendor_doc
+    notes: >-
+      Version-pinned v7.0 page stating MongoDB configures WiredTiger
+      checkpoints at 60-second intervals. Feeds T3 duration design and the
+      mongodb.checkpoint-interval-seconds coefficient.
