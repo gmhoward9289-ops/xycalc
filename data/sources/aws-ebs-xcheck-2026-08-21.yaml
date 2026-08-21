@@ -6,6 +6,7 @@ sources:
     retrieved_on: "2026-08-21"
     source_type: benchmark
     notes: >-
+      Investigation 002 Arm 1 via tools/bench/_aws_ebs_xcheck_launch.sh.
       Guest fio 1s IOPS logs + iostat on dedicated 100 GiB gp3 (3000 IOPS /
       125 MiB/s) attached to m6i.large i-04431bd8261dbd94a, us-east-2.
       Under phase rate-limited ~2000 IOPS; over phase uncapped QD64.

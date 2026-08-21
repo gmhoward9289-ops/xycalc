@@ -6,6 +6,7 @@ sources:
     retrieved_on: "2026-08-21"
     source_type: benchmark
     notes: >-
+      Investigation 002 Arm 2 via tools/bench/_aws_ebs_instceil_launch.sh.
       t3.medium (doc max 11800 IOPS / ~261 MiB/s) + 100 GiB gp3 provisioned
       16000 IOPS / 1000 MiB/s. Instance i-02f1aae93a27252fe, us-east-2.
       Guest fio held 11.8k IOPS / 250 MiB/s; CloudWatch
