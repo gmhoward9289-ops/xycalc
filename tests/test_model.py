@@ -85,7 +85,7 @@ class TestWiredTigerCacheModel:
         r = model.evaluate({"storage_size": "500GB"})
         skipped = [s for s in r.steps if s.skipped]
         assert [s.term.key for s in skipped] == [
-            "snapshot_search",
+            "foreign_collections",
             "indexes",
             "capacity_buffer",
         ]

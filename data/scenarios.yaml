@@ -27,7 +27,7 @@ scenarios:
     default: true
     summary: >-
       Project collection size from vulnerability record growth, add indexes and
-      snapshot search footprint, compare to what you run today. Outputs total
+      foreign collections, compare to what you run today. Outputs total
       RAM, CPU, and gp3 disk IOPS/throughput — adjust inputs to move sizing.
     input_sections:
       - title: Project database size (NVD-driven)
@@ -38,7 +38,7 @@ scenarios:
       - title: MongoDB footprint
         keys:
           - index_size
-          - snapshot_search_size
+          - foreign_collections_size
       - title: Current node (optional)
         keys:
           - current_ram
@@ -97,7 +97,7 @@ scenarios:
         lookup: gp3_spec
         sum_inputs:
           - index_size
-          - snapshot_search_size
+          - foreign_collections_size
         sum_model: nvd.storage-from-vuln-growth
       - kind: model
         model: ebs.iops-to-provision
