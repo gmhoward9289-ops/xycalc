@@ -7,7 +7,7 @@ observations:
   slug: reef-io-xover-gp3-baseline-2026-08-21
   parameter: io.io_size_crossover_kib
   value: 64.0
-  unit: kib
+  unit: KiB
   workload: fio randread QD32 sweep, throttle gp3-baseline
   notes: measured crossover; predicted=42.666666666666664
 - system: ebs
@@ -29,7 +29,7 @@ observations:
   slug: reef-io-tp-gp3-baseline-2026-08-21
   parameter: io.throughput_mibps
   value: 125.4228515625
-  unit: mib_per_s
+  unit: MiB/s
   workload: fio randread plateau gp3-baseline
   notes: cgroup-throttled throughput plateau
 - system: ebs
@@ -40,7 +40,7 @@ observations:
   slug: reef-io-xover-gp3-throughput-cap-2026-08-21
   parameter: io.io_size_crossover_kib
   value: 256.0
-  unit: kib
+  unit: KiB
   workload: fio randread QD32 sweep, throttle gp3-throughput-cap
   notes: measured crossover; predicted=195.04761904761904
 - system: ebs
@@ -62,6 +62,6 @@ observations:
   slug: reef-io-tp-gp3-throughput-cap-2026-08-21
   parameter: io.throughput_mibps
   value: 1999.9996744791667
-  unit: mib_per_s
+  unit: MiB/s
   workload: fio randread plateau gp3-throughput-cap
   notes: cgroup-throttled throughput plateau

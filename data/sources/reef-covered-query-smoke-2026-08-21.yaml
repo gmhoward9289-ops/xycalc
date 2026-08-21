@@ -5,4 +5,7 @@ sources:
   version: tools/bench/covered_query_probe.sh
   retrieved_on: '2026-08-21'
   source_type: benchmark
-  notes: Smoke 50k docs. Investigation 013/T5.
+  notes: >-
+    Investigation 013/T5 smoke (50k docs) via
+    tools/bench/covered_query_probe.sh on reef Docker mongo:7. Not a full
+    soak — residency/indexSize ratios only.

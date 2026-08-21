@@ -6,6 +6,7 @@ sources:
     retrieved_on: "2026-08-21"
     source_type: benchmark
     notes: >-
-      Investigation 017 Arm A. Docker Desktop --device-read-bps/iops against
-      /dev/sdd. Emulates gp3 baseline and throughput-cap; not real EBS.
-      See docs/investigations/017-io-crossover/FINDINGS.md.
+      Investigation 017 Arm A via tools/bench/io_crossover_probe.py and
+      tools/bench/reef_run_t9_io.ps1. Docker Desktop --device-read-bps/iops
+      against /dev/sdd. Emulates gp3 baseline and throughput-cap; not real
+      EBS. See docs/investigations/017-io-crossover/FINDINGS.md.

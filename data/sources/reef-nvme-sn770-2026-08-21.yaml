@@ -5,4 +5,7 @@ sources:
   version: tools/bench/io_crossover_probe.py + reef_run_t9_native_v.ps1
   retrieved_on: '2026-08-21'
   source_type: benchmark
-  notes: Host NVMe (not Docker virtio). windowsaio QD32.
+  notes: >-
+    Investigation 017 Arm B via tools/bench/io_crossover_probe.py and
+    tools/bench/reef_run_t9_native_v.ps1. Host NVMe on V: WD BLACK SN770
+    (not Docker virtio); windowsaio QD32.

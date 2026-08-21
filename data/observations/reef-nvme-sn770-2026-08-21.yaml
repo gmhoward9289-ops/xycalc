@@ -14,7 +14,7 @@ observations:
   parameter: io.throughput_mibps
   system: nvme-ssd
   value: 268.7897135416667
-  unit: mib_per_s
+  unit: MiB/s
   workload: "fio windowsaio randread QD32 256\u20131024 KiB"
   machine_class: 'reef V: WD BLACK SN770 native Windows fio'
   system_version: fio-3.42
@@ -25,7 +25,7 @@ observations:
   parameter: io.io_size_crossover_kib
   system: nvme-ssd
   value: 16.0
-  unit: kib
+  unit: KiB
   workload: fio windowsaio randread QD32 sweep
   machine_class: 'reef V: WD BLACK SN770 native Windows fio'
   system_version: fio-3.42

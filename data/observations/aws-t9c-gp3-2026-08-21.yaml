@@ -6,7 +6,7 @@ observations:
     system: ebs
     parameter: io.io_size_crossover_kib
     value: 128.0
-    unit: kib
+    unit: KiB
     workload: >-
       fio randread QD32, sizes 4→1024 KiB, 12s/point, direct=1 on dedicated
       gp3 (3000 IOPS / 125 MiB/s) at /dev/nvme1n1
@@ -40,7 +40,7 @@ observations:
     system: ebs
     parameter: io.throughput_mibps
     value: 134.0703125
-    unit: mib_per_s
+    unit: MiB/s
     workload: fio randread throughput plateau gp3 baseline (256–1024 KiB)
     machine_class: AWS m6i.large + gp3 3000/125, us-east-2
     system_version: Amazon Elastic Block Store (gp3)
