@@ -5,6 +5,12 @@ Corpus identity is `corpus_digest` on the exported page. See `docs/VERSIONING.md
 
 ## 0.4.0
 
+- Simple mode first paint shows the same weakest-chain validation banner as
+  Advanced (label + `text`, including n= / in-band / MAE) and a hard
+  “not a buy size / uncited path — open Advanced for sources” line with a
+  control that opens Advanced Scenario with the math expanded. Host RAM is
+  withheld if that banner cannot be rendered. Custom-sizing picks name the
+  catalog SKU band they exceeded.
 - Validation grade `reasonable` (calculator **Validated**) requires at least
   one observation inside the predicted band. n and MAE alone used to promote
   a 0-in-band model.
