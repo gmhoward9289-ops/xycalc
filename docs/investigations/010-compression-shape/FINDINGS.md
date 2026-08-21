@@ -1,10 +1,13 @@
 # Investigation 010 — Compression ratio as a function of data shape (T2)
 
 **Status:** complete (2026-08-21). Full sweep on swamplink-eu,
-MongoDB **7.0.39**, ~300 MB raw JSONL per shape × snappy/zstd/zlib.
-Harness: `tools/bench/compression_shape_probe.{py,sh}`. Artifacts under
-`artifacts/`. Observations:
-`data/observations/swamplink-compression-shape-2026-08-21.yaml`.
+MongoDB **7.0.39**, ~300 MB raw JSONL per shape × snappy/zstd/zlib;
+**replicated on reef** the same day (`mongo:7`, work on V:).
+Harness: `tools/bench/compression_shape_probe.{py,sh}` (+
+`tools/bench/reef_run_t2_shape.ps1` for the Windows/Docker path).
+Artifacts under `artifacts/`. Observations:
+`data/observations/swamplink-compression-shape-2026-08-21.yaml`,
+`data/observations/reef-compression-shape-2026-08-21.yaml`.
 
 **Short answer.** Shape moves the snappy ratio a lot — **wider than the
 shipped 1.5–3.5 band**. Measured snappy `dataSize/storageSize`:
@@ -82,6 +85,28 @@ collections (#5) still have to sit on the curve from their own
   the wrong number to multiply through the decompression term (it is
   overhead, not expansion). Treat high-entropy as **≈1.0×** and prefer
   `db.stats()`.
+
+---
+
+## Replication — reef (2026-08-21)
+
+Same harness on **reef** (`owner@192.168.68.20`), Docker `mongo:7`, work
+dirs on **V:** (WD BLACK SN770). Artifacts:
+`V:\xycalc-results\compression-shape\shape-sweep.json` and
+`docs/investigations/010-compression-shape/artifacts/reef-shape-sweep.json`.
+Observations: `data/observations/reef-compression-shape-2026-08-21.yaml`.
+
+| Shape | Snappy (reef) | Snappy (swamplink) | Δ |
+|---|---:|---:|---:|
+| pure-random | 0.9905 | 0.990 | ~0 |
+| random-repeated-fields | 0.9873 | 0.988 | ~0 |
+| realistic-mixed | 1.4321 | 1.453 | −0.02 |
+| low-cardinality-enums | 3.9089 | 3.832 | +0.08 |
+| near-duplicate | 9.2203 | 9.172 | +0.05 |
+
+Verdict again **`wider-than-band`** (0.99–9.22). Gzip-proxy rank matched;
+proxy→snappy order still flips only the two floor shapes. Confirms the
+curve is not a one-host artifact.
 
 ---
 

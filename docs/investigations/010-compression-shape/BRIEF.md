@@ -4,8 +4,9 @@
 structured documents, and where in that range do real collections sit?
 
 **Status:** complete (2026-08-21). Findings in `FINDINGS.md`. Observations
-in `data/observations/swamplink-compression-shape-2026-08-21.yaml`. Band
-not rewritten.
+in `data/observations/swamplink-compression-shape-2026-08-21.yaml` and
+`data/observations/reef-compression-shape-2026-08-21.yaml`. Band not
+rewritten.
 
 **Expected confidence ceiling:** `measured` for synthetic shape × compressor
 ratios and for the gzip-proxy axis on those same bytes. Does **not** authorize

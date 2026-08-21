@@ -576,3 +576,17 @@ sources:
       the managed-disks pricing page summarises the range as 125â€“1,200 MB/s. The
       coefficients here follow this (the technical reference) page and record the
       tension rather than averaging it away.
+
+  - slug: obs-reef-compression-shape-2026-08-21
+    title: "T2 compression shape sweep on reef (replication)"
+    publisher: xycalc project (benchmark harness, committed)
+    url:
+    version: tools/bench/compression_shape_probe.py + reef_run_t2_shape.ps1
+    retrieved_on: '2026-08-21'
+    source_type: benchmark
+    notes: >-
+      Investigation 010 replication on reef Docker mongo:7. Work/results on
+      V: (WD BLACK SN770). Same five shapes × snappy/zstd/zlib as the
+      swamplink run; snappy ~0.99–9.22, verdict wider-than-band. Does not
+      narrow mongodb.compression-ratio-snappy. See
+      docs/investigations/010-compression-shape/FINDINGS.md.

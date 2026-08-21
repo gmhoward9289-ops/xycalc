@@ -8,8 +8,8 @@
 param(
   [ValidateSet('preflight','create','destroy','confirm-zero','status')]
   [string]$Action = 'preflight',
-  [string]$Location = 'westus2',
-  [string]$Zone = '1',
+  [string]$Location = 'westcentralus',
+  [string]$Zone = '',
   [string]$VmSize = 'Standard_D2s_v5',
   [int]$DiskGib = 64,
   [string]$SshPubKey = "$env:USERPROFILE\.ssh\id_ed25519.pub"
@@ -51,13 +51,16 @@ function Invoke-Create {
   $firstMbps = 750
   Write-Host "creating RG $Rg"
   az group create -n $Rg -l $Location --tags "xycalc=$Tag" "purpose=premium-ssd-v2-probe" "owner=xycalc" | Out-Null
-  Write-Host "creating PremiumV2 disk ${DiskGib}GiB @ ${firstIops}/${firstMbps}"
-  az disk create -g $Rg -n $DiskName -l $Location --zone $Zone `
+  $zoneLabel = if ($Zone) { $Zone } else { "nonzonal" }
+  Write-Host "creating PremiumV2 disk ${DiskGib}GiB @ ${firstIops}/${firstMbps} zone=$zoneLabel"
+  $zoneArgs = @()
+  if ($Zone) { $zoneArgs = @("--zone", $Zone) }
+  az disk create -g $Rg -n $DiskName -l $Location @zoneArgs `
     --sku PremiumV2_LRS --size-gb $DiskGib `
     --disk-iops-read-write $firstIops --disk-mbps-read-write $firstMbps `
     --tags "xycalc=$Tag" | Out-Null
   Write-Host "creating VM $VmName ($VmSize)"
-  az vm create -g $Rg -n $VmName -l $Location --zone $Zone `
+  az vm create -g $Rg -n $VmName -l $Location @zoneArgs `
     --size $VmSize `
     --image "Canonical:0001-com-ubuntu-server-jammy:22_04-lts-gen2:latest" `
     --admin-username azureuser `

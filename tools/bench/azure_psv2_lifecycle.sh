@@ -12,7 +12,7 @@
 #   ./tools/bench/azure_psv2_lifecycle.sh run-all        # create→probe→import→destroy
 #
 # Env overrides:
-#   AZ_LOCATION=westus2  AZ_ZONE=1  AZ_VM_SIZE=Standard_D2s_v5
+#   AZ_LOCATION=westcentralus  AZ_ZONE=1  AZ_VM_SIZE=Standard_D2s_v5
 #   AZ_DISK_GIB=64  AZ_SSH_PUBKEY=~/.ssh/id_ed25519.pub
 #   AZ_IOPS_POINTS="3000 4000 8000"
 set -euo pipefail
@@ -21,8 +21,8 @@ ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 TAG="xycalc-psv2-$(date +%Y%m%d)"
 STAGE="${ROOT}/tmp/${TAG}"
 RG="${AZ_RG:-rg-${TAG}}"
-LOCATION="${AZ_LOCATION:-westus2}"
-ZONE="${AZ_ZONE:-1}"
+LOCATION="${AZ_LOCATION:-westcentralus}"
+ZONE="${AZ_ZONE:-}"  # empty = nonzonal (free-trial friendly)
 VM_SIZE="${AZ_VM_SIZE:-Standard_D2s_v5}"
 VM_NAME="${AZ_VM_NAME:-psv2probe}"
 DISK_NAME="${AZ_DISK_NAME:-psv2data}"
@@ -91,15 +91,17 @@ create() {
   local first_iops first_mbps
   first_iops="$(echo "$IOPS_POINTS" | awk '{print $1}')"
   first_mbps="$(model_ceiling_mbps "$first_iops")"
-  log "creating Premium SSD v2 disk $DISK_NAME (${DISK_GIB} GiB, zone $ZONE, ${first_iops} IOPS / ${first_mbps} MB/s)"
-  az disk create -g "$RG" -n "$DISK_NAME" -l "$LOCATION" --zone "$ZONE" \
+  local zone_args=()
+  if [ -n "$ZONE" ]; then zone_args=(--zone "$ZONE"); fi
+  log "creating Premium SSD v2 disk $DISK_NAME (${DISK_GIB} GiB, zone=${ZONE:-nonzonal}, ${first_iops} IOPS / ${first_mbps} MB/s)"
+  az disk create -g "$RG" -n "$DISK_NAME" -l "$LOCATION" "${zone_args[@]}" \
     --sku PremiumV2_LRS --size-gb "$DISK_GIB" \
     --disk-iops-read-write "$first_iops" --disk-mbps-read-write "$first_mbps" \
     --tags "xycalc=${TAG}" >/dev/null
   echo "accepted iops=$first_iops mbps=$first_mbps (at create)" | tee "$STAGE/ceiling-${first_iops}.txt" >&2
 
-  log "creating VM $VM_NAME ($VM_SIZE) Ubuntu 22.04 zone $ZONE"
-  az vm create -g "$RG" -n "$VM_NAME" -l "$LOCATION" --zone "$ZONE" \
+  log "creating VM $VM_NAME ($VM_SIZE) Ubuntu 22.04 zone=${ZONE:-nonzonal}"
+  az vm create -g "$RG" -n "$VM_NAME" -l "$LOCATION" "${zone_args[@]}" \
     --size "$VM_SIZE" \
     --image Canonical:0001-com-ubuntu-server-jammy:22_04-lts-gen2:latest \
     --admin-username "$ADMIN_USER" \
