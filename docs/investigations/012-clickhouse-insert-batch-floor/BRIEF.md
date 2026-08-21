@@ -6,13 +6,12 @@ merges, so inserts are first delayed and then rejected?
 **Roadmap / issue:** T10 / #18. Plan:
 `docs/plans/issue-18-clickhouse-insert-batch-floor.md`.
 
-**Status:** started 2026-08-21. Documented threshold coefficients landed from
-`MergeTreeSettings.h` at tags v23.5.1 / v23.6.1 (and confirmed still 1000/3000
-at v24.3.1-lts). Probe harness (`tools/bench/clickhouse_probe.*`) written;
-full dual-image sweep not yet run in this environment (Docker layer extract
-blocked on the cloud agent VM). Model `clickhouse.parts-insert-ceiling` is
-`unvalidated (n=0)`. The frequency-floor model
-(`clickhouse.insert-batch-floor`) waits on benchmark output.
+**Status.** Dual-image probe completed 2026-08-21 (`artifacts/clickhouse_probe_dual.json`).
+Live settings match code-graded coefficients (150/300 on 23.3, 1000/3000 on
+24.8). Threshold confirmation used `SYSTEM STOP MERGES` — with merges on, this
+2 vCPU box never approached the delay ceiling (peak ~19 parts). See FINDINGS.md.
+Model `clickhouse.parts-insert-ceiling` is still `unvalidated (n=0)` against
+production observations.
 
 **Expected confidence ceiling:** `code` for the threshold defaults (read from
 implementation headers). `benchmark` for any measured inserts/sec crossover,

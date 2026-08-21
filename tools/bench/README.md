@@ -127,20 +127,24 @@ enforces a soft max-hours cap (~$5).
 ### clickhouse_probe (T10 / #18 — insert part-count ceiling)
 
 ```bash
-# Full dual-image sweep (pre-23.6 + 23.6+), ~minutes; needs Docker
+# Full dual-image sweep (pre-23.6 + 23.6+); default STOP_MERGES=1
 ./tools/bench/clickhouse_probe.sh > /tmp/ch-probe.json
 
 # Smoke: one post-23.6 image, short row budget
 PROBE_SMOKE=1 ./tools/bench/clickhouse_probe.sh
+
+# Merges left on (Claim A on slow storage — may REFUSE on a fast box)
+PROBE_STOP_MERGES=0 ./tools/bench/clickhouse_probe.sh
 ```
 
-Pinned `--cpus` / `--memory` (default 2 / 2g). Queries live
-`system.merge_tree_settings` and refuses to run if they do not match the
-expected side of 23.6. Guards: `async_insert=0`, single partition, batch=1 must
-cross `parts_to_delay_insert` or the harness exits with REFUSING TO CONCLUDE.
-JSON after `===JSON===`. Measured inserts/sec floors must land with
-hardware-scoped `applies_to` — see
-`docs/plans/issue-18-clickhouse-insert-batch-floor.md`.
+Pinned `--cpus` / `--memory` (default 2 / 2g). Prefers host `.venv` with
+`clickhouse-connect` (`PROBE_LOCAL=auto`). Queries live
+`system.merge_tree_settings` and refuses if they do not match the expected
+side of 23.6. Guards: `async_insert=0`, single partition, batch=1 must cross
+`parts_to_delay_insert`, avg part size must stay under
+`max_avg_part_size_for_too_many_parts`. Default `PROBE_STOP_MERGES=1` isolates
+the part-count ceilings (on a fast 2 vCPU box merges otherwise keep up).
+JSON after `===JSON===` (combined `images` array for dual sweep).
 
 ### cache_cliff_probe (T1 / #9)
 

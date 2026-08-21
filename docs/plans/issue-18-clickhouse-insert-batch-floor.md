@@ -1,11 +1,10 @@
 # Plan — Issue #18 / Roadmap T10: ClickHouse insert-frequency ceiling
 
-Status: in progress (2026-08-21). Code-graded threshold coefficients and
-`clickhouse.parts-insert-ceiling` model landed (investigation 012). Harness
-`tools/bench/clickhouse_probe.{sh,py}` hardened with the §4 guards (replaces
-the staged skeleton). Dual-image sweep not yet published — run on a Docker
-host that can extract ClickHouse images (cloud agent VM blocked on overlayfs
-whiteouts).
+Status: dual-image probe complete (2026-08-21). Live thresholds match
+coefficients; FINDINGS.md written. `PROBE_STOP_MERGES=1` used to isolate
+ceilings (merges-on on this 2 vCPU box never crossed delay). Docker on the
+cloud agent needed `storage-driver: vfs` (overlayfs whiteouts fail). Harness
+prefers host `.venv` + published port when container PyPI is unreachable.
 
 ## 1. The question, as a person would ask it
 

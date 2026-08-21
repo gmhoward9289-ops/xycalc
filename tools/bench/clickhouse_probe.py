@@ -28,6 +28,8 @@ import clickhouse_connect
 
 HOST = os.environ.get("PROBE_HOST", "127.0.0.1")
 PORT = int(os.environ.get("PROBE_PORT", "8123"))
+USER = os.environ.get("PROBE_USER", "default")
+PASSWORD = os.environ.get("PROBE_PASSWORD", "xycalc")
 EXPECT_SIDE = os.environ.get("PROBE_EXPECT_SIDE", "post23_6")  # pre23_6 | post23_6
 IMAGE = os.environ.get("PROBE_IMAGE", "")
 CPUS = os.environ.get("PROBE_CPUS", "2")
@@ -37,6 +39,11 @@ ROWS = int(os.environ.get("PROBE_ROWS", "300000"))
 STEP_CAP_S = float(os.environ.get("PROBE_STEP_CAP_S", "120"))
 BATCHES = [int(x) for x in os.environ.get("PROBE_BATCHES", "1,10,100,1000,10000,100000").split(",")]
 POLL_S = float(os.environ.get("PROBE_POLL_S", "0.25"))
+# When merges keep up on a fast box, part count never approaches the delay
+# threshold (seen: peak ~19 on 2 vCPU / 50k single-row inserts). Stopping
+# merges isolates the parts_to_* ceilings themselves — required to demonstrate
+# the 23.6 10× jump. Recorded in JSON; not a silent default for Claim A.
+STOP_MERGES = os.environ.get("PROBE_STOP_MERGES", "0") in ("1", "true", "TRUE", "yes")
 TABLE = "probe"
 
 EXPECTED = {
@@ -49,6 +56,8 @@ def connect():
     return clickhouse_connect.get_client(
         host=HOST,
         port=PORT,
+        username=USER,
+        password=PASSWORD,
         settings={"async_insert": 0},
     )
 
@@ -105,21 +114,27 @@ def recreate_table(client) -> None:
         f"CREATE TABLE {TABLE} (id UInt64, pad String) "
         f"ENGINE = MergeTree() ORDER BY id"
     )
+    if STOP_MERGES:
+        # Isolates the part-count ceiling from merge throughput. Without this,
+        # a 2 vCPU container consolidates tiny parts faster than writers create
+        # them and guard 3 refuses forever — that is a merge-speed finding, not
+        # a threshold finding. Dual-image threshold confirmation needs this on.
+        client.command("SYSTEM STOP MERGES")
 
 
 def parts_snapshot(client) -> dict:
     active = client.query(
         f"SELECT count() FROM system.parts WHERE table = '{TABLE}' AND active"
-    ).first_item
+    ).result_rows[0][0]
     partitions = client.query(
         f"SELECT count(DISTINCT partition) FROM system.parts WHERE table = '{TABLE}'"
-    ).first_item
+    ).result_rows[0][0]
     # Average bytes among active parts — the quantity that decides whether
     # max_avg_part_size_for_too_many_parts has disabled the count ceilings.
     avg_bytes = client.query(
         f"SELECT ifNull(avg(bytes_on_disk), 0) FROM system.parts "
         f"WHERE table = '{TABLE}' AND active"
-    ).first_item
+    ).result_rows[0][0]
     return {
         "active_parts": int(active),
         "distinct_partitions": int(partitions),
@@ -284,6 +299,7 @@ def run_step(batch_size: int, delay_threshold: int, max_avg_part_bytes: int) -> 
         "final_avg_part_bytes": final["avg_part_bytes"],
         "max_avg_part_size_for_too_many_parts": max_avg_part_bytes,
         "too_many_parts_check_active": check_active,
+        "merges_stopped": STOP_MERGES,
         "crossed_delay_threshold": crossed_delay,
         "parts_per_ok_insert": round(parts_per_insert, 4) if parts_per_insert is not None else None,
         "event_deltas": event_deltas,
@@ -352,6 +368,7 @@ def main() -> None:
         "writers": WRITERS,
         "rows": ROWS,
         "step_cap_s": STEP_CAP_S,
+        "merges_stopped": STOP_MERGES,
         "settings": live,
         "steps": steps,
     }

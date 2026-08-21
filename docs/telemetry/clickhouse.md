@@ -53,22 +53,34 @@ SELECT value FROM system.settings WHERE name = 'async_insert';
 | Write latency under insert load (`meanLatencyMs`, `p50/p95/p99LatencyMs`, `opsPerSecond`) | ms / ops/s | — | step | `manufacturable` | Same key names as Mongo `ticket_probe` / `occupancy_band_probe` for cross-system compare. Write half; read half lands with concurrent readers. |
 | Achieved inserts/sec at each batch size | ops/s | mean | step | `manufacturable` | Alias of write `opsPerSecond`. If batch=1 is implausibly slow, the harness was the bottleneck, not ClickHouse. |
 
-## Events — names confirmed at experiment time
+## Events — confirmed live (2026-08-21 dual probe)
 
-Do not hard-code a `system.events` counter name until a live version has been
-queried. Versions differ in what they expose.
+Queried via diffs of `system.events` during `clickhouse_probe` steps on
+`clickhouse/clickhouse-server:23.3` and `:24.8`:
+
+| Event | Role |
+|---|---|
+| `DelayedInserts` | Count of inserts that slept under part pressure |
+| `DelayedInsertsMilliseconds` | Artificial sleep budget consumed |
+| `RejectedInserts` | Server-side rejects (pairs with client `Too many parts`) |
+| `FailedInsertQuery` | Failed insert queries (includes rejects) |
+| `InsertedCompactParts` / `InsertedRows` | Part/row creation progress |
+
+Credit delay only when `DelayedInserts` rises **and** active parts crossed
+`parts_to_delay_insert`. Credit reject from client exception text and/or
+`RejectedInserts`.
 
 ```sql
 SELECT event, value
 FROM system.events
-WHERE event ILIKE '%insert%' OR event ILIKE '%part%'
+WHERE event IN (
+  'DelayedInserts',
+  'DelayedInsertsMilliseconds',
+  'RejectedInserts',
+  'FailedInsertQuery'
+)
 ORDER BY event;
 ```
-
-Whichever delay/reject counters the running version actually increments belong
-here once confirmed — same posture as discovering that MongoDB 7.0.39 still
-exposes tickets under `wiredTiger.concurrentTransactions` rather than the
-documented `queues.execution` path.
 
 ## Memory / colocation (already sampled elsewhere)
 
