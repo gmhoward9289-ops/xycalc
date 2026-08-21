@@ -50,9 +50,9 @@ observations:
     controller adjustment left it at and does not walk back toward the
     documented floor of 4 on its own. Matches the mechanism proposed in the
     plan (throughputProbing has no throughput sample to act on at zero
-    traffic, so there is nothing for it to adjust). Whether a low-trickle of
-    subsequent traffic WOULD decay it -- the comparison branch the plan
-    calls for -- was not run in this pass; see FINDINGS.md.
+    traffic, so there is nothing for it to adjust). The plan's trickle
+    comparison (HZ=1, 900s) later ran on COOPER 2026-08-21 and also froze —
+    see cooper-2026-08-21-tickets-trickle-cooldown-900s / FINDINGS.md.
 
 # -- db.ops_per_second: throughput at the one concurrency level run here --
 - slug: swamplink-2026-08-19-opsec-c64-600s

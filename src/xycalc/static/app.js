@@ -633,6 +633,8 @@ const XYCALC_APP = (() => {
       document.body.classList.toggle("mode-advanced", !simple);
       $("mode-simple").setAttribute("aria-pressed", simple ? "true" : "false");
       $("mode-advanced").setAttribute("aria-pressed", simple ? "false" : "true");
+      const subnav = document.querySelector(".view-subnav");
+      if (subnav) subnav.setAttribute("aria-hidden", simple ? "true" : "false");
       if (persist) {
         try { localStorage.setItem(MODE_KEY, simple ? "simple" : "advanced"); }
         catch (_) { /* ignore */ }

@@ -1,0 +1,17 @@
+sources:
+- slug: obs-celery-prefetch-swamplink-2026-08-21
+  title: Celery prefetch multiplier backlog understatement sweep (T6 / issue #14)
+  publisher: xycalc benchmark (swamplink)
+  retrieved_on: '2026-08-21'
+  source_type: benchmark
+  notes: >-
+    tools/bench/celery_probe/sweep_prefetch.sh on swamplink,
+    OUT results/t6-prefetch-20260821-192932, prefetch 1/2/4/8/16 at fixed
+    PROBE_RATES=400 PROBE_SECONDS=30 concurrency=8 (compose default).
+    Celery pinned celery[redis]==5.4.0 in the probe Dockerfile. Combined
+    JSONL + reconstruction:
+    docs/investigations/014-celery-prefetch-backlog/artifacts/. This run's
+    sampleSeries lacked enqueuedSoFar (image lag vs later drive.py); end-of-
+    load understatement uses exact counters (enqueued − completedDuringLoad −
+    queueDepthAtEnd). Mid-window understatement means are reconstructed from
+    linear enqueue and are noted as such in observation notes.

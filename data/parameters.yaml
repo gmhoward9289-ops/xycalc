@@ -330,6 +330,15 @@ parameters:
     unit: seconds
     dimension: seconds
 
+  - slug: queue.outstanding_understatement
+    label: Outstanding tasks invisible to broker LLEN (outstanding − depth)
+    unit: tasks
+    dimension: count
+    notes: >-
+      True outstanding (enqueued − completed) minus Redis LIST depth. Dominated
+      by prefetch × concurrency reservation under overload when the fleet is
+      fed; see investigation 014 / T6.
+
   - slug: queue.duplicate_rate_pct
     label: Broker redelivery duplicate execution rate
     unit: percent

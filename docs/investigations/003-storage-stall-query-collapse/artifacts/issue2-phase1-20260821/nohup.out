@@ -1,0 +1,12 @@
+=== issue #2 phase 1 out=/root/dev/xycalc/results/issue2-phase1 seconds=300 ===
+--- level=16 2026-08-21T14:53:11+00:00 ---
+--- level=16 exit 0 ---
+c=16 ops/s=87.0 ticketsMax=19 holdMs=178.62 predHold=106.4 verdict=CONVERGED_DEMAND_CAPPED relDelta=0.0074
+--- level=32 2026-08-21T15:01:04+00:00 ---
+--- level=32 exit 0 ---
+c=32 ops/s=100.7 ticketsMax=38 holdMs=294.97 predHold=128.8 verdict=CONVERGED_DEMAND_CAPPED relDelta=0.0028
+--- level=64 2026-08-21T15:08:31+00:00 ---
+--- level=64 exit 0 ---
+c=64 ops/s=103.1 ticketsMax=77 holdMs=512.46 predHold=150.3 verdict=CONVERGED_DEMAND_CAPPED relDelta=0.002
+=== issue #2 phase 1 complete 2026-08-21T15:15:57+00:00 ===
+OUT=/root/dev/xycalc/results/issue2-phase1
