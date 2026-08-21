@@ -15,24 +15,27 @@ assert.equal(
   "do not hide the 90 tick at narrow width — live 066e0c7 measured it 0×0",
 );
 
-const mqStart = html.indexOf("@media (max-width: 42rem)");
-assert.ok(mqStart >= 0, "missing 42rem query");
-const mqEnd = html.indexOf("}", html.indexOf("#tab-occupancy #occ-mark-trigger::after", mqStart));
-assert.ok(mqEnd > mqStart, "missing #occ-mark-trigger::after in the 42rem query");
+const triggerSel = "#tab-occupancy #occ-ladder #occ-mark-trigger";
+const triggerHit = html.indexOf(triggerSel);
+assert.ok(triggerHit >= 0, "missing occupancy trigger lift selector");
+const mqStart = html.lastIndexOf("@media (max-width: 42rem)", triggerHit);
+assert.ok(mqStart >= 0, "missing 42rem query around trigger lift");
+const mqEnd = html.indexOf("}", html.indexOf(triggerSel + "::after", mqStart));
+assert.ok(mqEnd > mqStart, "missing trigger ::after in the 42rem query");
 const mq = html.slice(mqStart, mqEnd + 1);
 
-assert.ok(mq.includes("#tab-occupancy #occ-mark-trigger"), "42rem query must target trigger 95");
-assert.ok(mq.includes("top: -2.6rem"), "trigger 95 must lift ≥1.5rem off target 80 at 375px");
+assert.ok(mq.includes("#tab-occupancy #occ-ladder #occ-mark-trigger"), "42rem query must target trigger 95");
+assert.ok(mq.includes("top: -3.6rem"), "trigger 95 must lift well off target 80 at 375px");
 assert.ok(mq.includes("line-height: 1"), "narrow labels need line-height 1 so the lift is a real gap");
 assert.equal(mq.includes("display: none"), false, "42rem query must not hide occupancy ticks");
 
 assert.ok(html.includes("top: -1.1rem"), "desktop above-bar row stays at -1.1rem");
 
-const triggerTop = -2.6;
+const triggerTop = -3.6;
 const targetTop = -1.1;
 assert.ok(
-  Math.abs(triggerTop - targetTop) >= 1.4,
-  "narrow trigger vs target tops must differ by ≥1.4rem (body line-height 1.55)",
+  Math.abs(triggerTop - targetTop) >= 2.4,
+  "narrow trigger vs target tops must differ by ≥2.4rem so 0.7rem type cannot overprint",
 );
 
 function box(pct, text, topRem, align, ladderPx, fontPx) {
