@@ -8,6 +8,9 @@ name: ci
 on:
   push:
   pull_request:
+  # GITHUB_TOKEN auto-merge swallows `push` on main. auto-merge.yml and
+  # kick-main-pipelines.yml start this workflow via workflow_dispatch.
+  workflow_dispatch:
 
 # CodeQL alerts #8, #9, #11 and #12 (actions/missing-workflow-permissions).
 # Without this, GITHUB_TOKEN is granted whatever the repository default is,

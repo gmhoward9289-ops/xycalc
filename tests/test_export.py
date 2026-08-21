@@ -278,7 +278,10 @@ def test_render_substitutes_every_placeholder(blob):
     assert "calculateSimple" in html, "the page shipped without Simple mode"
     assert "simpleFirstPaintHtml" in html
     assert "SIMPLE_HONESTY_LINE" in html
+    assert "SIZE_PATH_FOOTNOTES" in html
+    assert "size-path-footnote" in html
     assert 'id="simple-view"' in html
+    assert 'id="single-model-footnotes"' in html
     assert 'id="simple-honesty-slot"' in html
     assert 'id="mode-simple"' in html
     assert "--btn-ink" in html
@@ -504,6 +507,23 @@ def test_simple_first_paint_cannot_show_ram_without_weakest_grade(blob, tmp_path
     )
     assert proc.returncode == 0, proc.stdout + proc.stderr
     assert "simple first paint ok" in proc.stdout
+
+
+@pytest.mark.skipif(NODE is None, reason="node is not installed")
+def test_size_path_footnotes_on_default_mongodb_chain(blob, tmp_path):
+    """Simple first paint and size-to-instance What-you-need carry the three
+    measured footnotes; ebs.microburst only gets the EBS sentence."""
+    corpus = tmp_path / "corpus.json"
+    corpus.write_text(json.dumps(blob), encoding="utf-8")
+    script = Path(__file__).resolve().parent / "check_size_path_footnotes.js"
+    proc = subprocess.run(
+        [NODE, str(script), str(APP_JS.resolve()), str(EVALUATE_JS.resolve()), str(corpus)],
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+    )
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    assert "size path footnotes ok" in proc.stdout
 
 
 @pytest.mark.skipif(NODE is None, reason="node is not installed")

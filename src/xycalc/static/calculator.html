@@ -470,6 +470,12 @@ body.mode-advanced #simple-view { display: none !important; }
   color: var(--stop-ink); border-color: var(--stop-line); font-weight: 600;
   padding: .4rem .75rem; font-size: .82rem;
 }
+.size-path-footnote {
+  font-size: .82rem; color: var(--muted); line-height: 1.45;
+  border-left: 3px solid var(--warn-line);
+  padding: .35rem 0 .35rem .75rem; margin: .75rem 0 0;
+}
+.sizing-summary .size-path-footnote:first-of-type { margin-top: 1rem; }
 </style>
 </head>
 <body class="mode-simple">
@@ -610,6 +616,7 @@ body.mode-advanced #simple-view { display: none !important; }
     <div id="headroom" hidden></div>
 
     <div class="validation" id="validation"></div>
+    <div id="single-model-footnotes"></div>
   </div>
 
   <div class="panel" id="chart-panel">
@@ -777,11 +784,7 @@ body.mode-advanced #simple-view { display: none !important; }
 
   <div class="panel">
     <h2 style="margin-top:0">Not the same cliff — MongoDB 7 tickets</h2>
-    <p style="margin:0 0 .65rem;font-size:.92rem;color:var(--muted)" id="occ-ticket-blurb">
-      Investigation 003 restated: under a device-bound load, <code>totalTickets</code>
-      can climb while ops/s stays flat and latency explodes. That is admission
-      contention, not an eviction-% problem — do not tune the wrong knob.
-    </p>
+    <p class="size-path-footnote" data-footnote="tickets" id="occ-ticket-blurb"></p>
     <div class="scroll">
       <table class="occ-table">
         <thead>
