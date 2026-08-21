@@ -253,4 +253,42 @@ assert.ok(cite.includes("Set cacheSizeGB"));
 assert.ok(cite.includes("Corpus abc · xycalc 0.0.0 · deadbee"));
 assert.ok(!cite.includes("<script>"));
 
+assert.ok(APP.SIMPLE_HONESTY_LINE.includes("Not a buy size"));
+assert.ok(APP.SIMPLE_HONESTY_LINE.includes("open Advanced for sources"));
+assert.ok(APP.simpleHonestyBlockHtml().includes("simple-open-advanced"));
+assert.ok(APP.simpleHonestyBlockHtml().includes(APP.SIMPLE_HONESTY_LINE));
+
+const demoted = APP.displayValidation({
+  grade: "reasonable",
+  within_band: 0,
+  text: "validated (n=3, 0 within band, mean absolute error 0.8%)",
+});
+assert.strictEqual(demoted.grade, "thin");
+assert.ok(APP.zeroInBand({ text: "validated (n=3, 0 within band, MAE 0.8%)" }));
+assert.ok(!APP.zeroInBand({ grade: "reasonable", text: "validated (n=12, 12 within band)" }));
+
+const miss = APP.simpleCatalogMissReason({
+  exceeds_pool: true,
+  largest_in_pool: { name: "r8i.48xlarge", ram_bytes: 1536 * 1024 ** 3 },
+}, (n) => String(n) + "B");
+assert.ok(miss.includes("r8i.48xlarge"), miss);
+assert.ok(miss.includes("catalog has no fit"), miss);
+
+const chainWorst = APP.simpleWeakestValidation([
+  { kind: "model", validation: { grade: "reasonable", text: "validated (n=12, 12 within band)" } },
+  { kind: "lookup", validation: { grade: "none", text: "should ignore lookups" } },
+  { kind: "model", validation: { grade: "none", text: "unvalidated (n=0) — no observation has ever been checked against this model" } },
+]);
+assert.strictEqual(chainWorst.grade, "none");
+
+const okBanner = APP.validationBannerHtml({
+  grade: "none",
+  text: "unvalidated (n=0) — no observation has ever been checked against this model",
+});
+assert.ok(APP.simpleRamHonestyOk("120 GB", okBanner, {
+  grade: "none",
+  text: "unvalidated (n=0) — no observation has ever been checked against this model",
+}));
+assert.ok(!APP.simpleRamHonestyOk("120 GB", "<div>reasonable —</div>", { grade: "reasonable" }));
+
 console.log("app helpers ok");

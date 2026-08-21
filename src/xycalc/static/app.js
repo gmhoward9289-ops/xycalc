@@ -257,6 +257,116 @@ const XYCALC_APP = (() => {
     return `<div class="validation${cls} ${esc(v.grade)}">${validationBannerInner(v)}</div>`;
   }
 
+  // Simple first paint must not look like a cited buy-size. The full chain
+  // lives in Advanced; this is the line that cannot be missed if we refuse
+  // to mini-render every quote here.
+  const SIMPLE_HONESTY_LINE =
+    "Not a buy size / uncited path — open Advanced for sources.";
+
+  function chainModelValidations(steps) {
+    const out = [];
+    for (const st of steps || []) {
+      if (st && st.kind === "model") out.push(st.validation);
+    }
+    return out;
+  }
+
+  function zeroInBand(v) {
+    if (!v) return false;
+    if (v.within_band === 0) return true;
+    return /\b0 within band\b/.test(String(v.text || v.summary || ""));
+  }
+
+  // Display-time pin for #118: a stale export that still shipped
+  // grade=reasonable with 0 in-band hits must not paint Validated on Simple.
+  function displayValidation(v) {
+    if (!v || v.grade == null) return v;
+    if (v.grade === "reasonable" && zeroInBand(v)) {
+      const copy = {};
+      for (const k of Object.keys(v)) copy[k] = v[k];
+      copy.grade = "thin";
+      return copy;
+    }
+    return v;
+  }
+
+  function simpleWeakestValidation(steps) {
+    return displayValidation(weakestValidation(chainModelValidations(steps)));
+  }
+
+  function simpleHonestyBlockHtml() {
+    return `<div class="simple-honesty" id="simple-honesty" role="status">
+      <p>${esc(SIMPLE_HONESTY_LINE)}</p>
+      <button type="button" class="ghost" id="simple-open-advanced">Open Advanced · show the math</button>
+    </div>`;
+  }
+
+  function simpleCatalogMissReason(pick, fmt) {
+    if (!pick || !pick.largest_in_pool) {
+      return "the catalog has no fit for this RAM band";
+    }
+    const largest = pick.largest_in_pool;
+    const sku = largest.name || "largest SKU";
+    const ramLabel = fmt && largest.ram_bytes != null ? fmt(largest.ram_bytes, "bytes") : "";
+    const sized = ramLabel ? sku + ", " + ramLabel : sku;
+    if (pick.exceeds_pool) {
+      return "exceeds the " + sized + " band — the catalog has no fit";
+    }
+    return "the catalog has no fit (largest in pool: " + sized + ")";
+  }
+
+  function simplePickCardHtml(end, ram, pick, fmt) {
+    const name = end.name;
+    const spec = end.ram != null && ram && fmt ? fmt(end.ram, ram.unit) + " RAM" : "";
+    const miss = name ? "" : simpleCatalogMissReason(pick, fmt);
+    const title = name || "custom sizing";
+    return `<div class="simple-pick${end.key === "mode" ? " mode-pick" : ""}">
+      <div class="which">${esc(end.label)}</div>
+      <div class="name">${esc(title)}</div>
+      <div class="spec">${esc(spec)}</div>
+      ${miss ? `<div class="miss">${esc(miss)}</div>` : ""}
+    </div>`;
+  }
+
+  function simpleRamHonestyOk(ramText, bannerHtml, weakest) {
+    if (!ramText) return true;
+    if (!weakest || weakest.grade == null) return false;
+    const label = GRADE_LABEL[weakest.grade] || weakest.grade;
+    const clause = validationClause(weakest);
+    if (!clause) return false;
+    const banner = String(bannerHtml || "");
+    if (banner.indexOf(label) < 0) return false;
+    if (banner.indexOf(clause) < 0 && banner.indexOf(esc(clause)) < 0) return false;
+    if (zeroInBand(weakest) && /<strong>Validated<\/strong>/.test(banner)) return false;
+    if (weakest.grade !== "reasonable" && /<strong>Validated<\/strong>/.test(banner)) return false;
+    return true;
+  }
+
+  function simpleFirstPaintHtml(data, fmt) {
+    const s = (data && data.sizing_summary) || {};
+    const ram = s.ram;
+    const pick = (data && data.simple_instance_pick) || null;
+    const weakest = simpleWeakestValidation(data && data.steps);
+    const bannerHtml = validationBannerHtml(weakest);
+    const honestyHtml = simpleHonestyBlockHtml();
+    let ramText = ram && fmt ? fmt(ram.mode, ram.unit) : "";
+    if (ramText && !simpleRamHonestyOk(ramText, bannerHtml, weakest)) ramText = "";
+    const ends = [
+      { key: "lo", label: "Low", name: s.cpu && s.cpu.instance_lo, ram: ram && ram.lo },
+      { key: "mode", label: "Mode", name: s.cpu && s.cpu.instance_mode, ram: ram && ram.mode },
+      { key: "hi", label: "High", name: s.cpu && s.cpu.instance_hi, ram: ram && ram.hi },
+    ];
+    const picksHtml = ends.map((e) => simplePickCardHtml(e, ram, pick, fmt)).join("");
+    return {
+      ramText: ramText,
+      weakest: weakest,
+      bannerHtml: bannerHtml,
+      honestyHtml: honestyHtml,
+      picksHtml: picksHtml,
+      html: (ramText || "") + bannerHtml + honestyHtml + picksHtml,
+    };
+  }
+
   function gradeSuffix(grade) {
     const phrase = GRADE_PILL[grade];
     return phrase ? " · " + phrase : "";
@@ -648,7 +758,35 @@ const XYCALC_APP = (() => {
       $("simple-vulns").value = "";
       $("simple-db-size").addEventListener("input", scheduleSimpleCalc);
       $("simple-vulns").addEventListener("input", scheduleSimpleCalc);
+      $("simple-result").addEventListener("click", (ev) => {
+        if (ev.target && ev.target.id === "simple-open-advanced") {
+          ev.preventDefault();
+          openAdvancedFromSimple();
+        }
+      });
       scheduleSimpleCalc();
+    }
+
+    function openAdvancedFromSimple() {
+      const sizeRaw = ($("simple-db-size").value || "").trim();
+      const vulns = ($("simple-vulns").value || "").trim();
+      setMode("advanced");
+      setTab("scenario");
+      pickScenario("mongodb.size-to-instance");
+      if (sizeRaw) {
+        const el = $("scn-in-baseline_storage_size");
+        if (el) el.value = normalizeSimpleSize(sizeRaw);
+      }
+      if (vulns) {
+        const b = $("scn-in-baseline_vuln_count");
+        if (b) b.value = vulns;
+        const t = $("scn-in-target_vuln_count");
+        if (t) t.value = vulns;
+      }
+      calculateScenario(true);
+      const details = $("scenario-cascade").querySelector("details");
+      if (details) details.open = true;
+      $("scenario-cascade").scrollIntoView({ behavior: "smooth", block: "start" });
     }
 
     function scheduleSimpleCalc() {
@@ -730,15 +868,17 @@ const XYCALC_APP = (() => {
         if (s.ram.hi <= floor) s.cpu.instance_hi = s.cpu.instance_hi || "r8i.2xlarge";
       }
       data.sizing_summary = s;
+      data.simple_instance_pick = pick || null;
       return data;
     }
 
     function renderSimpleResult(data) {
       const s = data.sizing_summary || {};
       const ram = s.ram;
+      const paint = simpleFirstPaintHtml(data, fmt);
       $("simple-result").hidden = false;
-      if (ram) {
-        $("simple-ram").textContent = fmt(ram.mode, ram.unit);
+      if (ram && paint.ramText) {
+        $("simple-ram").textContent = paint.ramText;
         $("simple-ram-band").textContent =
           "band " + fmt(ram.lo, ram.unit) + " – " + fmt(ram.hi, ram.unit);
         if (ram.hi > ram.lo) {
@@ -762,32 +902,11 @@ const XYCALC_APP = (() => {
         $("simple-bandends").hidden = true;
       }
 
-      const ends = [
-        { key: "lo", label: "Low", name: s.cpu && s.cpu.instance_lo, ram: ram && ram.lo },
-        { key: "mode", label: "Mode", name: s.cpu && s.cpu.instance_mode, ram: ram && ram.mode },
-        { key: "hi", label: "High", name: s.cpu && s.cpu.instance_hi, ram: ram && ram.hi },
-      ];
-      $("simple-picks").innerHTML = ends.map((e) => {
-        const name = e.name || "custom sizing";
-        const spec = e.ram != null && ram ? fmt(e.ram, ram.unit) + " RAM" : "";
-        return `<div class="simple-pick${e.key === "mode" ? " mode-pick" : ""}">
-          <div class="which">${esc(e.label)}</div>
-          <div class="name">${esc(name)}</div>
-          <div class="spec">${esc(spec)}</div>
-        </div>`;
-      }).join("");
-
-      const weakest = weakestValidation(
-        (data.steps || []).filter((st) => (st.kind || "model") === "model").map((st) => st.validation)
-      );
+      $("simple-picks").innerHTML = paint.picksHtml;
+      const slot = $("simple-honesty-slot");
+      if (slot) slot.innerHTML = paint.bannerHtml + paint.honestyHtml;
       const val = $("simple-validation");
-      if (weakest && weakest.grade != null) {
-        val.hidden = false;
-        val.className = "validation" + (weakest.grade === "reasonable" ? " reasonable" : "") + " " + weakest.grade;
-        val.innerHTML = validationBannerInner(weakest);
-      } else {
-        val.hidden = true;
-      }
+      if (val) val.hidden = true;
     }
 
     function setTab(name, opts) {
@@ -1989,6 +2108,15 @@ const XYCALC_APP = (() => {
     validationBannerHtml: validationBannerHtml,
     formatCitation: formatCitation,
     GRADE_LABEL: GRADE_LABEL,
+    SIMPLE_HONESTY_LINE: SIMPLE_HONESTY_LINE,
+    chainModelValidations: chainModelValidations,
+    zeroInBand: zeroInBand,
+    displayValidation: displayValidation,
+    simpleWeakestValidation: simpleWeakestValidation,
+    simpleHonestyBlockHtml: simpleHonestyBlockHtml,
+    simpleCatalogMissReason: simpleCatalogMissReason,
+    simpleRamHonestyOk: simpleRamHonestyOk,
+    simpleFirstPaintHtml: simpleFirstPaintHtml,
   };
 })();
 

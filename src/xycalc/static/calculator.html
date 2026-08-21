@@ -458,6 +458,18 @@ body.mode-advanced #simple-view { display: none !important; }
   font-size: .78rem; color: var(--muted); margin-top: .35rem;
 }
 .simple-pick.mode-pick { border-color: var(--accent); }
+.simple-pick .miss {
+  font-size: .72rem; color: var(--warn-ink); margin-top: .4rem; line-height: 1.35;
+}
+.simple-honesty {
+  border: 2px solid var(--stop-line); background: var(--stop-bg); color: var(--stop-ink);
+  border-radius: 8px; padding: .85rem .95rem; margin-top: .85rem; font-size: .9rem;
+}
+.simple-honesty p { margin: 0 0 .65rem; }
+.simple-honesty #simple-open-advanced {
+  color: var(--stop-ink); border-color: var(--stop-line); font-weight: 600;
+  padding: .4rem .75rem; font-size: .82rem;
+}
 </style>
 </head>
 <body class="mode-simple">
@@ -530,6 +542,7 @@ body.mode-advanced #simple-view { display: none !important; }
       <div class="bandends" id="simple-bandends" hidden></div>
       <div class="simple-picks" id="simple-picks"></div>
       <div class="validation" id="simple-validation" hidden></div>
+      <div id="simple-honesty-slot"></div>
     </div>
   </div>
 </div>

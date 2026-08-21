@@ -276,7 +276,10 @@ def test_render_substitutes_every_placeholder(blob):
     assert "function setTab" in html, "the page shipped without its UI"
     assert "XYCALC_APP" in html, "the page shipped without the extracted UI script"
     assert "calculateSimple" in html, "the page shipped without Simple mode"
+    assert "simpleFirstPaintHtml" in html
+    assert "SIMPLE_HONESTY_LINE" in html
     assert 'id="simple-view"' in html
+    assert 'id="simple-honesty-slot"' in html
     assert 'id="mode-simple"' in html
     assert "--btn-ink" in html
     assert "--error" in html
@@ -473,6 +476,23 @@ def test_app_js_helpers():
     )
     assert proc.returncode == 0, proc.stdout + proc.stderr
     assert "app helpers ok" in proc.stdout
+
+
+@pytest.mark.skipif(NODE is None, reason="node is not installed")
+def test_simple_first_paint_cannot_show_ram_without_weakest_grade(blob, tmp_path):
+    """Default 100GB Simple path: a host-RAM figure without the weakest
+    chained grade (and Validated at 0 in-band) is the live honesty miss."""
+    corpus = tmp_path / "corpus.json"
+    corpus.write_text(json.dumps(blob), encoding="utf-8")
+    script = Path(__file__).resolve().parent / "check_simple_first_paint.js"
+    proc = subprocess.run(
+        [NODE, str(script), str(APP_JS.resolve()), str(EVALUATE_JS.resolve()), str(corpus)],
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+    )
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    assert "simple first paint ok" in proc.stdout
 
 
 @pytest.mark.skipif(NODE is None, reason="node is not installed")
