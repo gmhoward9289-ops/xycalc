@@ -767,9 +767,20 @@ const XYCALC_APP = (() => {
       scheduleSimpleCalc();
     }
 
+    let pendingExpandMathUntil = 0;
+
+    function expandScenarioMath() {
+      const details = $("scenario-cascade") && $("scenario-cascade").querySelector("details");
+      if (!details) return false;
+      details.open = true;
+      details.setAttribute("open", "");
+      return true;
+    }
+
     function openAdvancedFromSimple() {
       const sizeRaw = ($("simple-db-size").value || "").trim();
       const vulns = ($("simple-vulns").value || "").trim();
+      pendingExpandMathUntil = Date.now() + 600;
       setMode("advanced");
       setTab("scenario");
       pickScenario("mongodb.size-to-instance");
@@ -783,9 +794,11 @@ const XYCALC_APP = (() => {
         const t = $("scn-in-target_vuln_count");
         if (t) t.value = vulns;
       }
-      calculateScenario(true);
-      const details = $("scenario-cascade").querySelector("details");
-      if (details) details.open = true;
+      calculateScenario(true, { expandMath: true });
+      expandScenarioMath();
+      setTimeout(expandScenarioMath, 0);
+      setTimeout(expandScenarioMath, 160);
+      setTimeout(expandScenarioMath, 400);
       $("scenario-cascade").scrollIntoView({ behavior: "smooth", block: "start" });
     }
 
@@ -1259,7 +1272,7 @@ const XYCALC_APP = (() => {
       }, corpusMeta());
     }
 
-    function calculateScenario(auto) {
+    function calculateScenario(auto, opts) {
       if (!currentScenario) return;
       const inputs = {};
       document.querySelectorAll("#scenario-inputs input").forEach((el) => {
@@ -1308,7 +1321,9 @@ const XYCALC_APP = (() => {
         lastScenarioCitation = citationFromChain(data);
         const citationOnly = !(instSizing || perf || size) && !!sizingBlock;
         const existing = $("scenario-cascade").querySelector("details");
-        const open = existing ? existing.open : true;
+        const open = (opts && opts.expandMath)
+          || Date.now() < pendingExpandMathUntil
+          || (existing ? existing.open : true);
         $("scenario-cascade").innerHTML = `<details class="cascade-wrap"${open ? " open" : ""}>
           <summary>Show the math · ${data.steps.length} steps</summary>
           ${data.steps.map((st, i) => st.kind === "model"
@@ -1319,6 +1334,7 @@ const XYCALC_APP = (() => {
                 ? `<div class="panel">Step ${i + 1}: gp3 ${st.gp3.volume_gib.toFixed(1)} GiB · ${st.gp3.baseline_iops} IOPS included</div>`
                 : "") .join("")}
         </details>`;
+        if (opts && opts.expandMath) expandScenarioMath();
         $("scn-recalc-status").textContent = citationOnly
           ? "Citation scenario — no fields to edit yet."
           : "Up to date — change any field to recalculate.";
