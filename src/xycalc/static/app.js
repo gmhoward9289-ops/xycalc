@@ -219,6 +219,7 @@ const XYCALC_APP = (() => {
       $("simple-vulns").value = "";
       $("simple-db-size").addEventListener("input", scheduleSimpleCalc);
       $("simple-vulns").addEventListener("input", scheduleSimpleCalc);
+      $("simple-to-advanced").addEventListener("click", () => setMode("advanced"));
       scheduleSimpleCalc();
     }
 
@@ -351,9 +352,12 @@ const XYCALC_APP = (() => {
       const val = $("simple-validation");
       if (hostRamStep && hostRamStep.validation) {
         const v = hostRamStep.validation;
+        const detail = (v.summary || v.note || "").trim();
         val.hidden = false;
         val.className = "validation" + (v.grade === "reasonable" ? " reasonable" : "");
-        val.innerHTML = `<strong>${esc(v.grade || "unchecked")}</strong> — ${esc(v.summary || v.note || "")}`;
+        val.innerHTML = detail
+          ? `<strong>${esc(v.grade || "unchecked")}</strong> — ${esc(detail)}`
+          : `<strong>${esc(v.grade || "unchecked")}</strong>`;
       } else {
         val.hidden = true;
       }

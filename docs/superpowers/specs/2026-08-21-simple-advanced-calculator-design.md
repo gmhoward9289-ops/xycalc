@@ -1,6 +1,6 @@
 # Simple / Advanced calculator modes (#54)
 
-**Status:** playable prototype in `src/xycalc/static/calculator.html`  
+**Status:** shipped in `src/xycalc/static/calculator.html` + `app.js`  
 **Date:** 2026-08-21
 
 ## Goal
@@ -31,7 +31,14 @@ End-user sizing surface with few inputs; full instrument remains one click away.
 
 ## Refuses
 
-Self-check and validation grades are unchanged; Simple does not hide failures.
+Self-check and validation grades are unchanged; Simple does not hide failures. The page-level golden self-check still blanks the whole app on drift.
+
+## Acceptance
+
+- [x] End-user path has a short input set and a clear answer
+- [x] Advanced / full instrument remains available (mode bar + “Open Advanced” under the answer)
+- [x] Simple still refuses / warns when unvalidated or self-check fails
+- [x] Preference remembered in `localStorage` without a reload surprise
 
 ## Out of scope
 
