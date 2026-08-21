@@ -363,7 +363,7 @@ follow from rows here.
 | Was | Now | When |
 |---|---|---|
 | "Microbursts are unmeasurable on CloudWatch" | Wrong conclusion — averages hide them; `*ExceededCheck` reports them (one-second tier) | Inv 002 / `ebs.md` correction |
-| "Tickets live under `queues.execution` on 7.0+" | Still under `wiredTiger.concurrentTransactions` on 7.0.39 | Telemetry verification 2026-07-31 |
+| "Tickets live under `queues.execution` on 7.0+" | Still under `wiredTiger.concurrentTransactions` on 7.0.39; **relocated to `queues.execution` on 8.0.29 / 8.2.12** (concurrentTransactions gone) | Telemetry verification 2026-07-31 / 2026-08-21 (#7) |
 
 ### Threshold rationale (corpus-backed)
 
