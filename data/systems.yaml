@@ -35,6 +35,20 @@ systems:
       metric we need does not exist in the obvious place, which is the finding
       rather than an obstacle to it.
 
+  - slug: azure-disks
+    label: Azure managed disks (Premium SSD v2)
+    category: storage
+    notes: >-
+      Azure's block-storage answer to EBS gp3: Premium SSD v2 decouples
+      capacity from performance, ships a free baseline (3,000 IOPS / 125 MB/s)
+      and lets IOPS and throughput be provisioned independently. The
+      non-obvious trap this corpus records is the throughput-to-IOPS coupling —
+      you cannot buy MB/s directly past the baseline; each provisioned IOPS
+      unlocks 0.25 MB/s, so a throughput target is really an IOPS floor. Figures
+      are documented from the vendor and unvalidated against a running disk;
+      Azure quotes throughput in decimal MB/s (10^6 B/s), deliberately a
+      different parameter here from EBS's binary MiB/s.
+
   - slug: clickhouse
     label: ClickHouse
     category: database

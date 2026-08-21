@@ -169,6 +169,28 @@ parameters:
     unit: MiB/s
     dimension: bytes_per_second
 
+  - slug: io.throughput_mbps
+    label: Volume throughput (decimal MB/s)
+    unit: MB/s
+    dimension: bytes_per_second
+    notes: >-
+      Decimal MB/s (10^6 B/s), the unit Azure specifies managed disks in —
+      deliberately a different parameter from io.throughput_mibps, which is
+      binary MiB/s (2^20 B/s). The two differ by ~4.9%, small enough to look
+      like rounding and large enough to matter across a provider boundary, so
+      the corpus keeps them apart the way it keeps dataSize and storageSize
+      apart rather than silently converting one into the other.
+
+  - slug: io.throughput_per_iops_mbps
+    label: Throughput unlocked per provisioned IOPS
+    unit: MB/s per IOPS
+    dimension: ratio
+    notes: >-
+      Azure Premium SSD v2 gates throughput on IOPS: each provisioned IOPS
+      raises the settable throughput ceiling by this many decimal MB/s. It is
+      why a throughput target is really an IOPS floor — you cannot buy MB/s
+      past the free baseline without buying the IOPS that unlock them.
+
   - slug: io.queue_depth
     label: Average queue depth
     unit: count

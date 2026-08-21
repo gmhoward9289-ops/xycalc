@@ -1,0 +1,123 @@
+models:
+  - slug: azure.premium-v2-throughput-ceiling
+    question: How much throughput can I set on an Azure Premium SSD v2 disk at my provisioned IOPS?
+    system: azure-disks
+    output: io.throughput_mbps
+
+    summary: >-
+      Takes the IOPS you provision on a Premium SSD v2 disk and returns the
+      maximum throughput you are then allowed to set, because Azure gates
+      throughput on IOPS rather than selling it directly: each provisioned IOPS
+      unlocks 0.25 MB/s, floored at the free 125 MB/s baseline and capped at the
+      per-disk ceiling.
+
+    reframe: >-
+      On Premium SSD v2 you do not buy throughput. You buy IOPS, and throughput
+      is what they unlock — 0.25 MB/s per provisioned IOPS past the free
+      baseline. So "I need 1,000 MB/s" is not a throughput request, it is a
+      request for at least 4,000 IOPS, whether or not the workload is
+      IOPS-bound. Size the IOPS first and read the throughput ceiling off them;
+      sizing throughput on its own leads to buying IOPS you did not mean to.
+
+      Two boundaries worth checking before acting on the number. The unit is
+      decimal MB/s (10^6 B/s), which is how Azure specifies disks and is ~4.9%
+      smaller than the binary MiB/s an EBS habit reaches for. And the 2,000 MB/s
+      ceiling is the one Azure's technical reference states, while its pricing
+      page summarises the maximum as 1,200 MB/s — near the top of the range,
+      confirm the current limit for your region and disk rather than trusting
+      either page alone.
+
+    notes: >-
+      Unvalidated against a running disk, and honestly so: every term is a
+      vendor constant, so the model reproduces Azure's own documented worked
+      examples by construction (3,000 IOPS -> 750 MB/s, 4,000 -> 1,000, 8,000 ->
+      2,000). That is a correctness check on the arithmetic, not validation
+      against reality — a disk's achievable throughput under a real workload is
+      what a measurement would add, and none has been taken. The IOPS you can
+      set is itself bounded by disk size (500 IOPS/GiB after 6 GiB, so 160 GiB
+      to reach 80,000); that bound is carried as a constraint here rather than
+      recomputed.
+
+    inputs:
+      - key: provisioned_iops
+        label: Provisioned IOPS on the disk
+        unit: iops
+        required: false
+        default: 3000
+        help: >-
+          The IOPS you set on the Premium SSD v2 disk (az disk
+          --disk-iops-read-write). Defaults to the free 3,000 baseline. The
+          settable maximum is 500 per GiB after the first 6 GiB, up to 80,000.
+
+    terms:
+      - key: iops_base
+        label: Provisioned IOPS
+        role: floor
+        apply: input
+        input_key: provisioned_iops
+        rationale: >-
+          The quantity you actually set, and the one everything else is derived
+          from. On Premium SSD v2 throughput is not an independent purchase, so
+          the IOPS figure is where a throughput answer has to start.
+
+      - key: per_iops
+        label: Throughput unlocked per IOPS
+        role: amplifier
+        apply: multiply
+        coefficient: azure.premium-v2-throughput-per-iops
+        rationale: >-
+          Each provisioned IOPS raises the settable throughput ceiling by 0.25
+          MB/s. This is the term that converts an IOPS figure into the MB/s it
+          entitles you to — the coupling the whole model exists to make visible.
+
+      - key: baseline_floor
+        label: Free baseline throughput
+        role: floor
+        apply: floor_at
+        coefficient: azure.premium-v2-baseline-throughput
+        rationale: >-
+          Every disk gets 125 MB/s free regardless of IOPS, so the ceiling
+          never falls below it even when 0.25 x IOPS would. Binds only for disks
+          set under 500 IOPS, which is below the 3,000 baseline anyway — carried
+          so the floor is explicit rather than assumed.
+
+      - key: disk_ceiling
+        label: Per-disk throughput ceiling
+        role: amplifier
+        apply: cap_at
+        coefficient: azure.premium-v2-max-throughput
+        rationale: >-
+          2,000 MB/s is the most a single Premium SSD v2 disk supports, reached
+          at 8,000 IOPS. Past that, more IOPS buy no more throughput on this
+          disk — the answer is another disk or Ultra Disk, not a bigger number.
+
+      - key: baseline_iops_note
+        label: Free baseline IOPS
+        role: constraint
+        apply: note
+        coefficient: azure.premium-v2-baseline-iops
+        rationale: >-
+          3,000 IOPS are included free at any size. If your demand sits under
+          it there is nothing to provision, and the throughput ceiling is the
+          baseline 750 MB/s that those 3,000 IOPS already unlock.
+
+      - key: max_iops_note
+        label: The IOPS ceiling that caps this
+        role: constraint
+        apply: note
+        coefficient: azure.premium-v2-max-iops
+        rationale: >-
+          The throughput ceiling is downstream of the IOPS ceiling: 80,000 IOPS
+          is the most a disk can be set to, and it takes 8,000 of them to reach
+          2,000 MB/s. You will hit the throughput cap long before the IOPS one.
+
+      - key: iops_per_gib_note
+        label: Capacity needed to set these IOPS
+        role: constraint
+        apply: note
+        coefficient: azure.premium-v2-iops-per-gib
+        rationale: >-
+          IOPS are not free of capacity: past 6 GiB the settable maximum rises
+          500 per GiB, so 8,000 IOPS (the throughput cap) needs a ~16 GiB disk
+          and 80,000 IOPS needs 160 GiB. A throughput target can therefore imply
+          a minimum disk size, not just a minimum IOPS.

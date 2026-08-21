@@ -511,3 +511,24 @@ sources:
       $db fields and still require application (or driver-helper) resolution —
       not automatic. $lookup / $graphLookup are the join stages for normalised
       data; this page does not publish a latency or memory multiplier for them.
+
+  - slug: azure-managed-disk-types
+    title: Select a disk type for Azure IaaS VMs — managed disks
+    publisher: Microsoft
+    url: https://learn.microsoft.com/en-us/azure/virtual-machines/disks-types
+    version: ms.date 2026-08-11 (git 502b0d7)
+    published_on: '2026-08-11'
+    retrieved_on: '2026-08-21'
+    source_type: vendor_doc
+    notes: >-
+      Azure's canonical managed-disk reference. Carried for Premium SSD v2: the
+      free baseline (3,000 IOPS / 125 MB/s), the 500-IOPS-per-GiB size coupling,
+      the 0.25-MB/s-per-set-IOPS throughput coupling, and the per-disk ceilings.
+      Two things worth flagging. First, units: this page states "MB/s = 10^6
+      Bytes per second" (in the Ultra section), so these are decimal MB/s, not
+      binary MiB/s — a 4.9% difference the corpus keeps in a separate parameter.
+      Second, a vendor self-inconsistency: this page's throughput section and
+      comparison table both give 2,000 MB/s as the Premium SSD v2 maximum, while
+      the managed-disks pricing page summarises the range as 125–1,200 MB/s. The
+      coefficients here follow this (the technical reference) page and record the
+      tension rather than averaging it away.
