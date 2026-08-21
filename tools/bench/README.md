@@ -12,8 +12,9 @@ validating the decompression/index terms), `mongodb_saturated_cache.sh` (seeds
 a collection deliberately larger than the configured cache, for validating the
 eviction-target coefficient under real pressure), and
 `mongodb_default_split.sh` (validates mongodb.host-ram's default cache-split
-formula against a host's actual RAM, no dataset needed). See each for its own
-README/comments.
+formula against a host's actual RAM, no dataset needed), and
+`tickets_8x_probe.sh` (issue #7 — idle ticket field path on mongo:8.0 / 8.2).
+See each for its own README/comments.
 
 **Wave 1–2 roadmap harnesses (build on COOPER; measure on reef):**
 
@@ -154,6 +155,19 @@ control run must return ratio ~1.0 and gates the rest. Records observations of
 (one host is not the population). Runs on a small instance — the loop device is
 local, no EBS bandwidth is used. See
 `docs/plans/issue-4-ebs-burst-factor-iostat.md`.
+
+### tickets_8x_probe (issue #7 — ticket telemetry path on MongoDB 8.x)
+
+```bash
+./tools/bench/tickets_8x_probe.sh > tickets-8x.json
+# optional: ./tools/bench/tickets_8x_probe.sh /tmp/xycalc-tickets-8x
+```
+
+Idle-only Docker probe of `mongo:8.0` and `mongo:8.2`. Asserts `db.version()`
+matches the tag major.minor, confirms whether tickets live under
+`queues.execution` vs `wiredTiger.concurrentTransactions`, and samples the
+idle floor three times. Companion helper for harnesses:
+`tools/bench/mongo_tickets.py`. See `docs/plans/issue-7-mongodb-8x-ticket-telemetry.md`.
 ### azure_premium_v2_probe (validates azure.premium-v2-throughput-ceiling)
 
 ```bash

@@ -86,7 +86,7 @@ and the fix was already shipped and already free.
 | Source | Status | Why |
 |---|---|---|
 | CloudWatch agent, NVMe stats | `work only` | Sub-minute custom metrics from Nitro NVMe devices: queue depth, ops, bytes, time spent in read/write I/O. The high-fidelity path; costs money as custom metrics. |
-| `iostat -x 1` on the instance | `manufacturable` | One-second block-layer view, free, no agent. Not retained anywhere, so it answers "what is happening now" rather than "what happened Tuesday". Good enough to settle the *consistently* question above. |
+| `iostat -x 1` on the instance | `measured` | One-second block-layer view. Settled once on COOPER (2026-08-21) via `tools/bench/burst_probe.sh` — fio `--direct=1` on an isolated `--direct-io=on` loop device, control median peak/mean 1.005. Observations: `cooper-burst-2026-08-21-*`. Still not retained as a timeseries anywhere; the harness is the reproducible path. |
 
 ---
 
