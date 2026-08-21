@@ -8,6 +8,17 @@ the band, the citations, the validation grade, and the corpus digest.
 The honesty contract is the point of this surface. An unvalidated model says
 `unvalidated (n=0)` in the result. Omitting that would read as a validated
 answer.
+
+Two import paths, deliberately distinct:
+
+- ``import_metrics`` — Grafana / Prometheus / Coralogix *export files* into
+  ``local/`` observation YAML (PR #110).
+- ``ingest_dbstats`` — a pasted MongoDB ``db.stats()`` / ``serverStatus``
+  document into model inputs and a *candidate* observation skeleton (issue #83).
+
+They share ``tools/metrics_parameter_map.yaml`` for metric-name → parameter
+slugs. They must not share a tool name: an agent cannot tell a CSV path from a
+JSON paste if both are called ``import_metrics``.
 """
 
 from __future__ import annotations
@@ -19,8 +30,10 @@ from typing import Any
 
 from . import __version__
 from .db import connect
+from .ingest import IngestError
 from .model import ModelError
 from .payloads import (
+    ingest_payload,
     list_models_payload,
     scenario_payload,
     sizing_payload,
@@ -42,7 +55,10 @@ _INSTRUCTIONS = (
     "Always report the lo/mode/hi band, not a point estimate. "
     f"{_HONESTY} "
     "Cite per-term sources, quotes, and the versions they apply to. "
-    "Results include corpus_digest so two corpora cannot be confused."
+    "Results include corpus_digest so two corpora cannot be confused. "
+    "import_metrics takes a Grafana/Prometheus/Coralogix export file. "
+    "ingest_dbstats takes pasted MongoDB db.stats()/serverStatus JSON. "
+    "Do not confuse the two."
 )
 
 
@@ -167,9 +183,11 @@ def create_server():
     @server.tool(
         name="import_metrics",
         description=(
-            "Import Grafana Explore CSV, Prometheus query/query_range JSON "
-            "(or OpenMetrics text), or Coralogix metrics JSON into observation "
-            "YAML for validation history. Defaults to local/ (gitignored). "
+            "Import a Grafana Explore CSV, Prometheus query/query_range JSON "
+            "(or OpenMetrics text), or Coralogix metrics JSON *file* into "
+            "observation YAML for validation history. Input is a filesystem "
+            "path to an export, not a pasted db.stats() document — use "
+            "ingest_dbstats for that. Defaults to local/ (gitignored). "
             "Pass publish=true only for numbers safe to put on the internet. "
             "Unmapped series are skipped and listed — extend "
             "tools/metrics_parameter_map.yaml rather than inventing slugs. "
@@ -208,6 +226,47 @@ def create_server():
         )
         with _db() as conn:
             return with_corpus_digest(result, conn)
+
+    @server.tool(
+        name="ingest_dbstats",
+        description=(
+            "Paste MongoDB db.stats() / serverStatus JSON (object or JSON text) "
+            "and get the model inputs the corpus actually consumes, a sizing "
+            "run on those inputs, and (optionally) a ready-to-PR observation "
+            "YAML skeleton. Input is the document itself, not a Grafana/"
+            "Prometheus export file — use import_metrics for those. "
+            "The paste is a CANDIDATE — not cited, not validated. Do not "
+            "present ingest output as a corpus fact. Observation parameter "
+            "slugs come from tools/metrics_parameter_map.yaml. "
+            "Model results still include validation grade; unvalidated models "
+            "say 'unvalidated (n=0)'. "
+            f"{_HONESTY} "
+            "emit_observation adds the YAML skeleton with TODO for provenance "
+            "that cannot be derived."
+        ),
+    )
+    def ingest_dbstats(
+        metrics: str | dict[str, Any],
+        emit_observation: bool = False,
+        model: str = "mongodb.wt-cache",
+        workload: str | None = None,
+        machine_class: str | None = None,
+        publisher: str | None = None,
+    ) -> dict[str, Any]:
+        with _db() as conn:
+            try:
+                body = ingest_payload(
+                    conn,
+                    metrics,
+                    model=model,
+                    emit_observation=emit_observation,
+                    workload=workload,
+                    machine_class=machine_class,
+                    publisher=publisher,
+                )
+            except (IngestError, ModelError) as e:
+                _fail(e)
+            return with_corpus_digest(body, conn)
 
     return server
 

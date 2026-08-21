@@ -10,6 +10,19 @@ mappings:
     { system: mongodb, parameter: cache.size_bytes, unit: bytes, agg: last }
   cache.size_bytes:
     { system: mongodb, parameter: cache.size_bytes, unit: bytes, agg: last }
+  # db.stats() field names — shared with `xycalc ingest` / ingest_dbstats so a
+  # Grafana series named storageSize and a pasted db.stats().storageSize cannot
+  # land on different parameter slugs.
+  storageSize:
+    { system: mongodb, parameter: storage.collection_bytes_on_disk, unit: bytes, agg: last }
+  dataSize:
+    { system: mongodb, parameter: storage.collection_bytes_uncompressed, unit: bytes, agg: last }
+  indexSize:
+    { system: mongodb, parameter: storage.index_bytes_on_disk, unit: bytes, agg: last }
+  storage.compression_ratio:
+    { system: mongodb, parameter: storage.compression_ratio, unit: ratio, agg: last }
+  datasize/storagesize:
+    { system: mongodb, parameter: storage.compression_ratio, unit: ratio, agg: last }
 
   # Redis
   redis_memory_max_bytes:

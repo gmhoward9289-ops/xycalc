@@ -5,6 +5,13 @@ Corpus identity is `corpus_digest` on the exported page. See `docs/VERSIONING.md
 
 ## 0.4.0
 
+- `xycalc ingest` accepts MongoDB `db.stats()` / `serverStatus` JSON (file or
+  stdin), prints the fields it mapped versus ignored, and runs `mongodb.wt-cache`
+  on the extracted inputs. `--emit-observation` writes a ready-to-PR YAML
+  skeleton with `TODO` for provenance that cannot be derived — never a
+  fabricated source. MCP tool `ingest_dbstats` (not `import_metrics`) exposes
+  the same paste path. An ingested paste is a candidate, not a cited or
+  validated fact.
 - MCP tool `import_metrics` plus `tools/import_metrics_export.py` — Grafana
   Explore CSV, Prometheus query JSON / OpenMetrics, and Coralogix metrics JSON
   → `local/` observations (history for validation)

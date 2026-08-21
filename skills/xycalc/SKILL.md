@@ -4,8 +4,10 @@ description: >-
   Infrastructure sizing from a cited corpus — how much X to run Y (MongoDB RAM,
   EBS IOPS, Redis/Celery, instance picks). Use when George asks about sizing,
   headroom, scenarios, validation grades, xycalc MCP tools, Grafana/Prometheus/
-  Coralogix metric imports, or corpus citations. Prefer MCP tools list_models,
-  sizing, headroom, scenario, why; never invent coefficients.
+  Coralogix metric imports, pasted MongoDB db.stats()/serverStatus ingest, or
+  corpus citations. Prefer MCP tools list_models, sizing, headroom, scenario,
+  why, import_metrics (export files), ingest_dbstats (db.stats paste); never
+  invent coefficients.
 ---
 
 # xycalc
@@ -33,7 +35,8 @@ There is no bare-number path.
 | `headroom` | Sizing vs available capacity (`256GB`) |
 | `scenario` | Chain (e.g. size → instance) |
 | `why` | Citation chain without running the model |
-| `import_metrics` | Grafana CSV / Prometheus JSON / Coralogix → `local/` observations |
+| `import_metrics` | Grafana CSV / Prometheus JSON / Coralogix *export file* → `local/` observations |
+| `ingest_dbstats` | Pasted MongoDB `db.stats()` / `serverStatus` JSON → model inputs + candidate observation skeleton |
 
 Install: `pip install -e ".[mcp]"` then `xycalc-mcp` or `python -m xycalc`.
 
@@ -43,6 +46,7 @@ Install: `pip install -e ".[mcp]"` then `xycalc-mcp` or `python -m xycalc`.
 2. `sizing` or `scenario` with declared inputs
 3. `why` if a coefficient looks wrong
 4. For history: export metrics → `import_metrics` (default `local/`) → `xycalc build && xycalc audit`
+5. For a pasted `db.stats()` / `serverStatus` dump: `ingest_dbstats` (or `xycalc ingest`) — candidate only; fill TODOs before a PR
 
 ## Grafana monitoring
 
