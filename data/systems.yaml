@@ -84,24 +84,37 @@ systems:
     label: AWS EC2 (memory-optimized instance types)
     category: hardware
     notes: >-
-      Not a sizing model in the usual sense — there is no arithmetic here, only
-      a catalog. The question this system answers is "given a RAM requirement,
-      which named instance is the smallest one that covers it," which is a
-      lookup against instance specs, not a floor/amplifier chain. See
-      instance_select() in model.py and the `instance-select` CLI command,
-      which takes any model's own lo/mode/hi band and reasons against this
-      catalog per band-end rather than collapsing it to one point first —
-      the same reason mongodb.host-ram refuses to auto-chain from
-      mongodb.wt-cache. `--family` filters by name prefix and accepts
-      anything actually populated below (currently r8i only) — r8g, r6g,
-      etc. work the same way as soon as coefficient rows exist for them.
+      Core product surface: given a RAM (and related) requirement band, name
+      the smallest instance that covers each of lo/mode/hi — a catalog lookup,
+      not a floor/amplifier chain. See instance_select() in model.py and the
+      `instance-select` CLI / mongodb.size-to-instance scenario. `--family`
+      filters by name prefix (currently r8i populated). Azure VM and bare-metal
+      catalogs are required peers (same pick-per-band-end contract); they are
+      not optional extras — see docs/telemetry/recommendations.md Product core.
 
       r8i tops out at r8i.96xlarge (3,072 GiB) — the whole catalog's current
-      ceiling. A requirement above that reports as "custom sizing" rather
-      than guessing at a family (U7i, legacy u-series, or otherwise);
-      several U7i figures researched for this were sourced but deliberately
-      left OUT of aws-ec2.yaml pending an actual decision on which >3TB
-      family gets used, so instance-select doesn't recommend something
-      nobody has chosen. See the comment block at the end of
-      data/coefficients/aws-ec2.yaml for how to fill it in once that's
-      decided.
+      technical ceiling. Org policy may cap recommendations lower
+      (DEFAULT_INSTANCE_CEILING); above that → custom sizing / next family,
+      not a guessed SKU. U7i figures researched for >3TB were deliberately
+      left OUT of aws-ec2.yaml pending a family decision. See the comment
+      block at the end of data/coefficients/aws-ec2.yaml.
+
+  - slug: azure-vm
+    label: Azure VMs (memory-optimized)
+    category: hardware
+    notes: >-
+      Stub. Required peer of aws-ec2 for the core instance-sizing product:
+      same pick-per-band-end contract (lo/mode/hi named SKUs + RAM/vCPU/disk
+      caps), not a different math. Premium SSD v2 lives under azure-disks;
+      this system is the VM SKU catalog. See docs/telemetry/recommendations.md
+      Product core (U17).
+
+  - slug: bare-metal
+    label: Bare metal / colo host classes
+    category: hardware
+    notes: >-
+      Stub. Required peer of aws-ec2 for off-cloud buys: documented host
+      classes (colo, Hetzner, on-prem) with RAM/CPU/disk/network ranges and
+      the same per-band-end pick. Observations may already name a machine_class;
+      this system is the catalog those picks resolve against. See
+      docs/telemetry/recommendations.md Product core (U17).
