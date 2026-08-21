@@ -109,6 +109,21 @@ assert.strictEqual(APP.gradeSuffix("none"), " · unvalidated");
 assert.strictEqual(APP.gradeSuffix("thin"), " · thinly validated");
 assert.strictEqual(APP.gradeSuffix("reasonable"), " · validated");
 assert.strictEqual(APP.gradeSuffix("mystery"), "");
+assert.strictEqual(APP.GRADE_LABEL.reasonable, "Validated");
+assert.strictEqual(APP.GRADE_LABEL.thin, "Thinly validated");
+
+// n=3, 0 within band must not render the strongest badge. Grade is assigned
+// in Python; this pins that only `reasonable` maps to Validated, so a thin
+// 0-in-band status cannot look like a pass on the Scenario step.
+const zeroInBand = {
+  grade: "thin",
+  text: "thinly validated (n=3, 0 within band, mean absolute error 0.8%) — none of the observations fell inside the predicted band",
+};
+const zeroBanner = APP.validationBannerInner(zeroInBand);
+assert.ok(zeroBanner.includes("Thinly validated"), zeroBanner);
+assert.ok(zeroBanner.includes("0 within band"), zeroBanner);
+assert.ok(!zeroBanner.includes("<strong>Validated</strong>"), zeroBanner);
+assert.ok(!APP.validationBannerHtml(zeroInBand).includes(" reasonable"), APP.validationBannerHtml(zeroInBand));
 
 const worst = APP.weakestValidation([
   { grade: "reasonable", text: "ok" },

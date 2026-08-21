@@ -5,6 +5,9 @@ Corpus identity is `corpus_digest` on the exported page. See `docs/VERSIONING.md
 
 ## 0.4.0
 
+- Validation grade `reasonable` (calculator **Validated**) requires at least
+  one observation inside the predicted band. n and MAE alone used to promote
+  a 0-in-band model.
 - `xycalc ingest` accepts MongoDB `db.stats()` / `serverStatus` JSON (file or
   stdin), prints the fields it mapped versus ignored, and runs `mongodb.wt-cache`
   on the extracted inputs. `--emit-observation` writes a ready-to-PR YAML
