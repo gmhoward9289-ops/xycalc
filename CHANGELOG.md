@@ -3,6 +3,13 @@
 All notable changes to the **xycalc tool** (not the corpus) are recorded here.
 Corpus identity is `corpus_digest` on the exported page. See `docs/VERSIONING.md`.
 
+## 0.3.0
+
+- Optional MCP server (`pip install -e ".[mcp]"`, entry point `xycalc-mcp`)
+  exposing `list_models`, `sizing`, `headroom`, `scenario`, and `why` over
+  stdio. Payloads are the API serialisers plus `corpus_digest`; validation
+  grade is never omitted.
+
 ## 0.2.0
 
 - Export and `Model` now carry each model's `notes` field (additive blob
