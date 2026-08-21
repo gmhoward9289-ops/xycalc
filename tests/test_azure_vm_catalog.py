@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from urllib.parse import urlparse
+
 from xycalc.model import (
     Result,
     load_instance_catalog,
@@ -54,7 +56,10 @@ def test_azure_catalog_matches_learn_basics_tables(conn):
         spec = by_name[name]
         assert spec.vcpu == vcpu
         assert spec.ram_bytes == gib * GiB
-        assert spec.source_url and "learn.microsoft.com" in spec.source_url
+        parsed = urlparse(spec.source_url or "")
+        assert parsed.hostname == "learn.microsoft.com"
+        series = "esv5-series" if name.startswith("Esv5.") else "esv6-series"
+        assert parsed.path.rstrip("/").endswith("/" + series)
         assert spec.ebs_bandwidth_gbps is None
     assert "Esv5.Standard_E104is_v5" not in by_name
     assert "Esv6.Standard_E192is_v6" not in by_name
