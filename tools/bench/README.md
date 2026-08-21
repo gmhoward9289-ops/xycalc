@@ -28,6 +28,27 @@ then falls back. Above 1.0×, a cgroup device-byte guard must pass or the
 script exits 2 — do not import failed legs. Default ratios:
 `0.5,0.8,1.0,1.2,1.5,2,4,8,50,100`.
 
+### azure_premium_v2_probe (validates azure.premium-v2-throughput-ceiling)
+
+```bash
+# On an Azure VM with a mounted Premium SSD v2 data disk:
+PROBE_RG="$RG" PROBE_DISK="$DISK" PROBE_DEVICE=/dev/sdc \
+  PROBE_TESTFILE=/mnt/psv2/fio.bin \
+  ./tools/bench/azure_premium_v2_probe.sh > probe.json
+
+python tools/import_azure_probe.py probe.json --machine-class Standard_D8s_v5
+```
+
+Reads the disk's provisioned config from `az disk show` and measures delivery
+with fio `--direct=1`. Records two different quantities on purpose: the
+control-plane ceiling Azure enforced (which the ceiling model predicts, and
+which the validation case uses) and the throughput/IOPS the disk actually
+delivered (an observation, not a ceiling test). See
+`docs/plans/azure-premium-v2-throughput-validation.md`. Runs on free Azure
+credits. The device-identity guard refuses to record a case if fio measured
+faster than the settable ceiling — the tell that it hit the local NVMe temp
+disk instead of the managed disk.
+
 ## Before you believe a result
 
 Both harnesses above have separately produced a clean, plausible table that
