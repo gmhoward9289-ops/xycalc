@@ -310,6 +310,13 @@ models:
       whole from cache size through to host RAM instead of collapsing to one
       typed-in mode.
 
+      Validation: thinly checked against live unpinned mongod default splits
+      (reef, agent-bench, cooper-hostram-2026-08-21). Those cases confirm the
+      algebra against hostInfo when hostInfo matches the RAM used for the
+      split. On Docker Desktop, hostInfo may not track --memory while the
+      cache still does — do not treat hostInfo alone as the sizing host in
+      that environment.
+
     inputs:
       - key: cache_size
         label: Required WiredTiger cache size

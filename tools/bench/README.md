@@ -168,6 +168,19 @@ matches the tag major.minor, confirms whether tickets live under
 `queues.execution` vs `wiredTiger.concurrentTransactions`, and samples the
 idle floor three times. Companion helper for harnesses:
 `tools/bench/mongo_tickets.py`. See `docs/plans/issue-7-mongodb-8x-ticket-telemetry.md`.
+
+### hostram_probe (issue #6 — default cache split vs host RAM)
+
+```bash
+./tools/bench/hostram_probe.sh > hostram.json
+python tools/import_hostram_probe.py hostram.json --publish
+```
+
+Starts `mongo:7.0.39` with **no** `wiredTigerCacheSizeGB`, sweeping Docker
+`--memory` sizes plus an uncapped control. Guards refuse rows where
+`hostInfo.memSizeMB` does not track the requested cgroup (Docker Desktop on
+Windows fails this for most sizes — see `obs-cooper-hostram-2026-08-21`).
+Does not change coefficients; records validation cases for `mongodb.host-ram`.
 ### azure_premium_v2_probe (validates azure.premium-v2-throughput-ceiling)
 
 ```bash

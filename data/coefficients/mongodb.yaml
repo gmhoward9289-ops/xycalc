@@ -84,6 +84,13 @@ coefficients:
       holds more of the database than the WiredTiger cache does, which is the
       mechanical reason the vendor advises against raising the split.
 
+      Forward-checked 2026-08-21 on unpinned mongo:7.0.39 (cooper-hostram):
+      cache matched 0.5 × (RAM − 1 GiB) within ~0.03% when hostInfo agreed
+      with the RAM mongod used. On Docker Desktop, a 2 GiB --memory cgroup
+      sized the cache correctly while hostInfo still reported the ~4 GiB VM —
+      container sizing can diverge from hostInfo; see
+      obs-cooper-hostram-2026-08-21.
+
   - slug: mongodb.cache-default-reserve-bytes
     parameter: host.default_reserve_bytes
     system: mongodb
