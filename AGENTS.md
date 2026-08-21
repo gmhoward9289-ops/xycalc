@@ -16,9 +16,10 @@ calculator GUI. There is no compiled backend and no database server — the
 - `xycalc.db` is compiled from `data/**/*.yaml` by `python -m xycalc.build`.
   To change an answer, edit the YAML and rebuild — never hardcode a figure in
   Python (the build/audit gates reject uncited numbers).
-- `connect()` auto-builds the DB on first use if it is missing, so a stale or
-  deleted `xycalc.db` is self-healing; rerun `.venv/bin/python -m xycalc.build`
-  after editing YAML to pick up changes deterministically.
+- `connect()` auto-builds the DB on first use if it is missing, and rebuilds
+  when the schema stamp in the file does not match current `schema.sql`, so a
+  deleted or stale-schema `xycalc.db` is self-healing. YAML edits still need
+  `.venv/bin/python -m xycalc.build` to pick up data changes deterministically.
 - `local/` is a gitignored overlay merged on top of `data/` at build time; a
   plain checkout builds the public corpus only and says so.
 

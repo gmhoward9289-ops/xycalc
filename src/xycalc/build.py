@@ -25,6 +25,7 @@ code. A checkout with no local/ builds the public corpus and says so.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import sqlite3
@@ -44,6 +45,14 @@ SCHEMA = PKG / "schema.sql"
 # write. $XYCALC_DB is the escape hatch, and the API's only override.
 _ENV_DB = os.environ.get("XYCALC_DB")
 DEFAULT_DB = Path(_ENV_DB).expanduser() if _ENV_DB else ROOT / "xycalc.db"
+
+# Key in the meta table. The value is a sha256 of schema.sql at build time.
+SCHEMA_HASH_KEY = "schema_hash"
+
+
+def schema_hash() -> str:
+    """Fingerprint of the schema this build was compiled against."""
+    return hashlib.sha256(SCHEMA.read_bytes()).hexdigest()
 
 
 class BuildError(Exception):
@@ -86,7 +95,13 @@ def _band(row: dict, ctx: str) -> tuple[float, float, float]:
     arrives as a bare number is a mistake worth catching: the whole reason the
     answer ships as a range is that most of these figures are not constants.
     """
-    if "value" in row:
+    has_value = "value" in row
+    has_band = any(k in row for k in ("value_lo", "value_mode", "value_hi"))
+    if has_value and has_band:
+        raise BuildError(
+            f"{ctx}: supply `value` or value_lo/value_mode/value_hi, not both"
+        )
+    if has_value:
         v = float(row["value"])
         return v, v, v
     try:
@@ -136,6 +151,12 @@ class Builder:
             )
         return index[slug]
 
+    def _unique_slug(
+        self, index: dict[str, int], slug: str, kind: str, ctx: str
+    ) -> None:
+        if slug in index:
+            raise BuildError(f"{ctx}: duplicate {kind} slug")
+
     def src(self, slug: str, ctx: str) -> int:
         if not slug:
             raise BuildError(
@@ -149,8 +170,7 @@ class Builder:
         for path, doc, _ in collect("sources.yaml", "sources"):
             for row in doc.get("sources", []):
                 ctx = f"{path.name}:{row.get('slug', '?')}"
-                if row["slug"] in self.source:
-                    raise BuildError(f"{ctx}: duplicate source slug")
+                self._unique_slug(self.source, row["slug"], "source", ctx)
                 self.source[row["slug"]] = self.ins(
                     "source",
                     slug=row["slug"],
@@ -167,6 +187,8 @@ class Builder:
     def systems(self):
         for path, doc, _ in collect("systems.yaml"):
             for row in doc.get("systems", []):
+                ctx = f"{path.name}:{row.get('slug', '?')}"
+                self._unique_slug(self.system, row["slug"], "system", ctx)
                 self.system[row["slug"]] = self.ins(
                     "system",
                     slug=row["slug"],
@@ -178,6 +200,8 @@ class Builder:
     def parameters(self):
         for path, doc, _ in collect("parameters.yaml"):
             for row in doc.get("parameters", []):
+                ctx = f"{path.name}:{row.get('slug', '?')}"
+                self._unique_slug(self.parameter, row["slug"], "parameter", ctx)
                 self.parameter[row["slug"]] = self.ins(
                     "parameter",
                     slug=row["slug"],
@@ -191,6 +215,7 @@ class Builder:
         for path, doc, origin in collect("coefficients"):
             for row in doc.get("coefficients", []):
                 ctx = f"{path.name}:{row.get('slug', '?')}"
+                self._unique_slug(self.coefficient, row["slug"], "coefficient", ctx)
 
                 # Gate 2, checked here rather than left to NOT NULL so the
                 # message can say which figure and why it matters.
@@ -228,6 +253,7 @@ class Builder:
         for path, doc, _ in collect("models"):
             for row in doc.get("models", []):
                 ctx = f"{path.name}:{row.get('slug', '?')}"
+                self._unique_slug(self.model, row["slug"], "model", ctx)
                 mid = self.ins(
                     "model",
                     slug=row["slug"],
@@ -310,6 +336,7 @@ class Builder:
         for path, doc, origin in collect("observations"):
             for row in doc.get("observations", []):
                 ctx = f"{path.name}:{row.get('slug', '?')}"
+                self._unique_slug(self.observation, row["slug"], "observation", ctx)
                 self.observation[row["slug"]] = self.ins(
                     "observation",
                     slug=row["slug"],
@@ -368,11 +395,17 @@ class Builder:
                     lo, mode, hi = result.lo, result.mode, result.hi
 
                 actual = float(row["actual"])
+                obs_slug = row.get("observation")
+                observation_id = (
+                    self._ref("observation", self.observation, obs_slug, ctx)
+                    if obs_slug
+                    else None
+                )
                 self.ins(
                     "validation",
                     model_id=self.model[slug],
                     case_slug=row["case"],
-                    observation_id=self.observation.get(row.get("observation")),
+                    observation_id=observation_id,
                     inputs_json=json.dumps(row["inputs"], sort_keys=True),
                     at_term=at_term,
                     predicted_lo=lo,
@@ -413,11 +446,19 @@ def build(db_path: Path = DEFAULT_DB) -> Path:
         conn.close()
         db_path.unlink(missing_ok=True)
         raise
+    except sqlite3.IntegrityError as e:
+        conn.close()
+        db_path.unlink(missing_ok=True)
+        raise BuildError(f"constraint failed: {e}") from e
     except (KeyError, TypeError, ValueError) as e:
         conn.close()
         db_path.unlink(missing_ok=True)
         raise BuildError(f"malformed corpus: {e!r}") from e
 
+    conn.execute(
+        "INSERT INTO meta (key, value) VALUES (?, ?)",
+        (SCHEMA_HASH_KEY, schema_hash()),
+    )
     conn.commit()
 
     print(f"built {db_path}")
