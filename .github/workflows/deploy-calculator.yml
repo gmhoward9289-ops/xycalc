@@ -14,24 +14,30 @@ name: Deploy calculator
 # tree, this job edits one file inside a repo it doesn't otherwise own, so it
 # has to clone, splice in the export, and push a normal commit.
 #
-# This workflow is not triggered by push. A push to main used to start this
-# job in parallel with ci.yml, so a red SHA could go live. GitHub `needs:`
-# only names jobs in the SAME workflow, so ci.yml's deploy job calls this
-# file as a reusable workflow after audit / build / test / test-py314
-# (the main-protection ruleset required checks — not invented names) succeed
-# on that run. That is same-SHA by construction.
+# A push to main used to start this workflow in parallel with ci.yml, so a
+# red SHA could go live. GitHub `needs:` only names jobs in the SAME
+# workflow, and wiring deploy into ci.yml as a reusable workflow fails
+# closed the other way: ci.yml's GITHUB_TOKEN is contents:read (a
+# Dependabot-compromised pip install must not inherit write), which cannot
+# grant the called workflow checks:read.
 #
 # workflow_run is the other cross-workflow trigger GitHub supports, but it
 # is the wrong shape here: it fires only after the entire `ci` workflow
 # finishes (including test-py311 / test-py313, which are not merge gates),
 # and GITHUB_SHA on the follow-up run is the default-branch tip, not the
 # commit that was evaluated. Combined commit status is also too wide
-# (codespell and the extra Python jobs). Manual workflow_dispatch still
-# works; it polls those four check names on GITHUB_SHA before touching
-# production.
+# (codespell and the extra Python jobs).
+#
+# So this workflow still starts on push to main (and workflow_dispatch),
+# then the merge-gates job polls the Checks API for the main-protection
+# ruleset required_status_checks on this SHA — audit, build, test,
+# test-py314, not invented names — and the production job does not run
+# until those four are green. A red SHA fails merge-gates and never
+# touches the production environment.
 
 on:
-  workflow_call:
+  push:
+    branches: [main]
   workflow_dispatch:
 
 concurrency:
@@ -40,17 +46,14 @@ concurrency:
 
 # The deploy credentials live on the `production` environment, not on the
 # repo, so a workflow change on a non-protected branch can't read them.
-# checks/actions read is only used by the dispatch wait job.
+# checks/actions read is for the merge-gates poll only.
 permissions:
   contents: read
   actions: read
   checks: read
 
 jobs:
-  # Only for workflow_dispatch: ci.yml already waited via `needs`. A skipped
-  # job here lets the deploy job run on workflow_call without re-polling.
   merge-gates:
-    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -61,11 +64,6 @@ jobs:
 
   deploy:
     needs: [merge-gates]
-    if: >-
-      always()
-      && !cancelled()
-      && (needs.merge-gates.result == 'success'
-          || needs.merge-gates.result == 'skipped')
     runs-on: ubuntu-latest
     environment: production
     steps:

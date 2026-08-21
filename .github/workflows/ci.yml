@@ -113,18 +113,3 @@ jobs:
           cache-dependency-path: pyproject.toml
       - run: pip install -e ".[dev,gui]"
       - run: python -m xycalc.audit
-
-  # Production deploy after the merge-gate jobs on THIS run, which is the
-  # same SHA. `needs` cannot name jobs in another workflow file; calling the
-  # reusable deploy workflow from here is the mechanism GitHub actually
-  # supports for "wait for these job IDs, not the whole workflow".
-  #
-  # Names match the main-protection ruleset required_status_checks
-  # (audit, build, test, test-py314). Additive CI (test-py311, test-py313)
-  # is intentionally not in this list. The previous deploy-calculator.yml
-  # `on: push` raced those gates and could publish a red SHA.
-  deploy:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    needs: [audit, build, test, test-py314]
-    uses: ./.github/workflows/deploy-calculator.yml
-    secrets: inherit
