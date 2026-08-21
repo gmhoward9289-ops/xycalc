@@ -519,3 +519,15 @@ parameters:
     notes: >-
       MergeTree setting max_delay_to_insert — upper bound on how long ClickHouse
       will sleep an INSERT when parts_to_delay_insert has been crossed.
+
+  - slug: clickhouse.max_avg_part_size_for_too_many_parts_bytes
+    label: Avg part size above which too-many-parts checks are skipped
+    unit: bytes
+    dimension: bytes
+    notes: >-
+      MergeTree setting max_avg_part_size_for_too_many_parts. When the average
+      active part in a partition is larger than this, parts_to_delay_insert and
+      parts_to_throw_insert do not delay or reject — ClickHouse's own escape
+      hatch for tables whose parts have already merged large (TB-scale tables
+      with healthy merges). The insert-frequency failure mode is about many
+      small parts, not about total table bytes.

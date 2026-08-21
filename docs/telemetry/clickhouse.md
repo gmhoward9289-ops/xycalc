@@ -13,6 +13,7 @@ version that produced it.
 | `system.merge_tree_settings` → `parts_to_delay_insert` | count | `obtainable` | Delay threshold. Must be read from the live server — do not trust the image tag. |
 | `system.merge_tree_settings` → `parts_to_throw_insert` | count | `obtainable` | Reject threshold. Same query as above; assert pre- vs post-23.6 images differ before any probe sweep. |
 | `system.merge_tree_settings` → `max_delay_to_insert` | seconds | `obtainable` | Cap on artificial INSERT sleep under part pressure. |
+| `system.merge_tree_settings` → `max_avg_part_size_for_too_many_parts` | bytes | `obtainable` | **Scale gate.** If average active part size exceeds this (1 GiB on ≥23.6, 10 GiB before), delay/throw part-count checks do not bind. Total table size is irrelevant; average part size is. |
 | `system.settings` → `async_insert` | 0/1 | `obtainable` | If 1, client single-row inserts can coalesce into fewer parts and silently disable the mechanism under test. Probe requires 0. |
 
 ```sql
@@ -21,12 +22,21 @@ FROM system.merge_tree_settings
 WHERE name IN (
   'parts_to_delay_insert',
   'parts_to_throw_insert',
-  'max_delay_to_insert'
+  'max_delay_to_insert',
+  'max_avg_part_size_for_too_many_parts'
 );
-
-SELECT value FROM system.settings WHERE name = 'async_insert';
 ```
 
+## 1 GB vs 500 GB vs 1 TB — what actually changes
+
+| Quantity | Scales with total table bytes? | Notes |
+|---|---|---|
+| `parts_to_delay_insert` / `parts_to_throw_insert` | **No** | Same counts at 5 GB and 5 TB while the check is active. |
+| Whether those counts bind at all | **Indirectly** | Via *average part size* vs `max_avg_part_size_for_too_many_parts`. Mature large tables with merged ~GiB parts often skip the check; tiny streaming parts always face it. |
+| Inserts/sec at which parts outrun merges | **Yes (hardware + part size)** | Merge cost grows with part bytes; probe floors are hardware-scoped, not portable. |
+| Point-lookup / scan latency under load | **Yes** | Working set, marks, filesystem cache. A 300k-row probe does **not** predict 1 TB read latency — compare only like-with-like (same harness keys: `meanLatencyMs` / `p95LatencyMs` / `opsPerSecond` as Mongo `ticket_probe` / `occupancy_band_probe`). |
+
+`mongodb.wt-cache` takes `--storage-size` because cache need scales with uncompressed data. `clickhouse.parts-insert-ceiling` does **not** take a TB input — that would be the wrong model of this failure.
 ## Part pressure during a load
 
 | Series | Unit | Agg | Window | Status | Why |
@@ -34,7 +44,9 @@ SELECT value FROM system.settings WHERE name = 'async_insert';
 | `count() FROM system.parts WHERE table = … AND active` | count | last | 250 ms | `obtainable` | Central measurement for insert-batch-floor. Compare to the delay/throw thresholds above. |
 | `count(DISTINCT partition) FROM system.parts WHERE table = …` | count | last | 250 ms | `obtainable` | Must stay 1 for the probe table (no PARTITION BY). >1 means the threshold is being spread and the experiment is void. |
 | Client-caught `Too many parts` exception count | count | sum | run | `manufacturable` | Only valid reject signal — never infer reject from latency alone. |
-| Achieved inserts/sec at each batch size | ops/s | mean | step | `manufacturable` | If batch=1 is implausibly slow, the harness was the bottleneck, not ClickHouse. |
+| `avg(bytes_on_disk)` of active parts | bytes | last | 250 ms | `obtainable` | Compared to `max_avg_part_size_for_too_many_parts`; probe refuses if the check is no longer active. |
+| Write latency under insert load (`meanLatencyMs`, `p50/p95/p99LatencyMs`, `opsPerSecond`) | ms / ops/s | — | step | `manufacturable` | Same key names as Mongo `ticket_probe` / `occupancy_band_probe` for cross-system compare. Write half; read half lands with concurrent readers. |
+| Achieved inserts/sec at each batch size | ops/s | mean | step | `manufacturable` | Alias of write `opsPerSecond`. If batch=1 is implausibly slow, the harness was the bottleneck, not ClickHouse. |
 
 ## Events — names confirmed at experiment time
 

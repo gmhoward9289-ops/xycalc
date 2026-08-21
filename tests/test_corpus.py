@@ -161,6 +161,19 @@ class TestClickHouse:
         assert (delay_pre, delay_post) == (150, 1000)
         assert (throw_pre, throw_post) == (300, 3000)
 
+    def test_avg_part_size_escape_hatch_tightened_at_23_6(self, conn):
+        """TB-scale tables escape the part-count check via average part size."""
+        pre = conn.execute(
+            "SELECT value_mode FROM coefficient WHERE slug = "
+            "'clickhouse.max-avg-part-size-for-too-many-parts-pre-23.6'"
+        ).fetchone()["value_mode"]
+        post = conn.execute(
+            "SELECT value_mode FROM coefficient WHERE slug = "
+            "'clickhouse.max-avg-part-size-for-too-many-parts-23.6-plus'"
+        ).fetchone()["value_mode"]
+        assert pre == 10 * 1024**3
+        assert post == 1 * 1024**3
+
     def test_parts_insert_ceiling_model_exists(self, conn):
         row = conn.execute(
             "SELECT slug FROM model WHERE slug = 'clickhouse.parts-insert-ceiling'"

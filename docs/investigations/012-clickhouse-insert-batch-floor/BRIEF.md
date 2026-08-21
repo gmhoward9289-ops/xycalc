@@ -54,6 +54,12 @@ the other.
 - **Do not trust the image tag for the defaults.** Query
   `system.merge_tree_settings` on the live container and assert the two images
   differ before any sweep step.
+- **Do not treat total table size (1 GB vs 1 TB) as the scale input.** The
+  delay/throw ceilings are part *counts*. Whether they bind depends on
+  average part *size* vs `max_avg_part_size_for_too_many_parts` (1 GiB on
+  ≥23.6). A matured TB table with large merges can skip the check entirely;
+  a 5 GB table of tiny streamed parts hits it. Probe must stay in the
+  small-parts regime and refuse if avg part bytes exceed that setting.
 - **Do not use `PARTITION BY` on the probe table.** One partition ("all") only;
   abort if `count(DISTINCT partition)` ever exceeds 1.
 - **Do not leave `async_insert` on.** Coalescing turns many client inserts into

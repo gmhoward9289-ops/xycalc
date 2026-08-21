@@ -57,7 +57,7 @@ def merge_tree_settings(client) -> dict[str, int]:
     rows = client.query(
         "SELECT name, value FROM system.merge_tree_settings "
         "WHERE name IN ('parts_to_delay_insert', 'parts_to_throw_insert', "
-        "'max_delay_to_insert')"
+        "'max_delay_to_insert', 'max_avg_part_size_for_too_many_parts')"
     ).result_rows
     return {name: int(value) for name, value in rows}
 
@@ -114,7 +114,17 @@ def parts_snapshot(client) -> dict:
     partitions = client.query(
         f"SELECT count(DISTINCT partition) FROM system.parts WHERE table = '{TABLE}'"
     ).first_item
-    return {"active_parts": int(active), "distinct_partitions": int(partitions)}
+    # Average bytes among active parts — the quantity that decides whether
+    # max_avg_part_size_for_too_many_parts has disabled the count ceilings.
+    avg_bytes = client.query(
+        f"SELECT ifNull(avg(bytes_on_disk), 0) FROM system.parts "
+        f"WHERE table = '{TABLE}' AND active"
+    ).first_item
+    return {
+        "active_parts": int(active),
+        "distinct_partitions": int(partitions),
+        "avg_part_bytes": int(avg_bytes),
+    }
 
 
 def _is_too_many_parts(exc: BaseException) -> bool:
@@ -122,7 +132,7 @@ def _is_too_many_parts(exc: BaseException) -> bool:
     return "Too many parts" in text or "too many parts" in text.lower()
 
 
-def run_step(batch_size: int, delay_threshold: int) -> dict:
+def run_step(batch_size: int, delay_threshold: int, max_avg_part_bytes: int) -> dict:
     """Drop/recreate, insert ROWS in chunks of batch_size, poll parts."""
     client = connect()
     assert_async_insert_off(client)
@@ -137,13 +147,14 @@ def run_step(batch_size: int, delay_threshold: int) -> dict:
     reject_samples: list[str] = []
     latencies_ms: list[float] = []
     peak_active = 0
+    peak_avg_part_bytes = 0
     crossed_delay = False
     partition_violations = 0
     completed = False
     samples: list[dict] = []
 
     def poller() -> None:
-        nonlocal peak_active, crossed_delay, partition_violations
+        nonlocal peak_active, peak_avg_part_bytes, crossed_delay, partition_violations
         poll_client = connect()
         while not stop.is_set():
             try:
@@ -153,6 +164,7 @@ def run_step(batch_size: int, delay_threshold: int) -> dict:
                 time.sleep(POLL_S)
                 continue
             peak_active = max(peak_active, snap["active_parts"])
+            peak_avg_part_bytes = max(peak_avg_part_bytes, snap["avg_part_bytes"])
             if snap["active_parts"] >= delay_threshold:
                 crossed_delay = True
             if snap["distinct_partitions"] > 1:
@@ -220,6 +232,7 @@ def run_step(batch_size: int, delay_threshold: int) -> dict:
 
     final = parts_snapshot(client)
     peak_active = max(peak_active, final["active_parts"])
+    peak_avg_part_bytes = max(peak_avg_part_bytes, final["avg_part_bytes"])
     if final["distinct_partitions"] > 1:
         partition_violations += 1
 
@@ -229,6 +242,11 @@ def run_step(batch_size: int, delay_threshold: int) -> dict:
             f"(violations={partition_violations}). PARTITION BY would spread the "
             f"threshold and neuter the experiment."
         )
+
+    # If average parts grew past max_avg_part_size_for_too_many_parts, the
+    # delay/throw ceilings are not binding — a "healthy" flat result would
+    # mean the wrong regime (large merged parts), not "batching is fine".
+    check_active = peak_avg_part_bytes <= max_avg_part_bytes
 
     achieved_inserts_s = inserts_ok / wall_s if wall_s > 0 else 0.0
     lat_sorted = sorted(latencies_ms)
@@ -252,10 +270,20 @@ def run_step(batch_size: int, delay_threshold: int) -> dict:
         "inserts_rejected": inserts_rejected,
         "reject_samples": reject_samples,
         "achieved_inserts_per_s": round(achieved_inserts_s, 2),
+        # Mongo-comparable latency keys (write half of write-vs-read under load).
+        "opsPerSecond": round(achieved_inserts_s, 2),
+        "meanLatencyMs": round(sum(lat_sorted) / len(lat_sorted), 2) if lat_sorted else 0.0,
+        "p50LatencyMs": pct(0.50),
+        "p95LatencyMs": pct(0.95),
+        "p99LatencyMs": pct(0.99),
         "latency_ms_p50": pct(0.50),
         "latency_ms_p99": pct(0.99),
         "peak_active_parts": peak_active,
         "final_active_parts": final["active_parts"],
+        "peak_avg_part_bytes": peak_avg_part_bytes,
+        "final_avg_part_bytes": final["avg_part_bytes"],
+        "max_avg_part_size_for_too_many_parts": max_avg_part_bytes,
+        "too_many_parts_check_active": check_active,
         "crossed_delay_threshold": crossed_delay,
         "parts_per_ok_insert": round(parts_per_insert, 4) if parts_per_insert is not None else None,
         "event_deltas": event_deltas,
@@ -270,22 +298,27 @@ def main() -> None:
     assert_expected_thresholds(live)
     delay_threshold = live["parts_to_delay_insert"]
     throw_threshold = live["parts_to_throw_insert"]
+    max_avg_part_bytes = live.get("max_avg_part_size_for_too_many_parts", 0)
 
     print(
         f"settings  delay={delay_threshold} throw={throw_threshold} "
-        f"max_delay={live.get('max_delay_to_insert')} side={EXPECT_SIDE}",
+        f"max_delay={live.get('max_delay_to_insert')} "
+        f"max_avg_part_bytes={max_avg_part_bytes} side={EXPECT_SIDE}",
         file=sys.stderr,
     )
 
     steps = []
     for batch in BATCHES:
         print(f"step batch={batch} rows={ROWS} ...", file=sys.stderr)
-        step = run_step(batch, delay_threshold)
+        step = run_step(batch, delay_threshold, max_avg_part_bytes)
         steps.append(step)
         print(
             f"  peak_parts={step['peak_active_parts']} "
+            f"avg_part_B={step['peak_avg_part_bytes']} "
+            f"check_active={step['too_many_parts_check_active']} "
             f"rejects={step['inserts_rejected']} "
             f"ins/s={step['achieved_inserts_per_s']} "
+            f"p99={step['p99LatencyMs']}ms "
             f"completed={step['completed']}",
             file=sys.stderr,
         )
@@ -298,6 +331,15 @@ def main() -> None:
             f"parts_to_delay_insert={delay_threshold} (peak="
             f"{batch1['peak_active_parts']}). Raise PROBE_ROWS or PROBE_WRITERS "
             f"— the test did not apply enough pressure."
+        )
+    if batch1 is not None and not batch1["too_many_parts_check_active"]:
+        raise SystemExit(
+            f"REFUSING TO CONCLUDE: peak avg part size "
+            f"({batch1['peak_avg_part_bytes']} B) exceeded "
+            f"max_avg_part_size_for_too_many_parts ({max_avg_part_bytes} B), so "
+            f"the delay/throw ceilings were not binding. Shrink row/pad size or "
+            f"batch — this probe must stay in the small-parts regime; it does "
+            f"not model a matured TB-scale MergeTree."
         )
 
     out = {

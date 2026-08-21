@@ -24,10 +24,24 @@ models:
       streaming pattern that was rejected on 23.5 can succeed on 24.x until
       parts climb an order of magnitude further.
 
-      This model answers the count ceiling. The measured insert-frequency
-      floor for a specific box is investigation 012's benchmark
-      (tools/bench/clickhouse_probe.sh) and must carry hardware-scoped
-      applies_to when it lands — merge throughput does not travel.
+      Table size (1 GB vs 500 GB vs 1 TB) is the wrong scale input for this
+      model — unlike mongodb.wt-cache, which takes storage_size. ClickHouse
+      disables the delay/throw checks when average part size in the partition
+      exceeds max_avg_part_size_for_too_many_parts (10 GiB before 23.6, 1 GiB
+      from 23.6). The source comment says that is deliberate so "hundreds of
+      terabytes in a single table" can exist once parts have merged large.
+      So: a mature TB table with healthy large parts often never hits this
+      ceiling; a small or newly streamed table of tiny parts hits it at the
+      same part counts whether the eventual dataset is 5 GB or 5 TB. The
+      dangerous case is high insert frequency creating many small parts, not
+      "the database is big."
+
+      This model answers the count ceiling for the regime where the check is
+      still active. The measured insert-frequency floor for a specific box is
+      investigation 012's benchmark (tools/bench/clickhouse_probe.sh) and must
+      carry hardware-scoped applies_to when it lands — merge throughput does
+      not travel. That probe intentionally creates small parts; it does not
+      simulate a warmed 1 TB MergeTree.
 
     notes: >-
       unvalidated (n=0). Thresholds are code-read from MergeTreeSettings.h,
@@ -80,3 +94,14 @@ models:
           max_delay_to_insert defaults to 1 second on both sides of 23.6.
           Latency rise alone is not proof of part-pressure delay — require
           part-count crossing and server-side evidence.
+
+      - key: large_parts_disable_check
+        label: Avg part size above which delay/throw do not bind (>=23.6)
+        role: constraint
+        apply: note
+        coefficient: clickhouse.max-avg-part-size-for-too-many-parts-23.6-plus
+        rationale: >-
+          1 GiB average part size (10 GiB before 23.6). Past this, ClickHouse
+          skips the too-many-parts insert backpressure so large merged tables
+          can grow to hundreds of terabytes. Compare average part size, not
+          total table bytes, before treating the 3000 ceiling as binding.

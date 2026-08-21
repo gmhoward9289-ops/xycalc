@@ -82,3 +82,50 @@ coefficients:
       investigation 012. Caps how long artificial INSERT sleep can last once
       parts_to_delay_insert has been crossed — not the part-count threshold
       itself.
+
+  - slug: clickhouse.max-avg-part-size-for-too-many-parts-pre-23.6
+    parameter: clickhouse.max_avg_part_size_for_too_many_parts_bytes
+    system: clickhouse
+    applies_to: ClickHouse <23.6 (max_avg_part_size_for_too_many_parts default; verified v23.5.1)
+    value: 10737418240
+    confidence: code
+    source: clickhouse-mergetree-settings-v23.5
+    quote: >-
+      M(UInt64, max_avg_part_size_for_too_many_parts, 10ULL * 1024 * 1024 * 1024,
+      "The 'too many parts' check according to 'parts_to_delay_insert' and
+      'parts_to_throw_insert' will be active only if the average part size (in
+      the relevant partition) is not larger than the specified threshold. If it
+      is larger than the specified threshold, the INSERTs will be neither
+      delayed or rejected. This allows to have hundreds of terabytes in a
+      single table on a single server if the parts are successfully merged to
+      larger parts. This does not affect the thresholds on inactive parts or
+      total parts.", 0)
+    notes: >-
+      10 GiB. Pre-23.6 escape hatch: once average part size exceeds this, the
+      delay/throw part-count ceilings do not bind. Total table size (1 GB vs
+      1 TB) is not the input — average part size is.
+
+  - slug: clickhouse.max-avg-part-size-for-too-many-parts-23.6-plus
+    parameter: clickhouse.max_avg_part_size_for_too_many_parts_bytes
+    system: clickhouse
+    applies_to: ClickHouse >=23.6 (max_avg_part_size_for_too_many_parts default; verified v23.6.1)
+    value: 1073741824
+    confidence: code
+    source: clickhouse-mergetree-settings-v23.6
+    quote: >-
+      M(UInt64, max_avg_part_size_for_too_many_parts, 1ULL * 1024 * 1024 * 1024,
+      "The 'too many parts' check according to 'parts_to_delay_insert' and
+      'parts_to_throw_insert' will be active only if the average part size (in
+      the relevant partition) is not larger than the specified threshold. If it
+      is larger than the specified threshold, the INSERTs will be neither
+      delayed or rejected. This allows to have hundreds of terabytes in a
+      single table on a single server if the parts are successfully merged to
+      larger parts. This does not affect the thresholds on inactive parts or
+      total parts.", 0)
+    notes: >-
+      1 GiB (tightened from 10 GiB at 23.6). Same semantics: large merged parts
+      disable the too-many-parts insert backpressure. A mature 500 GB / 1 TB
+      table with healthy merges is often past this; a 1–5 GB table receiving
+      tiny streaming inserts is exactly where the part-count ceilings bind.
+      clickhouse_probe creates small parts on purpose — it tests that regime,
+      not TB-scale merged-part behaviour.
