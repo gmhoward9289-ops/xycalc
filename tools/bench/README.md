@@ -138,10 +138,11 @@ PROBE_STOP_MERGES=0 ./tools/bench/clickhouse_probe.sh
 ```
 
 Pinned `--cpus` / `--memory` (default 2 / 2g). Prefers host `.venv` with
-`clickhouse-connect` (`PROBE_LOCAL=auto`). Queries live
-`system.merge_tree_settings` and refuses if they do not match the expected
-side of 23.6. Guards: `async_insert=0`, single partition, batch=1 must cross
-`parts_to_delay_insert`, avg part size must stay under
+`clickhouse-connect` (`PROBE_LOCAL=auto`). Concurrent readers default
+`PROBE_READERS=4` — nested `write`/`read` latency blocks use Mongo probe key
+names. Queries live `system.merge_tree_settings` and refuses if they do not
+match the expected side of 23.6. Guards: `async_insert=0`, single partition,
+batch=1 must cross `parts_to_delay_insert`, avg part size must stay under
 `max_avg_part_size_for_too_many_parts`. Default `PROBE_STOP_MERGES=1` isolates
 the part-count ceilings (on a fast 2 vCPU box merges otherwise keep up).
 JSON after `===JSON===` (combined `images` array for dual sweep).

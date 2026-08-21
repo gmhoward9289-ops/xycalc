@@ -42,6 +42,21 @@ def test_expected_thresholds_are_the_23_6_boundary(probe):
     }
 
 
+def test_latency_block_matches_mongo_keys(probe):
+    block = probe._latency_block([10.0, 20.0, 30.0, 40.0, 100.0], ops=5, wall_s=1.0)
+    assert set(block) >= {
+        "ops",
+        "opsPerSecond",
+        "meanLatencyMs",
+        "p50LatencyMs",
+        "p95LatencyMs",
+        "p99LatencyMs",
+    }
+    assert block["ops"] == 5
+    assert block["opsPerSecond"] == 5.0
+    assert block["p50LatencyMs"] == 30.0
+
+
 def test_too_many_parts_detection(probe):
     assert probe._is_too_many_parts(
         Exception("Code: 252. DB::Exception: Too many parts (301). Merges are processing...")

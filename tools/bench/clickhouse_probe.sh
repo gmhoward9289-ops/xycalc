@@ -21,6 +21,7 @@ DRIVER="${NAME}-driver"
 CPUS="${PROBE_CPUS:-2}"
 MEMORY="${PROBE_MEMORY:-2g}"
 WRITERS="${PROBE_WRITERS:-8}"
+READERS="${PROBE_READERS:-4}"
 ROWS="${PROBE_ROWS:-300000}"
 STEP_CAP="${PROBE_STEP_CAP_S:-120}"
 BATCHES="${PROBE_BATCHES:-1,10,100,1000,10000,100000}"
@@ -74,7 +75,7 @@ run_one() {
     {
         echo "image       $image  (expect $expect_side defaults)"
         echo "resources   ${CPUS} cpus, ${MEMORY} memory"
-        echo "workload    ${ROWS} rows, batches=${BATCHES}, writers=${WRITERS}, step_cap=${STEP_CAP}s"
+        echo "workload    ${ROWS} rows, batches=${BATCHES}, writers=${WRITERS}, readers=${READERS}, step_cap=${STEP_CAP}s"
         echo "merges      STOP_MERGES=${STOP_MERGES} (1=isolate part-count ceilings)"
         if [ -n "$LOCAL_PY" ]; then
             echo "driver      local $LOCAL_PY (host→published :${HTTP_PORT})"
@@ -118,6 +119,7 @@ run_one() {
             PROBE_CPUS="$CPUS" \
             PROBE_MEMORY="$MEMORY" \
             PROBE_WRITERS="$WRITERS" \
+            PROBE_READERS="$READERS" \
             PROBE_ROWS="$ROWS" \
             PROBE_STEP_CAP_S="$STEP_CAP" \
             PROBE_BATCHES="$BATCHES" \
@@ -148,6 +150,7 @@ run_one() {
                     -e PROBE_CPUS="$CPUS" \
                     -e PROBE_MEMORY="$MEMORY" \
                     -e PROBE_WRITERS="$WRITERS" \
+                    -e PROBE_READERS="$READERS" \
                     -e PROBE_ROWS="$ROWS" \
                     -e PROBE_STEP_CAP_S="$STEP_CAP" \
                     -e PROBE_BATCHES="$BATCHES" \
@@ -165,6 +168,7 @@ run_one() {
                     -e PROBE_CPUS="$CPUS" \
                     -e PROBE_MEMORY="$MEMORY" \
                     -e PROBE_WRITERS="$WRITERS" \
+                    -e PROBE_READERS="$READERS" \
                     -e PROBE_ROWS="$ROWS" \
                     -e PROBE_STEP_CAP_S="$STEP_CAP" \
                     -e PROBE_BATCHES="$BATCHES" \
@@ -194,21 +198,37 @@ else
 
     # Combine + assert settings differ (guard 6 across images).
     python3 - "$RESULTS_DIR" <<'PY'
-import json, pathlib, sys
+import json
+import pathlib
+import sys
+
 root = pathlib.Path(sys.argv[1])
 docs = []
 for name in ("pre.json", "post.json"):
-    p = root / name
-    docs.append(json.loads(p.read_text(encoding="utf-8")))
-a, b = docs[0]["settings"], docs[1]["settings"]
-keys = ("parts_to_delay_insert", "parts_to_throw_insert")
-if all(a.get(k) == b.get(k) for k in keys):
-    print(
-        f"REFUSING: both images report identical parts_to_* settings { {k: a.get(k) for k in keys} }",
-        file=sys.stderr,
-    )
-    sys.exit(2)
+    path = root / name
+    text = path.read_text(encoding="utf-8").strip()
+    if not text:
+        print(f"REFUSING: empty result file {path}", file=sys.stderr)
+        sys.exit(2)
+    docs.append(json.loads(text))
+
+pre_settings = docs[0]["settings"]
+post_settings = docs[1]["settings"]
+for key in ("parts_to_delay_insert", "parts_to_throw_insert"):
+    if pre_settings.get(key) == post_settings.get(key):
+        print(
+            "REFUSING: both images report identical %s=%s"
+            % (key, pre_settings.get(key)),
+            file=sys.stderr,
+        )
+        sys.exit(2)
+
+out = {
+    "probe": "clickhouse_probe",
+    "images": docs,
+    "settingsDiffer": True,
+}
 print("===JSON===")
-print(json.dumps({"probe": "clickhouse_probe", "images": docs, "settingsDiffer": True}, indent=2))
+print(json.dumps(out, indent=2))
 PY
 fi

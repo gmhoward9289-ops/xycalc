@@ -50,7 +50,8 @@ SELECT value FROM system.settings WHERE name = 'async_insert';
 | `count(DISTINCT partition) FROM system.parts WHERE table = …` | count | last | 250 ms | `obtainable` | Must stay 1 for the probe table (no PARTITION BY). >1 means the threshold is being spread and the experiment is void. |
 | Client-caught `Too many parts` exception count | count | sum | run | `manufacturable` | Only valid reject signal — never infer reject from latency alone. |
 | `avg(bytes_on_disk)` of active parts | bytes | last | 250 ms | `obtainable` | Compared to `max_avg_part_size_for_too_many_parts`; probe refuses if the check is no longer active. |
-| Write latency under insert load (`meanLatencyMs`, `p50/p95/p99LatencyMs`, `opsPerSecond`) | ms / ops/s | — | step | `manufacturable` | Same key names as Mongo `ticket_probe` / `occupancy_band_probe` for cross-system compare. Write half; read half lands with concurrent readers. |
+| Write latency under insert load (`write.{mean,p50,p95,p99}LatencyMs`, `opsPerSecond`) | ms / ops/s | — | step | `manufacturable` | Same key names as Mongo `ticket_probe`. During delay, write p99 ≈ `max_delay_to_insert` (1s sleep) — not storage latency. |
+| Read latency under concurrent inserts (`read.*` same keys) | ms / ops/s | — | step | `manufacturable` | Point lookups (`SELECT … WHERE id =`) while writers run — the fair Mongo compare for load latency. `PROBE_READERS` (default 4). |
 | Achieved inserts/sec at each batch size | ops/s | mean | step | `manufacturable` | Alias of write `opsPerSecond`. If batch=1 is implausibly slow, the harness was the bottleneck, not ClickHouse. |
 
 ## Events — confirmed live (2026-08-21 dual probe)

@@ -10,7 +10,8 @@ specific — see below. Model `clickhouse.parts-insert-ceiling` remains
 `unvalidated (n=0)` against production observations; the probe confirms the
 *settings*, not a portable frequency number.
 
-Artifact: `artifacts/clickhouse_probe_dual.json`.
+Artifact: `artifacts/clickhouse_probe_dual.json` (thresholds).
+Write/read under load: `artifacts/clickhouse_probe_rw_dual.json`.
 
 ---
 
@@ -46,6 +47,38 @@ Fixed 4000 rows, merges stopped, 24.8:
 Same bytes in; part count tracks **insert statements**, not row volume.
 Streaming (batch=1) hits the ceiling; batched inserts at the same total rows
 do not. Folklore confirmed under this controlled regime.
+
+---
+
+## Write vs read latency under load (Mongo-comparable keys)
+
+Second dual-image run with `PROBE_READERS=4` concurrent point lookups while
+inserts run. Step JSON carries nested `write` / `read` blocks with the same
+keys as Mongo `ticket_probe` / `occupancy_band_probe`: `opsPerSecond`,
+`meanLatencyMs`, `p50LatencyMs`, `p95LatencyMs`, `p99LatencyMs`.
+
+**24.8, merges stopped, 4000 rows:**
+
+| batch | write ops/s | write p99 | read ops/s | read p99 |
+|---|---|---|---|---|
+| 1 | 42 | **1005 ms** | 19 | **468 ms** |
+| 10 | 289 | 236 ms | 74 | 265 ms |
+| 100 | 115 | 96 ms | 38 | 57 ms |
+| 1000 | 11 | 61 ms | 11 | 10 ms |
+| 10000 | 3 | 38 ms | 17 | 9 ms |
+
+**23.3 batch=1:** write p99 **1003 ms**, read p99 **59 ms** (reads stay cheap
+while inserts sleep on the delay path). On 24.8 batch=1, reads also degrade
+(468 ms) — more active parts (~3000 vs ~300) under the same reader pool.
+
+Interpretation for Mongo compare:
+
+- CH write p99 ≈1000 ms during delay is **`max_delay_to_insert` sleep**, not
+  disk latency. Do not line that up against Mongo storage-stall read p99.
+- CH read p99 under part pressure is the fairer analogue to Mongo
+  `ticket_probe` / `occupancy_band_probe` read latency under load.
+- Absolute ops/s remain harness- and hardware-scoped (2 vCPU / 2 GiB,
+  `merges_stopped=true`).
 
 ---
 
@@ -108,6 +141,6 @@ merge-throttle), then land a `benchmark`-graded floor with
 
 1. Import dual-probe settings rows as observations of the threshold parameters
    (optional — already code-cited).
-2. Concurrent read latency under insert load (Mongo-comparable keys partially
-   present for writes: `meanLatencyMs` / `p95LatencyMs` / `opsPerSecond`).
+2. Concurrent read latency under insert load — **done** (`write`/`read`
+   blocks in `clickhouse_probe_rw_dual.json`; see FINDINGS).
 3. One merges-on run on slower storage where guard 3 passes without STOP MERGES.

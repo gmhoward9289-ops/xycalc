@@ -1,7 +1,8 @@
 """ClickHouse insert-frequency / part-count probe — investigation 012 (T10).
 
 Fixed total rows; sweep batch size. Watch active part count, insert latency,
-and Too many parts rejects. Guards (see docs/plans/issue-18-… §4):
+concurrent point-lookup read latency under that write load, and Too many parts
+rejects. Guards (see docs/plans/issue-18-… §4):
 
   1. async_insert must be 0 (no server-side coalescing).
   2. Persistent pooled clients — never spawn clickhouse-client per insert.
@@ -12,6 +13,10 @@ and Too many parts rejects. Guards (see docs/plans/issue-18-… §4):
      count crossed the threshold (events counters recorded for later naming).
   6. Live system.merge_tree_settings must match PROBE_EXPECT_SIDE.
 
+Write and read latency blocks use the same keys as Mongo ticket_probe /
+occupancy_band_probe (opsPerSecond, meanLatencyMs, p50/p95/p99LatencyMs) so
+cross-system compare is mechanical.
+
 Prints a JSON blob after a ===JSON=== marker.
 """
 
@@ -19,6 +24,7 @@ from __future__ import annotations
 
 import json
 import os
+import random
 import sys
 import threading
 import time
@@ -35,6 +41,7 @@ IMAGE = os.environ.get("PROBE_IMAGE", "")
 CPUS = os.environ.get("PROBE_CPUS", "2")
 MEMORY = os.environ.get("PROBE_MEMORY", "2g")
 WRITERS = int(os.environ.get("PROBE_WRITERS", "8"))
+READERS = int(os.environ.get("PROBE_READERS", "4"))
 ROWS = int(os.environ.get("PROBE_ROWS", "300000"))
 STEP_CAP_S = float(os.environ.get("PROBE_STEP_CAP_S", "120"))
 BATCHES = [int(x) for x in os.environ.get("PROBE_BATCHES", "1,10,100,1000,10000,100000").split(",")]
@@ -147,8 +154,27 @@ def _is_too_many_parts(exc: BaseException) -> bool:
     return "Too many parts" in text or "too many parts" in text.lower()
 
 
+def _pct(values: list[float], q: float) -> float:
+    if not values:
+        return 0.0
+    s = sorted(values)
+    return round(s[min(int(q * len(s)), len(s) - 1)], 2)
+
+
+def _latency_block(latencies_ms: list[float], ops: int, wall_s: float) -> dict:
+    """Same shape as Mongo ticket_probe / occupancy_band_probe step summaries."""
+    return {
+        "ops": ops,
+        "opsPerSecond": round(ops / wall_s, 2) if wall_s > 0 else 0.0,
+        "meanLatencyMs": round(sum(latencies_ms) / len(latencies_ms), 2) if latencies_ms else 0.0,
+        "p50LatencyMs": _pct(latencies_ms, 0.50),
+        "p95LatencyMs": _pct(latencies_ms, 0.95),
+        "p99LatencyMs": _pct(latencies_ms, 0.99),
+    }
+
+
 def run_step(batch_size: int, delay_threshold: int, max_avg_part_bytes: int) -> dict:
-    """Drop/recreate, insert ROWS in chunks of batch_size, poll parts."""
+    """Drop/recreate, insert ROWS in chunks of batch_size, concurrent readers."""
     client = connect()
     assert_async_insert_off(client)
     recreate_table(client)
@@ -157,10 +183,14 @@ def run_step(batch_size: int, delay_threshold: int, max_avg_part_bytes: int) -> 
     stop = threading.Event()
     lock = threading.Lock()
     next_id = 0
+    max_readable_id = 0  # exclusive upper bound of ids known inserted
     inserts_ok = 0
     inserts_rejected = 0
+    reads_ok = 0
+    read_misses = 0
     reject_samples: list[str] = []
-    latencies_ms: list[float] = []
+    write_latencies_ms: list[float] = []
+    read_latencies_ms: list[float] = []
     peak_active = 0
     peak_avg_part_bytes = 0
     crossed_delay = False
@@ -188,7 +218,7 @@ def run_step(batch_size: int, delay_threshold: int, max_avg_part_bytes: int) -> 
             time.sleep(POLL_S)
 
     def writer(n_rows: int) -> None:
-        nonlocal next_id, inserts_ok, inserts_rejected
+        nonlocal next_id, max_readable_id, inserts_ok, inserts_rejected
         wclient = connect()
         while not stop.is_set():
             with lock:
@@ -205,7 +235,8 @@ def run_step(batch_size: int, delay_threshold: int, max_avg_part_bytes: int) -> 
                 dt_ms = (time.perf_counter() - t0) * 1000.0
                 with lock:
                     inserts_ok += 1
-                    latencies_ms.append(dt_ms)
+                    write_latencies_ms.append(dt_ms)
+                    max_readable_id = max(max_readable_id, end)
             except Exception as exc:  # noqa: BLE001 — count rejects explicitly
                 with lock:
                     inserts_rejected += 1
@@ -214,24 +245,54 @@ def run_step(batch_size: int, delay_threshold: int, max_avg_part_bytes: int) -> 
                     elif not _is_too_many_parts(exc) and len(reject_samples) < 5:
                         reject_samples.append(f"other: {exc!s}"[:300])
 
+    def reader() -> None:
+        """Point lookups against ids already inserted — same shape as Mongo
+        ticket_probe's random _id finds, under concurrent write pressure."""
+        nonlocal reads_ok, read_misses
+        rclient = connect()
+        # Wait briefly for writers to land at least one row.
+        deadline = time.time() + STEP_CAP_S
+        while not stop.is_set() and time.time() < deadline:
+            with lock:
+                upper = max_readable_id
+            if upper <= 0:
+                time.sleep(0.01)
+                continue
+            target = random.randrange(upper)
+            t0 = time.perf_counter()
+            try:
+                rows = rclient.query(
+                    f"SELECT id, pad FROM {TABLE} WHERE id = {int(target)}"
+                ).result_rows
+                dt_ms = (time.perf_counter() - t0) * 1000.0
+                with lock:
+                    read_latencies_ms.append(dt_ms)
+                    if rows:
+                        reads_ok += 1
+                    else:
+                        read_misses += 1
+            except Exception:  # noqa: BLE001 — read errors count as misses, not step failure
+                with lock:
+                    read_misses += 1
+
     t_start = time.perf_counter()
     poll_thread = threading.Thread(target=poller, daemon=True)
     poll_thread.start()
 
-    with ThreadPoolExecutor(max_workers=WRITERS) as pool:
+    n_workers = WRITERS + max(READERS, 0)
+    with ThreadPoolExecutor(max_workers=max(n_workers, 1)) as pool:
         futs = [pool.submit(writer, batch_size) for _ in range(WRITERS)]
+        read_futs = [pool.submit(reader) for _ in range(max(READERS, 0))]
         try:
             for fut in as_completed(futs, timeout=STEP_CAP_S):
                 fut.result()
-            # Row budget reached counts as complete even if some inserts were
-            # rejected along the way — rejects are reported separately.
             completed = next_id >= ROWS
         except TimeoutError:
             stop.set()
             completed = False
         finally:
             stop.set()
-            for fut in futs:
+            for fut in futs + read_futs:
                 fut.cancel()
 
     stop.set()
@@ -258,21 +319,19 @@ def run_step(batch_size: int, delay_threshold: int, max_avg_part_bytes: int) -> 
             f"threshold and neuter the experiment."
         )
 
-    # If average parts grew past max_avg_part_size_for_too_many_parts, the
-    # delay/throw ceilings are not binding — a "healthy" flat result would
-    # mean the wrong regime (large merged parts), not "batching is fine".
     check_active = peak_avg_part_bytes <= max_avg_part_bytes
+    write_block = _latency_block(write_latencies_ms, inserts_ok, wall_s)
+    read_block = _latency_block(read_latencies_ms, reads_ok + read_misses, wall_s)
+    read_block["hits"] = reads_ok
+    read_block["misses"] = read_misses
 
-    achieved_inserts_s = inserts_ok / wall_s if wall_s > 0 else 0.0
-    lat_sorted = sorted(latencies_ms)
+    if READERS > 0 and inserts_ok > 0 and (reads_ok + read_misses) == 0:
+        raise SystemExit(
+            f"REFUSING TO CONCLUDE: PROBE_READERS={READERS} but zero read ops "
+            f"completed during batch={batch_size}. Readers never observed "
+            f"inserted ids — check connectivity or raise step cap."
+        )
 
-    def pct(q: float) -> float:
-        if not lat_sorted:
-            return 0.0
-        return round(lat_sorted[min(int(q * len(lat_sorted)), len(lat_sorted) - 1)], 2)
-
-    # Guard 1 sanity: new parts should be in the ballpark of INSERT statements
-    # when async_insert is off. Record the ratio; do not soft-pass a 100× miss.
     parts_per_insert = (peak_active / inserts_ok) if inserts_ok else None
 
     return {
@@ -284,15 +343,18 @@ def run_step(batch_size: int, delay_threshold: int, max_avg_part_bytes: int) -> 
         "inserts_ok": inserts_ok,
         "inserts_rejected": inserts_rejected,
         "reject_samples": reject_samples,
-        "achieved_inserts_per_s": round(achieved_inserts_s, 2),
-        # Mongo-comparable latency keys (write half of write-vs-read under load).
-        "opsPerSecond": round(achieved_inserts_s, 2),
-        "meanLatencyMs": round(sum(lat_sorted) / len(lat_sorted), 2) if lat_sorted else 0.0,
-        "p50LatencyMs": pct(0.50),
-        "p95LatencyMs": pct(0.95),
-        "p99LatencyMs": pct(0.99),
-        "latency_ms_p50": pct(0.50),
-        "latency_ms_p99": pct(0.99),
+        "achieved_inserts_per_s": write_block["opsPerSecond"],
+        # Nested write/read blocks — compare to Mongo ticket_probe keys.
+        "write": write_block,
+        "read": read_block,
+        # Flat write aliases kept for earlier dual-JSON consumers.
+        "opsPerSecond": write_block["opsPerSecond"],
+        "meanLatencyMs": write_block["meanLatencyMs"],
+        "p50LatencyMs": write_block["p50LatencyMs"],
+        "p95LatencyMs": write_block["p95LatencyMs"],
+        "p99LatencyMs": write_block["p99LatencyMs"],
+        "latency_ms_p50": write_block["p50LatencyMs"],
+        "latency_ms_p99": write_block["p99LatencyMs"],
         "peak_active_parts": peak_active,
         "final_active_parts": final["active_parts"],
         "peak_avg_part_bytes": peak_avg_part_bytes,
@@ -304,6 +366,8 @@ def run_step(batch_size: int, delay_threshold: int, max_avg_part_bytes: int) -> 
         "parts_per_ok_insert": round(parts_per_insert, 4) if parts_per_insert is not None else None,
         "event_deltas": event_deltas,
         "sample_count": len(samples),
+        "readers": READERS,
+        "writers": WRITERS,
     }
 
 
@@ -319,7 +383,8 @@ def main() -> None:
     print(
         f"settings  delay={delay_threshold} throw={throw_threshold} "
         f"max_delay={live.get('max_delay_to_insert')} "
-        f"max_avg_part_bytes={max_avg_part_bytes} side={EXPECT_SIDE}",
+        f"max_avg_part_bytes={max_avg_part_bytes} side={EXPECT_SIDE} "
+        f"writers={WRITERS} readers={READERS}",
         file=sys.stderr,
     )
 
@@ -333,13 +398,14 @@ def main() -> None:
             f"avg_part_B={step['peak_avg_part_bytes']} "
             f"check_active={step['too_many_parts_check_active']} "
             f"rejects={step['inserts_rejected']} "
-            f"ins/s={step['achieved_inserts_per_s']} "
-            f"p99={step['p99LatencyMs']}ms "
+            f"write_ops/s={step['write']['opsPerSecond']} "
+            f"write_p99={step['write']['p99LatencyMs']}ms "
+            f"read_ops/s={step['read']['opsPerSecond']} "
+            f"read_p99={step['read']['p99LatencyMs']}ms "
             f"completed={step['completed']}",
             file=sys.stderr,
         )
 
-    # Guard 3: batch=1 must have crossed the delay threshold at least once.
     batch1 = next((s for s in steps if s["batch_size"] == 1), None)
     if batch1 is not None and not batch1["crossed_delay_threshold"]:
         raise SystemExit(
@@ -366,11 +432,28 @@ def main() -> None:
         "cpus": CPUS,
         "memory": MEMORY,
         "writers": WRITERS,
+        "readers": READERS,
         "rows": ROWS,
         "step_cap_s": STEP_CAP_S,
         "merges_stopped": STOP_MERGES,
         "settings": live,
         "steps": steps,
+        "latencyCompare": {
+            "mongoKeys": [
+                "opsPerSecond",
+                "meanLatencyMs",
+                "p50LatencyMs",
+                "p95LatencyMs",
+                "p99LatencyMs",
+            ],
+            "mongoProbes": ["ticket_probe", "occupancy_band_probe", "cache_cliff_probe"],
+            "note": (
+                "Compare write/read blocks here to Mongo probe step summaries. "
+                "Mongo ticket_probe is read-only under I/O pressure; CH write "
+                "p99 during DelayedInserts is insert-backpressure sleep, not "
+                "storage latency."
+            ),
+        },
     }
     print("===JSON===")
     print(json.dumps(out, indent=2, sort_keys=True))
