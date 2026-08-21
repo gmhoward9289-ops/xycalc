@@ -284,8 +284,7 @@ def cmd_instance_select(args) -> int:
                 else f"the largest instance in this pool "
                 f"({largest.name}, {_fmt(largest.ram_bytes, result.unit)})."
             )
-            + " No family is decided for sizing above that yet — this is a "
-            "placeholder, not a real recommendation."
+            + " Custom sizing, not a guessed SKU past the cited catalog."
         )
 
     _print_constraints(result)
@@ -416,8 +415,8 @@ def cmd_scenario(args) -> int:
                 )
             if pick["exceeds_pool"]:
                 print(
-                    "\n  NOTE  the high end of the band exceeds this pool — no family is "
-                    "decided for sizing above that yet. Custom sizing, not a recommendation."
+                    "\n  NOTE  the high end of the band exceeds this pool — custom "
+                    "sizing, not a guessed SKU past the cited catalog."
                 )
 
     summary = build_instance_sizing_summary(steps, values)
@@ -745,8 +744,8 @@ def build_parser(db: Path | None = None) -> argparse.ArgumentParser:
         help=(
             "org policy ceiling, not an AWS spec — above this, report "
             f"'custom sizing' rather than naming an instance (default: "
-            f"{DEFAULT_INSTANCE_CEILING}, == r8i.48xlarge; pass a larger "
-            "value or 0 to lift it)"
+            f"{DEFAULT_INSTANCE_CEILING}, == u7inh-32tb.480xlarge; pass a larger "
+            "value or 0 to lift it; 1536GiB restores the old r8i.48xlarge cap)"
         ),
     )
     _add_model_flags(sp, db)

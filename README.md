@@ -9,7 +9,9 @@ How many Celery workers before Redis becomes the bottleneck?
 
 The **core product answer** is an **instance sizing calculator**: named AWS /
 Azure / bare-metal size (or class) plus the **spec ranges** that justify it,
-with the lo/mode/hi band preserved — not a single collapsed SKU. Models and
+with the lo/mode/hi band preserved — not a single collapsed SKU. The 500 GB
+MongoDB example names cited SKUs (`r8i.96xlarge` at the low/mode end,
+`u7i-12tb.224xlarge` at the high end) rather than "custom sizing". Models and
 telemetry are how that answer stays cited and operationally honest.
 
 These questions get answered on the internet with a number and no provenance.

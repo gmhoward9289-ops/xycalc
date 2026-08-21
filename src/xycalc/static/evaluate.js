@@ -375,8 +375,10 @@ const XY = (() => {
             failures.push({ vector: g, reason: a.slug + " " + end + ": js " + a[end] + " vs python " + b[end] });
           }
         }
-        if (b.pick_mode !== undefined && a.pick_mode !== b.pick_mode) {
-          failures.push({ vector: g, reason: a.slug + " pick_mode: js " + a.pick_mode + " vs python " + b.pick_mode });
+        for (const pk of ["pick_lo", "pick_mode", "pick_hi"]) {
+          if (b[pk] !== undefined && a[pk] !== b[pk]) {
+            failures.push({ vector: g, reason: a.slug + " " + pk + ": js " + a[pk] + " vs python " + b[pk] });
+          }
         }
         if (b.volume_gib !== undefined) {
           const tol = Math.max(Math.abs(b.volume_gib), 1) * 1e-12;
@@ -709,7 +711,9 @@ const XY = (() => {
           lookup: slug,
           chained: true,
           pick: pick,
+          pick_lo: pick.pick_lo ? pick.pick_lo.name : null,
           pick_mode: pick.pick_mode ? pick.pick_mode.name : null,
+          pick_hi: pick.pick_hi ? pick.pick_hi.name : null,
           lo: previous.lo,
           mode: previous.mode,
           hi: previous.hi,

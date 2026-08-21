@@ -303,6 +303,17 @@ def test_export_blob_carries_scenario_chain(blob):
     assert blob["instance_catalogs"]["azure-vm"]
     assert any(i["name"].startswith("Esv6.") for i in blob["instance_catalogs"]["azure-vm"])
     assert blob["scenario_golden"]
+    homepage = next(
+        g
+        for g in blob["scenario_golden"]
+        if g["inputs"].get("baseline_storage_size") == "500GB"
+        and "index_size" not in g["inputs"]
+    )
+    aws = next(s for s in homepage["steps"] if s["slug"] == "aws-ec2.instance-select")
+    assert aws["pick_lo"] == "r8i.96xlarge"
+    assert aws["pick_mode"] == "r8i.96xlarge"
+    assert aws["pick_hi"] == "u7i-12tb.224xlarge"
+    assert any(i["name"] == "u7i-12tb.224xlarge" for i in blob["instance_catalog"])
 
 
 def test_export_blob_carries_occupancy_band(blob):

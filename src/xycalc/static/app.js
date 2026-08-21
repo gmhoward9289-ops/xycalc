@@ -861,12 +861,14 @@ const XYCALC_APP = (() => {
         hi: clamp(s.ram.hi),
         unit: s.ram.unit,
       };
-      // Re-pick instances against the floored band using the same catalog/family.
+      // Re-pick against the floored band from the whole aws-ec2 catalog
+      // (r8i, then cited U7i). An r8i-only filter made the homepage 500 GB
+      // example report custom sizing on every card.
       const catalog = CORPUS.instance_catalog || [];
       const ceiling = CORPUS.default_instance_ceiling_bytes;
       const band = { lo: s.ram.lo, mode: s.ram.mode, hi: s.ram.hi };
       const pick = XY.selectInstance
-        ? XY.selectInstance(band, catalog, "r8i", ceiling === 0 ? null : ceiling)
+        ? XY.selectInstance(band, catalog, null, ceiling === 0 ? null : ceiling)
         : null;
       if (pick && s.cpu) {
         s.cpu.instance_lo = pick.pick_lo && pick.pick_lo.name;
