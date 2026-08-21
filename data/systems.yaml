@@ -62,7 +62,9 @@ systems:
       key overhead (56 B), eviction/listpack defaults, and FAQ 20% host
       headroom (documented). Investigation 005 (T7): maxmemory policy conflict
       in corpus; measured loss/stall rates import from evict_probe via
-      tools/import_evict_probe.py.
+      tools/import_evict_probe.py. Scenario redis.celery-broker composes those
+      with investigation 004 drain/ceiling — it names both failure modes and
+      does not pick a winner.
 
   - slug: celery
     label: Celery

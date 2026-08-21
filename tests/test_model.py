@@ -303,6 +303,50 @@ class TestTicketCeiling:
         assert "cliff" in model.reframe
 
 
+class TestCeleryRedisBrokerMaxmemory:
+    """Investigation 005 composed: name both failure modes, pick neither."""
+
+    @pytest.fixture
+    def model(self, conn):
+        return Model.load(conn, "celery.redis-broker-maxmemory")
+
+    def test_answer_is_two_documented_policies_not_a_byte_size(self, model):
+        r = model.evaluate({})
+        assert r.mode == pytest.approx(2.0)
+        assert r.lo == r.hi == r.mode
+        assert r.unit == "count"
+
+    def test_reframe_refuses_a_winner_and_names_the_alert(self, model):
+        text = model.reframe.lower()
+        assert "noeviction" in text
+        assert "allkeys-lru" in text
+        assert "used_memory/maxmemory" in text
+        assert "neither" in text
+
+    def test_both_measured_loss_rates_are_constraints(self, model):
+        by_key = {t.key: t for t in model.evaluate({}).constraints}
+        assert by_key["noeviction_task_loss"].coeff_mode == pytest.approx(1.0)
+        assert by_key["allkeys_lru_task_loss"].coeff_mode == pytest.approx(0.6872)
+
+
+class TestCeleryWorkerPrefetch:
+    @pytest.fixture
+    def model(self, conn):
+        return Model.load(conn, "celery.worker-prefetch")
+
+    def test_documented_formula_at_the_004_baseline(self, model):
+        r = model.evaluate({})
+        assert r.mode == pytest.approx(32.0)
+
+    def test_scales_with_concurrency(self, model):
+        assert model.evaluate({"concurrency": 1}).mode == pytest.approx(4.0)
+        assert model.evaluate({"concurrency": 16}).mode == pytest.approx(64.0)
+
+    def test_reframe_does_not_claim_more_workers_drain_faster(self, model):
+        assert "not a cited way to lift" in model.reframe
+
+
+
 class TestNvdStorageModel:
     @pytest.fixture
     def model(self, conn):
