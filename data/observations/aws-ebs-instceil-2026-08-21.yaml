@@ -1,0 +1,32 @@
+observations:
+  # Arm 2 — instance pipe binds before volume provisioned ceiling.
+
+  - slug: aws-ebs-instceil-2026-08-21-drive-iops
+    system: ebs
+    parameter: io.iops
+    value: 11832.49
+    unit: iops
+    workload: >-
+      fio randread 16k QD64×2, ~6 min, direct=1 on fat gp3 (16000/1000)
+      behind t3.medium instance EBS max 11800
+    machine_class: AWS t3.medium + gp3 100GiB 16000/1000, us-east-2
+    system_version: Amazon Elastic Block Store (gp3) via Nitro instance pipe
+    observed_on: '2026-08-21'
+    source: obs-aws-ebs-instceil-2026-08-21
+    notes: >-
+      fio group-report aggregate. VolumeReadOps ≈11.8k IOPS while volume had
+      16000 headroom. InstanceEBSIOPSExceededCheck=1 for drive minutes.
+
+  - slug: aws-ebs-instceil-2026-08-21-tp-mibps
+    system: ebs
+    parameter: io.throughput_mibps
+    value: 250.0
+    unit: MiB/s
+    workload: fio seq read 1M QD32×2 ~2 min on same fat gp3 / t3.medium
+    machine_class: AWS t3.medium + gp3 100GiB 16000/1000, us-east-2
+    system_version: Amazon Elastic Block Store (gp3) via Nitro instance pipe
+    observed_on: '2026-08-21'
+    source: obs-aws-ebs-instceil-2026-08-21
+    notes: >-
+      ≈ documented instance TP max (~261 MiB/s). Volume provisioned 1000 MiB/s.
+      InstanceEBSThroughputExceededCheck=1 during tp window.

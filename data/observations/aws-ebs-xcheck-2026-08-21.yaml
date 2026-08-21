@@ -1,0 +1,60 @@
+observations:
+  # Arm 1 — guest-side peak/mean on real gp3. No ExceededCheck 0/1 rows:
+  # CloudWatch never published VolumeIOPSExceededCheck datapoints for this volume.
+
+  - slug: aws-ebs-xcheck-2026-08-21-under-mean-iops
+    system: ebs
+    parameter: io.iops
+    value: 2106.2
+    unit: iops
+    workload: >-
+      fio randread under provisioned mean (~2000 IOPS rate limit), 16k,
+      direct=1, 1s IOPS log mean over 170 samples
+    machine_class: AWS m6i.large + gp3 100GiB 3000/125, us-east-2
+    system_version: Amazon Elastic Block Store (gp3)
+    observed_on: '2026-08-21'
+    source: obs-aws-ebs-xcheck-2026-08-21
+    notes: >-
+      Under-phase mean stayed below provisioned 3000. Peak second was 5609
+      (see peak_to_mean row) — do not treat "under mean" as proof of zero
+      ExceededChecks once CW publishes.
+
+  - slug: aws-ebs-xcheck-2026-08-21-under-peak-to-mean
+    system: ebs
+    parameter: io.peak_to_mean_ratio
+    value: 2.663
+    unit: ratio
+    workload: fio randread under ~2000 IOPS, peak/mean of 1s IOPS samples
+    machine_class: AWS m6i.large + gp3 100GiB 3000/125, us-east-2
+    system_version: Amazon Elastic Block Store (gp3)
+    observed_on: '2026-08-21'
+    source: obs-aws-ebs-xcheck-2026-08-21
+    notes: peak=5609 IOPS / mean=2106.2 over n=170 one-second samples.
+
+  - slug: aws-ebs-xcheck-2026-08-21-over-mean-iops
+    system: ebs
+    parameter: io.iops
+    value: 3017.0
+    unit: iops
+    workload: >-
+      fio randread uncapped QD64 vs 3000 provisioned, 16k, direct=1,
+      1s IOPS log mean over 180 samples
+    machine_class: AWS m6i.large + gp3 100GiB 3000/125, us-east-2
+    system_version: Amazon Elastic Block Store (gp3)
+    observed_on: '2026-08-21'
+    source: obs-aws-ebs-xcheck-2026-08-21
+    notes: >-
+      Held at volume ceiling (~3017 mean, fio aggregate 3016). CW VolumeReadOps
+      ≈180k/min (~3000 IOPS). VolumeIOPSExceededCheck still empty after re-pull.
+
+  - slug: aws-ebs-xcheck-2026-08-21-over-peak-to-mean
+    system: ebs
+    parameter: io.peak_to_mean_ratio
+    value: 1.986
+    unit: ratio
+    workload: fio randread over provisioned, peak/mean of 1s IOPS samples
+    machine_class: AWS m6i.large + gp3 100GiB 3000/125, us-east-2
+    system_version: Amazon Elastic Block Store (gp3)
+    observed_on: '2026-08-21'
+    source: obs-aws-ebs-xcheck-2026-08-21
+    notes: peak=5992 / mean=3017 over n=180 samples.

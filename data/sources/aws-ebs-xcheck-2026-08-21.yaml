@@ -1,0 +1,16 @@
+sources:
+  - slug: obs-aws-ebs-xcheck-2026-08-21
+    title: "Arm 1: gp3 ExceededChecks window + guest iostat peak/mean (m6i.large)"
+    publisher: xycalc project (benchmark harness, committed)
+    version: tools/bench/_aws_ebs_xcheck_launch.sh
+    retrieved_on: "2026-08-21"
+    source_type: benchmark
+    notes: >-
+      Guest fio 1s IOPS logs + iostat on dedicated 100 GiB gp3 (3000 IOPS /
+      125 MiB/s) attached to m6i.large i-04431bd8261dbd94a, us-east-2.
+      Under phase rate-limited ~2000 IOPS; over phase uncapped QD64.
+      CloudWatch VolumeReadOps confirmed load; VolumeIOPSExceededCheck /
+      VolumeThroughputExceededCheck / VolumeAvgIOPS returned zero datapoints
+      on immediate and later re-pulls (2026-08-21). Instance terminated;
+      volume deleted. Artifacts under tmp/xycalc-ebs-xcheck-20260821/ and
+      docs/investigations/002-ebs-microbursting/artifacts/aws-ebs-xcheck-20260821.md.
