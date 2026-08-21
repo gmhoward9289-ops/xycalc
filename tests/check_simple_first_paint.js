@@ -24,7 +24,7 @@ function applySimpleHostFloor(data) {
   const pick = XY.selectInstance(
     { lo: s.ram.lo, mode: s.ram.mode, hi: s.ram.hi },
     corpus.instance_catalog || [],
-    "r8i",
+    null,
     ceiling === 0 ? null : ceiling,
   );
   if (pick && s.cpu) {
@@ -52,6 +52,10 @@ function paint(size) {
   return { data, panel: APP.simpleFirstPaintHtml(data, XY.formatQuantity) };
 }
 
+function hasSentence(hay, sentence) {
+  return hay.includes(sentence) || hay.includes(APP.esc(sentence));
+}
+
 function assertHonesty(panel, label) {
   assert.ok(panel.ramText, label + ": expected a host-RAM figure, got " + JSON.stringify(panel.ramText));
   assert.ok(panel.weakest && panel.weakest.grade != null, label + ": missing weakest grade");
@@ -62,6 +66,11 @@ function assertHonesty(panel, label) {
   assert.ok(/\bn=\d+/.test(clause) || /unvalidated \(n=0\)/.test(clause), clause);
   assert.ok(panel.html.includes(APP.SIMPLE_HONESTY_LINE), panel.html);
   assert.ok(panel.html.includes("simple-open-advanced"), panel.html);
+  const fn = APP.SIZE_PATH_FOOTNOTES;
+  assert.ok(hasSentence(panel.html, fn["mongodb.wt-cache"].text), panel.html);
+  assert.ok(hasSentence(panel.html, fn["mongodb.ticket-throughput-ceiling"].text), panel.html);
+  assert.ok(hasSentence(panel.html, fn["ebs.iops-to-provision"].text), panel.html);
+  assert.ok(hasSentence(panel.footnotesHtml, fn["mongodb.wt-cache"].text), panel.footnotesHtml);
   assert.ok(APP.simpleRamHonestyOk(panel.ramText, panel.bannerHtml, panel.weakest), label);
   if (panel.weakest.grade !== "reasonable" || APP.zeroInBand(panel.weakest)) {
     assert.ok(!panel.html.includes("<strong>Validated</strong>"), panel.html);
@@ -99,12 +108,10 @@ const noGrade = APP.simpleFirstPaintHtml({
 assert.strictEqual(noGrade.ramText, "");
 assert.ok(noGrade.html.includes(APP.SIMPLE_HONESTY_LINE));
 
-const at300 = paint("300GB");
-if (at300.panel.picksHtml.includes("custom sizing")) {
-  assert.ok(
-    /exceeds the |catalog has no fit/.test(at300.panel.picksHtml),
-    at300.panel.picksHtml,
-  );
-}
+const homepage = paint("500GB");
+assertHonesty(homepage.panel, "500GB homepage");
+assert.ok(!homepage.panel.picksHtml.includes("custom sizing"), homepage.panel.picksHtml);
+assert.ok(homepage.panel.picksHtml.includes("r8i.96xlarge"), homepage.panel.picksHtml);
+assert.ok(homepage.panel.picksHtml.includes("u7i-12tb.224xlarge"), homepage.panel.picksHtml);
 
 console.log("simple first paint ok");

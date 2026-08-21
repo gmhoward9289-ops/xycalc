@@ -22,6 +22,8 @@ Per-series telemetry contracts stay in [`mongodb.md`](mongodb.md),
 [`ebs.md`](ebs.md), [`redis.md`](redis.md). Instance catalogs live as
 coefficients under `data/coefficients/` (`aws-ec2` and `azure-vm` Esv5/Esv6);
 bare-metal is the remaining catalog gap named below.
+coefficients under `data/coefficients/` (`aws-ec2`, `azure-vm`); the
+bare-metal catalog is the remaining product gap named below.
 
 ---
 
@@ -57,7 +59,7 @@ never once on a collapsed mode (`select_instance`, `chain_evaluate`). See
 |---|---|---|---|
 | **AWS EC2** | `aws-ec2` coefficients; `instance_select` family `r8i` | RAM, vCPU, EBS bandwidth Gbps | **Shipped** for r8i; policy ceiling 1536 GiB; >ceiling = custom / next family undecided |
 | **AWS storage (alongside)** | gp3 / EBS models in the same scenario | IOPS & throughput vs baseline | Shipped as scenario steps, not the instance name itself |
-| **Azure VMs** | `azure-vm` coefficients; `instance_select` families `Esv5` / `Esv6` | RAM, vCPU | **Shipped** catalog (PR #98, `data/coefficients/azure-vm.yaml`); Simple view still picks AWS r8i |
+| **Azure VMs** | `azure-vm` coefficients; `instance_select` families `Esv5` / `Esv6` (19 sizes) | RAM, vCPU | **Shipped** for Esv5/Esv6; isolated SKUs omitted; Premium SSD v2 disk math stays under `azure-disks` |
 | **Bare metal / colo** | Observations may name a class (e.g. Hetzner) | Ad hoc in `machine_class` | **Gap** — no first-class catalog system; needed for "same question off-cloud" |
 
 ### Product implications (do not dilute)
@@ -141,7 +143,7 @@ Same `load_instance_catalog` / `select_instance` contract for every provider:
 | Provider | System slug | Next work |
 |---|---|---|
 | AWS | `aws-ec2` | Fill next family above ceiling; optional more memory-opt families |
-| Azure | *(new, e.g. `azure-vm`)* | Memory-optimized VM SKU catalog (RAM/vCPU/disk caps) wired into scenario provider switch |
+| Azure | `azure-vm` | Isolated SKUs / other E-family; Esv5/Esv6 (19 sizes) already shipped |
 | Bare metal | *(new, e.g. `bare-metal`)* | Documented classes (colo / Hetzner / on-prem) with comparable ranges |
 
 Disk math stays adjacent (EBS gp3, Azure Premium SSD v2) — same scenario,
@@ -355,7 +357,7 @@ follow from rows here.
 | U14 | Ticket pool climb under device-bound load | `open` | Inv 003 open question | Watch queue metrics; do not assume auto-scale of tickets |
 | U15 | **Product core:** instance sizing with named picks + spec ranges (AWS / Azure / bare metal) is the primary deliverable; models and telemetry serve that decision | `settled` | Product decision 2026-08-21; scenario `mongodb.size-to-instance` | Do not ship features that orphan the buy/build answer |
 | U16 | Instance pick must be per band-end (lo/mode/hi), never collapsed mode | `settled` | `select_instance` / scenario-chaining design | Three names for one input is correct |
-| U17 | AWS r8i + Azure Esv5/Esv6 catalogs ship; bare-metal catalog is still the missing peer | `provisional` | systems.yaml aws-ec2 + azure-vm; `azure-vm.yaml`; bare-metal via observations | Simple provider switch; bare-metal coefficient system |
+| U17 | AWS r8i and Azure Esv5/Esv6 catalogs + gp3 steps ship today; bare-metal catalog is the remaining required peer, not a nice-to-have | `provisional` | systems.yaml aws-ec2 + azure-vm; bare-metal via observations | Bare-metal class catalog |
 | U18 | Org policy ceiling (1536 GiB) may sit below vendor family max; above → custom / next family, not a guessed SKU | `settled` | `DEFAULT_INSTANCE_CEILING` 2026-08-16 | Keep ceiling as policy, not a fake coefficient |
 
 ### Overturned (keep visible)
@@ -386,7 +388,7 @@ follow from rows here.
 | T11 colocation share | **done** — inv 009; neighbor RSS flat 50→80%; no share-pct coefficient |
 | T3 write-rate / dirty onset | Dirty ticket timing |
 | Production observation imports | Tune Redis 0.70/0.85; scrape intervals |
-| Simple / scenario provider switch onto the shipped Azure catalog | U17 Simple row; catalog itself already in `azure-vm.yaml` |
+| Azure VM SKU catalog + scenario provider switch | **done** for Esv5/Esv6 catalog rows; remaining: isolated SKUs / other E-family |
 | Bare-metal class catalog | U17; off-cloud picks with same band contract |
 | Decide AWS family above 1536 GiB | U18 ops text; unblocks >1.5 TiB recommendations |
 
@@ -394,6 +396,7 @@ follow from rows here.
 
 | Date | Change |
 |---|---|
+| 2026-08-21 | Azure Esv5/Esv6 catalog shipped (`azure-vm`); U17 / product-core table: only bare-metal remains the catalog gap |
 | 2026-08-21 | Docs pass: U13 → provisional (006 A1 shape); README Status/open/next + ROADMAP landed markers for 004–007 |
 | 2026-08-21 | Azure VM Esv5/Esv6 catalog is shipped (PR #98); Product core Gap row was stale. Bare-metal still a gap. Simple picker still r8i. |
 | 2026-08-21 | Landed 006 A1-r2+A2 + 009 T11 AWS share sweep; U13 → measured; calculator Cache cliff status measured |

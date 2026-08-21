@@ -99,12 +99,12 @@ systems:
       catalogs are required peers (same pick-per-band-end contract); they are
       not optional extras — see docs/telemetry/recommendations.md Product core.
 
-      r8i tops out at r8i.96xlarge (3,072 GiB) — the whole catalog's current
-      technical ceiling. Org policy may cap recommendations lower
-      (DEFAULT_INSTANCE_CEILING); above that → custom sizing / next family,
-      not a guessed SKU. U7i figures researched for >3TB were deliberately
-      left OUT of aws-ec2.yaml pending a family decision. See the comment
-      block at the end of data/coefficients/aws-ec2.yaml.
+      r8i tops out at r8i.96xlarge (3,072 GiB). Cited U7i sizes continue the
+      catalog: u7i-12tb.224xlarge (12,288 GiB) and u7inh-32tb.480xlarge
+      (32,768 GiB). Org policy may cap recommendations lower
+      (DEFAULT_INSTANCE_CEILING, currently the largest cited SKU); above
+      that → custom sizing, not a guessed SKU. Smaller U7i sizes are omitted
+      until they have the same quote bar as these two. See aws-ec2.yaml.
 
   - slug: azure-vm
     label: Azure VMs (memory-optimized)

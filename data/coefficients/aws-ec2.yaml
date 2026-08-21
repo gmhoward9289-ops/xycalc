@@ -196,9 +196,8 @@ coefficients:
     source: aws-ec2-instance-types-r8i
     quote: "r8i.96xlarge | 384 vCPU | 3,072 GiB"
     notes: >-
-      The largest published r8i size. A requirement above this exceeds the
-      whole family — instance-select should report "past r8i, see U7i" rather
-      than silently returning no match.
+      The largest published r8i size. A requirement above this is picked from
+      the cited U7i rows (u7i-12tb.224xlarge), not a silent no-match.
   - slug: aws.r8i.96xlarge.vcpu
     parameter: instance.vcpu_count
     system: aws-ec2
@@ -300,14 +299,45 @@ coefficients:
     source: aws-ec2-instance-types-r8i
     quote: "r8i.96xlarge | 384 vCPU | 3,072 GiB | EBS-only | Network 100 Gbps | EBS bandwidth 80 Gbps"
 
-  # -- U7i family: deliberately NOT populated yet.
+  # -- U7i family: the cited next step past r8i.96xlarge (3,072 GiB).
   #
-  # r8i.96xlarge (3,072 GiB) is the current ceiling of what this catalog can
-  # recommend. A requirement above that reports as "custom sizing" rather
-  # than naming a U7i instance -- see select_instance()'s `exceeds_pool`
-  # branch. Recommending a specific U7i size here would be presenting a
-  # guess as this corpus's answer, which is exactly what the rest of it
-  # refuses to do. Fill this back in, sourced the same way as the r8i rows
-  # above, once the actual instance family for >3TB deployments is decided.
-  # aws-ec2-instance-types-u7i stays registered in sources.yaml for when
-  # that happens.
+  # Only sizes named with RAM and vCPU in sources.yaml (same 2026-08-16
+  # research pass as the r8i rows, same practitioner grade) are catalogued.
+  # Smaller U7i SKUs (6 TB / 8 TB) circulate in aggregators; they are not
+  # in this file because this corpus does not have a checkable quote for
+  # them yet. select_instance() names the smallest *cited* size that covers
+  # the band — for the homepage 500 GB host-RAM high end that is
+  # u7i-12tb.224xlarge, not a guessed 8 TB box.
+  - slug: aws.u7i-12tb.224xlarge.ram-bytes
+    parameter: host.ram_bytes
+    system: aws-ec2
+    applies_to: u7i-12tb.224xlarge, AWS EC2, 2026
+    value: 13194139533312  # 12,288 GiB
+    confidence: practitioner
+    source: aws-ec2-instance-types-u7i
+    quote: "u7i-12tb.224xlarge (896 vCPU / 12,288 GiB) through u7inh-32tb.480xlarge"
+  - slug: aws.u7i-12tb.224xlarge.vcpu
+    parameter: instance.vcpu_count
+    system: aws-ec2
+    applies_to: u7i-12tb.224xlarge, AWS EC2, 2026
+    value: 896
+    confidence: practitioner
+    source: aws-ec2-instance-types-u7i
+    quote: "u7i-12tb.224xlarge (896 vCPU / 12,288 GiB) through u7inh-32tb.480xlarge"
+
+  - slug: aws.u7inh-32tb.480xlarge.ram-bytes
+    parameter: host.ram_bytes
+    system: aws-ec2
+    applies_to: u7inh-32tb.480xlarge, AWS EC2, 2026
+    value: 35184372088832  # 32,768 GiB
+    confidence: practitioner
+    source: aws-ec2-instance-types-u7i
+    quote: "u7inh-32tb.480xlarge (1,920 vCPU / 32,768 GiB, a 16-socket HPE Compute"
+  - slug: aws.u7inh-32tb.480xlarge.vcpu
+    parameter: instance.vcpu_count
+    system: aws-ec2
+    applies_to: u7inh-32tb.480xlarge, AWS EC2, 2026
+    value: 1920
+    confidence: practitioner
+    source: aws-ec2-instance-types-u7i
+    quote: "u7inh-32tb.480xlarge (1,920 vCPU / 32,768 GiB, a 16-socket HPE Compute"

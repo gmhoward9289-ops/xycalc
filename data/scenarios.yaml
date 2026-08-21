@@ -91,7 +91,9 @@ scenarios:
           cache_size: previous
       - kind: lookup
         lookup: instance_select
-        family: r8i
+        # Whole aws-ec2 catalog (r8i, then cited U7i). Filtering to r8i made
+        # the homepage 500 GB example report "custom sizing" on every card
+        # even though r8i.96xlarge covers lo/mode and u7i-12tb covers hi.
         feed: previous
       - kind: lookup
         lookup: instance_select

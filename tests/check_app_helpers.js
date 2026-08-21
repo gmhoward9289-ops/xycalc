@@ -295,4 +295,14 @@ assert.ok(APP.simpleRamHonestyOk("120 GB", okBanner, {
 }));
 assert.ok(!APP.simpleRamHonestyOk("120 GB", "<div>reasonable —</div>", { grade: "reasonable" }));
 
+assert.ok(APP.SIZE_PATH_FOOTNOTES["mongodb.wt-cache"].text.includes("FINDINGS 006"));
+assert.ok(APP.SIZE_PATH_FOOTNOTES["mongodb.ticket-throughput-ceiling"].text.includes("FINDINGS 003"));
+assert.ok(APP.SIZE_PATH_FOOTNOTES["ebs.iops-to-provision"].text.includes("cooper-burst-2026-08-21"));
+assert.strictEqual(APP.cascadeStepFootnotesHtml("mongodb.host-ram"), "");
+assert.deepStrictEqual(
+  APP.relatedFootnoteSlugs("mongodb.size-to-instance"),
+  ["mongodb.ticket-throughput-ceiling"],
+);
+assert.deepStrictEqual(APP.relatedFootnoteSlugs("ebs.microburst"), []);
+
 console.log("app helpers ok");
