@@ -1,15 +1,32 @@
 # Benchmark harnesses
 
 This directory holds the repo's benchmark harnesses: `ticket_probe.sh` (thread
-concurrency against a throttled MongoDB), `celery_probe/` (the same workload
-driven by a Celery fleet instead of raw threads), `mongodb_load.js` (seeds a
-collection sized to fit comfortably in cache, for validating the
-decompression/index terms), `mongodb_saturated_cache.sh` (seeds a collection
-deliberately larger than the configured cache, for validating the
+concurrency against a throttled MongoDB), `cache_cliff_probe.sh` (fixed
+concurrency, swept dataset/cache ratio — issue #9 / T1), `celery_probe/` (the
+same workload driven by a Celery fleet instead of raw threads),
+`mongodb_load.js` (seeds a collection sized to fit comfortably in cache, for
+validating the decompression/index terms), `mongodb_saturated_cache.sh` (seeds
+a collection deliberately larger than the configured cache, for validating the
 eviction-target coefficient under real pressure), and
 `mongodb_default_split.sh` (validates mongodb.host-ram's default cache-split
 formula against a host's actual RAM, no dataset needed). See each for its own
 README/comments.
+
+### cache_cliff_probe (T1 / #9)
+
+```bash
+# Full ratio sweep including 50x/100x (issue #9). Run twice, sequentially,
+# on swamplink. Wall-clock is dominated by the high-ratio loads.
+./tools/bench/cache_cliff_probe.sh > /tmp/cache-cliff-run1.json
+
+# Smoke: two ratios, short windows
+PROBE_RATIOS=1.0,2.0 PROBE_SECONDS=6 ./tools/bench/cache_cliff_probe.sh
+```
+
+Fresh `mongod` per ratio; concurrency defaults to 1; tries `direct_io=[data]`
+then falls back. Above 1.0×, a cgroup device-byte guard must pass or the
+script exits 2 — do not import failed legs. Default ratios:
+`0.5,0.8,1.0,1.2,1.5,2,4,8,50,100`.
 
 ## Before you believe a result
 
