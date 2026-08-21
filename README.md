@@ -7,6 +7,11 @@
 How much RAM does a 500 GB MongoDB take? How many IOPS before EBS microbursts?
 How many Celery workers before Redis becomes the bottleneck?
 
+The **core product answer** is an **instance sizing calculator**: named AWS /
+Azure / bare-metal size (or class) plus the **spec ranges** that justify it,
+with the lo/mode/hi band preserved — not a single collapsed SKU. Models and
+telemetry are how that answer stays cited and operationally honest.
+
 These questions get answered on the internet with a number and no provenance.
 xycalc answers them from a corpus with two guarantees, both enforced by a build
 that fails when they are broken:

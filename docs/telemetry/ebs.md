@@ -104,6 +104,20 @@ produces the same data, differently interpolated.
 
 ---
 
+## Alerting (vital subset)
+
+Full board + thresholds: [`recommendations.md`](recommendations.md)
+(Simple / Advanced / Evidence).
+
+| Priority | Signal | Suggested start |
+|---|---|---|
+| Page | `VolumeIOPSExceededCheck` or `VolumeThroughputExceededCheck` ≥ 1 | 2 of 3 minutes (use **max**, not avg) |
+| Page | `InstanceEBS*ExceededCheck` ≥ 1 | Same — separate from volume |
+| Page | `VolumeStalledIOCheck` ≥ 1 | 1 minute |
+| Ticket | Elevated `VolumeQueueLength` / latency vs baseline | 30 min |
+
+Hero panels are the exceeded checks and stalled IO — not `VolumeAvgIOPS`.
+
 ## Why this matters to the MongoDB model
 
 Every page that does not fit in the WiredTiger cache becomes a read. Investigation

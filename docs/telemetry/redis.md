@@ -34,6 +34,20 @@ undercount executions — that gap is why T7 uses two Redis instances.
 | volatile-* ≡ noeviction without TTLs | Key eviction docs | `redis.volatile-no-ttl-equals-noeviction` |
 | 20% free RAM beyond maxmemory | Redis FAQ | `redis.maxmemory-free-ram-headroom-pct` |
 
+## Alerting (vital subset)
+
+Full board + Celery backlog notes: [`recommendations.md`](recommendations.md)
+(Simple / Advanced / Evidence).
+
+| Priority | Signal | Suggested start |
+|---|---|---|
+| Page | `used_memory/maxmemory` ≥ **0.95** | 2 min — both documented policies fail at ceiling (investigation 005) |
+| Page | `evicted_keys` rate > 0 on `allkeys-*` Celery broker | 2 min — silent task loss |
+| Ticket | Ratio ≥ **0.70** / **0.85** | 10 min / 5 min — tune to growth rate |
+| Ticket / page | Rising **outstanding** work (not `LLEN` alone) | Prefetch understates broker depth (issue #14) |
+
+Host: keep ~20% free RAM beyond maxmemory (`redis.maxmemory-free-ram-headroom-pct`).
+
 ## Still wanted for a broker-bytes model
 
 | Series | How | Status |
