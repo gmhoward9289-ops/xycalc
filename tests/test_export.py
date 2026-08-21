@@ -222,6 +222,16 @@ def test_render_substitutes_every_placeholder(blob):
     assert "calculateSimple" in html, "the page shipped without Simple mode"
     assert 'id="simple-view"' in html
     assert 'id="mode-simple"' in html
+    assert "--btn-ink" in html
+    assert "--error" in html
+    assert "Copy as citation" in html
+    assert 'aria-live="polite"' in html
+    assert "aria-labelledby" not in html
+    assert "Show the math" in html
+    assert "tabindex=\"0\"" in html
+    assert "renderCascadeModelStep" in html
+    assert "weakestValidation" in html
+    assert "the sentence it was read from" in html
 
 
 def test_export_blob_carries_scenario_chain(blob):
