@@ -186,3 +186,107 @@ class TestScenarioApi:
         assert "ebs.gp3-iops-at-io-size" in gap["note"]
         mongodb = next(s for s in scenarios if s["slug"] == "mongodb.size-to-instance")
         assert not mongodb["disabled"]
+
+
+class TestRedisCeleryBrokerScenario:
+    """Issue #88: compose 004/005 without picking a maxmemory-policy winner."""
+
+    @pytest.fixture
+    def scenario(self):
+        return get_scenario("redis.celery-broker")
+
+    def test_stub_is_gone_and_the_chain_is_enabled(self, conn):
+        from xycalc.model import describe_scenarios
+
+        listed = describe_scenarios(conn)
+        slugs = [s["slug"] for s in listed]
+        assert "redis.stub" not in slugs
+        card = next(s for s in listed if s["slug"] == "redis.celery-broker")
+        assert not card["disabled"]
+        assert "no sizing scenario yet" not in (card.get("note") or "")
+
+    def test_spine_is_failure_modes_then_drain_then_workers(self, conn, scenario):
+        steps = chain_evaluate(conn, scenario, {})
+        assert [(s.kind, s.slug) for s in steps] == [
+            ("model", "celery.redis-broker-maxmemory"),
+            ("model", "celery.queue-amplification"),
+            ("model", "celery.worker-prefetch"),
+        ]
+
+    def test_does_not_pick_a_winner(self, conn, scenario):
+        first = chain_evaluate(conn, scenario, {})[0]
+        keys = {t.key for t in first.result.constraints}
+        assert "noeviction_task_loss" in keys
+        assert "allkeys_lru_task_loss" in keys
+        assert "occupancy_alert" in keys
+        labels = " ".join(t.label for t in first.result.constraints)
+        assert "noeviction" in labels
+        assert "allkeys-lru" in labels
+        assert "used_memory/maxmemory" in labels
+        reframe = first.model.reframe.lower()
+        assert "neither" in reframe
+        assert "do not pick a winner" in reframe
+        # Answer is the documented policy count, not a loss rate that would
+        # quietly prefer one arm.
+        assert first.result.mode == pytest.approx(2.0)
+
+    def test_names_the_measured_thresholds(self, conn, scenario):
+        constraints = {
+            t.key: t.coeff_mode
+            for t in chain_evaluate(conn, scenario, {})[0].result.constraints
+        }
+        assert constraints["noeviction_task_loss"] == pytest.approx(1.0)
+        assert constraints["allkeys_lru_task_loss"] == pytest.approx(0.6872)
+        assert constraints["noeviction_worker_starts"] == pytest.approx(0)
+        assert constraints["allkeys_lru_worker_starts"] == pytest.approx(1)
+
+    def test_drain_and_ceiling_are_the_004_coefficients(self, conn, scenario):
+        drain = next(
+            s for s in chain_evaluate(conn, scenario, {}) if s.slug == "celery.queue-amplification"
+        )
+        assert drain.result.mode == pytest.approx(36.5)
+        ceiling = next(
+            t for t in drain.result.constraints if t.key == "completion_ceiling"
+        )
+        assert ceiling.coeff_mode == pytest.approx(82.4)
+
+    def test_prefetch_defaults_to_the_004_baseline_concurrency(self, conn, scenario):
+        pref = next(
+            s for s in chain_evaluate(conn, scenario, {}) if s.slug == "celery.worker-prefetch"
+        )
+        assert pref.result.mode == pytest.approx(32.0)  # 8 × 4
+
+    def test_prefetch_honours_supplied_concurrency(self, conn, scenario):
+        pref = next(
+            s
+            for s in chain_evaluate(conn, scenario, {"concurrency": "4"})
+            if s.slug == "celery.worker-prefetch"
+        )
+        assert pref.result.mode == pytest.approx(16.0)
+
+    def test_new_models_print_unvalidated(self, conn):
+        from xycalc.model import validation_status
+
+        for slug in ("celery.redis-broker-maxmemory", "celery.worker-prefetch"):
+            status = validation_status(conn, slug)
+            assert status["validated"] is False
+            assert status["cases"] == 0
+            assert "unvalidated" in status["text"]
+            assert "n=0" in status["text"]
+
+    def test_api_returns_the_conflict_and_validation(self, api_client):
+        r = api_client.post(
+            "/api/scenario",
+            json={"scenario": "redis.celery-broker", "inputs": {}},
+        )
+        assert r.status_code == 200
+        body = r.json()
+        assert body["scenario"] == "redis.celery-broker"
+        first = body["steps"][0]
+        assert first["model"] == "celery.redis-broker-maxmemory"
+        assert first["validation"]["validated"] is False
+        assert "n=0" in first["validation"]["text"]
+        constraint_keys = {c["key"] for c in first["constraints"]}
+        assert "noeviction_task_loss" in constraint_keys
+        assert "allkeys_lru_task_loss" in constraint_keys
+        assert "Do not pick a winner" in first["reframe"]
