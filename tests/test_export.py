@@ -203,6 +203,62 @@ def test_the_check_can_actually_fail(blob, tmp_path):
     assert proc.returncode == 1
 
 
+CHECK_EXPORT_GOLDENS = (
+    Path(__file__).resolve().parents[1] / ".github" / "scripts" / "check-export-goldens.js"
+)
+
+
+@pytest.mark.skipif(NODE is None, reason="node is not installed")
+def test_deploy_golden_script_accepts_a_good_export(blob, tmp_path):
+    """The deploy workflow's Node gate is the same checkGolden() CI already
+    runs, pointed at the exported HTML. Pin the script, not a one-off in YAML,
+    so a 1000x parse regression cannot ship because the live grep still saw 200.
+    """
+    html = tmp_path / "calculator.html"
+    html.write_text(render(blob), encoding="utf-8")
+    proc = subprocess.run(
+        [NODE, str(CHECK_EXPORT_GOLDENS), str(html)],
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+    )
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    assert '"golden_failures":0' in proc.stdout
+
+
+@pytest.mark.skipif(NODE is None, reason="node is not installed")
+def test_deploy_golden_script_rejects_a_bent_export(blob, tmp_path):
+    bent = json.loads(json.dumps(blob))
+    bent["golden"][0]["mode"] *= 1.01
+    html = tmp_path / "bent.html"
+    html.write_text(render(bent), encoding="utf-8")
+    proc = subprocess.run(
+        [NODE, str(CHECK_EXPORT_GOLDENS), str(html)],
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+    )
+    assert proc.returncode == 1
+
+
+@pytest.mark.skipif(NODE is None, reason="node is not installed")
+def test_deploy_golden_script_rejects_a_stale_live_blob(blob, tmp_path):
+    good = tmp_path / "export.html"
+    good.write_text(render(blob), encoding="utf-8")
+    stale_blob = json.loads(json.dumps(blob))
+    stale_blob["corpus_digest"] = "stale-digest"
+    stale = tmp_path / "live.html"
+    stale.write_text(render(stale_blob), encoding="utf-8")
+    proc = subprocess.run(
+        [NODE, str(CHECK_EXPORT_GOLDENS), str(stale), str(good)],
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+    )
+    assert proc.returncode == 1
+    assert "corpus_digest mismatch" in proc.stderr
+
+
 def test_render_is_deterministic(blob):
     # Same corpus, byte-identical page. An export that differs on every run
     # cannot be diffed, and "what changed" is the whole question when
@@ -222,6 +278,16 @@ def test_render_substitutes_every_placeholder(blob):
     assert "calculateSimple" in html, "the page shipped without Simple mode"
     assert 'id="simple-view"' in html
     assert 'id="mode-simple"' in html
+    assert "--btn-ink" in html
+    assert "--error" in html
+    assert "Copy as citation" in html
+    assert 'aria-live="polite"' in html
+    assert "aria-labelledby" not in html
+    assert "Show the math" in html
+    assert "tabindex=\"0\"" in html
+    assert "renderCascadeModelStep" in html
+    assert "weakestValidation" in html
+    assert "the sentence it was read from" in html
 
 
 def test_export_blob_carries_scenario_chain(blob):
@@ -242,6 +308,8 @@ def test_export_blob_carries_occupancy_band(blob):
     assert g["ladder"]["eviction_target"]["value"] == 80
     assert g["ladder"]["eviction_trigger"]["value"] == 95
     assert len(g["passes"]) == 3
+    assert g["passes"][1]["label"] == "confirm 25 s #1"
+    assert g["passes"][2]["label"] == "confirm 25 s #2"
     assert g["passes"][1]["ops_delta_pct"] == 6.73
     assert g["reef_saturated_occupancy_pct"] == 80.55
     assert len(g["playbook"]) >= 4
@@ -253,6 +321,23 @@ def test_export_blob_carries_occupancy_band(blob):
     assert g["ticket_ladder"][-1]["latency_ms"] == 535.51
     assert g["weakest_inference"]
     assert any(k["key"] == "eviction_target" for k in g["knobs"])
+
+
+def test_guides_are_loaded_from_corpus_yaml(conn):
+    slugs = {r[0] for r in conn.execute("SELECT slug FROM guide")}
+    assert slugs == {"occupancy_band", "cache_cliff"}
+
+
+def test_export_py_does_not_hardcode_guide_figures():
+    """The whole point of #84: these numbers live on observation rows."""
+    src = Path(__file__).resolve().parent.parent / "src" / "xycalc" / "export.py"
+    text = src.read_text(encoding="utf-8")
+    assert "occupancy_band_guide" not in text
+    assert "cache_cliff_guide" not in text
+    assert "_latency_ms_from_notes" not in text
+    assert "Mean latency" not in text
+    assert "wt_cache_gb\": 0.25" not in text
+    assert "slope ≈" not in text
 
 
 def test_export_blob_carries_cache_cliff(blob):
@@ -270,6 +355,8 @@ def test_export_blob_carries_cache_cliff(blob):
     assert by_ratio[1.0]["pages_per_op"] == 0.4
     assert by_ratio[0.8]["ops_r2"] == 520
     assert by_ratio[0.8]["relative_ops_r2"] == round(520 / 2189, 4)
+    assert "slope ≈ −3.8" in g["transfer"]
+    assert "1.0 GB cache" in g["transfer"]
 
 
 def test_exported_page_has_flow_and_occupancy_tabs(blob):

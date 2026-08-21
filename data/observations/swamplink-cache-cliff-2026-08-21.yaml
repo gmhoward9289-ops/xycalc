@@ -387,3 +387,90 @@ observations:
   system_version: 7.0.39
   observed_on: '2026-08-21'
   source: obs-mongodb-cache-cliff-swamplink-2026-08-21
+
+# -- probe configuration and derived shape (cited so the Cache cliff tab
+#    does not hardcode 0.25 GB / 0.8→1.0 / slope −3.8) ---------------------
+- slug: swamplink-2026-08-21-cliff-a1-cache-gb
+  system: mongodb
+  parameter: cache.size_gb
+  value: 0.25
+  unit: GB
+  workload: A1 cache-cliff sweeps, --wiredTigerCacheSizeGB 0.25
+  machine_class: Hetzner CX shared vCPU, 7.6 GB RAM (swamplink-eu)
+  system_version: 7.0.39
+  observed_on: '2026-08-21'
+  source: obs-mongodb-cache-cliff-swamplink-2026-08-21
+  notes: Configured WT cache for both A1 repeats. Same setting the occupancy-band probe used the same day.
+
+- slug: swamplink-2026-08-21-cliff-a2-cache-gb
+  system: mongodb
+  parameter: cache.size_gb
+  value: 1.0
+  unit: GB
+  workload: A2 transfer sweep, --wiredTigerCacheSizeGB 1.0
+  machine_class: Hetzner CX shared vCPU, 7.6 GB RAM (swamplink-eu)
+  system_version: 7.0.39
+  observed_on: '2026-08-21'
+  source: obs-mongodb-cache-cliff-swamplink-2026-08-21
+  notes: Absolute-cache step that transferred the 0.8→1.0 steep band.
+
+- slug: swamplink-2026-08-21-cliff-steepest-lo
+  system: mongodb
+  parameter: cache.oversubscription_ratio
+  value: 0.8
+  unit: ratio
+  workload: lower end of the steepest adjacent log-log segment (A1 and A2)
+  machine_class: Hetzner CX shared vCPU, 7.6 GB RAM (swamplink-eu)
+  system_version: 7.0.39
+  observed_on: '2026-08-21'
+  source: obs-mongodb-cache-cliff-swamplink-2026-08-21
+  notes: Adjacent-segment comparison over A1-r1, A1-r2, and A2.
+
+- slug: swamplink-2026-08-21-cliff-steepest-hi
+  system: mongodb
+  parameter: cache.oversubscription_ratio
+  value: 1.0
+  unit: ratio
+  workload: upper end of the steepest adjacent log-log segment (A1 and A2)
+  machine_class: Hetzner CX shared vCPU, 7.6 GB RAM (swamplink-eu)
+  system_version: 7.0.39
+  observed_on: '2026-08-21'
+  source: obs-mongodb-cache-cliff-swamplink-2026-08-21
+  notes: The steep band ends at cache == dataSize, not as a cliff that starts there.
+
+- slug: swamplink-2026-08-21-cliff-a2-knee-lo
+  system: mongodb
+  parameter: cache.oversubscription_ratio
+  value: 0.5
+  unit: ratio
+  workload: A2 transfer, lowest ratio run (knee sweep 0.5…2.0)
+  machine_class: Hetzner CX shared vCPU, 7.6 GB RAM (swamplink-eu)
+  system_version: 7.0.39
+  observed_on: '2026-08-21'
+  source: obs-mongodb-cache-cliff-swamplink-2026-08-21
+
+- slug: swamplink-2026-08-21-cliff-a2-knee-hi
+  system: mongodb
+  parameter: cache.oversubscription_ratio
+  value: 2.0
+  unit: ratio
+  workload: A2 transfer, highest ratio run (knee sweep 0.5…2.0)
+  machine_class: Hetzner CX shared vCPU, 7.6 GB RAM (swamplink-eu)
+  system_version: 7.0.39
+  observed_on: '2026-08-21'
+  source: obs-mongodb-cache-cliff-swamplink-2026-08-21
+
+- slug: swamplink-2026-08-21-cliff-a2-slope-0p8-1
+  system: mongodb
+  parameter: cache.oversub_loglog_slope
+  value: -3.8
+  unit: ratio
+  workload: A2 transfer, adjacent log-log slope 0.8→1.0 at 1.0 GB cache
+  machine_class: Hetzner CX shared vCPU, 7.6 GB RAM (swamplink-eu)
+  system_version: 7.0.39
+  observed_on: '2026-08-21'
+  source: obs-mongodb-cache-cliff-swamplink-2026-08-21
+  notes: >-
+    Δ log(ops) / Δ log(ratio) between the 0.8× (503 ops/s) and 1.0×
+    (215 ops/s) A2 legs. Matches A1-r1's −3.8; A1-r2 was −3.9. The
+    Cache cliff tab cites this A2 figure.

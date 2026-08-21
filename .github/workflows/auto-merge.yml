@@ -31,9 +31,10 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_URL: ${{ github.event.pull_request.html_url }}
-        # The fallback covers repos with no required status checks: GitHub
-        # refuses to *queue* an auto-merge on a PR that nothing is blocking,
-        # so merge it outright instead.
-        run: |
-          gh pr merge --auto --squash --delete-branch "$PR_URL" \
-            || gh pr merge --squash --delete-branch "$PR_URL"
+        # Queue native auto-merge only. A `gh pr merge --squash` fallback
+        # merges immediately when GitHub refuses to queue (for example if
+        # auto-merge is not enabled on the repo), which skips required
+        # checks. This repo's main-protection ruleset requires audit, build,
+        # test, and test-py314; `--auto` waits for those. If queueing fails,
+        # leave the PR open.
+        run: gh pr merge --auto --squash --delete-branch "$PR_URL"

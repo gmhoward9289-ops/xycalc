@@ -105,4 +105,137 @@ assert.strictEqual(APP.esc("<img src=x onerror=alert(1)>"), "&lt;img src=x onerr
 assert.strictEqual(APP.esc('a&b"c'), "a&amp;b&quot;c");
 assert.strictEqual(APP.esc("it's"), "it&#39;s");
 
+assert.strictEqual(APP.gradeSuffix("none"), " · unvalidated");
+assert.strictEqual(APP.gradeSuffix("thin"), " · thinly validated");
+assert.strictEqual(APP.gradeSuffix("reasonable"), " · validated");
+assert.strictEqual(APP.gradeSuffix("mystery"), "");
+
+const worst = APP.weakestValidation([
+  { grade: "reasonable", text: "ok" },
+  { grade: "none", text: "unchecked" },
+  { grade: "thin", text: "thin" },
+]);
+assert.strictEqual(worst.grade, "none");
+assert.strictEqual(APP.weakestValidation([]), null);
+
+assert.ok(APP.occupancyMarkClass(5, 1).includes("below"));
+assert.ok(APP.occupancyMarkClass(5, 1).includes("edge-start"));
+assert.ok(APP.occupancyMarkClass(20, 0).split(" ").indexOf("below") < 0);
+assert.ok(APP.occupancyMarkClass(95, 2).includes("edge-end"));
+
+const xs = [100, 200, 400];
+const ys = [50, 100, 200];
+const crosses = APP.interpolateCrossingXs(xs, ys, 100);
+assert.strictEqual(crosses.length, 1);
+assert.ok(Math.abs(crosses[0] - 200) < 1e-9);
+assert.strictEqual(APP.coverageX(xs, ys, 200), 400);
+assert.strictEqual(APP.coverageX(xs, ys, 10), null);
+
+const cap = APP.bandCoverageCaption("256 GB", [1, 2, 4], [300, 200, 100], [400, 256, 120], [500, 300, 150], 256, (x) => String(x), "vulns");
+assert.ok(cap.includes("256 GB covers"));
+assert.ok(cap.includes("mode"));
+assert.ok(cap.includes("vulns"));
+
+const encoded = APP.serializePermalink({
+  mode: "advanced",
+  tab: "single",
+  model: "mongodb.wt-cache",
+  available: "256GB",
+  inputs: { storage_size: "500GB", index_size: "40GB" },
+});
+const parsed = APP.parsePermalink("#" + encoded);
+assert.strictEqual(parsed.mode, "advanced");
+assert.strictEqual(parsed.tab, "single");
+assert.strictEqual(parsed.model, "mongodb.wt-cache");
+assert.strictEqual(parsed.available, "256GB");
+assert.strictEqual(parsed.inputs.storage_size, "500GB");
+assert.strictEqual(APP.parsePermalink(""), null);
+assert.strictEqual(APP.parsePermalink("#"), null);
+
+// #115: Cache cliff's public slug is cache-cliff; the DOM id is tab-cliff.
+assert.strictEqual(APP.canonicalTab("cache-cliff"), "cliff");
+assert.strictEqual(APP.canonicalTab("cliff"), "cliff");
+assert.strictEqual(APP.canonicalTab("occupancy-bands"), "occupancy");
+assert.strictEqual(APP.canonicalTab("nope"), null);
+assert.strictEqual(APP.publicTab("cliff"), "cache-cliff");
+assert.strictEqual(APP.publicTab("occupancy"), "occupancy");
+
+const inboundCliff = APP.parsePermalink("#mode=advanced&tab=cache-cliff");
+assert.strictEqual(inboundCliff.mode, "advanced");
+assert.strictEqual(inboundCliff.tab, "cliff");
+const view = APP.permalinkView(inboundCliff);
+assert.deepStrictEqual(view, { mode: "advanced", tab: "cliff" });
+assert.strictEqual(APP.permalinkView(APP.parsePermalink("#mode=simple")).mode, "simple");
+assert.strictEqual(APP.permalinkView(APP.parsePermalink("#mode=simple")).tab, null);
+
+const cliffHash = APP.serializePermalink({ mode: "advanced", tab: "cliff", inputs: {} });
+assert.ok(cliffHash.includes("mode=advanced"), cliffHash);
+assert.ok(cliffHash.includes("tab=cache-cliff"), cliffHash);
+assert.ok(!cliffHash.includes("tab=scenario"), cliffHash);
+const cliffRoundTrip = APP.parsePermalink("#" + cliffHash);
+assert.strictEqual(cliffRoundTrip.mode, "advanced");
+assert.strictEqual(cliffRoundTrip.tab, "cliff");
+
+const href = APP.permalinkHref("#mode=advanced&tab=cache-cliff", {
+  pathname: "/tools/xycalc/calculator/",
+  search: "",
+});
+assert.strictEqual(href, "/tools/xycalc/calculator/#mode=advanced&tab=cache-cliff");
+
+// #113: known grade must render GRADE_LABEL + the corpus `text` clause, never
+// "reasonable —" with an empty tail (the Simple-mode field-name miss).
+const unvalidated = {
+  grade: "none",
+  text: "unvalidated (n=0) — no observation has ever been checked against this model",
+};
+const banner = APP.validationBannerInner(unvalidated);
+assert.ok(banner.includes("Unvalidated"), banner);
+assert.ok(banner.includes("unvalidated (n=0)"), banner);
+assert.ok(banner.includes("no observation has ever been checked against this model"), banner);
+assert.ok(!/^<strong>none<\/strong>/.test(banner), banner);
+assert.ok(!/— (<\/|$)/.test(banner.replace(/\s+/g, " ")), banner);
+
+const reasonable = {
+  grade: "reasonable",
+  text: "validated (n=12, 12 within band, mean absolute error 2.0%)",
+};
+const reasonableBanner = APP.validationBannerInner(reasonable);
+assert.ok(reasonableBanner.includes("Validated"), reasonableBanner);
+assert.ok(reasonableBanner.includes("validated (n=12"), reasonableBanner);
+assert.ok(!/^<strong>reasonable<\/strong>/.test(reasonableBanner), reasonableBanner);
+
+assert.strictEqual(APP.validationClause({ text: "from text", summary: "from summary" }), "from text");
+assert.strictEqual(APP.validationClause({ summary: "from summary" }), "from summary");
+assert.strictEqual(APP.validationClause({ note: "from note" }), "from note");
+assert.strictEqual(APP.validationClause({ grade: "reasonable" }), "");
+
+const xssBanner = APP.validationBannerInner({
+  grade: "none",
+  text: "<img src=x onerror=alert(1)>",
+});
+assert.ok(xssBanner.includes("&lt;img src=x onerror=alert(1)&gt;"), xssBanner);
+assert.ok(!xssBanner.includes("<img src"), xssBanner);
+
+const cite = APP.formatCitation({
+  question: "How much cache?",
+  mode: "180 GB",
+  lo: "90 GB",
+  hi: "320 GB",
+  validation: "Unvalidated — n=0",
+  terms: [{
+    label: "storageSize",
+    contribution: "× 0.5",
+    source: "MongoDB docs",
+    source_url: "https://example.invalid/wt",
+    quote: "Set cacheSizeGB to 50% of RAM.",
+  }],
+}, { digest: "abc", version: "0.0.0", git: "deadbee" });
+assert.ok(cite.includes("xycalc: How much cache?"));
+assert.ok(cite.includes("Mode 180 GB  band 90 GB – 320 GB"));
+assert.ok(cite.includes("Unvalidated"));
+assert.ok(cite.includes("MongoDB docs <https://example.invalid/wt>"));
+assert.ok(cite.includes("Set cacheSizeGB"));
+assert.ok(cite.includes("Corpus abc · xycalc 0.0.0 · deadbee"));
+assert.ok(!cite.includes("<script>"));
+
 console.log("app helpers ok");

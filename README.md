@@ -87,11 +87,37 @@ instead of from vibes. Optional extra — no new runtime dependency on the core:
 pip install -e ".[mcp]"
 ```
 
-Entry point `xycalc-mcp` (stdio). Tools: `list_models`, `sizing`, `headroom`,
-`scenario`, `why`. Every result carries the lo/mode/hi band, unit-labeled
-steps, per-term sources/quotes/versions, the verbatim validation grade, and
-`corpus_digest`. Unvalidated models say `unvalidated (n=0)` in the result;
-omitting that would read as a validated answer.
+Entry point `xycalc-mcp` or `python -m xycalc` (stdio). Tools: `list_models`,
+`sizing`, `headroom`, `scenario`, `why`, `import_metrics`. Every sizing result
+carries the lo/mode/hi band, unit-labeled steps, per-term sources/quotes/versions,
+the verbatim validation grade, and `corpus_digest`. Unvalidated models say
+`unvalidated (n=0)` in the result; omitting that would read as a validated answer.
+
+Cursor `mcp.json` sketch (adjust paths):
+
+```json
+"xycalc": {
+  "command": "C:\\Users\\gmhow\\dev\\xycalc\\.venv\\Scripts\\python.exe",
+  "args": ["-m", "xycalc"],
+  "cwd": "C:\\Users\\gmhow\\dev\\xycalc"
+}
+```
+
+Skill: [`skills/xycalc/SKILL.md`](skills/xycalc/SKILL.md).
+
+### Metrics history + Grafana
+
+Estate Grafana: `https://grafana.swamplink.com/` (swamptour) or tunnel
+`http://localhost:8108/` (anonymous Viewer). Boards live in the **monitoring**
+repo folder `xycalc`; source JSON/recipes: [`deploy/grafana/`](deploy/grafana/).
+
+```bash
+python tools/import_metrics_export.py explore.csv \
+  --machine-class r6i.4xlarge --workload "prod" --system-version 7.0.14
+```
+
+Accepts Grafana Explore CSV, Prometheus `query`/`query_range` JSON or
+OpenMetrics text, and Coralogix metrics JSON → `local/` by default.
 
 ## The calculator
 

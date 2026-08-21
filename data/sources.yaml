@@ -637,4 +637,3 @@ sources:
       isolated Standard_E192is_v6 (192 vCPU / 1,832 GB) is on the table but
       disagrees with that include range and is not catalogued. Same GiB
       treatment as Esv5. Source markdown in MicrosoftDocs azure-compute-docs.
-

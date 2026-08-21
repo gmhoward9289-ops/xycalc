@@ -1,0 +1,32 @@
+# Map exported metric names → xycalc parameter slugs (data/parameters.yaml).
+# Keys match after lowercasing; Prometheus label braces are stripped.
+# Unmapped series are skipped (and recorded under local/metrics_raw/).
+
+mappings:
+  # MongoDB / WiredTiger
+  mongodb_wiredtiger_cache_bytes:
+    { system: mongodb, parameter: cache.size_bytes, unit: bytes, agg: last }
+  bytes currently in the cache:
+    { system: mongodb, parameter: cache.size_bytes, unit: bytes, agg: last }
+  cache.size_bytes:
+    { system: mongodb, parameter: cache.size_bytes, unit: bytes, agg: last }
+
+  # Redis
+  redis_memory_max_bytes:
+    { system: redis, parameter: server.maxmemory_bytes, unit: bytes, agg: last }
+  maxmemory:
+    { system: redis, parameter: server.maxmemory_bytes, unit: bytes, agg: last }
+  redis_evicted_keys_total:
+    { system: redis, parameter: broker.evicted_keys_delta, unit: "1", agg: delta }
+  evicted_keys:
+    { system: redis, parameter: broker.evicted_keys_delta, unit: "1", agg: delta }
+
+  # EBS / storage saturation (map checks onto queue/iops vocabulary we already have)
+  VolumeQueueLength:
+    { system: ebs, parameter: io.queue_depth, unit: count, agg: mean }
+  volumequeuelength:
+    { system: ebs, parameter: io.queue_depth, unit: count, agg: mean }
+  VolumeAvgIOPS:
+    { system: ebs, parameter: io.iops, unit: iops, agg: mean }
+  volumeavgiops:
+    { system: ebs, parameter: io.iops, unit: iops, agg: mean }

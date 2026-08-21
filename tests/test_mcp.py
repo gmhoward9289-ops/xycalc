@@ -119,7 +119,14 @@ class TestHonestyInToolDescriptions:
 
         listed = asyncio.run(_list(db_path))
         names = {t.name for t in listed.tools}
-        assert names == {"list_models", "sizing", "headroom", "scenario", "why"}
+        assert names == {
+            "list_models",
+            "sizing",
+            "headroom",
+            "scenario",
+            "why",
+            "import_metrics",
+        }
         for tool in listed.tools:
             desc = tool.description or ""
             assert "unvalidated (n=0)" in desc, tool.name

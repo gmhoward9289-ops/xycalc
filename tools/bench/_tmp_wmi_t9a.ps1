@@ -1,0 +1,6 @@
+﻿$ErrorActionPreference = "Continue"
+$cmd = "powershell -NoProfile -ExecutionPolicy Bypass -File C:\Users\Owner\lab\_tmp_t9_armA.ps1"
+# fix name
+$cmd = "powershell -NoProfile -ExecutionPolicy Bypass -File C:\Users\Owner\lab\t9_armA.ps1"
+$r = Invoke-CimMethod -ClassName Win32_Process -MethodName Create -Arguments @{ CommandLine = $cmd }
+"ReturnValue=$($r.ReturnValue) ProcessId=$($r.ProcessId) at=$(Get-Date -Format o)" | Out-File C:\Users\Owner\lab\t9a-wmi.out

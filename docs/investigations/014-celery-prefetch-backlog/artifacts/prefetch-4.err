@@ -1,0 +1,6 @@
+ Container xycalc-celery-probe-driver-run-7b7b39dc89b3 Creating 
+ Container xycalc-celery-probe-driver-run-7b7b39dc89b3 Created 
+reusing existing 1,500,000 documents (idempotent load)
+  loaded. dataSize=1086 MB  cache=268 MB  oversubscription=4.0x
+  rate   done/s    qmax    qend   dupes   dup%  drain s  tickets
+   400     97.0    8912    9051       0    0.0  TIMEOUT        9

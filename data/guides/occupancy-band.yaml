@@ -1,0 +1,157 @@
+# Occupancy-band calculator tab. Every figure is a coefficient or observation
+# slug; export.py resolves them. Adding a pass is another row here, not another
+# function in Python.
+
+guides:
+  - slug: occupancy_band
+    model: mongodb.wt-cache
+    ticket_model: mongodb.ticket-throughput-ceiling
+    source: obs-mongodb-occupancy-band-swamplink-2026-08-21
+    ticket_source: obs-mongodb-ticket-probe-swamplink-2026-08-01
+    investigation: 007-eviction-band-and-tickets
+    ladder:
+      eviction_target: {coefficient: mongodb.eviction-target-pct}
+      eviction_trigger: {coefficient: mongodb.eviction-trigger-pct}
+      eviction_dirty_target: {coefficient: mongodb.eviction-dirty-target-pct}
+      eviction_dirty_trigger: {coefficient: mongodb.eviction-dirty-trigger-pct}
+    knobs:
+      - key: eviction_target
+        coeff: {coefficient: mongodb.eviction-target-pct}
+        blurb: Occupancy WiredTiger works to hold
+        example: >-
+          Size cache ≈ working_set ÷ 0.8 so workers are not always
+          fighting. Reef saturated scan settled at the default hold.
+      - key: eviction_trigger
+        coeff: {coefficient: mongodb.eviction-trigger-pct}
+        blurb: App threads start eviction
+        example: >-
+          Diagnose latency with pages evicted by application threads,
+          not RSS alone.
+      - key: eviction_dirty_target
+        coeff: {coefficient: mongodb.eviction-dirty-target-pct}
+        blurb: Dirty-page hold
+        example: Write path analogue of eviction_target.
+      - key: eviction_dirty_trigger
+        coeff: {coefficient: mongodb.eviction-dirty-trigger-pct}
+        blurb: Writers stall on dirty eviction
+        example: >-
+          A bulk load can hit 20% dirty while total occupancy is still
+          low — total-bytes sizing will not catch it.
+    reef_saturated_occupancy_pct:
+      observation: reef-mongo-bench-2026-08-19-eviction-target-actual
+    passes:
+      kind: table
+      require: [ops_at_80, ops_at_90, occ_mean_at_80, occ_mean_at_90]
+      derive:
+        - key: ops_delta_pct
+          op: percent_delta
+          num: ops_at_90
+          den: ops_at_80
+          round: 2
+      rows:
+        - label: smoke 12 s
+          ops_at_80:
+            observation: swamplink-2026-08-21-occ80-ops
+            as: ops_80_slug
+          ops_at_90:
+            observation: swamplink-2026-08-21-occ90-ops
+            as: ops_90_slug
+          occ_mean_at_80:
+            observation: swamplink-2026-08-21-occ80-occupancy
+            as: occ_80_slug
+          occ_mean_at_90:
+            observation: swamplink-2026-08-21-occ90-occupancy
+            as: occ_90_slug
+        - label: "confirm 25 s #1"
+          ops_at_80:
+            observation: swamplink-2026-08-21-occ80-ops-confirm1
+            as: ops_80_slug
+          ops_at_90:
+            observation: swamplink-2026-08-21-occ90-ops-confirm1
+            as: ops_90_slug
+          occ_mean_at_80:
+            observation: swamplink-2026-08-21-occ80-occupancy-confirm1
+            as: occ_80_slug
+          occ_mean_at_90:
+            observation: swamplink-2026-08-21-occ90-occupancy-confirm1
+            as: occ_90_slug
+        - label: "confirm 25 s #2"
+          ops_at_80:
+            observation: swamplink-2026-08-21-occ80-ops-confirm2
+            as: ops_80_slug
+          ops_at_90:
+            observation: swamplink-2026-08-21-occ90-ops-confirm2
+            as: ops_90_slug
+          occ_mean_at_80:
+            observation: swamplink-2026-08-21-occ80-occupancy-confirm2
+            as: occ_80_slug
+          occ_mean_at_90:
+            observation: swamplink-2026-08-21-occ90-occupancy-confirm2
+            as: occ_90_slug
+    ticket_ladder:
+      kind: table
+      require: [peak_tickets, ops_per_s]
+      rows:
+        - concurrency: 1
+          peak_tickets:
+            observation: swamplink-2026-08-01-tickets-c1
+            as: tickets_slug
+          ops_per_s:
+            observation: swamplink-2026-08-01-opsec-c1
+            as: ops_slug
+          latency_ms:
+            observation: swamplink-2026-08-01-latency-c1
+        - concurrency: 8
+          peak_tickets:
+            observation: swamplink-2026-08-01-tickets-c8
+            as: tickets_slug
+          ops_per_s:
+            observation: swamplink-2026-08-01-opsec-c8
+            as: ops_slug
+          latency_ms:
+            observation: swamplink-2026-08-01-latency-c8
+        - concurrency: 64
+          peak_tickets:
+            observation: swamplink-2026-08-01-tickets-c64
+            as: tickets_slug
+          ops_per_s:
+            observation: swamplink-2026-08-01-opsec-c64
+            as: ops_slug
+          latency_ms:
+            observation: swamplink-2026-08-01-latency-c64
+    snapshot_recipe: |-
+      const s = db.serverStatus();
+      const c = s.wiredTiger.cache;
+      const t = (s.tcmalloc && s.tcmalloc.generic) || {};
+      const max = c['maximum bytes configured'];
+      printjson({
+        occupancyPct: 100 * c['bytes currently in the cache'] / max,
+        dirtyPct: 100 * c['tracked dirty bytes in the cache'] / max,
+        appEvict: c['pages evicted by application threads'],
+        unable: c['eviction server unable to reach eviction goal'],
+        tickets: (s.queues && s.queues.execution)
+          ? s.queues.execution.read.totalTickets
+          : s.wiredTiger.concurrentTransactions.read.totalTickets,
+        tcmallocHeap: t.heap_size,
+        tcmallocAllocated: t.current_allocated_bytes || t.total_allocated_bytes
+      });
+    playbook:
+      - when: Occupancy stuck mid-80s + unable to reach eviction goal rising
+        do: Danger band before 95%. Check disk and dirty% before touching ticket knobs.
+      - when: Workers 20/20 and pages evicted by application threads rising
+        do: Raise IOPS or shrink the working set — threads_max will not go past 20.
+      - when: High RSS, healthy occupancy, large tcmalloc heap−allocated gap
+        do: Tune tcmallocReleaseRate (not aggressive decommit) — this is fragmentation, not WT occupancy.
+      - when: Flat ops/s, rising latency, climbing totalTickets on MongoDB 7
+        do: Storage admission contention (investigation 003) — fix the device or working set, do not chase ticket count as capacity.
+    weakest_inference: >-
+      Single host, concurrency 1, 0.25 GB cache, device-throttled.
+      Ops/s delta for target 80→90 moved from ~0 (12 s) to mid-single-digit
+      / low-teens (25 s) — window length matters. Do not promote a
+      'raise target to 90 for +X% throughput' coefficient.
+    verdict: >-
+      Raising eviction_target 80→90 holds the cache fuller under a
+      read-miss / throttled workload; ops/s deltas are modest and noisy.
+      Do not raise production target to 90 for throughput. The documented
+      danger remains 95% (app-thread eviction) and, on MongoDB 7 under
+      real concurrency, ticket climb against a saturated device.

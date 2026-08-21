@@ -32,7 +32,6 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
-import re
 import sqlite3
 import sys
 from pathlib import Path
@@ -280,283 +279,157 @@ def _obs_value(conn: sqlite3.Connection, slug: str) -> float | None:
     return None if row is None else float(row["value"])
 
 
-def _obs_notes(conn: sqlite3.Connection, slug: str) -> str | None:
-    row = conn.execute(
-        "SELECT notes FROM observation WHERE slug = ?", (slug,)
-    ).fetchone()
-    if row is None or row["notes"] is None:
-        return None
-    return str(row["notes"])
+def _display_number(value: float, places: int | None = None) -> str:
+    """Format a cited figure for interpolated guide prose."""
+    if places is not None:
+        text = f"{value:.{places}f}"
+    elif float(value).is_integer():
+        text = str(int(value))
+    else:
+        text = str(value)
+    if text.startswith("-"):
+        return "−" + text[1:]
+    return text
 
 
-def _latency_ms_from_notes(notes: str | None) -> float | None:
-    """Pull 'Mean latency 9.19ms' out of ticket-probe observation notes."""
-    if not notes:
-        return None
-    m = re.search(r"Mean latency\s+([\d.]+)\s*ms", notes, re.IGNORECASE)
-    return None if m is None else float(m.group(1))
+def _is_obs_ref(node: object) -> bool:
+    return isinstance(node, dict) and "observation" in node
 
 
-def _ratio_tag(ratio: float) -> str:
-    """Encode 0.5 → 0p5, 1.0 → 1, 1.2 → 1p2 for observation slugs."""
-    if float(ratio).is_integer():
-        return str(int(ratio))
-    return str(ratio).replace(".", "p")
+def _is_coeff_ref(node: object) -> bool:
+    return isinstance(node, dict) and "coefficient" in node
 
 
-def cache_cliff_guide(conn: sqlite3.Connection) -> dict:
-    """Measured oversubscription shape for the Cache cliff tab (inv 006 / T1).
+def _resolve_obs(conn: sqlite3.Connection, ref: dict, parent: dict | None) -> float | None:
+    slug = ref["observation"]
+    value = _obs_value(conn, slug)
+    as_key = ref.get("as")
+    if as_key and parent is not None:
+        parent[as_key] = None if value is None else slug
+    return value
 
-    Relative ops (normalised to the 0.5× leg) are the transferable claim;
-    absolute ops/s stay in the table as throttle artifacts. No wt-cache
-    sizing coefficient is derived here — relative ops under throttle ≠ hit
-    ratio.
-    """
-    ratios = (0.5, 0.8, 1.0, 1.2, 1.5, 2.0, 4.0, 8.0, 50.0)
-    legs: list[dict] = []
-    for ratio in ratios:
-        tag = _ratio_tag(ratio)
-        ops = _obs_value(conn, f"swamplink-2026-08-21-cliff-a1r1-ops-{tag}")
-        pages = _obs_value(conn, f"swamplink-2026-08-21-cliff-a1r1-pages-{tag}")
-        ops_r2 = _obs_value(conn, f"swamplink-2026-08-21-cliff-a1r2-ops-{tag}")
-        if ops is None:
-            continue
-        legs.append(
-            {
-                "ratio": ratio,
-                "ops": ops,
-                "pages_per_op": pages,
-                "ops_r2": ops_r2,
-                "ops_slug": f"swamplink-2026-08-21-cliff-a1r1-ops-{tag}",
-                "pages_slug": (
-                    None
-                    if pages is None
-                    else f"swamplink-2026-08-21-cliff-a1r1-pages-{tag}"
-                ),
-                "ops_r2_slug": (
-                    None
-                    if ops_r2 is None
-                    else f"swamplink-2026-08-21-cliff-a1r2-ops-{tag}"
-                ),
-            }
-        )
-    base = legs[0]["ops"] if legs else None
-    for leg in legs:
-        leg["relative_ops"] = (
-            None if base in (None, 0) else round(leg["ops"] / base, 4)
-        )
-        if leg["ops_r2"] is not None and base not in (None, 0):
-            # r2 relative uses r2's own 0.5× when present, else r1 base.
-            r2_base = next(
-                (x["ops_r2"] for x in legs if x["ratio"] == 0.5 and x["ops_r2"]),
-                None,
-            )
-            if r2_base:
-                leg["relative_ops_r2"] = round(leg["ops_r2"] / r2_base, 4)
-            else:
-                leg["relative_ops_r2"] = None
+
+def _render_row(conn: sqlite3.Connection, spec: dict) -> dict:
+    out: dict = {}
+    for key, val in spec.items():
+        if _is_obs_ref(val):
+            out[key] = _resolve_obs(conn, val, out)
+        elif _is_coeff_ref(val):
+            out[key] = _coeff_row(conn, val["coefficient"])
         else:
-            leg["relative_ops_r2"] = None
-    a2_ratios = (0.5, 0.8, 1.0, 1.2, 1.5, 2.0)
-    a2_legs: list[dict] = []
-    for ratio in a2_ratios:
-        tag = _ratio_tag(ratio)
-        ops = _obs_value(conn, f"swamplink-2026-08-21-cliff-a2-ops-{tag}")
-        if ops is None:
+            out[key] = render_guide(conn, val)
+    return out
+
+
+def _row_complete(row: dict, required: list[str]) -> bool:
+    return all(row.get(key) is not None for key in required)
+
+
+def _apply_derive(row: dict, rules: list[dict]) -> None:
+    for rule in rules:
+        op = rule.get("op")
+        key = rule["key"]
+        if op == "percent_delta":
+            num = row.get(rule["num"])
+            den = row.get(rule["den"])
+            if num is None or not den:
+                row[key] = None
+                continue
+            delta = ((num - den) / den) * 100.0
+            places = rule.get("round")
+            row[key] = round(delta, places) if places is not None else delta
+        else:
+            raise ExportError(f"unknown guide derive op {op!r}")
+
+
+def _apply_relative(rows: list[dict], rules: list[dict]) -> None:
+    for rule in rules:
+        field = rule["from"]
+        key = rule["key"]
+        places = rule.get("round", 4)
+        base = next((r.get(field) for r in rows if r.get(field) not in (None, 0)), None)
+        for row in rows:
+            value = row.get(field)
+            if value is None or base in (None, 0):
+                row[key] = None
+            else:
+                row[key] = round(value / base, places)
+
+
+def _render_table(conn: sqlite3.Connection, spec: dict) -> list[dict]:
+    required = spec.get("require") or []
+    derive = spec.get("derive") or []
+    out: list[dict] = []
+    for raw in spec.get("rows") or []:
+        row = _render_row(conn, raw)
+        if required and not _row_complete(row, required):
             continue
-        a2_legs.append({"ratio": ratio, "ops": ops,
-                        "ops_slug": f"swamplink-2026-08-21-cliff-a2-ops-{tag}"})
-    a2_base = a2_legs[0]["ops"] if a2_legs else None
-    for leg in a2_legs:
-        leg["relative_ops"] = (
-            None if a2_base in (None, 0) else round(leg["ops"] / a2_base, 4)
-        )
-    return {
-        "model": "mongodb.wt-cache",
-        "source": "obs-mongodb-cache-cliff-swamplink-2026-08-21",
-        "investigation": "006-cache-cliff",
-        "status": "measured",
-        "wt_cache_gb": 0.25,
-        "steepest_segment": [0.8, 1.0],
-        "transfer": (
-            "A2 (1.0 GB cache, knee 0.5…2.0) confirms same steepest segment "
-            "0.8→1.0 (slope ≈ −3.8); far oversub still A1-only"
-        ),
-        "legs": legs,
-        "a2_legs": a2_legs,
-        "verdict": (
-            "Throughput vs oversubscription is not a flat plateau then a cliff "
-            "at 1.0×. Relative ops/s falls hard already between 0.5× and 1.0× "
-            "(steepest log–log segment 0.8→1.0 on A1-r1, A1-r2, and A2), then "
-            "the decline flattens into a shallow slope through 50×. Absolute "
-            "ops/s are throttle artifacts; the shape is the claim. Do not treat "
-            "cache-resident as cache == dataSize. No wt-cache sizing "
-            "coefficient — relative ops under throttle are not a hit-ratio."
-        ),
-    }
+        _apply_derive(row, derive)
+        out.append(row)
+    return out
 
 
-def occupancy_band_guide(conn: sqlite3.Connection) -> dict:
-    """Structured 007 ladder + measured 80→90 legs for the Occupancy tab.
+def _render_series(conn: sqlite3.Connection, spec: dict) -> list[dict]:
+    rows = _render_table(conn, spec)
+    _apply_relative(rows, spec.get("relative") or [])
+    return rows
 
-    Numbers come from coefficients and observations already in the corpus —
-    the page must not invent a second copy of the findings table.
+
+def _render_format(conn: sqlite3.Connection, spec: dict) -> str:
+    values = {}
+    for name, ref in (spec.get("values") or {}).items():
+        if not _is_obs_ref(ref) and not _is_coeff_ref(ref):
+            values[name] = ref
+            continue
+        if _is_coeff_ref(ref):
+            row = _coeff_row(conn, ref["coefficient"])
+            number = None if row is None else row["value"]
+        else:
+            number = _obs_value(conn, ref["observation"])
+        if number is None:
+            values[name] = ""
+        else:
+            values[name] = _display_number(float(number), ref.get("places"))
+    try:
+        return spec["template"].format(**values)
+    except KeyError as e:
+        raise ExportError(f"guide format missing value {e}") from e
+
+
+def render_guide(conn: sqlite3.Connection, spec: object):
+    """Resolve one guide spec: observation/coefficient refs, tables, series.
+
+    The YAML under data/guides/ is the structure; this walker is the only
+    Python that should grow when a new investigation adds a tab — and it
+    should not, if that tab fits table/series/format.
     """
-    target = _coeff_row(conn, "mongodb.eviction-target-pct")
-    trigger = _coeff_row(conn, "mongodb.eviction-trigger-pct")
-    dirty_target = _coeff_row(conn, "mongodb.eviction-dirty-target-pct")
-    dirty_trigger = _coeff_row(conn, "mongodb.eviction-dirty-trigger-pct")
-    passes = []
-    for label, suffix in (
-        ("smoke 12 s", ""),
-        ("confirm 25 s #1", "-confirm1"),
-        ("confirm 25 s #2", "-confirm2"),
-    ):
-        ops80 = _obs_value(conn, f"swamplink-2026-08-21-occ80-ops{suffix}")
-        ops90 = _obs_value(conn, f"swamplink-2026-08-21-occ90-ops{suffix}")
-        occ80 = _obs_value(conn, f"swamplink-2026-08-21-occ80-occupancy{suffix}")
-        occ90 = _obs_value(conn, f"swamplink-2026-08-21-occ90-occupancy{suffix}")
-        if None in (ops80, ops90, occ80, occ90):
-            continue
-        delta_pct = ((ops90 - ops80) / ops80) * 100.0 if ops80 else None
-        passes.append(
-            {
-                "label": label,
-                "ops_at_80": ops80,
-                "ops_at_90": ops90,
-                "ops_delta_pct": None if delta_pct is None else round(delta_pct, 2),
-                "occ_mean_at_80": occ80,
-                "occ_mean_at_90": occ90,
-                "ops_80_slug": f"swamplink-2026-08-21-occ80-ops{suffix}",
-                "ops_90_slug": f"swamplink-2026-08-21-occ90-ops{suffix}",
-                "occ_80_slug": f"swamplink-2026-08-21-occ80-occupancy{suffix}",
-                "occ_90_slug": f"swamplink-2026-08-21-occ90-occupancy{suffix}",
-            }
-        )
-    reef = _obs_value(conn, "reef-mongo-bench-2026-08-19-eviction-target-actual")
+    if isinstance(spec, dict):
+        kind = spec.get("kind")
+        if kind == "table":
+            return _render_table(conn, spec)
+        if kind == "series":
+            return _render_series(conn, spec)
+        if kind == "format":
+            return _render_format(conn, spec)
+        if _is_obs_ref(spec):
+            return _resolve_obs(conn, spec, None)
+        if _is_coeff_ref(spec):
+            return _coeff_row(conn, spec["coefficient"])
+        return _render_row(conn, spec)
+    if isinstance(spec, list):
+        return [render_guide(conn, item) for item in spec]
+    return spec
 
-    ticket_rows = []
-    for concurrency in (1, 8, 64):
-        tickets = _obs_value(
-            conn, f"swamplink-2026-08-01-tickets-c{concurrency}"
-        )
-        ops = _obs_value(conn, f"swamplink-2026-08-01-opsec-c{concurrency}")
-        if tickets is None or ops is None:
-            continue
-        ops_notes = _obs_notes(conn, f"swamplink-2026-08-01-opsec-c{concurrency}")
-        ticket_rows.append(
-            {
-                "concurrency": concurrency,
-                "peak_tickets": tickets,
-                "ops_per_s": ops,
-                "latency_ms": _latency_ms_from_notes(ops_notes),
-                "tickets_slug": f"swamplink-2026-08-01-tickets-c{concurrency}",
-                "ops_slug": f"swamplink-2026-08-01-opsec-c{concurrency}",
-            }
-        )
 
-    knobs = [
-        {
-            "key": "eviction_target",
-            "coeff": target,
-            "blurb": "Occupancy WiredTiger works to hold",
-            "example": (
-                "Size cache ≈ working_set ÷ 0.8 so workers are not always "
-                "fighting. Reef saturated scan settled at the default hold."
-            ),
-        },
-        {
-            "key": "eviction_trigger",
-            "coeff": trigger,
-            "blurb": "App threads start eviction",
-            "example": (
-                "Diagnose latency with pages evicted by application threads, "
-                "not RSS alone."
-            ),
-        },
-        {
-            "key": "eviction_dirty_target",
-            "coeff": dirty_target,
-            "blurb": "Dirty-page hold",
-            "example": "Write path analogue of eviction_target.",
-        },
-        {
-            "key": "eviction_dirty_trigger",
-            "coeff": dirty_trigger,
-            "blurb": "Writers stall on dirty eviction",
-            "example": (
-                "A bulk load can hit 20% dirty while total occupancy is still "
-                "low — total-bytes sizing will not catch it."
-            ),
-        },
-    ]
-
-    return {
-        "model": "mongodb.wt-cache",
-        "ticket_model": "mongodb.ticket-throughput-ceiling",
-        "source": "obs-mongodb-occupancy-band-swamplink-2026-08-21",
-        "ticket_source": "obs-mongodb-ticket-probe-swamplink-2026-08-01",
-        "investigation": "007-eviction-band-and-tickets",
-        "ladder": {
-            "eviction_target": target,
-            "eviction_trigger": trigger,
-            "eviction_dirty_target": dirty_target,
-            "eviction_dirty_trigger": dirty_trigger,
-        },
-        "knobs": [k for k in knobs if k["coeff"] is not None],
-        "passes": passes,
-        "reef_saturated_occupancy_pct": reef,
-        "ticket_ladder": ticket_rows,
-        "snapshot_recipe": (
-            "const s = db.serverStatus();\n"
-            "const c = s.wiredTiger.cache;\n"
-            "const t = (s.tcmalloc && s.tcmalloc.generic) || {};\n"
-            "const max = c['maximum bytes configured'];\n"
-            "printjson({\n"
-            "  occupancyPct: 100 * c['bytes currently in the cache'] / max,\n"
-            "  dirtyPct: 100 * c['tracked dirty bytes in the cache'] / max,\n"
-            "  appEvict: c['pages evicted by application threads'],\n"
-            "  unable: c['eviction server unable to reach eviction goal'],\n"
-            "  tickets: (s.queues && s.queues.execution)\n"
-            "    ? s.queues.execution.read.totalTickets\n"
-            "    : s.wiredTiger.concurrentTransactions.read.totalTickets,\n"
-            "  tcmallocHeap: t.heap_size,\n"
-            "  tcmallocAllocated: t.current_allocated_bytes "
-            "|| t.total_allocated_bytes\n"
-            "});"
-        ),
-        "playbook": [
-            {
-                "when": "Occupancy stuck mid-80s + unable to reach eviction goal rising",
-                "do": "Danger band before 95%. Check disk and dirty% before touching ticket knobs.",
-            },
-            {
-                "when": "Workers 20/20 and pages evicted by application threads rising",
-                "do": "Raise IOPS or shrink the working set — threads_max will not go past 20.",
-            },
-            {
-                "when": "High RSS, healthy occupancy, large tcmalloc heap−allocated gap",
-                "do": "Tune tcmallocReleaseRate (not aggressive decommit) — this is fragmentation, not WT occupancy.",
-            },
-            {
-                "when": "Flat ops/s, rising latency, climbing totalTickets on MongoDB 7",
-                "do": "Storage admission contention (investigation 003) — fix the device or working set, do not chase ticket count as capacity.",
-            },
-        ],
-        "weakest_inference": (
-            "Single host, concurrency 1, 0.25 GB cache, device-throttled. "
-            "Ops/s delta for target 80→90 moved from ~0 (12 s) to mid-single-digit "
-            "/ low-teens (25 s) — window length matters. Do not promote a "
-            "'raise target to 90 for +X% throughput' coefficient."
-        ),
-        "verdict": (
-            "Raising eviction_target 80→90 holds the cache fuller under a "
-            "read-miss / throttled workload; ops/s deltas are modest and noisy. "
-            "Do not raise production target to 90 for throughput. The documented "
-            "danger remains 95% (app-thread eviction) and, on MongoDB 7 under "
-            "real concurrency, ticket climb against a saturated device."
-        ),
-    }
+def render_guides(conn: sqlite3.Connection) -> dict[str, dict]:
+    out: dict[str, dict] = {}
+    for row in conn.execute("SELECT slug, spec_json FROM guide ORDER BY slug"):
+        spec = json.loads(row["spec_json"])
+        rendered = render_guide(conn, spec)
+        if not isinstance(rendered, dict):
+            raise ExportError(f"guide '{row['slug']}' did not render to an object")
+        out[row["slug"]] = rendered
+    return out
 
 
 def _instance_catalog_dicts(conn: sqlite3.Connection, system: str = "aws-ec2") -> list[dict]:
@@ -602,9 +475,8 @@ def corpus_blob(conn: sqlite3.Connection) -> dict:
         },
         "default_instance_ceiling_bytes": parse_bytes(DEFAULT_INSTANCE_CEILING),
         "scenario_golden": scenario_golden_vectors(conn),
-        "occupancy_band": occupancy_band_guide(conn),
-        "cache_cliff": cache_cliff_guide(conn),
     }
+    blob.update(render_guides(conn))
     # A short digest of the corpus itself (not the vectors), so a reader can
     # tell two exported pages apart without diffing 100 KB of JSON.
     payload = json.dumps(models, sort_keys=True, separators=(",", ":"))

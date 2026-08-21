@@ -136,19 +136,39 @@ for _ in $(seq 1 40); do
     sleep 1
 done
 
-# Resolve mongo IP via PowerShell — Git Bash mangled go-templates / no python.
-running="$(powershell.exe -NoProfile -Command "(docker inspect '$NAME' | ConvertFrom-Json).State.Status" | tr -d '\r\n')"
-if [ "$running" != "running" ]; then
-    echo "mongo container $NAME is not running after wait" >&2
-    docker logs "$NAME" >&2 || true
-    exit 1
+# Resolving the mongo endpoint differs by host, and getting this wrong is
+# fatal rather than degraded, so branch explicitly instead of assuming.
+#
+# Git Bash mangles docker's go-template argv and has no python, so there we
+# shell out to powershell.exe to inspect the container. powershell.exe is NOT
+# on PATH under WSL or on Linux, where an unconditional call aborts the run
+# with "command not found" -- which is exactly what it did on reef. On those
+# hosts docker's embedded DNS resolves the container name on the user-defined
+# network, which is what the harness did before Windows support existed.
+if command -v powershell.exe >/dev/null 2>&1; then
+    running="$(powershell.exe -NoProfile -Command "(docker inspect '$NAME' | ConvertFrom-Json).State.Status" | tr -d '
+')"
+    if [ "$running" != "running" ]; then
+        echo "mongo container $NAME is not running after wait" >&2
+        docker logs "$NAME" >&2 || true
+        exit 1
+    fi
+    mongo_ip="$(powershell.exe -NoProfile -Command "docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' '$NAME'" | tr -d '
+')"
+    if [ -z "$mongo_ip" ]; then
+        echo "could not resolve IP for $NAME" >&2
+        exit 1
+    fi
+    mongo_uri="mongodb://${mongo_ip}:27017"
+else
+    running="$(docker inspect -f '{{.State.Status}}' "$NAME" 2>/dev/null || true)"
+    if [ "$running" != "running" ]; then
+        echo "mongo container $NAME is not running after wait" >&2
+        docker logs "$NAME" >&2 || true
+        exit 1
+    fi
+    mongo_uri="mongodb://${NAME}:27017"
 fi
-mongo_ip="$(powershell.exe -NoProfile -Command "docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' '$NAME'" | tr -d '\r\n')"
-if [ -z "$mongo_ip" ]; then
-    echo "could not resolve IP for $NAME" >&2
-    exit 1
-fi
-mongo_uri="mongodb://${mongo_ip}:27017"
 echo "mongo uri   $mongo_uri (name=$NAME)" >&2
 
 docker run -d --name "$DRIVER" --network "$NET" \
