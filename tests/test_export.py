@@ -157,6 +157,13 @@ def test_render_substitutes_every_placeholder(blob):
     assert "calculateSimple" in html, "the page shipped without Simple mode"
     assert 'id="simple-view"' in html
     assert 'id="mode-simple"' in html
+    assert 'id="simple-vuln-storage"' in html
+    assert 'id="simple-devices"' in html
+    assert 'id="simple-device-avg"' in html
+    assert 'id="simple-residual"' in html
+    assert 'id="simple-open-advanced"' in html
+    assert "simple-db-size" not in html
+    assert "normalizeSimpleAvgBytes" in html
 
 
 def test_export_blob_carries_scenario_chain(blob):

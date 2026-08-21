@@ -457,16 +457,31 @@ body.mode-advanced #simple-view { display: none !important; }
 <div id="simple-view">
   <div class="panel">
     <div class="field">
-      <label for="simple-db-size">Total database size</label>
-      <input id="simple-db-size" placeholder="e.g. 500 or 500GB" autocomplete="off">
-      <div class="help">Today’s on-disk footprint (db.stats().storageSize). Bare number = GB. Host floor is 64&nbsp;GB (r8i.2xlarge).</div>
+      <label for="simple-vulns">Vulnerability records</label>
+      <input id="simple-vulns" placeholder="e.g. 250000" autocomplete="off">
+      <div class="help">Document count in your vuln collections today.</div>
     </div>
     <div class="field">
-      <label for="simple-vulns">Vulnerability records <span class="help" style="display:inline">optional</span></label>
-      <input id="simple-vulns" placeholder="e.g. 250000" autocomplete="off">
-      <div class="help">Leave blank to use the corpus default count.</div>
+      <label for="simple-vuln-storage">Vuln collection storageSize</label>
+      <input id="simple-vuln-storage" placeholder="e.g. 100 or 100GB" autocomplete="off">
+      <div class="help">Sum of storageSize for vuln collections only — not the whole database. Bare number = GB.</div>
     </div>
-    <p class="recalc-live" id="simple-status">Enter a database size — sizing updates as you type.</p>
+    <div class="field">
+      <label for="simple-devices">Device documents <span class="help" style="display:inline">optional</span></label>
+      <input id="simple-devices" placeholder="e.g. 10000" autocomplete="off">
+      <div class="help">Device (or asset) document count. Pair with avg on-disk bytes below.</div>
+    </div>
+    <div class="field">
+      <label for="simple-device-avg">Avg on-disk bytes per device <span class="help" style="display:inline">optional</span></label>
+      <input id="simple-device-avg" placeholder="e.g. 2MB or 2048" autocomplete="off">
+      <div class="help">storageSize ÷ count for the device family. Bare number = bytes.</div>
+    </div>
+    <div class="field">
+      <label for="simple-residual">Other data on disk today <span class="help" style="display:inline">optional</span></label>
+      <input id="simple-residual" placeholder="e.g. 50 or 50GB" autocomplete="off">
+      <div class="help">Residual collections (whole-DB storageSize minus vuln and device families). Does not grow with CVE counts. Bare number = GB.</div>
+    </div>
+    <p class="recalc-live" id="simple-status">Enter vuln count and storageSize — sizing updates as you type.</p>
     <p id="simple-error" class="error" hidden></p>
   </div>
   <div id="simple-result" hidden>
@@ -483,6 +498,10 @@ body.mode-advanced #simple-view { display: none !important; }
       <div class="bandends" id="simple-bandends" hidden></div>
       <div class="simple-picks" id="simple-picks"></div>
       <div class="validation" id="simple-validation" hidden></div>
+      <p class="help" style="margin:.85rem 0 0">
+        <button type="button" class="ghost" id="simple-open-advanced">Open Advanced</button>
+        for indexes, foreign collections, growth targets, and the full breakdown.
+      </p>
     </div>
   </div>
 </div>
