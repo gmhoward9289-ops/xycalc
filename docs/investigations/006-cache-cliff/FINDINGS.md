@@ -52,11 +52,20 @@ Adjacent log–log slopes (Δlog ops / Δlog ratio), A1-r1:
    is already steep. Performance erodes well before dataSize exceeds
    maxCache under uniform point lookups.
 
-## A1-r2 (partial, in progress)
+## A1-r2 (in progress on swamplink-eu)
 
-Early legs track r1 in the knee region (0.8: 519.5 vs 514; 1.0: 219.2 vs
-219.1). 0.5 showed higher absolute ops/s (2189 vs 1590) — absolute rates
-are not the claim; ratio-shape is. Confirm knee slopes after full r2.
+| ratio | r1 ops/s | r2 ops/s |
+|---|---:|---:|
+| 0.5 | 1590 | 2189 |
+| 0.8 | 514 | 520 |
+| 1.0 | 219 | 219 |
+| 1.2 | 162 | 158 |
+| 1.5 | 128 | 129 |
+| 2.0 | 107 | 106 |
+
+Knee region **reproduces**. Absolute 0.5× rate varies; shape from 0.8× up
+does not. Legs 4× / 8× / 50× still running; competing `s3_stack` /
+`occ-band` containers were stopped mid-run when discovered.
 
 ## Transfer (A2) — not yet run
 

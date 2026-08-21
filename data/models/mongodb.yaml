@@ -49,6 +49,45 @@ models:
       ratio bypassed once that flag exists; for now, divide it by 2.5 first
       and the model reverses the arithmetic exactly.
 
+      --- Eviction variables (how to use them) ---
+
+      eviction_target (default 80): the occupancy WiredTiger *works to hold*.
+      Example — after a full scan of an oversubscribed working set on reef
+      (2026-08-19, 8 GiB cache, 20 GB data) resident bytes settled at 80.55%
+      of configured cache. The ÷0.8 term in this model is that headroom:
+      contents of N want about N/0.8 configured so workers are not permanently
+      fighting.
+
+      eviction_trigger (default 95): past this, application threads do eviction.
+      Example — diagnose latency spikes with
+      serverStatus().wiredTiger.cache['pages evicted by application threads']
+      rising, not with RSS alone.
+
+      The 80→90% band: workers are active above target; 90% is closer to the
+      conscription cliff than to a healthy hold. Tuning eviction_target from
+      80 to 90 is a different knob than "we measured occupancy at 90%" —
+      measure both with tools/bench/occupancy_band_probe.sh. Absolute ops/s
+      on a throttled toy cache are not capacity numbers; the delta between
+      legs is.
+
+      eviction_dirty_target / eviction_dirty_trigger (5 / 20): write path.
+      Example — bulk load with dirty% approaching 20 while total occupancy
+      is still low: writers (and then readers) stall on dirty eviction I/O.
+
+      eviction threads_max (hard ceiling 20): if workers are 20/20 and still
+      losing, more threads are not available — raise IOPS, cut write rate, or
+      enlarge cache / shrink working set.
+
+      tcmalloc (heap_size vs allocated): RSS fragmentation, not WT occupancy.
+      Prefer tcmallocReleaseRate over tcmallocAggressiveMemoryDecommit
+      (vendor: aggressive decommit has large perf cost). Does not add eviction
+      workers.
+
+      MongoDB 7 admission (separate from eviction %): see
+      mongodb.ticket-throughput-ceiling — throughputProbing rests near 4
+      tickets idle and can climb under load without raising ops/s when the
+      device binds (swamplink ticket_probe 2026-08-01).
+
     inputs:
       - key: storage_size
         label: Total collection data on disk — all databases

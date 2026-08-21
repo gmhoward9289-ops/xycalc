@@ -85,7 +85,13 @@ cgroup_read_bytes() {
             echo 0
         fi
     ' 2>/dev/null || echo 0)"
-    echo "${out:-0}"
+    # Arithmetic under `set -u` treats non-numeric junk (e.g. docker/OCI
+    # error text) as unbound variable names — coerce hard to an integer.
+    if [[ "${out:-0}" =~ ^[0-9]+$ ]]; then
+        echo "$out"
+    else
+        echo 0
+    fi
 }
 
 start_mongod() {
@@ -172,14 +178,27 @@ run_target() {
     local before_bytes after_bytes
     before_bytes="$(cgroup_read_bytes "$leg")"
     echo "  probing (device read bytes before=${before_bytes})..." >&2
+    set +e
     docker exec "${common_env[@]}" "$driver" \
-        python /tmp/occupancy_band_probe.py --mode probe >"$tmp_probe"
+        python /tmp/occupancy_band_probe.py --mode probe >"$tmp_probe" 2>"$tmp_probe.err"
+    local probe_rc=$?
+    set -e
+    if [ "$probe_rc" -ne 0 ]; then
+        echo "probe exited $probe_rc:" >&2
+        sed 's/^/  /' "$tmp_probe.err" >&2 || true
+        sed 's/^/  /' "$tmp_probe" >&2 || true
+        cleanup_leg
+        rm -f "$tmp_load" "$tmp_probe" "$tmp_probe.err"
+        return 1
+    fi
+    cat "$tmp_probe.err" >&2 || true
     after_bytes="$(cgroup_read_bytes "$leg")"
     local device_delta=$((after_bytes - before_bytes))
     if [ "$device_delta" -lt 0 ]; then
         device_delta=0
     fi
     echo "  device read bytes delta=${device_delta}" >&2
+    rm -f "$tmp_probe.err"
 
     docker cp "$tmp_load" "$driver:/tmp/load.json"
     docker cp "$tmp_probe" "$driver:/tmp/probe.json"
