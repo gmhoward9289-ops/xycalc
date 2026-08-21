@@ -181,6 +181,23 @@ def test_export_blob_carries_occupancy_band(blob):
     assert any(k["key"] == "eviction_target" for k in g["knobs"])
 
 
+def test_guides_are_loaded_from_corpus_yaml(conn):
+    slugs = {r[0] for r in conn.execute("SELECT slug FROM guide")}
+    assert slugs == {"occupancy_band", "cache_cliff"}
+
+
+def test_export_py_does_not_hardcode_guide_figures():
+    """The whole point of #84: these numbers live on observation rows."""
+    src = Path(__file__).resolve().parent.parent / "src" / "xycalc" / "export.py"
+    text = src.read_text(encoding="utf-8")
+    assert "occupancy_band_guide" not in text
+    assert "cache_cliff_guide" not in text
+    assert "_latency_ms_from_notes" not in text
+    assert "Mean latency" not in text
+    assert "wt_cache_gb\": 0.25" not in text
+    assert "slope ≈" not in text
+
+
 def test_export_blob_carries_cache_cliff(blob):
     g = blob["cache_cliff"]
     assert g["status"] == "measured"
@@ -196,6 +213,8 @@ def test_export_blob_carries_cache_cliff(blob):
     assert by_ratio[1.0]["pages_per_op"] == 0.4
     assert by_ratio[0.8]["ops_r2"] == 520
     assert by_ratio[0.8]["relative_ops_r2"] == round(520 / 2189, 4)
+    assert "slope ≈ −3.8" in g["transfer"]
+    assert "1.0 GB cache" in g["transfer"]
 
 
 def test_exported_page_has_flow_and_occupancy_tabs(blob):

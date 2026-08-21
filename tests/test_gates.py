@@ -85,6 +85,17 @@ def test_build_leaves_no_database_behind_when_it_fails(corpus, tmp_path):
     assert not target.exists()
 
 
+def test_unknown_observation_in_a_guide_fails_the_build(corpus, tmp_path):
+    path = corpus.data / "guides" / "cache-cliff.yaml"
+
+    def break_ref(d):
+        d["guides"][0]["wt_cache_gb"]["observation"] = "no-such-observation"
+
+    _edit(path, break_ref)
+    with pytest.raises(BuildError, match="unknown observation"):
+        build(tmp_path / "x.db")
+
+
 def test_audit_passes_on_the_real_corpus(db_path):
     from xycalc.audit import audit
 

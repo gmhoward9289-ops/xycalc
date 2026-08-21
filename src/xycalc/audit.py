@@ -103,7 +103,10 @@ def audit(db_path: Path = DEFAULT_DB, rebuild: bool = True) -> int:
     # -- report -----------------------------------------------------------
     counts = {
         t: conn.execute(f"SELECT COUNT(*) FROM {t}").fetchone()[0]
-        for t in ("source", "system", "parameter", "coefficient", "model", "observation")
+        for t in (
+            "source", "system", "parameter", "coefficient",
+            "model", "observation", "guide",
+        )
     }
     print("corpus")
     print(BAR)

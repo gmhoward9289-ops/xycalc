@@ -1,0 +1,174 @@
+# Cache-cliff calculator tab. Legs name observation slugs; relative ops are
+# derived at export time. Absolute ops/s stay in the table as throttle
+# artifacts — no wt-cache sizing coefficient is derived here.
+
+guides:
+  - slug: cache_cliff
+    model: mongodb.wt-cache
+    source: obs-mongodb-cache-cliff-swamplink-2026-08-21
+    investigation: 006-cache-cliff
+    status: measured
+    wt_cache_gb:
+      observation: swamplink-2026-08-21-cliff-a1-cache-gb
+    steepest_segment:
+      - observation: swamplink-2026-08-21-cliff-steepest-lo
+      - observation: swamplink-2026-08-21-cliff-steepest-hi
+    transfer:
+      kind: format
+      template: >-
+        A2 ({a2_cache_gb} GB cache, knee {knee_lo}…{knee_hi}) confirms same steepest segment
+        {steepest_lo}→{steepest_hi} (slope ≈ {slope}); far oversub still A1-only
+      values:
+        a2_cache_gb:
+          observation: swamplink-2026-08-21-cliff-a2-cache-gb
+          places: 1
+        knee_lo:
+          observation: swamplink-2026-08-21-cliff-a2-knee-lo
+          places: 1
+        knee_hi:
+          observation: swamplink-2026-08-21-cliff-a2-knee-hi
+          places: 1
+        steepest_lo:
+          observation: swamplink-2026-08-21-cliff-steepest-lo
+          places: 1
+        steepest_hi:
+          observation: swamplink-2026-08-21-cliff-steepest-hi
+          places: 1
+        slope:
+          observation: swamplink-2026-08-21-cliff-a2-slope-0p8-1
+          places: 1
+    legs:
+      kind: series
+      require: [ops]
+      relative:
+        - {key: relative_ops, from: ops, round: 4}
+        - {key: relative_ops_r2, from: ops_r2, round: 4}
+      rows:
+        - ratio: 0.5
+          ops:
+            observation: swamplink-2026-08-21-cliff-a1r1-ops-0p5
+            as: ops_slug
+          pages_per_op:
+            observation: swamplink-2026-08-21-cliff-a1r1-pages-0p5
+            as: pages_slug
+          ops_r2:
+            observation: swamplink-2026-08-21-cliff-a1r2-ops-0p5
+            as: ops_r2_slug
+        - ratio: 0.8
+          ops:
+            observation: swamplink-2026-08-21-cliff-a1r1-ops-0p8
+            as: ops_slug
+          pages_per_op:
+            observation: swamplink-2026-08-21-cliff-a1r1-pages-0p8
+            as: pages_slug
+          ops_r2:
+            observation: swamplink-2026-08-21-cliff-a1r2-ops-0p8
+            as: ops_r2_slug
+        - ratio: 1.0
+          ops:
+            observation: swamplink-2026-08-21-cliff-a1r1-ops-1
+            as: ops_slug
+          pages_per_op:
+            observation: swamplink-2026-08-21-cliff-a1r1-pages-1
+            as: pages_slug
+          ops_r2:
+            observation: swamplink-2026-08-21-cliff-a1r2-ops-1
+            as: ops_r2_slug
+        - ratio: 1.2
+          ops:
+            observation: swamplink-2026-08-21-cliff-a1r1-ops-1p2
+            as: ops_slug
+          pages_per_op:
+            observation: swamplink-2026-08-21-cliff-a1r1-pages-1p2
+            as: pages_slug
+          ops_r2:
+            observation: swamplink-2026-08-21-cliff-a1r2-ops-1p2
+            as: ops_r2_slug
+        - ratio: 1.5
+          ops:
+            observation: swamplink-2026-08-21-cliff-a1r1-ops-1p5
+            as: ops_slug
+          pages_per_op:
+            observation: swamplink-2026-08-21-cliff-a1r1-pages-1p5
+            as: pages_slug
+          ops_r2:
+            observation: swamplink-2026-08-21-cliff-a1r2-ops-1p5
+            as: ops_r2_slug
+        - ratio: 2.0
+          ops:
+            observation: swamplink-2026-08-21-cliff-a1r1-ops-2
+            as: ops_slug
+          pages_per_op:
+            observation: swamplink-2026-08-21-cliff-a1r1-pages-2
+            as: pages_slug
+          ops_r2:
+            observation: swamplink-2026-08-21-cliff-a1r2-ops-2
+            as: ops_r2_slug
+        - ratio: 4.0
+          ops:
+            observation: swamplink-2026-08-21-cliff-a1r1-ops-4
+            as: ops_slug
+          pages_per_op:
+            observation: swamplink-2026-08-21-cliff-a1r1-pages-4
+            as: pages_slug
+          ops_r2:
+            observation: swamplink-2026-08-21-cliff-a1r2-ops-4
+            as: ops_r2_slug
+        - ratio: 8.0
+          ops:
+            observation: swamplink-2026-08-21-cliff-a1r1-ops-8
+            as: ops_slug
+          pages_per_op:
+            observation: swamplink-2026-08-21-cliff-a1r1-pages-8
+            as: pages_slug
+          ops_r2:
+            observation: swamplink-2026-08-21-cliff-a1r2-ops-8
+            as: ops_r2_slug
+        - ratio: 50.0
+          ops:
+            observation: swamplink-2026-08-21-cliff-a1r1-ops-50
+            as: ops_slug
+          pages_per_op:
+            observation: swamplink-2026-08-21-cliff-a1r1-pages-50
+            as: pages_slug
+          ops_r2:
+            observation: swamplink-2026-08-21-cliff-a1r2-ops-50
+            as: ops_r2_slug
+    a2_legs:
+      kind: series
+      require: [ops]
+      relative:
+        - {key: relative_ops, from: ops, round: 4}
+      rows:
+        - ratio: 0.5
+          ops:
+            observation: swamplink-2026-08-21-cliff-a2-ops-0p5
+            as: ops_slug
+        - ratio: 0.8
+          ops:
+            observation: swamplink-2026-08-21-cliff-a2-ops-0p8
+            as: ops_slug
+        - ratio: 1.0
+          ops:
+            observation: swamplink-2026-08-21-cliff-a2-ops-1
+            as: ops_slug
+        - ratio: 1.2
+          ops:
+            observation: swamplink-2026-08-21-cliff-a2-ops-1p2
+            as: ops_slug
+        - ratio: 1.5
+          ops:
+            observation: swamplink-2026-08-21-cliff-a2-ops-1p5
+            as: ops_slug
+        - ratio: 2.0
+          ops:
+            observation: swamplink-2026-08-21-cliff-a2-ops-2
+            as: ops_slug
+    verdict: >-
+      Throughput vs oversubscription is not a flat plateau then a cliff
+      at 1.0×. Relative ops/s falls hard already between 0.5× and 1.0×
+      (steepest log–log segment 0.8→1.0 on A1-r1, A1-r2, and A2), then
+      the decline flattens into a shallow slope through 50×. Absolute
+      ops/s are throttle artifacts; the shape is the claim. Do not treat
+      cache-resident as cache == dataSize. No wt-cache sizing
+      coefficient — relative ops under throttle are not a hit-ratio.
