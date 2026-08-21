@@ -1,0 +1,2 @@
+$r=Invoke-CimMethod -ClassName Win32_Process -MethodName Create -Arguments @{CommandLine='powershell -NoProfile -ExecutionPolicy Bypass -File C:\Users\Owner\lab\reef_run_wave12_win.ps1'}
+"win12 pid=$($r.ProcessId) rv=$($r.ReturnValue) at=$(Get-Date -Format o)" | Out-File C:\Users\Owner\lab\wmi-win12.out

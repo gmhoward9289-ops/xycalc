@@ -273,37 +273,30 @@ coefficients:
   - slug: mongodb.tickets-idle-hold-seconds-min
     parameter: db.concurrency_tickets
     system: mongodb
-    applies_to: MongoDB 7.0.39 (throughputProbing defaults)
-    value: 611
+    applies_to: MongoDB 7.0.39–7.0.40 (throughputProbing defaults)
+    value: 900
     confidence: practitioner
-    source: obs-mongodb-ticket-decay-swamplink-2026-08-19
+    source: obs-mongodb-ticket-decay-cooper-2026-08-21
     notes: >-
-      A lower bound, not a rate: totalTickets held at 64 (its value when a
-      600s load stopped) for at least 611 seconds of true idle -- 123
-      samples every 5s, zero movement, read.out at 0 throughout so the
-      sampler's own polling is confirmed not to be the load. throughputProbing
-      does not walk the pool back toward the documented floor of 4 on
-      elapsed idle time alone.
+      A lower bound, not a rate: after a sustained climb, totalTickets held
+      flat for the full configured cooldown with zero movement toward the
+      documented floor of 4. Longest observed hold is 900s of true idle on
+      COOPER / MongoDB 7.0.40 (tickets frozen at 81;
+      samplerReadOutEverNonzero=false). Earlier n=1 on swamplink 7.0.39 held
+      64 for 611s (obs-mongodb-ticket-decay-swamplink-2026-08-19) — same
+      qualitative result, shorter window.
 
       This falsifies the framing (used by issue #3 and, before this, by this
-      corpus's own `tickets` input note below) that "resting at 4" is simply
-      what a busy instance settles back to once things calm down. It is not
-      a timer. The likelier mechanism, not yet directly confirmed: the
-      algorithm is a hill-climbing controller that adjusts concurrency based
-      on a recent throughput sample, and at zero client operations there is
-      no throughput sample to react to, so it freezes rather than decaying.
-      Indirect support for that mechanism from the same run: during the
-      LOAD phase itself (not after), totalTickets peaked at 77 and eased
-      back to 64 by the time the 600s window closed -- the controller
-      reduced concurrency while load was still running, which is what you'd
-      expect from "adjusts toward a throughput signal" and not from "counts
-      down on a clock".
+      corpus's own `tickets` input note) that "resting at 4" is simply what a
+      busy instance settles back to once things calm down. It is not a timer.
 
-      Untested by this run: whether a low, nonzero trickle of subsequent
-      traffic (rather than true zero) would drive the pool back down, and on
-      what timescale. n=1, one host, one duration -- do not read 611s as a
-      ceiling on how long the freeze lasts, only as how long it was observed
-      to hold in this run. See
+      The 2026-08-21 plan comparison also ran PROBE_COOLDOWN_HEARTBEAT_HZ=1
+      for 900s (~896 find_one ops): tickets stayed flat at 50. So a thin
+      post-load trickle does not, by itself, walk the pool down on this
+      timescale either. Do not invent a
+      mongodb.tickets-probing-requires-traffic coefficient from that pair —
+      both branches froze. A cooldown rate-sweep would be a different
+      experiment. See
       docs/investigations/003-storage-stall-query-collapse/FINDINGS.md and
       docs/plans/issue-3-ticket-pool-convergence-and-decay.md.
 

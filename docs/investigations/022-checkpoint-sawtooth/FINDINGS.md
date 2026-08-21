@@ -6,7 +6,9 @@ p99 latency ratio was **1.016** across **7** observed checkpoints.
 Guards passed. Investigation 003's "flat within 8%" is **not** contradicted
 by a periodic checkpoint stall on this harness.
 
-**Confidence:** `benchmark`.
+**Confidence:** `benchmark` on reef Docker Desktop. Lab footnote, not a
+portable sawtooth coefficient. The p99 ratio **1.016 does not falsify**
+investigation 003.
 
 ---
 

@@ -30,7 +30,8 @@ timeout 180s, pause mode.
 | immediate | 0.0 | 0 | 0.0 | no | 180 (timeout) |
 | exponential | 0.0 | 0 | 0.0 | **yes** | **52.8** |
 
-Artifacts: `tmp-reef-status/r9/t8/` / `V:\xycalc-results\wave12-r9\t8-stall\`.
+Artifacts: this FINDINGS table (pause-mode non-result). Raw reef logs
+were unpublished lab scratch; no amplification coefficient is published.
 
 ## Falsification outcome
 

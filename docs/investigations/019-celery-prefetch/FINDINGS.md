@@ -30,7 +30,9 @@ Harness: `tools/bench/celery_probe/sweep_prefetch.sh` on reef (wave12-r7).
 Conditions: `PROBE_DOCS=900000` (~2.43× WT oversub), `PROBE_RATES=200`,
 `PROBE_SECONDS=25`, acks_late=true, visibilityTimeout=30.
 
-Artifacts: `tmp-reef-status/r7/t6/prefetch-{1,4,8}.log`.
+Artifacts: distilled YAML in
+`data/observations/reef-celery-prefetch-2026-08-21.yaml` (raw reef logs
+were unpublished lab scratch).
 
 Earlier rate=50/s smoke was vacuous (underMax=0, queue stayed empty).
 

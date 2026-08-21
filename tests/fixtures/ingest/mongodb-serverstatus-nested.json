@@ -1,0 +1,38 @@
+{
+  "stats": {
+    "db": "app",
+    "collections": 14,
+    "objects": 8421100,
+    "avgObjSize": 388,
+    "dataSize": 327000000000,
+    "storageSize": 131000000000,
+    "indexes": 23,
+    "indexSize": 18000000000,
+    "totalSize": 149000000000,
+    "scaleFactor": 1,
+    "ok": 1
+  },
+  "serverStatus": {
+    "host": "mongo-prod-1.internal",
+    "version": "8.0.4",
+    "process": "mongod",
+    "pid": 1421,
+    "uptime": 7780001,
+    "localTime": {"$date": "2026-08-21T09:14:00.000Z"},
+    "connections": {"current": 186, "available": 81914, "totalCreated": 44102},
+    "extra_info": {"note": "fields vary by platform", "page_faults": 12},
+    "wiredTiger": {
+      "block-manager": {"blocks read": 9},
+      "cache": {
+        "bytes currently in the cache": 298000000000,
+        "maximum bytes configured": 38654705664,
+        "tracked dirty bytes in the cache": 420000000,
+        "eviction worker thread evicting pages": 44
+      },
+      "concurrentTransactions": {
+        "write": {"out": 0, "available": 128, "totalTickets": 128},
+        "read": {"out": 4, "available": 124, "totalTickets": 128}
+      }
+    }
+  }
+}

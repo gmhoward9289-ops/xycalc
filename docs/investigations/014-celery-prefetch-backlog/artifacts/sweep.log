@@ -1,0 +1,300 @@
+=== prefetch sweep start 2026-08-21T19:29:32+00:00 out=/root/dev/xycalc/results/t6-prefetch-20260821-192932 ===
+ Network xycalc-celery-probe_default Creating 
+ Network xycalc-celery-probe_default Created 
+ Container xycalc-celery-probe-redis-1 Creating 
+ Container xycalc-celery-probe-bookkeeping-1 Creating 
+ Container xycalc-celery-probe-mongo-1 Creating 
+ Container xycalc-celery-probe-mongo-1 Created 
+ Container xycalc-celery-probe-redis-1 Created 
+ Container xycalc-celery-probe-bookkeeping-1 Created 
+ Container xycalc-celery-probe-mongo-1 Starting 
+ Container xycalc-celery-probe-redis-1 Starting 
+ Container xycalc-celery-probe-bookkeeping-1 Starting 
+ Container xycalc-celery-probe-mongo-1 Started 
+ Container xycalc-celery-probe-redis-1 Started 
+ Container xycalc-celery-probe-bookkeeping-1 Started 
+--- prefetch=1 2026-08-21T19:29:32+00:00 ---
+ Image xycalc-celery-probe-worker Building 
+#1 [internal] load local bake definitions
+#1 reading from stdin 558B done
+#1 DONE 0.0s
+
+#2 [internal] load build definition from Dockerfile
+#2 transferring dockerfile: 802B done
+#2 DONE 0.0s
+
+#3 [internal] load metadata for docker.io/library/python:3.12-slim
+#3 DONE 0.0s
+
+#4 [internal] load .dockerignore
+#4 transferring context: 2B done
+#4 DONE 0.0s
+
+#5 [internal] load build context
+#5 transferring context: 128B done
+#5 DONE 0.0s
+
+#6 [1/4] FROM docker.io/library/python:3.12-slim@sha256:57cd7c3a7a273101a6485ba99423ee568157882804b1124b4dd04266317710de
+#6 resolve docker.io/library/python:3.12-slim@sha256:57cd7c3a7a273101a6485ba99423ee568157882804b1124b4dd04266317710de 0.0s done
+#6 DONE 0.0s
+
+#7 [2/4] RUN pip install --no-cache-dir "celery[redis]==5.4.0" "pymongo==4.9.1" "redis==5.0.8"
+#7 CACHED
+
+#8 [3/4] WORKDIR /app
+#8 CACHED
+
+#9 [4/4] COPY tasks.py drive.py evict_probe.py stall_recover.py ./
+#9 CACHED
+
+#10 exporting to image
+#10 exporting layers done
+#10 exporting manifest sha256:3db1899b8e35972706debcc0fbe02f39b6fe4ddd33f80fb631ad12921604cb73 done
+#10 exporting config sha256:2f66ea8926e371474466b7728e9cae228a6fd1ed99f973dd3600a48262ca5319 done
+#10 exporting attestation manifest sha256:924193ba656452a63f7a8a3912ccaf7032903773e3cae8b7a123a6ac67ba2d8e done
+#10 exporting manifest list sha256:7383f2c2ad165123d4d5679c278bbacc51f4ef12128c895b33484cb3959b8f89 done
+#10 naming to docker.io/library/xycalc-celery-probe-worker:latest done
+#10 unpacking to docker.io/library/xycalc-celery-probe-worker:latest done
+#10 DONE 0.1s
+
+#11 resolving provenance for metadata file
+#11 DONE 0.0s
+ Image xycalc-celery-probe-worker Built 
+ Container xycalc-celery-probe-redis-1 Running 
+ Container xycalc-celery-probe-bookkeeping-1 Running 
+ Container xycalc-celery-probe-mongo-1 Running 
+ Container xycalc-celery-probe-worker-1 Creating 
+ Container xycalc-celery-probe-worker-1 Created 
+ Container xycalc-celery-probe-worker-1 Starting 
+ Container xycalc-celery-probe-worker-1 Started 
+--- prefetch=1 exit 0 ---
+prefetch=1 rate=400 achieved=None underMax=None underMean=None drain=None
+--- prefetch=2 2026-08-21T19:34:20+00:00 ---
+ Image xycalc-celery-probe-worker Building 
+#1 [internal] load local bake definitions
+#1 reading from stdin 558B done
+#1 DONE 0.0s
+
+#2 [internal] load build definition from Dockerfile
+#2 transferring dockerfile: 802B done
+#2 DONE 0.0s
+
+#3 [internal] load metadata for docker.io/library/python:3.12-slim
+#3 DONE 0.0s
+
+#4 [internal] load .dockerignore
+#4 transferring context: 2B done
+#4 DONE 0.0s
+
+#5 [internal] load build context
+#5 transferring context: 128B done
+#5 DONE 0.0s
+
+#6 [1/4] FROM docker.io/library/python:3.12-slim@sha256:57cd7c3a7a273101a6485ba99423ee568157882804b1124b4dd04266317710de
+#6 resolve docker.io/library/python:3.12-slim@sha256:57cd7c3a7a273101a6485ba99423ee568157882804b1124b4dd04266317710de 0.0s done
+#6 DONE 0.0s
+
+#7 [2/4] RUN pip install --no-cache-dir "celery[redis]==5.4.0" "pymongo==4.9.1" "redis==5.0.8"
+#7 CACHED
+
+#8 [3/4] WORKDIR /app
+#8 CACHED
+
+#9 [4/4] COPY tasks.py drive.py evict_probe.py stall_recover.py ./
+#9 CACHED
+
+#10 exporting to image
+#10 exporting layers done
+#10 exporting manifest sha256:3db1899b8e35972706debcc0fbe02f39b6fe4ddd33f80fb631ad12921604cb73 done
+#10 exporting config sha256:2f66ea8926e371474466b7728e9cae228a6fd1ed99f973dd3600a48262ca5319 done
+#10 exporting attestation manifest sha256:9ceba41b75c6ae19ca980e0b4b4a2fac2625bf5d8840bc3b17448cce65abb3ae 0.0s done
+#10 exporting manifest list sha256:423cb813ccb29c1ea547e4587166e71a8664955ec36b57bcc58e79dcff9dddb3 done
+#10 naming to docker.io/library/xycalc-celery-probe-worker:latest done
+#10 unpacking to docker.io/library/xycalc-celery-probe-worker:latest done
+#10 DONE 0.1s
+
+#11 resolving provenance for metadata file
+#11 DONE 0.0s
+ Image xycalc-celery-probe-worker Built 
+ Container xycalc-celery-probe-bookkeeping-1 Running 
+ Container xycalc-celery-probe-mongo-1 Running 
+ Container xycalc-celery-probe-redis-1 Running 
+ Container xycalc-celery-probe-worker-1 Recreate 
+ Container xycalc-celery-probe-worker-1 Recreated 
+ Container xycalc-celery-probe-worker-1 Starting 
+ Container xycalc-celery-probe-worker-1 Started 
+--- prefetch=2 exit 0 ---
+prefetch=2 rate=400 achieved=None underMax=None underMean=None drain=None
+--- prefetch=4 2026-08-21T19:37:02+00:00 ---
+ Image xycalc-celery-probe-worker Building 
+#1 [internal] load local bake definitions
+#1 reading from stdin 558B done
+#1 DONE 0.0s
+
+#2 [internal] load build definition from Dockerfile
+#2 transferring dockerfile: 802B done
+#2 DONE 0.0s
+
+#3 [internal] load metadata for docker.io/library/python:3.12-slim
+#3 DONE 0.0s
+
+#4 [internal] load .dockerignore
+#4 transferring context: 2B done
+#4 DONE 0.0s
+
+#5 [internal] load build context
+#5 transferring context: 128B done
+#5 DONE 0.0s
+
+#6 [1/4] FROM docker.io/library/python:3.12-slim@sha256:57cd7c3a7a273101a6485ba99423ee568157882804b1124b4dd04266317710de
+#6 resolve docker.io/library/python:3.12-slim@sha256:57cd7c3a7a273101a6485ba99423ee568157882804b1124b4dd04266317710de 0.0s done
+#6 DONE 0.0s
+
+#7 [2/4] RUN pip install --no-cache-dir "celery[redis]==5.4.0" "pymongo==4.9.1" "redis==5.0.8"
+#7 CACHED
+
+#8 [3/4] WORKDIR /app
+#8 CACHED
+
+#9 [4/4] COPY tasks.py drive.py evict_probe.py stall_recover.py ./
+#9 CACHED
+
+#10 exporting to image
+#10 exporting layers done
+#10 exporting manifest sha256:3db1899b8e35972706debcc0fbe02f39b6fe4ddd33f80fb631ad12921604cb73 done
+#10 exporting config sha256:2f66ea8926e371474466b7728e9cae228a6fd1ed99f973dd3600a48262ca5319 done
+#10 exporting attestation manifest sha256:fcebf929efef76dc1b15c3feea2f2b51204881c2740eab3dae9bf221159080b7 0.0s done
+#10 exporting manifest list sha256:d69bc4e6d18c528a5f0f7f394c31701897340c2deb0979722d7ef2b3e75234c0 0.0s done
+#10 naming to docker.io/library/xycalc-celery-probe-worker:latest
+#10 naming to docker.io/library/xycalc-celery-probe-worker:latest done
+#10 unpacking to docker.io/library/xycalc-celery-probe-worker:latest 0.0s done
+#10 DONE 0.1s
+
+#11 resolving provenance for metadata file
+#11 DONE 0.0s
+ Image xycalc-celery-probe-worker Built 
+ Container xycalc-celery-probe-mongo-1 Running 
+ Container xycalc-celery-probe-redis-1 Running 
+ Container xycalc-celery-probe-bookkeeping-1 Running 
+ Container xycalc-celery-probe-worker-1 Recreate 
+ Container xycalc-celery-probe-worker-1 Recreated 
+ Container xycalc-celery-probe-worker-1 Starting 
+ Container xycalc-celery-probe-worker-1 Started 
+--- prefetch=4 exit 0 ---
+prefetch=4 rate=400 achieved=None underMax=None underMean=None drain=None
+--- prefetch=8 2026-08-21T19:39:44+00:00 ---
+ Image xycalc-celery-probe-worker Building 
+#1 [internal] load local bake definitions
+#1 reading from stdin 558B done
+#1 DONE 0.0s
+
+#2 [internal] load build definition from Dockerfile
+#2 transferring dockerfile: 802B done
+#2 DONE 0.0s
+
+#3 [internal] load metadata for docker.io/library/python:3.12-slim
+#3 DONE 0.0s
+
+#4 [internal] load .dockerignore
+#4 transferring context: 2B done
+#4 DONE 0.0s
+
+#5 [internal] load build context
+#5 transferring context: 128B done
+#5 DONE 0.0s
+
+#6 [1/4] FROM docker.io/library/python:3.12-slim@sha256:57cd7c3a7a273101a6485ba99423ee568157882804b1124b4dd04266317710de
+#6 resolve docker.io/library/python:3.12-slim@sha256:57cd7c3a7a273101a6485ba99423ee568157882804b1124b4dd04266317710de 0.0s done
+#6 DONE 0.0s
+
+#7 [2/4] RUN pip install --no-cache-dir "celery[redis]==5.4.0" "pymongo==4.9.1" "redis==5.0.8"
+#7 CACHED
+
+#8 [3/4] WORKDIR /app
+#8 CACHED
+
+#9 [4/4] COPY tasks.py drive.py evict_probe.py stall_recover.py ./
+#9 CACHED
+
+#10 exporting to image
+#10 exporting layers done
+#10 exporting manifest sha256:3db1899b8e35972706debcc0fbe02f39b6fe4ddd33f80fb631ad12921604cb73 done
+#10 exporting config sha256:2f66ea8926e371474466b7728e9cae228a6fd1ed99f973dd3600a48262ca5319 done
+#10 exporting attestation manifest sha256:5d88c448017dddd9743345b227a7bee67e7029e59ddc75f2427ecb954a152e11 0.0s done
+#10 exporting manifest list sha256:2ceed0a015993227f4b44daedb2bc79b776b42042ec75c7bd8f091cc5a1713f3 0.0s done
+#10 naming to docker.io/library/xycalc-celery-probe-worker:latest done
+#10 unpacking to docker.io/library/xycalc-celery-probe-worker:latest done
+#10 DONE 0.1s
+
+#11 resolving provenance for metadata file
+#11 DONE 0.0s
+ Image xycalc-celery-probe-worker Built 
+ Container xycalc-celery-probe-redis-1 Running 
+ Container xycalc-celery-probe-bookkeeping-1 Running 
+ Container xycalc-celery-probe-mongo-1 Running 
+ Container xycalc-celery-probe-worker-1 Recreate 
+ Container xycalc-celery-probe-worker-1 Recreated 
+ Container xycalc-celery-probe-worker-1 Starting 
+ Container xycalc-celery-probe-worker-1 Started 
+--- prefetch=8 exit 0 ---
+prefetch=8 rate=400 achieved=None underMax=None underMean=None drain=70.6
+--- prefetch=16 2026-08-21T19:41:37+00:00 ---
+ Image xycalc-celery-probe-worker Building 
+#1 [internal] load local bake definitions
+#1 reading from stdin 558B done
+#1 DONE 0.0s
+
+#2 [internal] load build definition from Dockerfile
+#2 transferring dockerfile: 802B done
+#2 DONE 0.0s
+
+#3 [internal] load metadata for docker.io/library/python:3.12-slim
+#3 DONE 0.0s
+
+#4 [internal] load .dockerignore
+#4 transferring context: 2B done
+#4 DONE 0.0s
+
+#5 [internal] load build context
+#5 transferring context: 128B done
+#5 DONE 0.0s
+
+#6 [1/4] FROM docker.io/library/python:3.12-slim@sha256:57cd7c3a7a273101a6485ba99423ee568157882804b1124b4dd04266317710de
+#6 resolve docker.io/library/python:3.12-slim@sha256:57cd7c3a7a273101a6485ba99423ee568157882804b1124b4dd04266317710de 0.0s done
+#6 DONE 0.0s
+
+#7 [2/4] RUN pip install --no-cache-dir "celery[redis]==5.4.0" "pymongo==4.9.1" "redis==5.0.8"
+#7 CACHED
+
+#8 [3/4] WORKDIR /app
+#8 CACHED
+
+#9 [4/4] COPY tasks.py drive.py evict_probe.py stall_recover.py ./
+#9 CACHED
+
+#10 exporting to image
+#10 exporting layers done
+#10 exporting manifest sha256:3db1899b8e35972706debcc0fbe02f39b6fe4ddd33f80fb631ad12921604cb73 done
+#10 exporting config sha256:2f66ea8926e371474466b7728e9cae228a6fd1ed99f973dd3600a48262ca5319 done
+#10 exporting attestation manifest sha256:7c23ccfee43fbae749e9567346dfdf4f4beb6a448dc1973806ac03768522a528 0.0s done
+#10 exporting manifest list sha256:86d8878bc2eba8168bdf96a957da05ace4e3f21336d2aba16e55a6bb0959a698
+#10 exporting manifest list sha256:86d8878bc2eba8168bdf96a957da05ace4e3f21336d2aba16e55a6bb0959a698 0.0s done
+#10 naming to docker.io/library/xycalc-celery-probe-worker:latest done
+#10 unpacking to docker.io/library/xycalc-celery-probe-worker:latest 0.0s done
+#10 DONE 0.1s
+
+#11 resolving provenance for metadata file
+#11 DONE 0.0s
+ Image xycalc-celery-probe-worker Built 
+ Container xycalc-celery-probe-redis-1 Running 
+ Container xycalc-celery-probe-bookkeeping-1 Running 
+ Container xycalc-celery-probe-mongo-1 Running 
+ Container xycalc-celery-probe-worker-1 Recreate 
+ Container xycalc-celery-probe-worker-1 Recreated 
+ Container xycalc-celery-probe-worker-1 Starting 
+ Container xycalc-celery-probe-worker-1 Started 
+--- prefetch=16 exit 0 ---
+prefetch=16 rate=400 achieved=None underMax=None underMean=None drain=72.1
+=== prefetch sweep complete 2026-08-21T19:43:31+00:00 ===
+Combined: /root/dev/xycalc/results/t6-prefetch-20260821-192932/combined.jsonl
+Import: retain sampleSeries; land observations per docs/plans/issue-14-celery-prefetch-backlog.md

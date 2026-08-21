@@ -118,13 +118,14 @@ this produces the curve; #5 places real data on it.
 
 ## T3 — At what write rate does eviction conscript application threads?
 
-**Status (2026-08-21).** Investigation 014 **complete** (mechanism check).
-Cooper Docker Desktop + reef insert arm (32 MiB/s / 800 IOPS, journal off):
-dirty peaks **~2.5–4.5%**, occupancy up to **~82%**, `evictedByAppDelta=0`
-— documented 20% dirty trigger **not reached**. Checkpoint interval 60s
-landed as `documented`. See
-`docs/investigations/014-write-rate-eviction/FINDINGS.md`; reef obs
-`data/observations/reef-eviction-insert-2026-08-21.yaml`.
+**Status (2026-08-21).** Investigation 014 mechanism check **landed as
+observations, not as an onset coefficient.** Cooper (n=2 dirty peaks,
+256 KiB/s paced/flood) + reef insert arm (n=2, 32 MiB/s / 800 IOPS,
+journal off): dirty peaks **~2.5–4.5%**, occupancy up to **~82%**,
+`evictedByAppDelta=0` — documented 20% dirty trigger **not reached**.
+Attribution on cooper is `unclear`. Checkpoint interval 60s landed as
+`documented`. Do **not** treat T3 as validating `eviction_dirty_trigger`.
+See `docs/investigations/014-write-rate-eviction/FINDINGS.md`.
 
 **Question.** Investigation 001 carries `eviction_dirty_trigger` (20%) as a
 cited constraint that was never measured. At what sustained write rate does
@@ -151,10 +152,11 @@ is misleading.
 
 ## T4 — Is the flat throughput of investigation 003 actually flat?
 
-**Status (2026-08-21).** Investigation 022 **complete**. Reef 480s timeseries
-(c=8, 800k docs, 2.25× oversub): **7** checkpoints, p99
-during/outside ratio **1.016**, guards_ok. No material checkpoint sawtooth
-on this harness. See
+**Status (2026-08-21).** Investigation 022 lab footnote on reef Docker
+Desktop (not WSL): 480s timeseries, c=8, 800k docs, 2.25× oversub, **7**
+checkpoints, p99 during/outside **1.016**, `guards.ok`. That ratio **does
+not falsify** investigation 003's "flat within 8%" — it is one concurrency
+and one throttle profile. No portable sawtooth coefficient. See
 `docs/investigations/022-checkpoint-sawtooth/FINDINGS.md`.
 
 **Question.** WiredTiger checkpoints periodically. Does that show as a sawtooth
@@ -207,11 +209,14 @@ support for it.
 
 ## T6 — How much does prefetch hide the backlog?
 
-**Status (2026-08-21).** Investigation 019 **complete**. Reef prefetch sweep
-1/4/8 at 200/s above completion ceiling (900k docs, 2.43× oversub):
-understatementMax **9 → 62 → 80**. See
-`docs/investigations/019-celery-prefetch/FINDINGS.md`;
-`data/observations/reef-celery-prefetch-2026-08-21.yaml`.
+**Status (2026-08-21).** Two hardware-scoped sweeps, not one portable
+factor. Swamplink (investigation 014, Hetzner CX) already on main.
+Reef Docker Desktop investigation 019: prefetch 1/4/8 at 200/s above
+ceiling (900k docs, 2.43× oversub, 25s, drain timed out): peak
+understatement **9 → 62 → 80** (`queue.depth_understatement_max`, n=3
+plus one backlog companion). Ordering with prefetch is the result;
+absolute magnitudes are configuration-bound. See
+`docs/investigations/019-celery-prefetch/FINDINGS.md`.
 
 **Question.** A Celery worker reserves `prefetch_multiplier × concurrency`
 tasks. Those are off the queue but not running. How far does queue depth
@@ -271,11 +276,12 @@ of outcome — a documented disagreement between a vendor and its own users.
 
 ## T8 — Retry storms: does backoff actually help a stalled dependency?
 
-**Status (2026-08-21).** Investigation 021 **landed with honest non-result**
-for amplification. `PROBE_STALL_MODE=pause` zeros completed/s but yields
+**Status (2026-08-21).** Investigation 021 **honest non-result** for
+amplification: `PROBE_STALL_MODE=pause` zeros completed/s with
 **stall_retries=0** (connection freeze ≠ soft timeout) — cannot rank
-retry policies. Exponential recovered in 52.8s once; none/immediate timed
-out at 180s. Needs cgroup/slow-IO arm. See
+retry policies. No amplification coefficients published. Exponential
+quieted in 52.8s once; none/immediate timed out at 180s — suggestive,
+not a ranking. Needs cgroup/slow-IO arm. See
 `docs/investigations/021-celery-retry-stall/FINDINGS.md`.
 
 **Question.** A dependency stalls, tasks time out, Celery retries. With
@@ -330,12 +336,18 @@ figures for the `nvme-ssd` stub.
 
 ## T10 — ClickHouse: how few inserts per second is too many?
 
-**Status (2026-08-21).** Investigation 020 **complete** (settings trap +
-partial onset). Dual images on reef: **23.3** delay/throw **150/300**,
-**24.8** **1000/3000**. batch=10 on 23.3 peaked **192** parts (crossed
-delay); 24.8 peaked **22**. batch=1 never crossed either. See
-`docs/investigations/020-clickhouse-insert-parts/FINDINGS.md`;
-`data/observations/reef-clickhouse-parts-2026-08-21.yaml`.
+**Status (2026-08-21).** Investigation 012 dual-image probe on the cloud
+agent VM (vfs Docker, merges stopped) already confirmed live `parts_to_*`
+(150/300 → 1000/3000) and that frequency, not volume, drives part count.
+Model `clickhouse.parts-insert-ceiling` remains **`unvalidated (n=0)`** vs
+production. Issue **#18 stays open** — no portable inserts/sec floor.
+
+Reef Docker Desktop investigation 020 (merges **on**, lab footnote): same
+settings trap; batch=10 on 23.3 peaked **192** parts (crossed delay=150);
+24.8 peaked **22**; batch=1 never crossed either. Peak-parts observations
+only — not an inserts/sec coefficient. See
+`docs/investigations/012-clickhouse-insert-batch-floor/FINDINGS.md` and
+`docs/investigations/020-clickhouse-insert-parts/FINDINGS.md`.
 
 **Question.** At what insert frequency does part count outrun merges and
 inserts start being delayed, then rejected?

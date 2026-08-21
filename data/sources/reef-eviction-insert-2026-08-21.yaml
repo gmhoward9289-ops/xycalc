@@ -10,5 +10,6 @@ sources:
     Docker MongoDB 7.0.40. Insert arm with PROBE_JOURNAL=0, write cgroup
     32 MiB/s / 800 IOPS, 4 KiB docs, 45s levels. Dirty peaked 3.15–4.48% while
     occupancy peaked ~80–82%; app-thread eviction delta 0. Does not validate
-    the 20% dirty trigger onset. Artifact:
-    tmp-reef-status/r4/t3-eviction-insert.json.
+    the 20% dirty trigger onset. Distilled YAML is the published record;
+    the reef raw JSON lived in unpublished lab scratch (tmp-reef-status),
+    not in this tree.

@@ -1,0 +1,420 @@
+# Azure memory-optimized VM catalog (Esv5, Esv6).
+#
+# Same shape as data/coefficients/aws-ec2.yaml: each row is a published spec
+# (lo == mode == hi), grouped so select_instance() can name the smallest SKU
+# covering each end of a RAM band. Catalog names are prefixed Esv5./Esv6. so
+# `--family Esv5` / `--family Esv6` filter the way `r8i` does; the Microsoft
+# size name follows (Standard_E2s_v5, …).
+#
+# Sourced from the Microsoft Learn size-series pages (azure-compute-docs
+# markdown that Learn publishes, retrieved 2026-08-21). Isolated SKUs
+# (Standard_E104is_v5, Standard_E192is_v6) and other E-family variants
+# (Eds, Eas, Eb, …) are omitted — a smaller sourced catalog, not a guessed
+# one. E192is_v6's 1,832 GB table cell also disagrees with the Esv6
+# host-spec include (16–1024 GiB). Bare-metal classes are out of scope.
+
+coefficients:
+  # -- Esv5: Intel memory-optimized, premium storage, no local temp disk.
+
+  - slug: azure.esv5.e2s.ram-bytes
+    parameter: host.ram_bytes
+    system: azure-vm
+    applies_to: Esv5.Standard_E2s_v5, Azure Esv5 series, ms.date 2026-03-10
+    value: 17179869184  # 16 GiB
+    confidence: documented
+    source: azure-vm-esv5-series
+    quote: "Size Name | vCPUs (Qty.) | Memory (GB): Standard_E2s_v5 | 2 | 16"
+    notes: >-
+      Memory column is labelled GB; the series host-specifications include on
+      the same Learn page states the range in GiB, and the published size
+      numbers match that GiB range, so this row is stored as binary GiB.
+  - slug: azure.esv5.e2s.vcpu
+    parameter: instance.vcpu_count
+    system: azure-vm
+    applies_to: Esv5.Standard_E2s_v5, Azure Esv5 series, ms.date 2026-03-10
+    value: 2
+    confidence: documented
+    source: azure-vm-esv5-series
+    quote: "Size Name | vCPUs (Qty.) | Memory (GB): Standard_E2s_v5 | 2 | 16"
+
+  - slug: azure.esv5.e4s.ram-bytes
+    parameter: host.ram_bytes
+    system: azure-vm
+    applies_to: Esv5.Standard_E4s_v5, Azure Esv5 series, ms.date 2026-03-10
+    value: 34359738368  # 32 GiB
+    confidence: documented
+    source: azure-vm-esv5-series
+    quote: "Size Name | vCPUs (Qty.) | Memory (GB): Standard_E4s_v5 | 4 | 32"
+    notes: >-
+      Memory column is labelled GB; the series host-specifications include on
+      the same Learn page states the range in GiB, and the published size
+      numbers match that GiB range, so this row is stored as binary GiB.
+  - slug: azure.esv5.e4s.vcpu
+    parameter: instance.vcpu_count
+    system: azure-vm
+    applies_to: Esv5.Standard_E4s_v5, Azure Esv5 series, ms.date 2026-03-10
+    value: 4
+    confidence: documented
+    source: azure-vm-esv5-series
+    quote: "Size Name | vCPUs (Qty.) | Memory (GB): Standard_E4s_v5 | 4 | 32"
+
+  - slug: azure.esv5.e8s.ram-bytes
+    parameter: host.ram_bytes
+    system: azure-vm
+    applies_to: Esv5.Standard_E8s_v5, Azure Esv5 series, ms.date 2026-03-10
+    value: 68719476736  # 64 GiB
+    confidence: documented
+    source: azure-vm-esv5-series
+    quote: "Size Name | vCPUs (Qty.) | Memory (GB): Standard_E8s_v5 | 8 | 64"
+    notes: >-
+      Memory column is labelled GB; the series host-specifications include on
+      the same Learn page states the range in GiB, and the published size
+      numbers match that GiB range, so this row is stored as binary GiB.
+  - slug: azure.esv5.e8s.vcpu
+    parameter: instance.vcpu_count
+    system: azure-vm
+    applies_to: Esv5.Standard_E8s_v5, Azure Esv5 series, ms.date 2026-03-10
+    value: 8
+    confidence: documented
+    source: azure-vm-esv5-series
+    quote: "Size Name | vCPUs (Qty.) | Memory (GB): Standard_E8s_v5 | 8 | 64"
+
+  - slug: azure.esv5.e16s.ram-bytes
+    parameter: host.ram_bytes
+    system: azure-vm
+    applies_to: Esv5.Standard_E16s_v5, Azure Esv5 series, ms.date 2026-03-10
+    value: 137438953472  # 128 GiB
+    confidence: documented
+    source: azure-vm-esv5-series
+    quote: "Size Name | vCPUs (Qty.) | Memory (GB): Standard_E16s_v5 | 16 | 128"
+    notes: >-
+      Memory column is labelled GB; the series host-specifications include on
+      the same Learn page states the range in GiB, and the published size
+      numbers match that GiB range, so this row is stored as binary GiB.
+  - slug: azure.esv5.e16s.vcpu
+    parameter: instance.vcpu_count
+    system: azure-vm
+    applies_to: Esv5.Standard_E16s_v5, Azure Esv5 series, ms.date 2026-03-10
+    value: 16
+    confidence: documented
+    source: azure-vm-esv5-series
+    quote: "Size Name | vCPUs (Qty.) | Memory (GB): Standard_E16s_v5 | 16 | 128"
+
+  - slug: azure.esv5.e20s.ram-bytes
+    parameter: host.ram_bytes
+    system: azure-vm
+    applies_to: Esv5.Standard_E20s_v5, Azure Esv5 series, ms.date 2026-03-10
+    value: 171798691840  # 160 GiB
+    confidence: documented
+    source: azure-vm-esv5-series
+    quote: "Size Name | vCPUs (Qty.) | Memory (GB): Standard_E20s_v5 | 20 | 160"
+    notes: >-
+      Memory column is labelled GB; the series host-specifications include on
+      the same Learn page states the range in GiB, and the published size
+      numbers match that GiB range, so this row is stored as binary GiB.
+  - slug: azure.esv5.e20s.vcpu
+    parameter: instance.vcpu_count
+    system: azure-vm
+    applies_to: Esv5.Standard_E20s_v5, Azure Esv5 series, ms.date 2026-03-10
+    value: 20
+    confidence: documented
+    source: azure-vm-esv5-series
+    quote: "Size Name | vCPUs (Qty.) | Memory (GB): Standard_E20s_v5 | 20 | 160"
+
+  - slug: azure.esv5.e32s.ram-bytes
+    parameter: host.ram_bytes
+    system: azure-vm
+    applies_to: Esv5.Standard_E32s_v5, Azure Esv5 series, ms.date 2026-03-10
+    value: 274877906944  # 256 GiB
+    confidence: documented
+    source: azure-vm-esv5-series
+    quote: "Size Name | vCPUs (Qty.) | Memory (GB): Standard_E32s_v5 | 32 | 256"
+    notes: >-
+      Memory column is labelled GB; the series host-specifications include on
+      the same Learn page states the range in GiB, and the published size
+      numbers match that GiB range, so this row is stored as binary GiB.
+  - slug: azure.esv5.e32s.vcpu
+    parameter: instance.vcpu_count
+    system: azure-vm
+    applies_to: Esv5.Standard_E32s_v5, Azure Esv5 series, ms.date 2026-03-10
+    value: 32
+    confidence: documented
+    source: azure-vm-esv5-series
+    quote: "Size Name | vCPUs (Qty.) | Memory (GB): Standard_E32s_v5 | 32 | 256"
+
+  - slug: azure.esv5.e48s.ram-bytes
+    parameter: host.ram_bytes
+    system: azure-vm
+    applies_to: Esv5.Standard_E48s_v5, Azure Esv5 series, ms.date 2026-03-10
+    value: 412316860416  # 384 GiB
+    confidence: documented
+    source: azure-vm-esv5-series
+    quote: "Size Name | vCPUs (Qty.) | Memory (GB): Standard_E48s_v5 | 48 | 384"
+    notes: >-
+      Memory column is labelled GB; the series host-specifications include on
+      the same Learn page states the range in GiB, and the published size
+      numbers match that GiB range, so this row is stored as binary GiB.
+  - slug: azure.esv5.e48s.vcpu
+    parameter: instance.vcpu_count
+    system: azure-vm
+    applies_to: Esv5.Standard_E48s_v5, Azure Esv5 series, ms.date 2026-03-10
+    value: 48
+    confidence: documented
+    source: azure-vm-esv5-series
+    quote: "Size Name | vCPUs (Qty.) | Memory (GB): Standard_E48s_v5 | 48 | 384"
+
+  - slug: azure.esv5.e64s.ram-bytes
+    parameter: host.ram_bytes
+    system: azure-vm
+    applies_to: Esv5.Standard_E64s_v5, Azure Esv5 series, ms.date 2026-03-10
+    value: 549755813888  # 512 GiB
+    confidence: documented
+    source: azure-vm-esv5-series
+    quote: "Size Name | vCPUs (Qty.) | Memory (GB): Standard_E64s_v5 | 64 | 512"
+    notes: >-
+      Memory column is labelled GB; the series host-specifications include on
+      the same Learn page states the range in GiB, and the published size
+      numbers match that GiB range, so this row is stored as binary GiB.
+  - slug: azure.esv5.e64s.vcpu
+    parameter: instance.vcpu_count
+    system: azure-vm
+    applies_to: Esv5.Standard_E64s_v5, Azure Esv5 series, ms.date 2026-03-10
+    value: 64
+    confidence: documented
+    source: azure-vm-esv5-series
+    quote: "Size Name | vCPUs (Qty.) | Memory (GB): Standard_E64s_v5 | 64 | 512"
+
+  - slug: azure.esv5.e96s.ram-bytes
+    parameter: host.ram_bytes
+    system: azure-vm
+    applies_to: Esv5.Standard_E96s_v5, Azure Esv5 series, ms.date 2026-03-10
+    value: 721554505728  # 672 GiB
+    confidence: documented
+    source: azure-vm-esv5-series
+    quote: "Size Name | vCPUs (Qty.) | Memory (GB): Standard_E96s_v5 | 96 | 672"
+    notes: >-
+      Memory column is labelled GB; the series host-specifications include on
+      the same Learn page states the range in GiB, and the published size
+      numbers match that GiB range, so this row is stored as binary GiB.
+      Standard_E96s_v5 is 96 vCPU / 672 GB on the basics table — not 8 GB
+      per vCPU. Do not interpolate missing SKUs from a ratio.
+  - slug: azure.esv5.e96s.vcpu
+    parameter: instance.vcpu_count
+    system: azure-vm
+    applies_to: Esv5.Standard_E96s_v5, Azure Esv5 series, ms.date 2026-03-10
+    value: 96
+    confidence: documented
+    source: azure-vm-esv5-series
+    quote: "Size Name | vCPUs (Qty.) | Memory (GB): Standard_E96s_v5 | 96 | 672"
+
+  # -- Esv6: Intel Emerald Rapids, premium storage, no local temp disk.
+  - slug: azure.esv6.e2s.ram-bytes
+    parameter: host.ram_bytes
+    system: azure-vm
+    applies_to: Esv6.Standard_E2s_v6, Azure Esv6 series, ms.date 2026-03-10
+    value: 17179869184  # 16 GiB
+    confidence: documented
+    source: azure-vm-esv6-series
+    quote: "Size Name | vCPUs (Qty.) | Memory (GB): Standard_E2s_v6 | 2 | 16"
+    notes: >-
+      Memory column is labelled GB; the series host-specifications include on
+      the same Learn page states the range in GiB, and the published size
+      numbers match that GiB range, so this row is stored as binary GiB.
+  - slug: azure.esv6.e2s.vcpu
+    parameter: instance.vcpu_count
+    system: azure-vm
+    applies_to: Esv6.Standard_E2s_v6, Azure Esv6 series, ms.date 2026-03-10
+    value: 2
+    confidence: documented
+    source: azure-vm-esv6-series
+    quote: "Size Name | vCPUs (Qty.) | Memory (GB): Standard_E2s_v6 | 2 | 16"
+
+  - slug: azure.esv6.e4s.ram-bytes
+    parameter: host.ram_bytes
+    system: azure-vm
+    applies_to: Esv6.Standard_E4s_v6, Azure Esv6 series, ms.date 2026-03-10
+    value: 34359738368  # 32 GiB
+    confidence: documented
+    source: azure-vm-esv6-series
+    quote: "Size Name | vCPUs (Qty.) | Memory (GB): Standard_E4s_v6 | 4 | 32"
+    notes: >-
+      Memory column is labelled GB; the series host-specifications include on
+      the same Learn page states the range in GiB, and the published size
+      numbers match that GiB range, so this row is stored as binary GiB.
+  - slug: azure.esv6.e4s.vcpu
+    parameter: instance.vcpu_count
+    system: azure-vm
+    applies_to: Esv6.Standard_E4s_v6, Azure Esv6 series, ms.date 2026-03-10
+    value: 4
+    confidence: documented
+    source: azure-vm-esv6-series
+    quote: "Size Name | vCPUs (Qty.) | Memory (GB): Standard_E4s_v6 | 4 | 32"
+
+  - slug: azure.esv6.e8s.ram-bytes
+    parameter: host.ram_bytes
+    system: azure-vm
+    applies_to: Esv6.Standard_E8s_v6, Azure Esv6 series, ms.date 2026-03-10
+    value: 68719476736  # 64 GiB
+    confidence: documented
+    source: azure-vm-esv6-series
+    quote: "Size Name | vCPUs (Qty.) | Memory (GB): Standard_E8s_v6 | 8 | 64"
+    notes: >-
+      Memory column is labelled GB; the series host-specifications include on
+      the same Learn page states the range in GiB, and the published size
+      numbers match that GiB range, so this row is stored as binary GiB.
+  - slug: azure.esv6.e8s.vcpu
+    parameter: instance.vcpu_count
+    system: azure-vm
+    applies_to: Esv6.Standard_E8s_v6, Azure Esv6 series, ms.date 2026-03-10
+    value: 8
+    confidence: documented
+    source: azure-vm-esv6-series
+    quote: "Size Name | vCPUs (Qty.) | Memory (GB): Standard_E8s_v6 | 8 | 64"
+
+  - slug: azure.esv6.e16s.ram-bytes
+    parameter: host.ram_bytes
+    system: azure-vm
+    applies_to: Esv6.Standard_E16s_v6, Azure Esv6 series, ms.date 2026-03-10
+    value: 137438953472  # 128 GiB
+    confidence: documented
+    source: azure-vm-esv6-series
+    quote: "Size Name | vCPUs (Qty.) | Memory (GB): Standard_E16s_v6 | 16 | 128"
+    notes: >-
+      Memory column is labelled GB; the series host-specifications include on
+      the same Learn page states the range in GiB, and the published size
+      numbers match that GiB range, so this row is stored as binary GiB.
+  - slug: azure.esv6.e16s.vcpu
+    parameter: instance.vcpu_count
+    system: azure-vm
+    applies_to: Esv6.Standard_E16s_v6, Azure Esv6 series, ms.date 2026-03-10
+    value: 16
+    confidence: documented
+    source: azure-vm-esv6-series
+    quote: "Size Name | vCPUs (Qty.) | Memory (GB): Standard_E16s_v6 | 16 | 128"
+
+  - slug: azure.esv6.e20s.ram-bytes
+    parameter: host.ram_bytes
+    system: azure-vm
+    applies_to: Esv6.Standard_E20s_v6, Azure Esv6 series, ms.date 2026-03-10
+    value: 171798691840  # 160 GiB
+    confidence: documented
+    source: azure-vm-esv6-series
+    quote: "Size Name | vCPUs (Qty.) | Memory (GB): Standard_E20s_v6 | 20 | 160"
+    notes: >-
+      Memory column is labelled GB; the series host-specifications include on
+      the same Learn page states the range in GiB, and the published size
+      numbers match that GiB range, so this row is stored as binary GiB.
+  - slug: azure.esv6.e20s.vcpu
+    parameter: instance.vcpu_count
+    system: azure-vm
+    applies_to: Esv6.Standard_E20s_v6, Azure Esv6 series, ms.date 2026-03-10
+    value: 20
+    confidence: documented
+    source: azure-vm-esv6-series
+    quote: "Size Name | vCPUs (Qty.) | Memory (GB): Standard_E20s_v6 | 20 | 160"
+
+  - slug: azure.esv6.e32s.ram-bytes
+    parameter: host.ram_bytes
+    system: azure-vm
+    applies_to: Esv6.Standard_E32s_v6, Azure Esv6 series, ms.date 2026-03-10
+    value: 274877906944  # 256 GiB
+    confidence: documented
+    source: azure-vm-esv6-series
+    quote: "Size Name | vCPUs (Qty.) | Memory (GB): Standard_E32s_v6 | 32 | 256"
+    notes: >-
+      Memory column is labelled GB; the series host-specifications include on
+      the same Learn page states the range in GiB, and the published size
+      numbers match that GiB range, so this row is stored as binary GiB.
+  - slug: azure.esv6.e32s.vcpu
+    parameter: instance.vcpu_count
+    system: azure-vm
+    applies_to: Esv6.Standard_E32s_v6, Azure Esv6 series, ms.date 2026-03-10
+    value: 32
+    confidence: documented
+    source: azure-vm-esv6-series
+    quote: "Size Name | vCPUs (Qty.) | Memory (GB): Standard_E32s_v6 | 32 | 256"
+
+  - slug: azure.esv6.e48s.ram-bytes
+    parameter: host.ram_bytes
+    system: azure-vm
+    applies_to: Esv6.Standard_E48s_v6, Azure Esv6 series, ms.date 2026-03-10
+    value: 412316860416  # 384 GiB
+    confidence: documented
+    source: azure-vm-esv6-series
+    quote: "Size Name | vCPUs (Qty.) | Memory (GB): Standard_E48s_v6 | 48 | 384"
+    notes: >-
+      Memory column is labelled GB; the series host-specifications include on
+      the same Learn page states the range in GiB, and the published size
+      numbers match that GiB range, so this row is stored as binary GiB.
+  - slug: azure.esv6.e48s.vcpu
+    parameter: instance.vcpu_count
+    system: azure-vm
+    applies_to: Esv6.Standard_E48s_v6, Azure Esv6 series, ms.date 2026-03-10
+    value: 48
+    confidence: documented
+    source: azure-vm-esv6-series
+    quote: "Size Name | vCPUs (Qty.) | Memory (GB): Standard_E48s_v6 | 48 | 384"
+
+  - slug: azure.esv6.e64s.ram-bytes
+    parameter: host.ram_bytes
+    system: azure-vm
+    applies_to: Esv6.Standard_E64s_v6, Azure Esv6 series, ms.date 2026-03-10
+    value: 549755813888  # 512 GiB
+    confidence: documented
+    source: azure-vm-esv6-series
+    quote: "Size Name | vCPUs (Qty.) | Memory (GB): Standard_E64s_v6 | 64 | 512"
+    notes: >-
+      Memory column is labelled GB; the series host-specifications include on
+      the same Learn page states the range in GiB, and the published size
+      numbers match that GiB range, so this row is stored as binary GiB.
+  - slug: azure.esv6.e64s.vcpu
+    parameter: instance.vcpu_count
+    system: azure-vm
+    applies_to: Esv6.Standard_E64s_v6, Azure Esv6 series, ms.date 2026-03-10
+    value: 64
+    confidence: documented
+    source: azure-vm-esv6-series
+    quote: "Size Name | vCPUs (Qty.) | Memory (GB): Standard_E64s_v6 | 64 | 512"
+
+  - slug: azure.esv6.e96s.ram-bytes
+    parameter: host.ram_bytes
+    system: azure-vm
+    applies_to: Esv6.Standard_E96s_v6, Azure Esv6 series, ms.date 2026-03-10
+    value: 824633720832  # 768 GiB
+    confidence: documented
+    source: azure-vm-esv6-series
+    quote: "Size Name | vCPUs (Qty.) | Memory (GB): Standard_E96s_v6 | 96 | 768"
+    notes: >-
+      Memory column is labelled GB; the series host-specifications include on
+      the same Learn page states the range in GiB, and the published size
+      numbers match that GiB range, so this row is stored as binary GiB.
+  - slug: azure.esv6.e96s.vcpu
+    parameter: instance.vcpu_count
+    system: azure-vm
+    applies_to: Esv6.Standard_E96s_v6, Azure Esv6 series, ms.date 2026-03-10
+    value: 96
+    confidence: documented
+    source: azure-vm-esv6-series
+    quote: "Size Name | vCPUs (Qty.) | Memory (GB): Standard_E96s_v6 | 96 | 768"
+
+  - slug: azure.esv6.e128s.ram-bytes
+    parameter: host.ram_bytes
+    system: azure-vm
+    applies_to: Esv6.Standard_E128s_v6, Azure Esv6 series, ms.date 2026-03-10
+    value: 1099511627776  # 1024 GiB
+    confidence: documented
+    source: azure-vm-esv6-series
+    quote: "Size Name | vCPUs (Qty.) | Memory (GB): Standard_E128s_v6 | 128 | 1024"
+    notes: >-
+      Memory column is labelled GB; the series host-specifications include on
+      the same Learn page states the range in GiB, and the published size
+      numbers match that GiB range, so this row is stored as binary GiB.
+  - slug: azure.esv6.e128s.vcpu
+    parameter: instance.vcpu_count
+    system: azure-vm
+    applies_to: Esv6.Standard_E128s_v6, Azure Esv6 series, ms.date 2026-03-10
+    value: 128
+    confidence: documented
+    source: azure-vm-esv6-series
+    quote: "Size Name | vCPUs (Qty.) | Memory (GB): Standard_E128s_v6 | 128 | 1024"
+

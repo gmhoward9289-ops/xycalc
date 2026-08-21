@@ -10,5 +10,5 @@ sources:
     Celery 5.4.0 prefork, Redis 7.4.10, MongoDB 7.0.40 on reef Docker Desktop.
     PROBE_DOCS=900000 (~2.43× oversub on 0.25 GB WT cache), PROBE_RATES=200,
     PROBE_SECONDS=25, prefetch sweep 1/4/8. Arrival above completion ceiling
-    (~100–120 completed/s). Artifacts: tmp-reef-status/r7/t6/prefetch-{1,4,8}.log
-    and combined.jsonl.
+    (~100–120 completed/s). Distilled YAML is the published record; reef
+    raw prefetch logs lived in unpublished lab scratch (tmp-reef-status).

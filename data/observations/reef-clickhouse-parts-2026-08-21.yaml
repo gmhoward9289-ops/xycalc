@@ -1,6 +1,6 @@
 observations:
 - slug: reef-t10-parts-delay-23-3-2026-08-21
-  parameter: clickhouse.parts_to_delay_insert
+  parameter: clickhouse.active_parts_delay_threshold
   value: 150
   unit: count
   workload: clickhouse_probe settings query (MergeTree)
@@ -11,7 +11,7 @@ observations:
   source: obs-reef-clickhouse-parts-2026-08-21
   notes: Pre-23.6 default; companion throw=300.
 - slug: reef-t10-parts-throw-23-3-2026-08-21
-  parameter: clickhouse.parts_to_throw_insert
+  parameter: clickhouse.active_parts_throw_threshold
   value: 300
   unit: count
   workload: clickhouse_probe settings query (MergeTree)
@@ -21,7 +21,7 @@ observations:
   observed_on: '2026-08-21'
   source: obs-reef-clickhouse-parts-2026-08-21
 - slug: reef-t10-parts-delay-24-8-2026-08-21
-  parameter: clickhouse.parts_to_delay_insert
+  parameter: clickhouse.active_parts_delay_threshold
   value: 1000
   unit: count
   workload: clickhouse_probe settings query (MergeTree)
@@ -32,7 +32,7 @@ observations:
   source: obs-reef-clickhouse-parts-2026-08-21
   notes: Post-23.6 default; companion throw=3000. Tenfold vs 23.3.
 - slug: reef-t10-parts-throw-24-8-2026-08-21
-  parameter: clickhouse.parts_to_throw_insert
+  parameter: clickhouse.active_parts_throw_threshold
   value: 3000
   unit: count
   workload: clickhouse_probe settings query (MergeTree)

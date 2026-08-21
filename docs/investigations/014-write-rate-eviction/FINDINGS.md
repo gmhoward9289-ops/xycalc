@@ -27,9 +27,10 @@ Harness: `tools/bench/eviction_probe.{py,sh}`.
 | cooper flood | 256 KiB/s | unpaced 32w | ~576 docs/s | **2.58%** | 22.1% | **0** |
 | reef insert (r4) | 32 MiB/s / 800 IOPS | paced 2–8× | journal=0 | **3.15–4.48%** | **80–82%** | **0** |
 
-Artifact: `artifacts-smoke-256kib-2026-08-21.json`; reef
-`tmp-reef-status/r4/t3-eviction-insert.json` →
-`data/observations/reef-eviction-insert-2026-08-21.yaml`.
+Artifact: `artifacts-smoke-256kib-2026-08-21.json`; reef insert-arm
+numbers are distilled in
+`data/observations/reef-eviction-insert-2026-08-21.yaml` (raw reef JSON
+was unpublished lab scratch).
 
 ## Reframe
 

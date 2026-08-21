@@ -1,0 +1,76 @@
+observations:
+  # Arm 3 — same ~2× WiredTiger oversub; document size is the only axis.
+
+  - slug: aws-bson-size-gp3-2026-08-21-1mib-ops
+    system: mongodb
+    parameter: db.ops_per_second
+    value: 748.98
+    unit: ops/s
+    workload: >-
+      random _id point reads, 8 workers, 45s; ~1026 docs avgObjSize≈1.05e6,
+      dataSize 1076 MB ≈2.00× 0.5 GB WT cache on gp3
+    machine_class: AWS m6i.large + gp3 100GiB 3000/125, us-east-2
+    system_version: 'mongo:7'
+    observed_on: '2026-08-21'
+    source: obs-aws-bson-size-gp3-2026-08-21
+    notes: mean_latency_ms=10.673; pages_read_per_op=0.6199.
+
+  - slug: aws-bson-size-gp3-2026-08-21-1mib-latency
+    system: mongodb
+    parameter: db.mean_latency_ms
+    value: 10.673
+    unit: ms
+    workload: random point reads ~1 MiB docs, 2.00× oversub on gp3
+    machine_class: AWS m6i.large + gp3 100GiB 3000/125, us-east-2
+    system_version: 'mongo:7'
+    observed_on: '2026-08-21'
+    source: obs-aws-bson-size-gp3-2026-08-21
+
+  - slug: aws-bson-size-gp3-2026-08-21-1mib-pages-per-op
+    system: mongodb
+    parameter: cache.pages_read_per_op
+    value: 0.6199
+    unit: pages/op
+    workload: random point reads ~1 MiB docs, 2.00× oversub on gp3
+    machine_class: AWS m6i.large + gp3 100GiB 3000/125, us-east-2
+    system_version: 'mongo:7'
+    observed_on: '2026-08-21'
+    source: obs-aws-bson-size-gp3-2026-08-21
+
+  - slug: aws-bson-size-gp3-2026-08-21-15mib-ops
+    system: mongodb
+    parameter: db.ops_per_second
+    value: 46.39
+    unit: ops/s
+    workload: >-
+      random _id point reads, 8 workers, 45s; ~70 docs avgObjSize≈1.57e7,
+      dataSize 1101 MB ≈2.05× 0.5 GB WT cache on same gp3
+    machine_class: AWS m6i.large + gp3 100GiB 3000/125, us-east-2
+    system_version: 'mongo:7'
+    observed_on: '2026-08-21'
+    source: obs-aws-bson-size-gp3-2026-08-21
+    notes: >-
+      ~16× lower ops/s than 1 MiB arm at matched oversub; mean_latency_ms=172.3;
+      pages_read_per_op=0.7073 (similar pages/op, much larger pages).
+
+  - slug: aws-bson-size-gp3-2026-08-21-15mib-latency
+    system: mongodb
+    parameter: db.mean_latency_ms
+    value: 172.309
+    unit: ms
+    workload: random point reads ~15 MiB docs, 2.05× oversub on gp3
+    machine_class: AWS m6i.large + gp3 100GiB 3000/125, us-east-2
+    system_version: 'mongo:7'
+    observed_on: '2026-08-21'
+    source: obs-aws-bson-size-gp3-2026-08-21
+
+  - slug: aws-bson-size-gp3-2026-08-21-15mib-pages-per-op
+    system: mongodb
+    parameter: cache.pages_read_per_op
+    value: 0.7073
+    unit: pages/op
+    workload: random point reads ~15 MiB docs, 2.05× oversub on gp3
+    machine_class: AWS m6i.large + gp3 100GiB 3000/125, us-east-2
+    system_version: 'mongo:7'
+    observed_on: '2026-08-21'
+    source: obs-aws-bson-size-gp3-2026-08-21

@@ -195,10 +195,9 @@ models:
         apply: note
         coefficient: mongodb.tickets-idle-hold-seconds-min
         rationale: >-
-          A 2026-08-19 run held the pool at 64 with a 600-second load, then
-          measured true-idle serverStatus for 611 seconds afterward: zero
-          movement. "Resting at 4" is what an instance that has been idle a
-          LONG time looks like — it is not what a busy instance decays to
-          shortly after load stops. After an incident, read the ticket count;
-          do not assume it has returned to the floor just because the load
-          did.
+          After a sustained climb, true-idle cooldown held the pool flat for
+          at least 900s (COOPER 7.0.40; earlier swamplink 7.0.39 held 611s).
+          A 1 Hz post-load trickle for 900s also did not walk it back toward
+          4. "Resting at 4" is what an instance idle a LONG time looks like —
+          not what a recently busy instance decays to once load stops. After
+          an incident, read the ticket count; do not assume the floor.

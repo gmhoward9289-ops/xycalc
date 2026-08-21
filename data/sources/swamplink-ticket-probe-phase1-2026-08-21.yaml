@@ -1,0 +1,15 @@
+sources:
+- slug: obs-mongodb-ticket-probe-phase1-swamplink-2026-08-21
+  title: >-
+    MongoDB 7.0.39 ticket-pool Phase 1 — isolated 300s levels at c=16/32/64
+    (issue #2)
+  publisher: xycalc benchmark (swamplink)
+  retrieved_on: '2026-08-21'
+  source_type: benchmark
+  notes: >-
+    Issue #2 Phase 1: one concurrency value per fresh mongod, PROBE_SECONDS=300,
+    PROBE_DOCS=1500000, same blkio throttle as the 2026-08-01 ladder (8 MiB/s,
+    150 IOPS), tools/bench/ticket_probe.sh with trailing-window convergence
+    check. All three levels printed CONVERGED_DEMAND_CAPPED. Artifacts:
+    docs/investigations/003-storage-stall-query-collapse/artifacts/issue2-phase1-20260821/.
+    Phase 2 (IOPS-cap sweep) not run in this source.

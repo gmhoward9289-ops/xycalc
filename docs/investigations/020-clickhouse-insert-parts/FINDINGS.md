@@ -40,11 +40,14 @@ enough to cross 23.3's delay on batch=10 while missing it on batch=1.
 
 ## Corpus
 
-- Parameters `clickhouse.parts_to_delay_insert`,
-  `clickhouse.parts_to_throw_insert`, `clickhouse.peak_active_parts`
+- Live settings observations use main's
+  `clickhouse.active_parts_delay_threshold` /
+  `clickhouse.active_parts_throw_threshold` (same 150/300 vs 1000/3000
+  already cited as `code` on investigation 012). Peak parts use
+  `clickhouse.peak_active_parts`.
 - Observations: `data/observations/reef-clickhouse-parts-2026-08-21.yaml`
-- No `clickhouse.insert-batch-floor` arithmetic coefficient until reject
-  onset (`parts_to_throw`) is also observed.
+- **No portable inserts/sec floor.** Issue #18 stays open.
+  `clickhouse.parts-insert-ceiling` remains unvalidated (n=0) vs production.
 
 ## Weakest inference
 

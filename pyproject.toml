@@ -1,6 +1,6 @@
 [project]
 name = "xycalc"
-version = "0.2.0"
+version = "0.5.0"
 description = "How much X do I need to run Y? Infrastructure sizing from a cited corpus."
 requires-python = ">=3.11"
 license = "Apache-2.0"
@@ -13,6 +13,9 @@ gui = [
     "fastapi>=0.110",
     "uvicorn[standard]>=0.27",
 ]
+mcp = [
+    "mcp>=2.0",
+]
 dev = [
     "pytest>=8.0",
     # FastAPI's TestClient is a thin wrapper over an HTTP client; without this
@@ -21,10 +24,14 @@ dev = [
     # own — a looser bound lets a resolver pick an early httpx2 that lacks the
     # testclient calls.
     "httpx2>=2.0",
+    # MCP stdio tests spawn xycalc-mcp; keep the extra in `dev` so CI actually
+    # exercises the honesty contract across the process boundary.
+    "mcp>=2.0",
 ]
 
 [project.scripts]
 xycalc = "xycalc.cli:main"
+xycalc-mcp = "xycalc.mcp:main"
 
 [build-system]
 requires = ["setuptools>=68"]

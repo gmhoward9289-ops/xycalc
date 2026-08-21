@@ -1,0 +1,2 @@
+$r=Invoke-CimMethod -ClassName Win32_Process -MethodName Create -Arguments @{CommandLine='powershell -NoProfile -ExecutionPolicy Bypass -Command "wsl.exe -e bash -lc \"sed -i ''s/\r$//'' /mnt/c/Users/Owner/lab/reef_run_wave12_r2.sh; chmod +x /mnt/c/Users/Owner/lab/reef_run_wave12_r2.sh; bash /mnt/c/Users/Owner/lab/reef_run_wave12_r2.sh\""'}
+"wave12r2 pid=$($r.ProcessId) rv=$($r.ReturnValue) at=$(Get-Date -Format o)" | Out-File C:\Users\Owner\lab\wmi-wave12r2.out
