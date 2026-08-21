@@ -94,6 +94,11 @@ scenarios:
         family: r8i
         feed: previous
       - kind: lookup
+        lookup: instance_select
+        system: azure-vm
+        family: Esv6
+        feed: previous
+      - kind: lookup
         lookup: gp3_spec
         sum_inputs:
           - index_size

@@ -69,6 +69,7 @@ class TestChainEvaluate:
             ("model", "mongodb.wt-cache"),
             ("model", "mongodb.host-ram"),
             ("lookup", "aws-ec2.instance-select"),
+            ("lookup", "azure-vm.instance-select"),
             ("lookup", "ebs.gp3-spec"),
             ("model", "ebs.iops-to-provision"),
         ]
@@ -109,6 +110,14 @@ class TestBuildInstanceSizingSummary:
 
         assert "cpu" in summary
         assert summary["cpu"]["unit"] == "vcpu"
+        mode_name = summary["cpu"]["instance_mode"]
+        assert mode_name is None or mode_name.startswith("r8i")
+
+        assert "azure" in summary
+        azure = summary["azure"]
+        assert azure["exceeds_pool"] in (True, False)
+        if azure["mode"] is not None:
+            assert azure["mode"].startswith("Esv6.")
 
         assert "disk" in summary
         disk = summary["disk"]
@@ -123,6 +132,26 @@ class TestBuildInstanceSizingSummary:
         assert disk["provisioned_iops_assumed_mean"] is True
         if disk.get("instance_ebs_bandwidth_gbps") is not None:
             assert disk["usable_throughput_mibps"] <= disk["max_throughput_mibps"]
+            assert disk["instance_name"].startswith("r8i")
+
+    def test_small_footprint_names_esv6_skus_per_band_end(self, conn):
+        scenario = get_scenario("mongodb.size-to-instance")
+        small = {
+            "baseline_vuln_count": "250000",
+            "baseline_storage_size": "8GB",
+            "target_vuln_count": "250000",
+            "index_size": "1GB",
+        }
+        steps = chain_evaluate(conn, scenario, small)
+        azure = next(s for s in steps if s.slug == "azure-vm.instance-select")
+        pick = azure.instance_pick
+        assert pick["pick_lo"].name.startswith("Esv6.Standard_E")
+        assert pick["pick_mode"].name.startswith("Esv6.Standard_E")
+        assert pick["pick_hi"].name.startswith("Esv6.Standard_E")
+        assert pick["pick_lo"].ram_bytes <= pick["pick_mode"].ram_bytes <= pick["pick_hi"].ram_bytes
+        assert not pick["exceeds_pool"]
+        aws = next(s for s in steps if s.slug == "aws-ec2.instance-select")
+        assert aws.instance_pick["pick_mode"].name.startswith("r8i")
 
 
 @pytest.fixture
