@@ -38,7 +38,8 @@ IFS=',' read -r -a pols <<< "$POLICIES"
 combined="$OUT/combined.jsonl"
 : > "$combined"
 
-for pol in "${pols[@]}"; pol="${pol// /}"; do
+for pol in "${pols[@]}"; do
+    pol="${pol// /}"
     echo "--- policy=$pol $(date -Is) ---" >&2
     PROBE_RETRY_POLICY="$pol" \
       docker compose up -d --build --force-recreate worker >&2

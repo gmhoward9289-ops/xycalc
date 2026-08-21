@@ -1,0 +1,8 @@
+sources:
+- slug: obs-reef-covered-query-smoke-2026-08-21
+  title: T5 covered-query smoke on reef
+  publisher: xycalc project
+  version: tools/bench/covered_query_probe.sh
+  retrieved_on: '2026-08-21'
+  source_type: benchmark
+  notes: Smoke 50k docs. Investigation 013/T5.

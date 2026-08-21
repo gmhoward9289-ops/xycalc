@@ -1,0 +1,90 @@
+{
+  "indexSizes": {
+    "_id_": 532480,
+    "account_id_1": 1728512,
+    "created_at_-1": 581632,
+    "status_1_region_1": 294912,
+    "idempotency_key_1": 2621440
+  },
+  "t1": {
+    "inCache": 56627,
+    "maxCache": 536870912,
+    "occupancyPct": 0.01054760068655014,
+    "pagesReadIntoCache": 23
+  },
+  "t2": {
+    "inCache": 2191489,
+    "maxCache": 536870912,
+    "occupancyPct": 0.4081966355443001,
+    "pagesReadIntoCache": 484
+  },
+  "t3": {
+    "inCache": 2900817,
+    "maxCache": 536870912,
+    "occupancyPct": 0.5403192713856697,
+    "pagesReadIntoCache": 501
+  },
+  "t4": {
+    "inCache": 36114062,
+    "maxCache": 536870912,
+    "occupancyPct": 6.7267682403326035,
+    "pagesReadIntoCache": 987
+  },
+  "phaseA": {
+    "docs": 50000,
+    "residencyBytes": 2134862,
+    "indexSizeBytes": 1728512,
+    "ratio": 1.2350865947126777,
+    "pagesReadDelta": 0,
+    "plateau": {
+      "docs": 50000,
+      "pagesReadDelta": 0,
+      "cache": {
+        "inCache": 2191489,
+        "maxCache": 536870912,
+        "occupancyPct": 0.4081966355443001,
+        "pagesReadIntoCache": 484
+      }
+    },
+    "explainOk": true
+  },
+  "phaseB": {
+    "docs": 50000,
+    "residencyBytes": 709328,
+    "indexSizeBytes": 294912,
+    "ratio": 2.4052191840277777,
+    "plateau": {
+      "docs": 50000,
+      "pagesReadDelta": 0,
+      "cache": {
+        "inCache": 2900817,
+        "maxCache": 536870912,
+        "occupancyPct": 0.5403192713856697,
+        "pagesReadIntoCache": 501
+      }
+    },
+    "explainOk": true
+  },
+  "phaseC": {
+    "docs": 50000,
+    "residencyBytes": 33213245,
+    "ratio": null,
+    "plateau": {
+      "docs": 50000,
+      "pagesReadDelta": 0,
+      "cache": {
+        "inCache": 36114062,
+        "maxCache": 536870912,
+        "occupancyPct": 6.7267682403326035,
+        "pagesReadIntoCache": 987
+      }
+    },
+    "explainOk": true
+  },
+  "untouchedIndexSanity": {
+    "created_at_bytes": 581632,
+    "idempotency_key_bytes": 2621440,
+    "note": "indexSizes are on-disk; residency growth for these should be ~0 (not queried)"
+  },
+  "at": "2026-08-21T15:06:36.411Z"
+}

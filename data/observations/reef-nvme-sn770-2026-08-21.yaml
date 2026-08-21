@@ -1,0 +1,34 @@
+observations:
+- slug: reef-nvme-sn770-iops-2026-08-21
+  parameter: io.iops
+  system: nvme-ssd
+  value: 33515.91657
+  unit: iops
+  workload: "fio windowsaio randread QD32 4\u20138 KiB"
+  machine_class: 'reef V: WD BLACK SN770 native Windows fio'
+  system_version: fio-3.42
+  observed_on: '2026-08-21'
+  source: obs-reef-nvme-sn770-2026-08-21
+  notes: Derived from smallest two block sizes (strict plateaus finder returned throughput-only).
+- slug: reef-nvme-sn770-tp-2026-08-21
+  parameter: io.throughput_mibps
+  system: nvme-ssd
+  value: 268.7897135416667
+  unit: mib_per_s
+  workload: "fio windowsaio randread QD32 256\u20131024 KiB"
+  machine_class: 'reef V: WD BLACK SN770 native Windows fio'
+  system_version: fio-3.42
+  observed_on: '2026-08-21'
+  source: obs-reef-nvme-sn770-2026-08-21
+  notes: Throughput plateau from probe.
+- slug: reef-nvme-sn770-xover-2026-08-21
+  parameter: io.io_size_crossover_kib
+  system: nvme-ssd
+  value: 16.0
+  unit: kib
+  workload: fio windowsaio randread QD32 sweep
+  machine_class: 'reef V: WD BLACK SN770 native Windows fio'
+  system_version: fio-3.42
+  observed_on: '2026-08-21'
+  source: obs-reef-nvme-sn770-2026-08-21
+  notes: Knee where IOPS drops with full bandwidth.

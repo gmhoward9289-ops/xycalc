@@ -1,11 +1,11 @@
 # Investigation 017 — I/O size crossover (T9 / #17)
 
-**Status:** Arm A complete on reef; Arm B native Z: landing; **Arm C
-complete** (2026-08-21) on temp AWS `m6i.large` + gp3 (`i-0b0f4da9d10b1abba`,
-torn down same day).
+**Status:** Arms A–C complete (2026-08-21). Arm A reef cgroup; Arm B
+native **V: WD BLACK SN770**; Arm C temp AWS `m6i.large` + gp3
+(`i-0b0f4da9d10b1abba`, torn down same day).
 
 **Harness:** `tools/bench/io_crossover_probe.py` +
-`tools/bench/reef_run_t9_io.ps1` / `reef_run_t9_native_nvme.ps1`.
+`tools/bench/reef_run_t9_io.ps1` / `reef_run_t9_native_v.ps1`.
 
 ---
 
@@ -22,12 +22,15 @@ silent no-knee.
 |---|---|---:|---:|---:|---:|
 | A gp3-baseline | 3000 / 125 MiB/s | 3000.8 | 125.4 MiB/s | **64 KiB** | 42.7 KiB |
 | A gp3-throughput-cap | 10500 / 2000 MiB/s | 10496.8 | 2000.0 MiB/s | **256 KiB** | 195 KiB |
-| B Docker-local (virtio `/dev/sdd` path used for Arm A device) | none | (see Docker local arm file) | ~5.8 GiB/s class | 64 KiB | — |
-| B native Z: Samsung NVMe | none | *(landing)* | *(landing)* | *(landing)* | — |
+| B native V: WD BLACK SN770 | none | ~33.5k (4–8 KiB) | ~269 MiB/s | **16 KiB** | — |
 | C real gp3 (m6i.large) | AWS 3000 / 125 | ~3212 (8–32 KiB) | ~134.1 MiB/s | harness **128 KiB** (first TP-bound **64 KiB**) | 42.7 KiB |
 
 **Do not treat Arm A numbers as real EBS.** They validate the queuing
 arithmetic under cgroup caps. Arm C is the real-gp3 measurement.
+
+**Arm B note.** Native Windows `fio`/`windowsaio` on **V:** (SN770).
+Published as `nvme-ssd.*`, replacing the prior C: SATA smoke that was
+mis-captioned under that system.
 
 ---
 
@@ -38,8 +41,8 @@ arithmetic under cgroup caps. Arm C is the real-gp3 measurement.
 - Healthy-env check: a run without throttle would not print flat 3000 /
   125 — the plateaus tracking the configured caps is the guard that
   this is not a free-disk table.
-- Prior C: SATA smoke coefficients remain labeled; native Z: NVMe is the
-  intended `nvme-ssd` replacement when import lands.
+- Prior C: SATA smoke under `nvme-ssd` **replaced** by V: SN770 native
+  Windows fio (2026-08-21).
 
 ---
 
@@ -61,17 +64,17 @@ arithmetic under cgroup caps. Arm C is the real-gp3 measurement.
 ## Corpus
 
 - Observations: `data/observations/reef-io-crossover-cgroup-2026-08-21.yaml`,
+  `data/observations/reef-nvme-sn770-2026-08-21.yaml`,
   `data/observations/aws-t9c-gp3-2026-08-21.yaml`
 - Emulated crossover coeffs (distinct slugs, not overwriting documented
   arithmetic): `data/coefficients/ebs-io-crossover-emulated-2026-08-21.yaml`
+- Host NVMe: `data/coefficients/nvme-ssd.yaml` (SN770 measured)
 - Documented `ebs.gp3-baseline-io-crossover-kib` (42.7) **kept** as the
   planning figure (Arm C agrees on shape; knee still coarser than arithmetic).
 - Artifacts: `docs/investigations/017-io-crossover/artifacts/`
-  (`aws-t9c-gp3-20260821.json`)
 
 ---
 
 ## Remaining
 
-1. Confirm native Z: NVMe Arm B import → replace/augment `nvme-ssd.*`
-   measured rows (prior C: SATA smoke was mis-captioned).
+None for T9 on reef. Arm C already torn down.

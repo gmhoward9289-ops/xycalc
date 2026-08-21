@@ -90,6 +90,14 @@ def run_fio(
     ]
     if platform.system() == "Windows":
         cmd.append("--thread")
+        # windowsaio + sparse createnew files need an explicit size= or fio
+        # errors with Invalid argument in filesetup.c.
+        try:
+            nbytes = Path(test_file).stat().st_size
+            if nbytes > 0:
+                cmd.append(f"--size={nbytes}")
+        except OSError:
+            pass
     proc = subprocess.run(cmd, capture_output=True, text=True)
     if proc.returncode != 0:
         raise RuntimeError(proc.stderr.strip() or proc.stdout.strip() or "fio failed")

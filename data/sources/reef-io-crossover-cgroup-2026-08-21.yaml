@@ -1,0 +1,11 @@
+sources:
+  - slug: obs-reef-io-crossover-cgroup-2026-08-21
+    title: "T9 Arm A: Docker blkio gp3-emulation crossover on reef"
+    publisher: xycalc project (benchmark harness, committed)
+    version: tools/bench/io_crossover_probe.py + reef_run_t9_io.ps1
+    retrieved_on: "2026-08-21"
+    source_type: benchmark
+    notes: >-
+      Investigation 017 Arm A. Docker Desktop --device-read-bps/iops against
+      /dev/sdd. Emulates gp3 baseline and throughput-cap; not real EBS.
+      See docs/investigations/017-io-crossover/FINDINGS.md.
