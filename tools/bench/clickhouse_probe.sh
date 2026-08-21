@@ -4,6 +4,13 @@
 #   ./tools/bench/clickhouse_probe.sh                 # full dual-image sweep
 #   PROBE_SMOKE=1 ./tools/bench/clickhouse_probe.sh   # one image, short budget
 #
+# Merges-on on deliberately slow storage (Claim A without STOP MERGES):
+#   PROBE_STOP_MERGES=0 PROBE_DATA_DIR=/mnt/ch-probe-data/run \
+#   PROBE_DEV=/dev/vdb PROBE_WRITE_BPS=1048576 PROBE_READ_BPS=1048576 \
+#   PROBE_WRITE_IOPS=40 PROBE_READ_IOPS=40 PROBE_MEMORY=768m \
+#   PROBE_SMOKE=1 PROBE_ROWS=8000 PROBE_BATCHES=1 PROBE_WRITERS=16 \
+#     ./tools/bench/clickhouse_probe.sh
+#
 # Starts a uniquely-named ClickHouse container (CPU/memory pinned). Prefers a
 # host-side Python with clickhouse-connect (PROBE_LOCAL=1 or auto-detect) so
 # bridge-network egress limits cannot block pip; falls back to a driver
@@ -31,6 +38,17 @@ CH_PASSWORD="${PROBE_PASSWORD:-xycalc}"
 # Set PROBE_STOP_MERGES=0 to test whether merges keep up on this box (Claim A).
 STOP_MERGES="${PROBE_STOP_MERGES:-1}"
 
+# Optional block-IO cgroup throttle (same pattern as ticket_probe.sh). Scoped
+# to the ClickHouse container only. Pair with PROBE_DATA_DIR on that device so
+# MergeTree writes actually hit the throttled path (vfs/overlay root I/O may
+# not). Keep PROBE_MEMORY tight so the host page cache cannot hide the limit.
+DATA_DIR="${PROBE_DATA_DIR:-}"
+WRITE_BPS="${PROBE_WRITE_BPS:-}"
+READ_BPS="${PROBE_READ_BPS:-}"
+WRITE_IOPS="${PROBE_WRITE_IOPS:-}"
+READ_IOPS="${PROBE_READ_IOPS:-}"
+THROTTLE_DEV="${PROBE_DEV:-}"
+
 # Dual-image by default: one pre-23.6, one 23.6+. Smoke uses the post side only.
 PRE_IMAGE="${PROBE_PRE_IMAGE:-clickhouse/clickhouse-server:23.3}"
 POST_IMAGE="${PROBE_POST_IMAGE:-clickhouse/clickhouse-server:24.8}"
@@ -39,6 +57,27 @@ PY_IMAGE="${PROBE_PY_IMAGE:-python:3.12-slim}"
 here="$(cd "$(dirname "$0")" && pwd)"
 repo="$(cd "$here/../.." && pwd)"
 RESULTS_DIR="$(mktemp -d /tmp/ch-probe-XXXXXX)"
+
+if [ -n "$WRITE_BPS$READ_BPS$WRITE_IOPS$READ_IOPS" ] && [ -z "$THROTTLE_DEV" ]; then
+    if [ -n "$DATA_DIR" ] && src="$(findmnt -n -o SOURCE --target "$DATA_DIR" 2>/dev/null)"; then
+        parent="$(lsblk -no PKNAME "$src" 2>/dev/null | head -1 || true)"
+        THROTTLE_DEV="$([ -n "$parent" ] && echo "/dev/$parent" || echo "$src")"
+    else
+        root_src="$(df --output=source / | tail -1)"
+        parent="$(lsblk -no PKNAME "$root_src" 2>/dev/null | head -1 || true)"
+        THROTTLE_DEV="$([ -n "$parent" ] && echo "/dev/$parent" || echo "$root_src")"
+    fi
+fi
+if [ -n "$WRITE_BPS$READ_BPS$WRITE_IOPS$READ_IOPS" ]; then
+    if [ -z "${PROBE_DEV:-}" ] && [ ! -b "$THROTTLE_DEV" ]; then
+        echo "no block device to throttle (tried '$THROTTLE_DEV')." >&2
+        echo "Set PROBE_DEV=/dev/xxx explicitly (and prefer PROBE_DATA_DIR on it)." >&2
+        exit 1
+    fi
+    if [ -n "${PROBE_DEV:-}" ] && [ ! -b "$THROTTLE_DEV" ]; then
+        echo "note: PROBE_DEV=$THROTTLE_DEV is not a host block device; trusting Docker." >&2
+    fi
+fi
 
 # Host venv / python with clickhouse-connect — preferred when Docker bridge
 # cannot reach PyPI (common on restricted cloud agent networks).
@@ -77,6 +116,12 @@ run_one() {
         echo "resources   ${CPUS} cpus, ${MEMORY} memory"
         echo "workload    ${ROWS} rows, batches=${BATCHES}, writers=${WRITERS}, readers=${READERS}, step_cap=${STEP_CAP}s"
         echo "merges      STOP_MERGES=${STOP_MERGES} (1=isolate part-count ceilings)"
+        if [ -n "$DATA_DIR" ]; then
+            echo "data        $DATA_DIR -> /var/lib/clickhouse"
+        fi
+        if [ -n "$WRITE_BPS$READ_BPS$WRITE_IOPS$READ_IOPS" ]; then
+            echo "throttle    $THROTTLE_DEV  write_bps=${WRITE_BPS:--} read_bps=${READ_BPS:--} write_iops=${WRITE_IOPS:--} read_iops=${READ_IOPS:--}"
+        fi
         if [ -n "$LOCAL_PY" ]; then
             echo "driver      local $LOCAL_PY (host→published :${HTTP_PORT})"
         else
@@ -84,12 +129,38 @@ run_one() {
         fi
     } >&2
 
-    docker run -d --name "$NAME" --network "$NET" \
-        --cpus="$CPUS" --memory "$MEMORY" --memory-swap "$MEMORY" \
-        --ulimit nofile=262144:262144 \
-        -e CLICKHOUSE_PASSWORD="$CH_PASSWORD" \
-        -p "${HTTP_PORT}:8123" \
-        "$image" >/dev/null
+    local -a run_args=(
+        -d --name "$NAME" --network "$NET"
+        --cpus="$CPUS" --memory "$MEMORY" --memory-swap "$MEMORY"
+        --ulimit nofile=262144:262144
+        -e CLICKHOUSE_PASSWORD="$CH_PASSWORD"
+        -p "${HTTP_PORT}:8123"
+    )
+    if [ -n "$WRITE_BPS" ]; then
+        run_args+=(--device-write-bps "${THROTTLE_DEV}:${WRITE_BPS}")
+    fi
+    if [ -n "$READ_BPS" ]; then
+        run_args+=(--device-read-bps "${THROTTLE_DEV}:${READ_BPS}")
+    fi
+    if [ -n "$WRITE_IOPS" ]; then
+        run_args+=(--device-write-iops "${THROTTLE_DEV}:${WRITE_IOPS}")
+    fi
+    if [ -n "$READ_IOPS" ]; then
+        run_args+=(--device-read-iops "${THROTTLE_DEV}:${READ_IOPS}")
+    fi
+    if [ -n "$DATA_DIR" ]; then
+        # Fresh per-run dir; ClickHouse image runs as uid 101.
+        rm -rf "$DATA_DIR"
+        mkdir -p "$DATA_DIR"
+        if command -v sudo >/dev/null 2>&1 && sudo -n true 2>/dev/null; then
+            sudo -n chown -R 101:101 "$DATA_DIR"
+        else
+            chown -R 101:101 "$DATA_DIR" 2>/dev/null || true
+        fi
+        run_args+=(-v "${DATA_DIR}:/var/lib/clickhouse")
+    fi
+
+    docker run "${run_args[@]}" "$image" >/dev/null
 
     # Wait for HTTP ping rather than sleeping and hoping.
     for _ in $(seq 1 90); do
@@ -109,6 +180,14 @@ run_one() {
     done
 
     local raw
+    # Throttle / data-dir metadata for the JSON (empty strings omitted by Python).
+    export PROBE_THROTTLE_DEV="${THROTTLE_DEV:-}"
+    export PROBE_WRITE_BPS="${WRITE_BPS:-}"
+    export PROBE_READ_BPS="${READ_BPS:-}"
+    export PROBE_WRITE_IOPS="${WRITE_IOPS:-}"
+    export PROBE_READ_IOPS="${READ_IOPS:-}"
+    export PROBE_DATA_DIR="${DATA_DIR:-}"
+
     if [ -n "$LOCAL_PY" ]; then
         raw="$(
             PROBE_HOST=127.0.0.1 \
@@ -124,6 +203,12 @@ run_one() {
             PROBE_STEP_CAP_S="$STEP_CAP" \
             PROBE_BATCHES="$BATCHES" \
             PROBE_STOP_MERGES="$STOP_MERGES" \
+            PROBE_THROTTLE_DEV="${THROTTLE_DEV:-}" \
+            PROBE_WRITE_BPS="${WRITE_BPS:-}" \
+            PROBE_READ_BPS="${READ_BPS:-}" \
+            PROBE_WRITE_IOPS="${WRITE_IOPS:-}" \
+            PROBE_READ_IOPS="${READ_IOPS:-}" \
+            PROBE_DATA_DIR="${DATA_DIR:-}" \
             "$LOCAL_PY" "$here/clickhouse_probe.py"
         )"
     else
@@ -155,6 +240,12 @@ run_one() {
                     -e PROBE_STEP_CAP_S="$STEP_CAP" \
                     -e PROBE_BATCHES="$BATCHES" \
                     -e PROBE_STOP_MERGES="$STOP_MERGES" \
+                    -e "PROBE_THROTTLE_DEV=${THROTTLE_DEV:-}" \
+                    -e "PROBE_WRITE_BPS=${WRITE_BPS:-}" \
+                    -e "PROBE_READ_BPS=${READ_BPS:-}" \
+                    -e "PROBE_WRITE_IOPS=${WRITE_IOPS:-}" \
+                    -e "PROBE_READ_IOPS=${READ_IOPS:-}" \
+                    -e "PROBE_DATA_DIR=${DATA_DIR:-}" \
                     "$DRIVER" python /tmp/clickhouse_probe.py
             )"
         else
@@ -173,6 +264,12 @@ run_one() {
                     -e PROBE_STEP_CAP_S="$STEP_CAP" \
                     -e PROBE_BATCHES="$BATCHES" \
                     -e PROBE_STOP_MERGES="$STOP_MERGES" \
+                    -e "PROBE_THROTTLE_DEV=${THROTTLE_DEV:-}" \
+                    -e "PROBE_WRITE_BPS=${WRITE_BPS:-}" \
+                    -e "PROBE_READ_BPS=${READ_BPS:-}" \
+                    -e "PROBE_WRITE_IOPS=${WRITE_IOPS:-}" \
+                    -e "PROBE_READ_IOPS=${READ_IOPS:-}" \
+                    -e "PROBE_DATA_DIR=${DATA_DIR:-}" \
                     "$DRIVER" python /tmp/clickhouse_probe.py
             )"
         fi
@@ -188,12 +285,27 @@ if [ "${PROBE_SMOKE:-0}" = "1" ]; then
     BATCHES="${PROBE_BATCHES:-1,100,1000}"
     STEP_CAP="${PROBE_STEP_CAP_S:-30}"
     export PROBE_ROWS="$ROWS" PROBE_BATCHES="$BATCHES" PROBE_STEP_CAP_S="$STEP_CAP"
-    run_one "$POST_IMAGE" post23_6 "$RESULTS_DIR/post.json"
+    # Default post-23.6; set PROBE_SMOKE_SIDE=pre23_6 to hit the lower delay
+    # threshold first when validating merges-on + slow disk (guard 3).
+    SMOKE_SIDE="${PROBE_SMOKE_SIDE:-post23_6}"
+    if [ "$SMOKE_SIDE" = "pre23_6" ]; then
+        run_one "$PRE_IMAGE" pre23_6 "$RESULTS_DIR/pre.json"
+    else
+        run_one "$POST_IMAGE" post23_6 "$RESULTS_DIR/post.json"
+    fi
 else
+    # Distinct data dirs when a shared PROBE_DATA_DIR parent is given.
+    if [ -n "$DATA_DIR" ]; then
+        DATA_DIR_BASE="$DATA_DIR"
+        DATA_DIR="${DATA_DIR_BASE}/pre"
+    fi
     run_one "$PRE_IMAGE" pre23_6 "$RESULTS_DIR/pre.json"
     echo >&2
     # Different host port for the second container (first cleaned up, but keep explicit).
     HTTP_PORT="${PROBE_HTTP_PORT_POST:-$((HTTP_PORT + 1))}"
+    if [ -n "${DATA_DIR_BASE:-}" ]; then
+        DATA_DIR="${DATA_DIR_BASE}/post"
+    fi
     run_one "$POST_IMAGE" post23_6 "$RESULTS_DIR/post.json"
 
     # Combine + assert settings differ (guard 6 across images).

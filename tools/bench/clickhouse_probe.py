@@ -53,6 +53,26 @@ POLL_S = float(os.environ.get("PROBE_POLL_S", "0.25"))
 STOP_MERGES = os.environ.get("PROBE_STOP_MERGES", "0") in ("1", "true", "TRUE", "yes")
 TABLE = "probe"
 
+
+def _env_int(name: str) -> int | None:
+    raw = os.environ.get(name, "").strip()
+    if not raw:
+        return None
+    return int(raw)
+
+
+def throttle_meta() -> dict:
+    """Block-IO cgroup limits applied by clickhouse_probe.sh (may be empty)."""
+    meta = {
+        "dev": os.environ.get("PROBE_THROTTLE_DEV", "") or None,
+        "dataDir": os.environ.get("PROBE_DATA_DIR", "") or None,
+        "writeBps": _env_int("PROBE_WRITE_BPS"),
+        "readBps": _env_int("PROBE_READ_BPS"),
+        "writeIops": _env_int("PROBE_WRITE_IOPS"),
+        "readIops": _env_int("PROBE_READ_IOPS"),
+    }
+    return {k: v for k, v in meta.items() if v is not None}
+
 EXPECTED = {
     "pre23_6": {"parts_to_delay_insert": 150, "parts_to_throw_insert": 300},
     "post23_6": {"parts_to_delay_insert": 1000, "parts_to_throw_insert": 3000},
@@ -436,6 +456,7 @@ def main() -> None:
         "rows": ROWS,
         "step_cap_s": STEP_CAP_S,
         "merges_stopped": STOP_MERGES,
+        "throttle": throttle_meta(),
         "settings": live,
         "steps": steps,
         "latencyCompare": {
