@@ -611,3 +611,29 @@ sources:
       the managed-disks pricing page summarises the range as 125–1,200 MB/s. The
       coefficients here follow this (the technical reference) page and record the
       tension rather than averaging it away.
+
+  - slug: clickhouse-mergetree-settings-v23.5
+    title: MergeTreeSettings.h — parts_to_delay_insert / parts_to_throw_insert
+    publisher: ClickHouse, Inc.
+    url: https://raw.githubusercontent.com/ClickHouse/ClickHouse/v23.5.1.3174-stable/src/Storages/MergeTree/MergeTreeSettings.h
+    version: ClickHouse v23.5.1.3174-stable
+    retrieved_on: '2026-08-21'
+    source_type: source_code
+    notes: >-
+      Pre-23.6 MergeTree defaults for insert backpressure: parts_to_delay_insert
+      150 and parts_to_throw_insert 300. Strongest citation for the low side of
+      the tenfold threshold change that investigation 012 / T10 demonstrates.
+      Version is the git tag in the URL, not a docs "latest" page.
+
+  - slug: clickhouse-mergetree-settings-v23.6
+    title: MergeTreeSettings.h — parts_to_delay_insert / parts_to_throw_insert
+    publisher: ClickHouse, Inc.
+    url: https://raw.githubusercontent.com/ClickHouse/ClickHouse/v23.6.1.1524-stable/src/Storages/MergeTree/MergeTreeSettings.h
+    version: ClickHouse v23.6.1.1524-stable
+    retrieved_on: '2026-08-21'
+    source_type: source_code
+    notes: >-
+      ClickHouse 23.6 raised the same defaults to parts_to_delay_insert 1000 and
+      parts_to_throw_insert 3000 — the high side of the version-drift example in
+      ROADMAP T10. Same header file as the v23.5 source; only the tag (and the
+      numbers) change. Confirmed still 1000/3000 at v24.3.1-lts on retrieval day.

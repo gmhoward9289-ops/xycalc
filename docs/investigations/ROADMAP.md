@@ -319,9 +319,12 @@ figures for the `nvme-ssd` stub.
 
 ## T10 — ClickHouse: how few inserts per second is too many?
 
-**Status (2026-08-21).** Harness ready. Reef pulls of `23.3` blocked by Docker
-Desktop credential-helper / headless session; `:24`/`:24.8` present. Dual-image
-version-trap run still pending a clean 23.3 pull or pre-seeded image.
+**Status (2026-08-21).** Investigation 012 dual-image probe complete on cloud
+agent VM (vfs Docker). Live `parts_to_*` match corpus (150/300 → 1000/3000);
+Claim A (frequency drives parts) and Claim B (~10× jump) both survived with
+`PROBE_STOP_MERGES=1`. Merges-on on this box never hit the ceiling — see
+`docs/investigations/012-clickhouse-insert-batch-floor/FINDINGS.md`. Model
+`clickhouse.parts-insert-ceiling` still `unvalidated (n=0)` vs production.
 
 **Question.** At what insert frequency does part count outrun merges and
 inserts start being delayed, then rejected?
