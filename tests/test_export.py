@@ -223,7 +223,7 @@ def test_deploy_golden_script_accepts_a_good_export(blob, tmp_path):
         encoding="utf-8",
     )
     assert proc.returncode == 0, proc.stdout + proc.stderr
-    assert '"golden_failures": 0' in proc.stdout
+    assert '"golden_failures":0' in proc.stdout
 
 
 @pytest.mark.skipif(NODE is None, reason="node is not installed")
