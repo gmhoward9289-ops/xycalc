@@ -42,6 +42,15 @@
 PRAGMA foreign_keys = ON;
 
 
+-- Build stamp. connect() compares this to a hash of schema.sql and rebuilds
+-- when they differ, so a db left over from an older schema (missing a column)
+-- is not served as if it were current.
+CREATE TABLE meta (
+    key   TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+);
+
+
 -- ---------------------------------------------------------------------------
 -- Provenance
 -- ---------------------------------------------------------------------------

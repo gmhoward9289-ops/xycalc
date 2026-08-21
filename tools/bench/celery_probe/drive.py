@@ -60,12 +60,20 @@ def cache_max() -> int:
 
 
 def tickets() -> dict:
+    import sys
+    from pathlib import Path
+
+    _bench = Path(__file__).resolve().parents[1]
+    if str(_bench) not in sys.path:
+        sys.path.insert(0, str(_bench))
+    from mongo_tickets import execution_tickets
+
     s = mongo.admin.command("serverStatus")
-    c = s["wiredTiger"]["concurrentTransactions"]
+    t = execution_tickets(s)
     return {
-        "readTotal": c["read"]["totalTickets"],
-        "readOut": c["read"]["out"],
-        "queuedMicros": int(c["read"].get("totalTimeQueuedMicros", 0)),
+        "readTotal": t["readTotal"],
+        "readOut": t["readOut"],
+        "queuedMicros": t["queuedMicros"],
         "pagesRead": s["wiredTiger"]["cache"]["pages read into cache"],
     }
 
@@ -120,6 +128,7 @@ def counters() -> dict:
         "executions": g("probe:executions"),
         "completed": g("probe:completed"),
         "duplicates": g("probe:duplicates"),
+        "retries": g("probe:retries"),
     }
 
 
@@ -146,8 +155,19 @@ def run_rate(rate: int) -> dict:
             enqueued += 1
             next_send += interval
         if now >= next_sample:
+            c = counters()
+            queue = r.llen(QUEUE)
+            outstanding = enqueued - c["completed"]
             samples.append(
-                {"t": round(now - t0, 1), "queue": r.llen(QUEUE), **tickets(), **counters()}
+                {
+                    "t": round(now - t0, 1),
+                    "queue": queue,
+                    "enqueuedSoFar": enqueued,
+                    "outstanding": outstanding,
+                    "understatement": outstanding - queue,
+                    **tickets(),
+                    **c,
+                }
             )
             next_sample = now + 0.5
         slack = min(next_send, next_sample) - time.time()
@@ -171,10 +191,27 @@ def run_rate(rate: int) -> dict:
 
     final, after = counters(), tickets()
     elapsed = load_end - t0
+    achieved = enqueued / elapsed if elapsed else 0.0
+    # Issue #14: backlog samples only (queue > 0) so startup transient is out.
+    backed = [s for s in samples if s["queue"] > 0]
+    under_vals = [s["understatement"] for s in backed]
+    understatement_max = max(under_vals) if under_vals else 0
+    understatement_mean = (
+        round(sum(under_vals) / len(under_vals), 2) if under_vals else 0.0
+    )
+    rate_ok = achieved >= 0.9 * rate
+    if not rate_ok:
+        print(
+            f"WARNING: achievedRate {achieved:.1f}/s is below 90% of target "
+            f"{rate}/s — backlog/prefetch comparison is vacuous for this rate.",
+            file=sys.stderr,
+        )
     return {
         "targetRatePerSecond": rate,
         "seconds": round(elapsed, 1),
         "enqueued": enqueued,
+        "achievedRate": round(achieved, 1),
+        "achievedRateOk": rate_ok,
         "completedDuringLoad": at_end["completed"],
         "completedTotal": final["completed"],
         "throughputPerSecond": round(at_end["completed"] / elapsed, 1),
@@ -183,6 +220,7 @@ def run_rate(rate: int) -> dict:
         # Executions above enqueued are the broker's doing, not the app's.
         "executionsTotal": final["executions"],
         "duplicateExecutions": final["duplicates"],
+        "retriesTotal": final["retries"],
         "duplicateRatePct": round(
             100 * final["duplicates"] / max(final["executions"], 1), 2
         ),
@@ -192,10 +230,10 @@ def run_rate(rate: int) -> dict:
         "ticketsOutMax": max((s["readOut"] for s in samples), default=0),
         "queuedMicrosDelta": after["queuedMicros"] - before["queuedMicros"],
         "pagesReadIntoCache": after["pagesRead"] - before["pagesRead"],
-        "samples": len(samples),
-        # The per-sample series (queue depth + ticket + counter snapshots every
-        # 0.5s) used to be computed and thrown away, keeping only the count.
-        # #14 needs the series itself, not just how long it is.
+        "sampleCount": len(samples),
+        # Issue #14 — depth vs true outstanding; samples retained (not discarded).
+        "understatementMax": understatement_max,
+        "understatementMean": understatement_mean,
         "sampleSeries": samples,
     }
 
@@ -259,7 +297,8 @@ def main() -> int:
                 # applies_to. Record what actually ran.
                 "celeryVersion": celery.__version__,
                 "pymongoVersion": pymongo.version,
-                "redisVersion": redis.__version__,
+                "redisClientVersion": redis.__version__,
+                "redisServerVersion": r.info().get("redis_version"),
                 "prefetch": app.conf.worker_prefetch_multiplier,
                 "acksLate": acks_late,
                 "acksLateVacuousZeroDuplicates": zero_dupes_is_vacuous,

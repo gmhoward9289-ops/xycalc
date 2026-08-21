@@ -1,6 +1,7 @@
 # Plan — issue #10 (roadmap T2): compression ratio as a function of data shape
 
-**Status:** planned, not run. Touches no code, no corpus, no containers.
+**Status:** complete (2026-08-21). Ran on swamplink-eu; see
+`docs/investigations/010-compression-shape/FINDINGS.md`.
 
 ## 1. The question
 

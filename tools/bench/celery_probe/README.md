@@ -125,3 +125,25 @@ cd ../.. && python -m xycalc.build
 ```
 
 See `docs/investigations/005-redis-broker-eviction/FINDINGS.md`.
+
+## Prefetch backlog sweep (issue #14 / T6)
+
+```bash
+docker compose up -d --build redis bookkeeping mongo
+PROBE_RATES=400 PROBE_SECONDS=30 ./sweep_prefetch.sh
+```
+
+Recreates the worker per `PROBE_PREFETCH` value (default `1,2,4,8,16`).
+`drive.py` keeps `sampleSeries` with `outstanding` / `understatement`, and
+skips reloading when `docs` already has `PROBE_DOCS` documents.
+
+## Stall / recover retry policies (issue #16 / T8)
+
+```bash
+./run_stall_recover.sh
+```
+
+Phases: baseline → live cgroup tighten (or `PROBE_STALL_MODE=pause`) → recover.
+Sweeps `PROBE_RETRY_POLICY` ∈ `none,immediate,exponential,jitter` with
+`max_time_ms` on the lookup. Raise `PROBE_VISIBILITY_TIMEOUT` (script default
+600) so broker redelivery does not mix into `probe:retries`.

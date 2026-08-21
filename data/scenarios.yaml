@@ -103,6 +103,9 @@ scenarios:
         model: ebs.iops-to-provision
         defaults_from_coefficient:
           average_iops: ebs.gp3-baseline-iops
+        assumed_note: >-
+          not measured — peak-second IOPS still applied so a
+          microburst cannot stall storage tickets
     see_also:
       - url: https://repost.aws/knowledge-center/ebs-troubleshoot-performance-issues-ec2
         label: AWS — raise IOPS or throughput until exceeded checks stay at 0

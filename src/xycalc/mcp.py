@@ -12,6 +12,9 @@ answer.
 
 from __future__ import annotations
 
+import sqlite3
+from collections.abc import Iterator
+from contextlib import contextmanager
 from typing import Any
 
 from . import __version__
@@ -43,8 +46,14 @@ _INSTRUCTIONS = (
 )
 
 
-def _conn():
-    return connect()
+@contextmanager
+def _db() -> Iterator[sqlite3.Connection]:
+    """One connection per tool call; closed even if the handler raises."""
+    conn = connect()
+    try:
+        yield conn
+    finally:
+        conn.close()
 
 
 def create_server():
@@ -76,8 +85,8 @@ def create_server():
         ),
     )
     def list_models() -> dict[str, Any]:
-        conn = _conn()
-        return with_corpus_digest(list_models_payload(conn), conn)
+        with _db() as conn:
+            return with_corpus_digest(list_models_payload(conn), conn)
 
     @server.tool(
         name="sizing",
@@ -90,12 +99,12 @@ def create_server():
         ),
     )
     def sizing(model: str, inputs: dict[str, Any]) -> dict[str, Any]:
-        conn = _conn()
-        try:
-            body = sizing_payload(conn, model, inputs)
-        except ModelError as e:
-            _fail(e)
-        return with_corpus_digest(body, conn)
+        with _db() as conn:
+            try:
+                body = sizing_payload(conn, model, inputs)
+            except ModelError as e:
+                _fail(e)
+            return with_corpus_digest(body, conn)
 
     @server.tool(
         name="headroom",
@@ -109,12 +118,12 @@ def create_server():
     def headroom(
         model: str, inputs: dict[str, Any], available: str
     ) -> dict[str, Any]:
-        conn = _conn()
-        try:
-            body = sizing_payload(conn, model, inputs, available=available)
-        except ModelError as e:
-            _fail(e)
-        return with_corpus_digest(body, conn)
+        with _db() as conn:
+            try:
+                body = sizing_payload(conn, model, inputs, available=available)
+            except ModelError as e:
+                _fail(e)
+            return with_corpus_digest(body, conn)
 
     @server.tool(
         name="scenario",
@@ -130,12 +139,14 @@ def create_server():
         inputs: dict[str, Any],
         available: str | None = None,
     ) -> dict[str, Any]:
-        conn = _conn()
-        try:
-            body = scenario_payload(conn, scenario, inputs, available=available)
-        except ModelError as e:
-            _fail(e)
-        return with_corpus_digest(body, conn)
+        with _db() as conn:
+            try:
+                body = scenario_payload(
+                    conn, scenario, inputs, available=available
+                )
+            except ModelError as e:
+                _fail(e)
+            return with_corpus_digest(body, conn)
 
     @server.tool(
         name="why",
@@ -146,12 +157,12 @@ def create_server():
         ),
     )
     def why(model: str) -> dict[str, Any]:
-        conn = _conn()
-        try:
-            body = why_payload(conn, model)
-        except ModelError as e:
-            _fail(e)
-        return with_corpus_digest(body, conn)
+        with _db() as conn:
+            try:
+                body = why_payload(conn, model)
+            except ModelError as e:
+                _fail(e)
+            return with_corpus_digest(body, conn)
 
     return server
 

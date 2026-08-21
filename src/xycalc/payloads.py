@@ -8,6 +8,8 @@ re-derive this; it reuses these builders.
 
 from __future__ import annotations
 
+import sqlite3
+
 from .export import corpus_blob
 from .model import (
     Model,
@@ -21,12 +23,25 @@ from .model import (
 )
 
 
-def corpus_digest(conn) -> str:
+def _available_bytes(available) -> float | None:
+    """Refuse non-size values the way the HTTP surface does, so MCP and the
+    API cannot disagree about what is unreadable."""
+    if not available:
+        return None
+    if isinstance(available, bool) or not isinstance(available, (str, int, float)):
+        raise ModelError(f"cannot read a size from {available!r}")
+    try:
+        return parse_bytes(available)
+    except (TypeError, ValueError) as e:
+        raise ModelError(str(e)) from e
+
+
+def corpus_digest(conn: sqlite3.Connection) -> str:
     """The same 12-character digest the export blob stamps on the page."""
     return corpus_blob(conn)["corpus_digest"]
 
 
-def with_corpus_digest(body: dict, conn) -> dict:
+def with_corpus_digest(body: dict, conn: sqlite3.Connection) -> dict:
     """Stamp the digest onto a payload. Never optional — two answers from
     different corpora must be distinguishable without diffing the rest."""
     out = dict(body)
@@ -34,7 +49,7 @@ def with_corpus_digest(body: dict, conn) -> dict:
     return out
 
 
-def serialise(result, model: Model, conn) -> dict:
+def serialise(result, model: Model, conn: sqlite3.Connection) -> dict:
     return {
         "model": model.slug,
         "question": model.question,
@@ -107,7 +122,7 @@ def serialise_instance_pick(pick: dict) -> dict:
     }
 
 
-def list_models_payload(conn) -> dict:
+def list_models_payload(conn: sqlite3.Connection) -> dict:
     out = []
     for slug in Model.all(conn):
         m = Model.load(conn, slug)
@@ -125,7 +140,7 @@ def list_models_payload(conn) -> dict:
     return {"models": out}
 
 
-def why_payload(conn, model_slug: str) -> dict:
+def why_payload(conn: sqlite3.Connection, model_slug: str) -> dict:
     model = Model.load(conn, model_slug)
     return {
         "model": model.slug,
@@ -160,22 +175,34 @@ def why_payload(conn, model_slug: str) -> dict:
     }
 
 
-def sizing_payload(conn, model_slug: str, inputs: dict, available: str | None = None) -> dict:
+def sizing_payload(
+    conn: sqlite3.Connection,
+    model_slug: str,
+    inputs: dict,
+    available=None,
+) -> dict:
     model = Model.load(conn, model_slug)
     result = model.evaluate(inputs or {})
     body = serialise(result, model, conn)
-    if available:
-        body["headroom"] = headroom(result, parse_bytes(available))
+    available_bytes = _available_bytes(available)
+    if available_bytes is not None:
+        body["headroom"] = headroom(result, available_bytes)
     return body
 
 
-def scenario_payload(conn, scenario_slug: str, inputs: dict, available: str | None = None) -> dict:
+def scenario_payload(
+    conn: sqlite3.Connection,
+    scenario_slug: str,
+    inputs: dict,
+    available=None,
+) -> dict:
     scenario = get_scenario(scenario_slug)
     if scenario.get("disabled"):
         raise ModelError(f"{scenario['slug']}: not yet modeled")
 
-    available_bytes = parse_bytes(available) if available else None
-    steps = chain_evaluate(conn, scenario, inputs or {}, available=available_bytes)
+    steps = chain_evaluate(
+        conn, scenario, inputs or {}, available=_available_bytes(available)
+    )
 
     body_steps = []
     for s in steps:

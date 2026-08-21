@@ -262,11 +262,27 @@ its share, not 80–90%**, specifically to leave page-cache room for
 neighbors — a materially different number than the 80–90% you might use for a
 MongoDB-only box.
 
+**Measured (investigation 009 / ROADMAP T11, 2026-08-21):** on AWS
+`r6i.2xlarge` (64 GiB) with Mongo+Redis+ClickHouse+Celery, `MONGO_MEM=8g`,
+OVERSUB=2.5, WT share swept 50%→80%, **neighbor RSS was flat** — Redis
+~4–5 MiB, Celery ~115–123 MiB, ClickHouse ~340–365 MiB — while mongod under
+load sat at ~0.81× configured cache. Raising WT past the vendor 50–70% band
+did not register as measurable neighbor RSS pressure under that harness.
+Caveat (named in FINDINGS): mem_limits summed to ~22 GiB on a 64 GiB host, so
+this was not a host-ceiling fight. Treat as a **documented absence of
+neighbor RSS effect** under that harness, not a replacement coefficient for
+the 50–70% band. See
+`docs/investigations/009-colocation-share/FINDINGS.md`.
+
 **Practical caps to set explicitly:**
 - **WiredTiger:** don't rely on the auto-detected default in a
   container/cgroup context — it can misdetect the true limit. Set
-  `--wiredTigerCacheSizeGB` explicitly, sized to 50–70% of MongoDB's *share*
-  of RAM (not 50–70% of total system RAM).
+  `--wiredTigerCacheSizeGB` explicitly, sized to a deliberate share of
+  MongoDB's *own* RAM (not of total system RAM). Vendor narrative remains
+  50–70%; 009 did not produce a measured replacement % for that band.
+- **Still decide the share explicitly** — 009 only falsifies "neighbors'
+  RSS will move when you raise WT share past 70%" under its harness, not
+  "leave Mongo on the auto default and hope."
 - **ClickHouse:** lower `max_server_memory_usage_to_ram_ratio` below 0.9 —
   Altinity's own incident writeup ("Rescuing ClickHouse from the Linux OOM
   killer") describes exactly this failure mode, and notes ClickHouse's
@@ -294,25 +310,26 @@ actually applying them to a Mongo+Redis+ClickHouse combination**, and no
 MongoDB-specific NUMA-pinning deployment recipe was found either — this
 remains a build-it-yourself step.
 
-**Still genuinely unanswered after two research passes:**
-- No real-world case study, postmortem, or architecture writeup of MongoDB
-  co-located specifically with Redis and/or ClickHouse was found (the Altinity
-  OOM postmortem is ClickHouse-only).
-- No concrete threshold or signal for *when* growing scale forces splitting
-  ClickHouse or Redis off onto a separate host — only static sizing/isolation
-  guidance exists, not a decision framework for when co-location itself breaks
-  down.
+**Still genuinely unanswered after two research passes (+ 009 measurement):**
+- No public case study / postmortem of Mongo+Redis+ClickHouse colocation was
+  found in the research passes (Altinity OOM is ClickHouse-only). The
+  repo now has its own measurement (009) for neighbor *RSS* under a share
+  sweep — still not a published third-party recipe.
+- No concrete threshold for *when* growing scale forces splitting ClickHouse
+  or Redis off-box. 009 also did not contest the host RAM ceiling, so that
+  decision framework remains open.
 - No claim addressed memory-*bandwidth* contention specifically (as opposed to
   capacity/page-cache contention) between WiredTiger and ClickHouse's
   vectorized scan engine, despite this being asked directly.
 
-**Practical starting allocation, derived (not independently sourced) from the
-above:** on a box sized for MongoDB's working set per §2, treat that sizing as
-MongoDB's *share* only, then add headroom on top for Redis (`maxmemory` +
-20%), ClickHouse (server cap explicitly lowered, well under 90%), Celery
-worker RSS × concurrency, and OS overhead. Don't reuse the same "50% of total
-RAM" WiredTiger number from a MongoDB-only box — recompute it as 50–70% of
-MongoDB's *carved-out share*, not of the whole instance.
+**Practical starting allocation:** on a box sized for MongoDB's working set
+per §2, treat that sizing as MongoDB's *share* only, then add headroom for
+Redis (`maxmemory` + 20%), ClickHouse (server cap explicitly lowered, well
+under 90%), Celery worker RSS × concurrency, and OS overhead. Don't reuse the
+"50% of total RAM" WiredTiger number from a MongoDB-only box — recompute as a
+share of MongoDB's *carved-out* allocation. Prefer the vendor 50–70% band as
+a starting point until a host-ceiling colocation run exists; do not treat
+009's flat neighbor RSS as license to push WT to 80%+ on a tight box.
 
 ---
 
@@ -478,10 +495,11 @@ high-throughput/low-IOPS configuration is the wrong shape for this workload.
 4. U7i's $/GB-RAM rate relative to r8i's flat $0.0087/GB-hr on-demand hasn't
    been independently confirmed — treat the ~$125/hr u7i-12tb on-demand figure
    as provisional (medium confidence).
-5. **No real-world case study exists of MongoDB co-located with Redis and/or
-   ClickHouse specifically** — colocation guidance in §7 is per-service,
-   composed by this research, not found as a combined recipe. No threshold was
-   found for *when* to split ClickHouse or Redis off-box as scale grows.
+5. **No public third-party case study of Mongo+Redis+ClickHouse colocation**
+   — §7 guidance was composed from per-service sources. Investigation 009
+   now supplies an in-repo share-sweep measurement (neighbor RSS flat
+   50→80% under that harness; host ceiling not contested). Threshold for
+   *when* to split services off-box remains open.
 6. Exact r8i SKU list above r8i.32xlarge (does r8i.64xlarge exist?) needs
    confirming against AWS's live instance list.
 7. The GP3-striping research pass's automated synthesis broke (see §9 note) —
