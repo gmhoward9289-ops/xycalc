@@ -1,0 +1,17 @@
+observations:
+- slug: reef-t4-ckpt-p99-ratio-480s-2026-08-21
+  parameter: storage.checkpoint_p99_latency_ratio
+  value: 1.016
+  unit: ratio
+  workload: >-
+    ticket_probe timeseries c=8 seconds=480 docs=800000 oversub=2.25×
+    read throttle 8 MiB/s / 150 IOPS
+  system: mongodb
+  machine_class: reef Docker Desktop
+  system_version: '7.0.40'
+  observed_on: '2026-08-21'
+  source: obs-reef-checkpoint-timeseries-2026-08-21
+  notes: >-
+    ckptP99RatioDuringOverOutside=1.016 with 7 checkpoints observed,
+    wroteDuringCheckpoint=true. Mean latency 73.4 ms, ~109 ops/s.
+    No material checkpoint sawtooth at 1s buckets under this harness.

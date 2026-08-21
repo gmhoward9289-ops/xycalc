@@ -1,0 +1,13 @@
+sources:
+- slug: obs-reef-checkpoint-timeseries-2026-08-21
+  title: T4 checkpoint sawtooth timeseries soak on reef
+  publisher: xycalc project
+  version: tools/bench/ticket_probe.sh PROBE_MODE=timeseries
+  retrieved_on: '2026-08-21'
+  source_type: benchmark
+  notes: >-
+    Investigation 022 / ROADMAP T4 via tools/bench/ticket_probe.sh
+    PROBE_MODE=timeseries. MongoDB 7.0.40 reef Docker, 800k docs (2.25× oversub
+    on 0.25 GB cache), concurrency=8, PROBE_SECONDS=480. checkpointsObserved=7,
+    guards_ok. Artifact:
+    docs/investigations/022-checkpoint-sawtooth/artifacts/reef-t4-480s-20260821.json

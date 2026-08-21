@@ -1,0 +1,87 @@
+observations:
+- slug: reef-t10-parts-delay-23-3-2026-08-21
+  parameter: clickhouse.parts_to_delay_insert
+  value: 150
+  unit: count
+  workload: clickhouse_probe settings query (MergeTree)
+  system: clickhouse
+  machine_class: reef Docker Desktop
+  system_version: '23.3'
+  observed_on: '2026-08-21'
+  source: obs-reef-clickhouse-parts-2026-08-21
+  notes: Pre-23.6 default; companion throw=300.
+- slug: reef-t10-parts-throw-23-3-2026-08-21
+  parameter: clickhouse.parts_to_throw_insert
+  value: 300
+  unit: count
+  workload: clickhouse_probe settings query (MergeTree)
+  system: clickhouse
+  machine_class: reef Docker Desktop
+  system_version: '23.3'
+  observed_on: '2026-08-21'
+  source: obs-reef-clickhouse-parts-2026-08-21
+- slug: reef-t10-parts-delay-24-8-2026-08-21
+  parameter: clickhouse.parts_to_delay_insert
+  value: 1000
+  unit: count
+  workload: clickhouse_probe settings query (MergeTree)
+  system: clickhouse
+  machine_class: reef Docker Desktop
+  system_version: '24.8'
+  observed_on: '2026-08-21'
+  source: obs-reef-clickhouse-parts-2026-08-21
+  notes: Post-23.6 default; companion throw=3000. Tenfold vs 23.3.
+- slug: reef-t10-parts-throw-24-8-2026-08-21
+  parameter: clickhouse.parts_to_throw_insert
+  value: 3000
+  unit: count
+  workload: clickhouse_probe settings query (MergeTree)
+  system: clickhouse
+  machine_class: reef Docker Desktop
+  system_version: '24.8'
+  observed_on: '2026-08-21'
+  source: obs-reef-clickhouse-parts-2026-08-21
+- slug: reef-t10-peak-parts-23-3-batch1-2026-08-21
+  parameter: clickhouse.peak_active_parts
+  value: 19
+  unit: count
+  workload: >-
+    clickhouse_probe batch=1 rows=500000 writers=16 async_insert=0
+    single partition, default merges
+  system: clickhouse
+  machine_class: reef Docker Desktop
+  system_version: '23.3'
+  observed_on: '2026-08-21'
+  source: obs-reef-clickhouse-parts-2026-08-21
+  notes: >-
+    peakActiveParts=19 << delay=150. Delay onset not observed under these knobs.
+- slug: reef-t10-peak-parts-24-8-batch1-2026-08-21
+  parameter: clickhouse.peak_active_parts
+  value: 18
+  unit: count
+  workload: >-
+    clickhouse_probe batch=1 rows=500000 writers=16 async_insert=0
+    single partition, default merges (wave12-r9)
+  system: clickhouse
+  machine_class: reef Docker Desktop
+  system_version: '24.8'
+  observed_on: '2026-08-21'
+  source: obs-reef-clickhouse-parts-2026-08-21
+  notes: >-
+    peakActiveParts=18 << delay=1000. Same non-onset as 23.3 at this scale.
+    r8 measured 21 under the same knobs — both ≪ threshold.
+- slug: reef-t10-peak-parts-23-3-batch10-2026-08-21
+  parameter: clickhouse.peak_active_parts
+  value: 192
+  unit: count
+  workload: >-
+    clickhouse_probe batch=10 rows=500000 writers=16 async_insert=0
+    single partition, default merges (wave12-r9)
+  system: clickhouse
+  machine_class: reef Docker Desktop
+  system_version: '23.3'
+  observed_on: '2026-08-21'
+  source: obs-reef-clickhouse-parts-2026-08-21
+  notes: >-
+    peakActiveParts=192 crossed parts_to_delay_insert=150. Companion 24.8
+    batch=10 peak was 22 (below its delay=1000).

@@ -106,7 +106,15 @@ parameters:
     notes: >-
       Write-heavy workloads hit this long before they fill the cache. A cache
       sized purely on total bytes can still throttle at 20% occupancy if all
-      of it is dirty.
+      of it is dirty. Distinct from cache.tracked_dirty_pct_peak (observed).
+
+  - slug: cache.tracked_dirty_pct_peak
+    label: Peak tracked dirty bytes (% of cache)
+    unit: percent
+    dimension: percent
+    notes: >-
+      Max of wiredTiger.cache["tracked dirty bytes in the cache"] /
+      maximum bytes configured over a probe window (investigation 014 / T3).
 
   - slug: cache.pages_read_per_op
     label: Pages read into cache per operation
@@ -117,6 +125,13 @@ parameters:
       cache divided by operations. Near zero means the working set is resident;
       rising with oversubscription means each lookup pays for more device I/O.
 
+  - slug: storage.checkpoint_interval_seconds
+    label: WiredTiger checkpoint interval
+    unit: seconds
+    dimension: seconds
+    notes: >-
+      MongoDB storage.syncPeriodSecs / --syncdelay default. How often mongod
+      asks WiredTiger to write a durable checkpoint.
   # -- host -------------------------------------------------------------
   - slug: host.ram_bytes
     label: Host RAM
@@ -259,6 +274,11 @@ parameters:
     unit: seconds
     dimension: seconds
 
+  - slug: storage.checkpoint_p99_latency_ratio
+    label: p99 latency during checkpoint ÷ outside checkpoint
+    unit: ratio
+    dimension: ratio
+
   # -- Celery / Redis broker ---------------------------------------------
   - slug: queue.prefetch_reserved_tasks
     label: Tasks reserved off-queue per worker (prefetch × concurrency)
@@ -287,6 +307,11 @@ parameters:
 
   - slug: queue.backlog_depth_max
     label: Peak broker queue depth during load
+    unit: tasks
+    dimension: count
+
+  - slug: queue.depth_understatement_max
+    label: Peak (outstanding − broker queue depth) during load
     unit: tasks
     dimension: count
 
@@ -503,3 +528,19 @@ parameters:
     notes: >-
       (1 + YoY growth/100)^years — precomputed bands for multi-year storage
       projection when the model engine cannot exponentiate in one step.
+
+  # -- ClickHouse MergeTree insert parts ---------------------------------
+  - slug: clickhouse.parts_to_delay_insert
+    label: Active parts before insert delay
+    unit: count
+    dimension: count
+
+  - slug: clickhouse.parts_to_throw_insert
+    label: Active parts before insert reject
+    unit: count
+    dimension: count
+
+  - slug: clickhouse.peak_active_parts
+    label: Peak active MergeTree parts during probe
+    unit: count
+    dimension: count
