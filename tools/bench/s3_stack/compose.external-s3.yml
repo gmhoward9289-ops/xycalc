@@ -1,0 +1,14 @@
+# Use with real S3 (no MinIO):
+#   CLICKHOUSE_STORAGE_XML=./clickhouse/config.d/storage.local.xml \
+#   docker compose -f compose.yml -f compose.external-s3.yml up -d --build
+#
+# storage.local.xml must point at the real bucket; see README.md.
+
+services:
+  minio:
+    profiles: ["never"]
+  createbuckets:
+    profiles: ["never"]
+  clickhouse:
+    depends_on: !reset []
+    # MinIO services above are profile-gated off; clear the bucket bootstrap dep.

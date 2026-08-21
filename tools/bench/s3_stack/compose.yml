@@ -1,0 +1,116 @@
+# Mongo 7 + Redis + Celery + ClickHouse with MergeTree parts on S3.
+#
+# Local S3 is MinIO (same protocol ClickHouse uses against real buckets).
+# Intended host: Ubuntu 22.04 + Docker Engine / Compose v2.
+#
+#   cd tools/bench/s3_stack && ./run.sh
+#
+# To aim ClickHouse at a real bucket, copy clickhouse/config.d/storage.xml to
+# clickhouse/config.d/storage.local.xml, edit the endpoint / keys, then:
+#
+#   CLICKHOUSE_STORAGE_XML=./clickhouse/config.d/storage.local.xml \
+#   SKIP_MINIO=1 ./run.sh
+
+name: xycalc-s3-stack
+
+services:
+  minio:
+    image: minio/minio@sha256:14cea493d9a34af32f524e538b8346cf79f3321eff8e708c1e2960462bd8936e
+    command: ["server", "/data", "--address", ":9000", "--console-address", ":9001"]
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadminpassword}
+    mem_limit: ${MINIO_MEM:-512m}
+
+  createbuckets:
+    image: minio/mc@sha256:a7fe349ef4bd8521fb8497f55c6042871b2ae640607cf99d9bede5e9bdf11727
+    depends_on:
+      - minio
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        set -eux
+        i=0
+        until mc alias set local http://minio:9000 "$$MINIO_ROOT_USER" "$$MINIO_ROOT_PASSWORD"; do
+          i=$$((i+1))
+          if [ "$$i" -gt 40 ]; then
+            echo "minio never became ready" >&2
+            exit 1
+          fi
+          sleep 1
+        done
+        mc mb --ignore-existing "local/$$S3_BUCKET"
+        mc anonymous set none "local/$$S3_BUCKET"
+        mc ls "local/$$S3_BUCKET"
+        echo "bucket ready: $$S3_BUCKET"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadminpassword}
+      S3_BUCKET: ${S3_BUCKET:-clickhouse}
+
+  mongo:
+    image: mongo:7
+    command: ["--wiredTigerCacheSizeGB", "${MONGO_CACHE_GB:-0.5}"]
+    mem_limit: ${MONGO_MEM:-1g}
+    memswap_limit: ${MONGO_MEM:-1g}
+
+  redis:
+    image: redis:7-alpine
+    command:
+      - redis-server
+      - --save
+      - ""
+      - --appendonly
+      - "no"
+      - --maxmemory
+      - ${REDIS_MAXMEMORY:-256mb}
+      - --maxmemory-policy
+      - ${REDIS_MAXMEMORY_POLICY:-allkeys-lru}
+    mem_limit: ${REDIS_MEM:-512m}
+
+  clickhouse:
+    image: clickhouse/clickhouse-server:24.8
+    volumes:
+      - ${CLICKHOUSE_STORAGE_XML:-./clickhouse/config.d/storage.xml}:/etc/clickhouse-server/config.d/storage.xml:ro
+    mem_limit: ${CLICKHOUSE_MEM:-2g}
+    memswap_limit: ${CLICKHOUSE_MEM:-2g}
+    ulimits:
+      nofile:
+        soft: 262144
+        hard: 262144
+    depends_on:
+      createbuckets:
+        condition: service_completed_successfully
+
+  worker:
+    build: ../celery_probe
+    command: >-
+      celery -A tasks worker
+      --loglevel=warning
+      --concurrency=${PROBE_CONCURRENCY:-4}
+      --without-gossip --without-mingle --without-heartbeat
+    environment:
+      PROBE_REDIS: redis://redis:6379/0
+      PROBE_MONGO: mongodb://mongo:27017
+      PROBE_DOCS: ${PROBE_DOCS:-100000}
+      PROBE_PREFETCH: ${PROBE_PREFETCH:-4}
+      PROBE_ACKS_LATE: ${PROBE_ACKS_LATE:-1}
+      PROBE_VISIBILITY_TIMEOUT: ${PROBE_VISIBILITY_TIMEOUT:-30}
+    depends_on: [redis, mongo]
+    mem_limit: ${WORKER_MEM:-1g}
+
+  driver:
+    build: ../celery_probe
+    command: ["python", "drive.py"]
+    environment:
+      PROBE_REDIS: redis://redis:6379/0
+      PROBE_MONGO: mongodb://mongo:27017
+      PROBE_DOCS: ${PROBE_DOCS:-1500000}
+      PROBE_RATES: ${PROBE_RATES:-50}
+      PROBE_SECONDS: ${PROBE_SECONDS:-30}
+      PROBE_ACKS_LATE: ${PROBE_ACKS_LATE:-1}
+      PROBE_VISIBILITY_TIMEOUT: ${PROBE_VISIBILITY_TIMEOUT:-30}
+      PROBE_MIN_OVERSUB: ${PROBE_MIN_OVERSUB:-2.0}
+    depends_on: [redis, mongo, worker]
+    profiles: ["driver"]
+    mem_limit: ${WORKER_MEM:-1g}
