@@ -807,14 +807,15 @@ const XYCALC_APP = (() => {
       }
       const size = normalizeSimpleSize(sizeRaw);
       const defaults = SCENARIO_DEFAULTS["mongodb.size-to-instance"] || {};
-      const baselineVulns = vulns || defaults.baseline_vuln_count || "250000";
-      // Same corpus chain as Advanced — but Simple answers "today's footprint":
-      // no demo index/foreign pads, and target == baseline so the 3-year growth
-      // path does not inflate a measured size. Advanced is where those live.
+      const corpusBaseline = defaults.baseline_vuln_count || "250000";
+      const targetVulns = (vulns || "").replace(/,/g, "") || corpusBaseline;
+      // Size is today's measured footprint. A filled record count is the
+      // target: storage scales by target / corpus baseline (250000). Blank
+      // keeps target == baseline so the host is today's size.
       const inputs = {
         baseline_storage_size: size,
-        baseline_vuln_count: baselineVulns,
-        target_vuln_count: baselineVulns,
+        baseline_vuln_count: corpusBaseline,
+        target_vuln_count: targetVulns,
       };
       try {
         const data = applySimpleHostFloor(
@@ -823,6 +824,19 @@ const XYCALC_APP = (() => {
         renderSimpleResult(data);
         const as = size !== sizeRaw ? ` (read as ${size})` : "";
         status.textContent = "Up to date" + as + " — change a field to recalculate.";
+        const note = document.getElementById("simple-vuln-note");
+        if (note) {
+          if (vulns) {
+            const t = Number(targetVulns);
+            const b = Number(corpusBaseline);
+            const ratio = b ? t / b : 1;
+            note.hidden = false;
+            note.textContent = "Sizing for " + t.toLocaleString() + " records (" + ratio.toFixed(2) + "\u00d7 the " + b.toLocaleString() + " corpus baseline).";
+          } else {
+            note.hidden = true;
+            note.textContent = "";
+          }
+        }
         if (document.body.classList.contains("mode-simple")) scheduleHash();
       } catch (e) {
         $("simple-result").hidden = true;
