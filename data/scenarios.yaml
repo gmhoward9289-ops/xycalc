@@ -159,10 +159,15 @@ scenarios:
           after VolumeIOPSExceededCheck / VolumeThroughputExceededCheck say you
           are actually hitting a volume limit rather than an instance pipe.
 
-  - slug: clickhouse.stub
-    label: ClickHouse
-    disabled: true
-    note: Stub. No coefficients yet.
+  - slug: clickhouse.parts-insert-ceiling
+    label: ClickHouse insert part-count ceiling
+    summary: >-
+      At how many active parts per partition ClickHouse rejects inserts — and
+      the 10× default jump at 23.6 that makes an unversioned answer wrong.
+    steps:
+      - kind: model
+        model: clickhouse.parts-insert-ceiling
+
   - slug: redis.stub
     label: Redis
     disabled: true

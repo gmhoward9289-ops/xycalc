@@ -52,7 +52,12 @@ systems:
   - slug: clickhouse
     label: ClickHouse
     category: database
-    notes: Stub. No coefficients yet.
+    notes: >-
+      Investigation 012 started: MergeTree parts_to_delay_insert /
+      parts_to_throw_insert defaults landed as code-graded coefficients across
+      the 23.6 boundary (150/300 → 1000/3000). Model
+      clickhouse.parts-insert-ceiling answers the reject ceiling; measured
+      insert-frequency floor waits on tools/bench/clickhouse_probe.sh.
 
   - slug: redis
     label: Redis

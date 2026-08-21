@@ -1,84 +1,106 @@
 #!/usr/bin/env bash
-# Issue #18 / T10 — ClickHouse insert-frequency / parts ceiling.
+# Disposable ClickHouse insert/part-pressure probe for investigation 012 (T10).
 #
-# Pins two images (pre-23.6 and 23.6+) and asserts their
-# parts_to_delay_insert / parts_to_throw_insert defaults differ before sweeping.
+#   ./tools/bench/clickhouse_probe.sh                 # full dual-image sweep
+#   PROBE_SMOKE=1 ./tools/bench/clickhouse_probe.sh   # one image, short budget
 #
-#   ./tools/bench/clickhouse_probe.sh
-#   PROBE_ROWS=50000 PROBE_BATCHES=1,10,100 PROBE_IMAGES=23.3,24.8 \
-#     PROBE_STEP_TIMEOUT=30 ./tools/bench/clickhouse_probe.sh   # smoke
+# Starts a uniquely-named ClickHouse container (CPU/memory pinned), runs
+# tools/bench/clickhouse_probe.py from a sibling Python driver container with
+# a persistent clickhouse-connect client, prints JSON after ===JSON===, and
+# removes both containers + network on exit.
+#
+# Do NOT trust image tags for parts_to_* defaults — the Python harness queries
+# system.merge_tree_settings and refuses to conclude if the live values do not
+# match the expected side of the 23.6 boundary.
 set -euo pipefail
 
 NAME="${PROBE_NAME:-xycalc-ch-probe-$$-$(date +%s)}"
-PY_IMAGE="${PROBE_PY_IMAGE:-python:3.12-slim}"
-IMAGES="${PROBE_IMAGES:-clickhouse/clickhouse-server:23.3,clickhouse/clickhouse-server:24.8}"
+NET="${NAME}-net"
+DRIVER="${NAME}-driver"
 CPUS="${PROBE_CPUS:-2}"
 MEMORY="${PROBE_MEMORY:-2g}"
+WRITERS="${PROBE_WRITERS:-8}"
+ROWS="${PROBE_ROWS:-300000}"
+STEP_CAP="${PROBE_STEP_CAP_S:-120}"
+BATCHES="${PROBE_BATCHES:-1,10,100,1000,10000,100000}"
+
+# Dual-image by default: one pre-23.6, one 23.6+. Smoke uses the post side only.
+PRE_IMAGE="${PROBE_PRE_IMAGE:-clickhouse/clickhouse-server:23.3}"
+POST_IMAGE="${PROBE_POST_IMAGE:-clickhouse/clickhouse-server:24.8}"
+PY_IMAGE="${PROBE_PY_IMAGE:-python:3.12-slim}"
 
 here="$(cd "$(dirname "$0")" && pwd)"
 
 cleanup() {
-    # shellcheck disable=SC2086
-    for img in ${NAME}-23 ${NAME}-24 ${NAME}-a ${NAME}-b ${NAME}-driver; do
-        docker rm -f "$img" >/dev/null 2>&1 || true
-    done
-    docker rm -f "$NAME-driver" >/dev/null 2>&1 || true
-    # Remove any containers we started with prefix.
-    docker ps -aq --filter "name=${NAME}" | xargs -r docker rm -f >/dev/null 2>&1 || true
+    docker rm -f "$DRIVER" "$NAME" >/dev/null 2>&1 || true
+    docker network rm "$NET" >/dev/null 2>&1 || true
 }
 trap cleanup EXIT
 
-docker run -d --name "${NAME}-driver" "$PY_IMAGE" sleep infinity >/dev/null
-docker exec "${NAME}-driver" pip install --quiet --no-cache-dir clickhouse-connect >&2
-docker cp "$here/clickhouse_probe.py" "${NAME}-driver:/tmp/clickhouse_probe.py"
+if docker ps --format '{{.Names}}' | grep -q '^xycalc-ch-probe'; then
+    echo "note: another clickhouse_probe run is active on this host. Proceeding —" >&2
+    echo "      names are unique per run — but the two will contend for CPU." >&2
+fi
 
-IFS=',' read -r -a imgs <<< "$IMAGES"
-results_dir="$(mktemp -d)"
-i=0
-for image in "${imgs[@]}"; do
-    image="${image// /}"
-    cname="${NAME}-ch${i}"
-    echo "=== image $image as $cname ===" >&2
-    docker run -d --name "$cname" \
-        --cpus="$CPUS" --memory="$MEMORY" --memory-swap="$MEMORY" \
-        -p "0:8123" \
+run_one() {
+    local image="$1"
+    local expect_side="$2"   # pre23_6 | post23_6
+
+    cleanup
+    docker network create "$NET" >/dev/null
+
+    {
+        echo "image       $image  (expect $expect_side defaults)"
+        echo "resources   ${CPUS} cpus, ${MEMORY} memory"
+        echo "workload    ${ROWS} rows, batches=${BATCHES}, writers=${WRITERS}, step_cap=${STEP_CAP}s"
+    } >&2
+
+    docker run -d --name "$NAME" --network "$NET" \
+        --cpus="$CPUS" --memory "$MEMORY" --memory-swap "$MEMORY" \
+        --ulimit nofile=262144:262144 \
         "$image" >/dev/null
-    # Wait for HTTP.
+
+    # Wait for HTTP ping rather than sleeping and hoping.
     for _ in $(seq 1 60); do
-        if docker exec "$cname" wget -q -O- 'http://127.0.0.1:8123/ping' 2>/dev/null | grep -q Ok; then
+        if docker exec "$NAME" wget -q -O- 'http://127.0.0.1:8123/ping' \
+            2>/dev/null | grep -q Ok; then
             break
         fi
-        # Some images lack wget; try clickhouse-client.
-        if docker exec "$cname" clickhouse-client -q 'SELECT 1' >/dev/null 2>&1; then
+        # Some images lack wget; fall back to clickhouse-client.
+        if docker exec "$NAME" clickhouse-client -q 'SELECT 1' \
+            >/dev/null 2>&1; then
             break
         fi
         sleep 1
     done
-    ip="$(docker inspect -f '{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}' "$cname")"
-    out="$results_dir/ch${i}.json"
-    docker exec \
-        -e PROBE_CH_URL="http://${ip}:8123" \
-        -e PROBE_CH_IMAGE="$image" \
-        -e PROBE_ROWS="${PROBE_ROWS:-300000}" \
-        -e PROBE_BATCHES="${PROBE_BATCHES:-1,10,100,1000,10000,100000}" \
-        -e PROBE_WRITERS="${PROBE_WRITERS:-8}" \
-        -e PROBE_STEP_TIMEOUT="${PROBE_STEP_TIMEOUT:-120}" \
-        "${NAME}-driver" python /tmp/clickhouse_probe.py > "$out"
-    i=$((i + 1))
-done
 
-# Require the two images' settings to differ (guard item 6).
-python - "$results_dir" <<'PY'
-import json, pathlib, sys
-root = pathlib.Path(sys.argv[1])
-docs = [json.loads(p.read_text(encoding="utf-8").split("===JSON===", 1)[-1]) for p in sorted(root.glob("*.json"))]
-if len(docs) < 2:
-    print("REFUSING: need ≥2 images", file=sys.stderr)
-    sys.exit(2)
-a, b = docs[0]["settings"], docs[1]["settings"]
-if a == b:
-    print(f"REFUSING: both images report identical merge_tree settings {a}", file=sys.stderr)
-    sys.exit(2)
-print("===JSON===")
-print(json.dumps({"images": docs, "settingsDiffer": True}, indent=1, default=str))
-PY
+    docker run -d --name "$DRIVER" --network "$NET" \
+        "$PY_IMAGE" sleep infinity >/dev/null
+
+    docker exec "$DRIVER" pip install --quiet --no-cache-dir clickhouse-connect >&2
+    docker cp "$here/clickhouse_probe.py" "$DRIVER:/tmp/clickhouse_probe.py"
+
+    docker exec \
+        -e PROBE_HOST="$NAME" \
+        -e PROBE_EXPECT_SIDE="$expect_side" \
+        -e PROBE_IMAGE="$image" \
+        -e PROBE_CPUS="$CPUS" \
+        -e PROBE_MEMORY="$MEMORY" \
+        -e PROBE_WRITERS="$WRITERS" \
+        -e PROBE_ROWS="$ROWS" \
+        -e PROBE_STEP_CAP_S="$STEP_CAP" \
+        -e PROBE_BATCHES="$BATCHES" \
+        "$DRIVER" python /tmp/clickhouse_probe.py
+}
+
+if [ "${PROBE_SMOKE:-0}" = "1" ]; then
+    ROWS="${PROBE_ROWS:-30000}"
+    BATCHES="${PROBE_BATCHES:-1,100,1000}"
+    STEP_CAP="${PROBE_STEP_CAP_S:-30}"
+    export PROBE_ROWS="$ROWS" PROBE_BATCHES="$BATCHES" PROBE_STEP_CAP_S="$STEP_CAP"
+    run_one "$POST_IMAGE" post23_6
+else
+    run_one "$PRE_IMAGE" pre23_6
+    echo >&2
+    run_one "$POST_IMAGE" post23_6
+fi

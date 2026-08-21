@@ -291,6 +291,14 @@ figures for the `nvme-ssd` stub.
 
 ## T10 — ClickHouse: how few inserts per second is too many?
 
+**Status (2026-08-21).** Investigation 012 started. Code-graded
+`parts_to_delay_insert` / `parts_to_throw_insert` coefficients (150/300 →
+1000/3000 at 23.6) and model `clickhouse.parts-insert-ceiling` are in the
+corpus (`unvalidated (n=0)`). Harness `tools/bench/clickhouse_probe.sh`
+hardened past the staged skeleton on main; dual-image sweep outstanding on
+a Docker host that can pull ClickHouse images. Measured
+`clickhouse.insert-batch-floor` waits on that run.
+
 **Question.** At what insert frequency does part count outrun merges and
 inserts start being delayed, then rejected?
 

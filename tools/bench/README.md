@@ -7,6 +7,8 @@ same workload driven by a Celery fleet instead of raw threads),
 `colocation_probe/` (Mongo + Redis + ClickHouse + Celery RSS on one host),
 `s3_stack/` (same four services with ClickHouse on S3/MinIO — `./run.sh` smoke,
 `./perf.sh` for idle/loaded/under_load measurement),
+`clickhouse_probe.sh` (investigation 012 / T10 — fixed-row batch-size sweep
+against MergeTree part thresholds on pre- and post-23.6 images),
 `mongodb_load.js` (seeds a collection sized to fit comfortably in cache, for
 validating the decompression/index terms), `mongodb_saturated_cache.sh` (seeds
 a collection deliberately larger than the configured cache, for validating the
@@ -121,6 +123,24 @@ CONFIRM_T9C_LAUNCH=1 T9_ARM_AB_DONE=1 ./tools/bench/_aws_t9c_launch.sh
 
 `m6i.large` + dedicated gp3 data volume; watcher terminates on DONE/FAIL and
 enforces a soft max-hours cap (~$5).
+
+### clickhouse_probe (T10 / #18 — insert part-count ceiling)
+
+```bash
+# Full dual-image sweep (pre-23.6 + 23.6+), ~minutes; needs Docker
+./tools/bench/clickhouse_probe.sh > /tmp/ch-probe.json
+
+# Smoke: one post-23.6 image, short row budget
+PROBE_SMOKE=1 ./tools/bench/clickhouse_probe.sh
+```
+
+Pinned `--cpus` / `--memory` (default 2 / 2g). Queries live
+`system.merge_tree_settings` and refuses to run if they do not match the
+expected side of 23.6. Guards: `async_insert=0`, single partition, batch=1 must
+cross `parts_to_delay_insert` or the harness exits with REFUSING TO CONCLUDE.
+JSON after `===JSON===`. Measured inserts/sec floors must land with
+hardware-scoped `applies_to` — see
+`docs/plans/issue-18-clickhouse-insert-batch-floor.md`.
 
 ### cache_cliff_probe (T1 / #9)
 

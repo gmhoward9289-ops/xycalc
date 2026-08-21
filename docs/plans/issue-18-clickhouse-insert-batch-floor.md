@@ -1,7 +1,11 @@
 # Plan — Issue #18 / Roadmap T10: ClickHouse insert-frequency ceiling
 
-Status: proposal only. Nothing here has been run. No figure below is in the
-corpus yet.
+Status: in progress (2026-08-21). Code-graded threshold coefficients and
+`clickhouse.parts-insert-ceiling` model landed (investigation 012). Harness
+`tools/bench/clickhouse_probe.{sh,py}` hardened with the §4 guards (replaces
+the staged skeleton). Dual-image sweep not yet published — run on a Docker
+host that can extract ClickHouse images (cloud agent VM blocked on overlayfs
+whiteouts).
 
 ## 1. The question, as a person would ask it
 
@@ -208,10 +212,9 @@ container required) —
   `clickhouse.active_parts_throw_threshold` (dimension: count).
 - New file `data/coefficients/clickhouse.yaml` and `data/models/clickhouse.yaml`
   — this system currently has zero coefficients, so these are the first.
-  New investigation directory, next available number as of this writing —
-  `docs/investigations/005-clickhouse-insert-batch-floor/` — **check for
-  collisions before creating it**, other roadmap items being planned in this
-  same session may also claim a 005 slot.
+  Investigation directory:
+  `docs/investigations/012-clickhouse-insert-batch-floor/` (010 was taken by
+  compression-shape; 011 by azure-premium-v2).
 
 **Requires the benchmark:** a `clickhouse.insert-batch-floor` model
 (`data/models/clickhouse.yaml`) carrying the measured crossover — the

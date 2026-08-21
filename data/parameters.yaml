@@ -492,3 +492,30 @@ parameters:
     notes: >-
       (1 + YoY growth/100)^years — precomputed bands for multi-year storage
       projection when the model engine cannot exponentiate in one step.
+
+  # -- ClickHouse MergeTree insert backpressure ---------------------------
+  - slug: clickhouse.active_parts_delay_threshold
+    label: Active parts per partition before insert delay
+    unit: count
+    dimension: count
+    notes: >-
+      MergeTree setting parts_to_delay_insert. When active parts in a single
+      partition reach this count, INSERTs are artificially slowed so merges can
+      catch up. Defaults jumped from 150 to 1000 at ClickHouse 23.6.
+
+  - slug: clickhouse.active_parts_throw_threshold
+    label: Active parts per partition before insert reject
+    unit: count
+    dimension: count
+    notes: >-
+      MergeTree setting parts_to_throw_insert. Above this active-part count in
+      one partition, INSERT raises "Too many parts". Defaults jumped from 300
+      to 3000 at ClickHouse 23.6.
+
+  - slug: clickhouse.max_insert_delay_seconds
+    label: Max artificial INSERT delay under part pressure
+    unit: seconds
+    dimension: seconds
+    notes: >-
+      MergeTree setting max_delay_to_insert — upper bound on how long ClickHouse
+      will sleep an INSERT when parts_to_delay_insert has been crossed.

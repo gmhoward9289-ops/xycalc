@@ -137,17 +137,35 @@ class TestModels:
         assert not [r["key"] for r in unused]
 
 
-class TestStubs:
-    @pytest.mark.parametrize("slug", ["clickhouse"])
-    def test_deferred_systems_exist_and_are_honestly_empty(self, conn, slug):
-        """Named so the roadmap is visible, empty so nothing reads as
-        researched when it is not."""
+class TestClickHouse:
+    """Investigation 012 / T10 — first ClickHouse coefficients."""
+
+    def test_parts_thresholds_span_the_23_6_boundary(self, conn):
+        """The whole point of landing these first: the tenfold default jump."""
+        delay_pre = conn.execute(
+            "SELECT value_mode FROM coefficient "
+            "WHERE slug = 'clickhouse.parts-to-delay-insert-pre-23.6'"
+        ).fetchone()["value_mode"]
+        delay_post = conn.execute(
+            "SELECT value_mode FROM coefficient "
+            "WHERE slug = 'clickhouse.parts-to-delay-insert-23.6-plus'"
+        ).fetchone()["value_mode"]
+        throw_pre = conn.execute(
+            "SELECT value_mode FROM coefficient "
+            "WHERE slug = 'clickhouse.parts-to-throw-insert-pre-23.6'"
+        ).fetchone()["value_mode"]
+        throw_post = conn.execute(
+            "SELECT value_mode FROM coefficient "
+            "WHERE slug = 'clickhouse.parts-to-throw-insert-23.6-plus'"
+        ).fetchone()["value_mode"]
+        assert (delay_pre, delay_post) == (150, 1000)
+        assert (throw_pre, throw_post) == (300, 3000)
+
+    def test_parts_insert_ceiling_model_exists(self, conn):
         row = conn.execute(
-            "SELECT COUNT(*) AS n FROM coefficient c "
-            "JOIN system s ON s.id = c.system_id WHERE s.slug = ?",
-            (slug,),
+            "SELECT slug FROM model WHERE slug = 'clickhouse.parts-insert-ceiling'"
         ).fetchone()
-        assert row["n"] == 0
+        assert row is not None
 
 
 class TestEbs:
