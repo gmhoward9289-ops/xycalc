@@ -78,6 +78,21 @@ xycalc export --out page.html    # the calculator as one static file
 Flags for `sizing`, `headroom`, and `scenario` are generated from each model's
 (or scenario's) declared inputs, so **a new model is YAML, never code**.
 
+## MCP
+
+The same surface as MCP tools, so an assistant answers WITH the citation chain
+instead of from vibes. Optional extra — no new runtime dependency on the core:
+
+```bash
+pip install -e ".[mcp]"
+```
+
+Entry point `xycalc-mcp` (stdio). Tools: `list_models`, `sizing`, `headroom`,
+`scenario`, `why`. Every result carries the lo/mode/hi band, unit-labeled
+steps, per-term sources/quotes/versions, the verbatim validation grade, and
+`corpus_digest`. Unvalidated models say `unvalidated (n=0)` in the result;
+omitting that would read as a validated answer.
+
 ## The calculator
 
 `xycalc gui` serves it from FastAPI; `xycalc export` writes the same page as a
