@@ -3,6 +3,11 @@
 All notable changes to the **xycalc tool** (not the corpus) are recorded here.
 Corpus identity is `corpus_digest` on the exported page. See `docs/VERSIONING.md`.
 
+## 0.2.0
+
+- Export and `Model` now carry each model's `notes` field (additive blob
+  surface for calculator education text already stored in corpus YAML)
+
 ## 0.1.1
 
 - Fix empty Celery (and other citation-only) scenario panels: hide the blank

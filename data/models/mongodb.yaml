@@ -49,6 +49,45 @@ models:
       ratio bypassed once that flag exists; for now, divide it by 2.5 first
       and the model reverses the arithmetic exactly.
 
+      --- Eviction variables (how to use them) ---
+
+      eviction_target (default 80): the occupancy WiredTiger *works to hold*.
+      Example — after a full scan of an oversubscribed working set on reef
+      (2026-08-19, 8 GiB cache, 20 GB data) resident bytes settled at 80.55%
+      of configured cache. The ÷0.8 term in this model is that headroom:
+      contents of N want about N/0.8 configured so workers are not permanently
+      fighting.
+
+      eviction_trigger (default 95): past this, application threads do eviction.
+      Example — diagnose latency spikes with
+      serverStatus().wiredTiger.cache['pages evicted by application threads']
+      rising, not with RSS alone.
+
+      The 80→90% band: workers are active above target; 90% is closer to the
+      conscription cliff than to a healthy hold. Tuning eviction_target from
+      80 to 90 is a different knob than "we measured occupancy at 90%" —
+      measure both with tools/bench/occupancy_band_probe.sh. Absolute ops/s
+      on a throttled toy cache are not capacity numbers; the delta between
+      legs is.
+
+      eviction_dirty_target / eviction_dirty_trigger (5 / 20): write path.
+      Example — bulk load with dirty% approaching 20 while total occupancy
+      is still low: writers (and then readers) stall on dirty eviction I/O.
+
+      eviction threads_max (hard ceiling 20): if workers are 20/20 and still
+      losing, more threads are not available — raise IOPS, cut write rate, or
+      enlarge cache / shrink working set.
+
+      tcmalloc (heap_size vs allocated): RSS fragmentation, not WT occupancy.
+      Prefer tcmallocReleaseRate over tcmallocAggressiveMemoryDecommit
+      (vendor: aggressive decommit has large perf cost). Does not add eviction
+      workers.
+
+      MongoDB 7 admission (separate from eviction %): see
+      mongodb.ticket-throughput-ceiling — throughputProbing rests near 4
+      tickets idle and can climb under load without raising ops/s when the
+      device binds (swamplink ticket_probe 2026-08-01).
+
     inputs:
       - key: storage_size
         label: Total collection data on disk — all databases
@@ -168,10 +207,15 @@ models:
         apply: note
         coefficient: mongodb.eviction-trigger-pct
         rationale: >-
-          At 95% cache usage application threads are pulled into eviction.
-          Nothing crashes; queries just get slower, which is why undersized
-          cache is usually diagnosed from a latency graph rather than from a
-          memory one.
+          Ladder, not a single cliff: WiredTiger tries to hold the cache at
+          eviction_target (default 80%). Between ~80% and ~90% background
+          workers are already fighting; at eviction_trigger (default 95%)
+          application threads are conscripted into eviction and query latency
+          is the symptom. Example — if serverStatus shows occupancy climbing
+          through the high 80s with "eviction server unable to reach eviction
+          goal" rising, you are in the danger band before 95%. Raising worker
+          count past WiredTiger's hard max of 20 does not buy another band;
+          size the working set or the device instead. See investigation 007.
 
       - key: dirty_ceiling
         label: The write-heavy ceiling, hit first
@@ -180,9 +224,11 @@ models:
         coefficient: mongodb.eviction-dirty-trigger-pct
         rationale: >-
           Only 20% of the cache may be dirty before application threads are
-          throttled. A bulk load can hit that at 20% total occupancy, so a
-          cache sized correctly by this model can still throttle. Sizing does
-          not settle a write-heavy incident.
+          throttled (dirty target 5%). Example — a bulk load can hit the dirty
+          trigger at ~20% total occupancy while the total-bytes size still
+          looks fine. Sizing from this model does not settle a write-heavy
+          incident; watch tracked dirty bytes and pages evicted by application
+          threads.
 
       - key: vendor_default
         label: What the vendor recommends instead

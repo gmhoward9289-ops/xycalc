@@ -47,6 +47,17 @@ models:
       findings — but it is the difference between a bad hour and an outage, and
       it is measurable with one serverStatus field.
 
+      How the 7.0 throttle causes *contention* in practice (measured, not
+      folklore): on swamplink 2026-08-01, idle totalTickets sat at 4; under a
+      device-throttled oversubscribed read ladder it climbed to 74 at
+      concurrency 64 — and throughput stayed flat (~109–118 ops/s) across the
+      whole sweep. More tickets meant more operations holding a seat while
+      waiting on the same slow device, so client latency rose (~9 ms → ~535 ms)
+      while ops/s did not. That is admission contention layered on storage
+      saturation — distinct from WiredTiger's 80%/95% eviction ladder. If you
+      see eviction workers pegged *and* climbing tickets with flat throughput,
+      fix the device or the working set; do not chase ticket count as capacity.
+
       **Scope: this model is valid wherever the pool is pinned, not wherever
       the version number says 7.0.** A pinned pool is pre-7.0 (statically 128),
       any version with `storageEngineConcurrentReadTransactions` /
