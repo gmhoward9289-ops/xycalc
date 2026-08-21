@@ -164,6 +164,51 @@ def create_server():
                 _fail(e)
             return with_corpus_digest(body, conn)
 
+    @server.tool(
+        name="import_metrics",
+        description=(
+            "Import Grafana Explore CSV, Prometheus query/query_range JSON "
+            "(or OpenMetrics text), or Coralogix metrics JSON into observation "
+            "YAML for validation history. Defaults to local/ (gitignored). "
+            "Pass publish=true only for numbers safe to put on the internet. "
+            "Unmapped series are skipped and listed — extend "
+            "tools/metrics_parameter_map.yaml rather than inventing slugs. "
+            f"{_HONESTY}"
+        ),
+    )
+    def import_metrics(
+        path: str,
+        format: str | None = None,
+        system: str | None = None,
+        parameter: str | None = None,
+        machine_class: str = "unspecified",
+        workload: str = "imported telemetry",
+        system_version: str = "unknown",
+        publish: bool = False,
+    ) -> dict[str, Any]:
+        # Late import: tools/ sits outside the installable package.
+        import sys
+        from pathlib import Path
+
+        tools_dir = Path(__file__).resolve().parent.parent.parent / "tools"
+        if str(tools_dir) not in sys.path:
+            sys.path.insert(0, str(tools_dir))
+        import import_metrics_export as ime  # type: ignore
+
+        fmt = None if format in (None, "auto", "") else format
+        result = ime.import_file(
+            Path(path),
+            format=fmt,
+            system=system,
+            parameter=parameter,
+            machine_class=machine_class,
+            workload=workload,
+            system_version=system_version,
+            publish=publish,
+        )
+        with _db() as conn:
+            return with_corpus_digest(result, conn)
+
     return server
 
 
