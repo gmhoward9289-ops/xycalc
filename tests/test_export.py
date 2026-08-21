@@ -162,6 +162,26 @@ def test_export_blob_carries_scenario_chain(blob):
     assert blob["scenario_golden"]
 
 
+def test_export_blob_carries_occupancy_band(blob):
+    g = blob["occupancy_band"]
+    assert g["model"] == "mongodb.wt-cache"
+    assert g["ladder"]["eviction_target"]["value"] == 80
+    assert g["ladder"]["eviction_trigger"]["value"] == 95
+    assert len(g["passes"]) == 3
+    assert g["passes"][1]["ops_delta_pct"] == 6.73
+    assert g["reef_saturated_occupancy_pct"] == 80.55
+
+
+def test_exported_page_has_flow_and_occupancy_tabs(blob):
+    html = render(blob)
+    assert 'data-tab="flow"' in html
+    assert 'data-tab="occupancy"' in html
+    assert 'id="tab-flow"' in html
+    assert 'id="tab-occupancy"' in html
+    assert "Occupancy bands" in html
+    assert "How it flows" in html
+
+
 def test_closing_script_tags_in_the_corpus_cannot_escape(blob):
     """One `</script>` inside a quote hands the rest of the corpus to the HTML
     parser. Nothing in the corpus contains one today; a quote lifted from an

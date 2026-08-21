@@ -212,6 +212,98 @@ def scenario_golden_vectors(conn: sqlite3.Connection) -> list[dict]:
     return out
 
 
+def _coeff_row(conn: sqlite3.Connection, slug: str) -> dict | None:
+    row = conn.execute(
+        """
+        SELECT c.slug, c.value_mode, c.applies_to, c.quote, c.notes,
+               s.slug AS source, s.title AS source_title, s.url AS source_url
+          FROM coefficient c
+          JOIN source s ON s.id = c.source_id
+         WHERE c.slug = ?
+        """,
+        (slug,),
+    ).fetchone()
+    if row is None:
+        return None
+    return {
+        "slug": row["slug"],
+        "value": row["value_mode"],
+        "applies_to": row["applies_to"],
+        "quote": row["quote"],
+        "notes": row["notes"],
+        "source": row["source"],
+        "source_title": row["source_title"],
+        "source_url": row["source_url"],
+    }
+
+
+def _obs_value(conn: sqlite3.Connection, slug: str) -> float | None:
+    row = conn.execute(
+        "SELECT value FROM observation WHERE slug = ?", (slug,)
+    ).fetchone()
+    return None if row is None else float(row["value"])
+
+
+def occupancy_band_guide(conn: sqlite3.Connection) -> dict:
+    """Structured 007 ladder + measured 80→90 legs for the Occupancy tab.
+
+    Numbers come from coefficients and observations already in the corpus —
+    the page must not invent a second copy of the findings table.
+    """
+    target = _coeff_row(conn, "mongodb.eviction-target-pct")
+    trigger = _coeff_row(conn, "mongodb.eviction-trigger-pct")
+    dirty_target = _coeff_row(conn, "mongodb.eviction-dirty-target-pct")
+    dirty_trigger = _coeff_row(conn, "mongodb.eviction-dirty-trigger-pct")
+    passes = []
+    for label, suffix in (
+        ("smoke 12 s", ""),
+        ("confirm 25 s #1", "-confirm1"),
+        ("confirm 25 s #2", "-confirm2"),
+    ):
+        ops80 = _obs_value(conn, f"swamplink-2026-08-21-occ80-ops{suffix}")
+        ops90 = _obs_value(conn, f"swamplink-2026-08-21-occ90-ops{suffix}")
+        occ80 = _obs_value(conn, f"swamplink-2026-08-21-occ80-occupancy{suffix}")
+        occ90 = _obs_value(conn, f"swamplink-2026-08-21-occ90-occupancy{suffix}")
+        if None in (ops80, ops90, occ80, occ90):
+            continue
+        delta_pct = ((ops90 - ops80) / ops80) * 100.0 if ops80 else None
+        passes.append(
+            {
+                "label": label,
+                "ops_at_80": ops80,
+                "ops_at_90": ops90,
+                "ops_delta_pct": None if delta_pct is None else round(delta_pct, 2),
+                "occ_mean_at_80": occ80,
+                "occ_mean_at_90": occ90,
+                "ops_80_slug": f"swamplink-2026-08-21-occ80-ops{suffix}",
+                "ops_90_slug": f"swamplink-2026-08-21-occ90-ops{suffix}",
+                "occ_80_slug": f"swamplink-2026-08-21-occ80-occupancy{suffix}",
+                "occ_90_slug": f"swamplink-2026-08-21-occ90-occupancy{suffix}",
+            }
+        )
+    reef = _obs_value(conn, "reef-mongo-bench-2026-08-19-eviction-target-actual")
+    return {
+        "model": "mongodb.wt-cache",
+        "source": "obs-mongodb-occupancy-band-swamplink-2026-08-21",
+        "investigation": "007-eviction-band-and-tickets",
+        "ladder": {
+            "eviction_target": target,
+            "eviction_trigger": trigger,
+            "eviction_dirty_target": dirty_target,
+            "eviction_dirty_trigger": dirty_trigger,
+        },
+        "passes": passes,
+        "reef_saturated_occupancy_pct": reef,
+        "verdict": (
+            "Raising eviction_target 80→90 holds the cache fuller under a "
+            "read-miss / throttled workload; ops/s deltas are modest and noisy. "
+            "Do not raise production target to 90 for throughput. The documented "
+            "danger remains 95% (app-thread eviction) and, on MongoDB 7 under "
+            "real concurrency, ticket climb against a saturated device."
+        ),
+    }
+
+
 def corpus_blob(conn: sqlite3.Connection) -> dict:
     slugs = Model.all(conn)
     models = [_model_dict(conn, s) for s in slugs]
@@ -246,6 +338,7 @@ def corpus_blob(conn: sqlite3.Connection) -> dict:
         },
         "default_instance_ceiling_bytes": parse_bytes(DEFAULT_INSTANCE_CEILING),
         "scenario_golden": scenario_golden_vectors(conn),
+        "occupancy_band": occupancy_band_guide(conn),
     }
     # A short digest of the corpus itself (not the vectors), so a reader can
     # tell two exported pages apart without diffing 100 KB of JSON.

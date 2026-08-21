@@ -137,16 +137,23 @@ class TestPage:
         assert r.status_code == 200
         assert "xycalc" in r.text
 
-    def test_the_page_hardcodes_no_corpus_figures(self, client):
-        """Every number on the page must arrive from the API. A figure baked
-        into the HTML bypasses both gates and goes stale silently.
-
-        The favicon is excluded: its coordinates are SVG artwork, not a
-        sizing figure, and "2.5" turning up inside a `rotate(45 26 26)`
-        transform is not the drift this test exists to catch.
+    def test_gui_serves_the_same_calculator_as_export(self, client):
+        """GUI and static deploy share one template. The corpus is compiled into
+        the page (with golden self-check); there is no second API-driven HTML.
         """
-        import re
+        html = client.get("/").text
+        assert 'id="corpus"' in html
+        assert "XY.checkGolden" in html
+        assert 'data-tab="scenario"' in html
+        assert 'data-tab="single"' in html
+        assert 'data-tab="flow"' in html
+        assert 'data-tab="occupancy"' in html
+        assert "occupancy_band" in html
+        assert "mongodb.wt-cache" in html
 
-        html = re.sub(r"<link rel=\"icon\".*?>", "", client.get("/").text)
-        for figure in ("1.6 TB", "1612", "2.5", "987.5"):
-            assert figure not in html, f"{figure!r} is hardcoded in the page"
+    def test_api_corpus_matches_page_blob(self, client):
+        page = client.get("/").text
+        api = client.get("/api/corpus").json()
+        assert api["corpus_digest"] in page
+        assert api["occupancy_band"]["ladder"]["eviction_target"]["value"] == 80
+        assert len(api["occupancy_band"]["passes"]) == 3

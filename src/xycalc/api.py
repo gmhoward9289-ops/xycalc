@@ -12,11 +12,12 @@ from __future__ import annotations
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import FileResponse
+from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 
 from . import __version__
 from .db import connect
+from .export import corpus_blob, render
 from .model import (
     Model,
     ModelError,
@@ -267,7 +268,14 @@ def why(model_slug: str):
 
 @app.get("/")
 def index():
-    return FileResponse(STATIC / "index.html")
+    """Same page as the static export — one calculator for GUI and deploy."""
+    return HTMLResponse(render(corpus_blob(_conn())))
+
+
+@app.get("/api/corpus")
+def api_corpus():
+    """The export blob, for tooling that wants the page without HTML."""
+    return corpus_blob(_conn())
 
 
 app.mount("/static", StaticFiles(directory=STATIC), name="static")
