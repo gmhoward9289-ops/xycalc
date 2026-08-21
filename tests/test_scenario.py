@@ -111,7 +111,8 @@ class TestBuildInstanceSizingSummary:
         assert "cpu" in summary
         assert summary["cpu"]["unit"] == "vcpu"
         mode_name = summary["cpu"]["instance_mode"]
-        assert mode_name is None or mode_name.startswith("r8i")
+        assert mode_name is not None
+        assert mode_name.startswith("r8i") or mode_name.startswith("u7i")
 
         assert "azure" in summary
         azure = summary["azure"]
@@ -152,6 +153,32 @@ class TestBuildInstanceSizingSummary:
         assert not pick["exceeds_pool"]
         aws = next(s for s in steps if s.slug == "aws-ec2.instance-select")
         assert aws.instance_pick["pick_mode"].name.startswith("r8i")
+
+    def test_homepage_500gb_simple_names_cited_skus(self, conn):
+        """Issue #114: the landing-page 500 GB question must name a cited SKU.
+
+        Simple view: today's footprint, no demo index/foreign pads. The 1536 GiB
+        policy cap plus an r8i-only filter used to paint all three cards as
+        custom sizing even though r8i.96xlarge (cited) covers lo/mode and
+        u7i-12tb.224xlarge (cited) covers hi.
+        """
+        scenario = get_scenario("mongodb.size-to-instance")
+        homepage = {
+            "baseline_vuln_count": "250000",
+            "baseline_storage_size": "500GB",
+            "target_vuln_count": "250000",
+        }
+        steps = chain_evaluate(conn, scenario, homepage)
+        aws = next(s for s in steps if s.slug == "aws-ec2.instance-select")
+        pick = aws.instance_pick
+        assert pick["pick_lo"].name == "r8i.96xlarge"
+        assert pick["pick_mode"].name == "r8i.96xlarge"
+        assert pick["pick_hi"].name == "u7i-12tb.224xlarge"
+        assert not pick["exceeds_pool"]
+        summary = build_instance_sizing_summary(steps, homepage)
+        assert summary["cpu"]["instance_lo"] == "r8i.96xlarge"
+        assert summary["cpu"]["instance_mode"] == "r8i.96xlarge"
+        assert summary["cpu"]["instance_hi"] == "u7i-12tb.224xlarge"
 
 
 @pytest.fixture

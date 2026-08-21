@@ -24,7 +24,7 @@ function applySimpleHostFloor(data) {
   const pick = XY.selectInstance(
     { lo: s.ram.lo, mode: s.ram.mode, hi: s.ram.hi },
     corpus.instance_catalog || [],
-    "r8i",
+    null,
     ceiling === 0 ? null : ceiling,
   );
   if (pick && s.cpu) {
@@ -108,12 +108,10 @@ const noGrade = APP.simpleFirstPaintHtml({
 assert.strictEqual(noGrade.ramText, "");
 assert.ok(noGrade.html.includes(APP.SIMPLE_HONESTY_LINE));
 
-const at300 = paint("300GB");
-if (at300.panel.picksHtml.includes("custom sizing")) {
-  assert.ok(
-    /exceeds the |catalog has no fit/.test(at300.panel.picksHtml),
-    at300.panel.picksHtml,
-  );
-}
+const homepage = paint("500GB");
+assertHonesty(homepage.panel, "500GB homepage");
+assert.ok(!homepage.panel.picksHtml.includes("custom sizing"), homepage.panel.picksHtml);
+assert.ok(homepage.panel.picksHtml.includes("r8i.96xlarge"), homepage.panel.picksHtml);
+assert.ok(homepage.panel.picksHtml.includes("u7i-12tb.224xlarge"), homepage.panel.picksHtml);
 
 console.log("simple first paint ok");

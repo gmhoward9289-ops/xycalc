@@ -622,13 +622,14 @@ def load_instance_catalog(
     )
 
 
-# Standing internal policy, not an AWS ceiling: r8i itself goes to 3,072 GiB
-# (r8i.96xlarge), but the org has decided to cap recommendations at 1,536 GiB
-# (== r8i.48xlarge exactly, in binary GiB) and require a family change above
-# that, pending a decision on what that next family is. Set 2026-08-16.
-# Shared by the CLI's `instance-select` command and the scenario chain's
-# lookup step, so the two surfaces cannot silently disagree about the cutoff.
-DEFAULT_INSTANCE_CEILING = "1536GiB"
+# Standing internal policy, not an AWS ceiling. Until 2026-08-21 this sat at
+# 1,536 GiB (r8i.48xlarge) pending a next-family decision; U7i is now in the
+# aws-ec2 catalog (see data/coefficients/aws-ec2.yaml), so the default cap is
+# the largest *cited* SKU (u7inh-32tb.480xlarge, 32,768 GiB). Shared by the
+# CLI's `instance-select` command and the scenario chain's lookup step, so
+# the two surfaces cannot silently disagree about the cutoff. Pass --max-ram
+# 1536GiB to restore the old org cap, or 0 to lift it entirely.
+DEFAULT_INSTANCE_CEILING = "32768GiB"
 
 
 def select_instance(
@@ -653,14 +654,13 @@ def select_instance(
     "r8i", "Esv5", or "Esv6". Raises if the filtered pool is empty.
 
     `ceiling_bytes` is an operational policy cutoff, not a vendor fact --
-    r8i itself goes to 3,072 GiB (r8i.96xlarge), but an org can decide to
-    stop recommending within a family below its real technical ceiling and
-    require a family change past that point instead. When set, instances
+    an org can stop recommending below the catalog's real technical ceiling
+    (historically 1,536 GiB while U7i was undecided). When set, instances
     above it are excluded from the pool before picking, so the existing
     `exceeds_pool` / "custom sizing" branch fires at the POLICY ceiling, not
     necessarily the family's actual maximum -- deliberately not a coefficient
-    in aws-ec2.yaml, because it is a standing internal decision that changes
-    when the next family is chosen, not a sourced AWS spec.
+    in aws-ec2.yaml, because it is a standing internal decision, not a
+    sourced AWS spec.
     """
     pool = [
         i for i in catalog if not family or i.name.lower().startswith(family.lower())

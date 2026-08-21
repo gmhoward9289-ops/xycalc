@@ -146,6 +146,8 @@ class TestInstanceSelectCeilingMessaging:
                 "2TB",
                 "--index-size",
                 "40GB",
+                "--max-ram",
+                "1536GiB",
             ],
             capsys,
         )
@@ -163,7 +165,7 @@ class TestInstanceSelectCeilingMessaging:
                 "instance-select",
                 "mongodb.wt-cache",
                 "--storage-size",
-                "8TB",
+                "10TB",
                 "--max-ram",
                 "0",
             ],

@@ -5,6 +5,11 @@ Corpus identity is `corpus_digest` on the exported page. See `docs/VERSIONING.md
 
 ## 0.4.0
 
+- Homepage 500 GB Simple question names cited SKUs (`r8i.96xlarge` lo/mode,
+  `u7i-12tb.224xlarge` high) instead of “custom sizing”. Default instance
+  ceiling is the largest cited U7i (32,768 GiB); the AWS picker uses the
+  whole `aws-ec2` catalog rather than `r8i` only. `--max-ram 1536GiB` restores
+  the old org cap.
 - Simple first paint and Advanced Scenario “What you need” show the three
   measured size-path footnotes (occupancy/cache-cliff, tickets, EBS
   peak-to-mean). Show the math pins occupancy and EBS on their chain steps

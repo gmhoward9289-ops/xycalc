@@ -86,6 +86,15 @@ SCENARIO_GOLDEN_INPUTS = {
     "foreign_collections_size": "80GB",
 }
 
+# Simple-view homepage question (issue #114): today's 500 GB footprint, no
+# demo index/foreign pads, target == baseline. Must name a cited SKU at
+# every band-end — this is the example the landing page advertises.
+HOMEPAGE_SIMPLE_INPUTS = {
+    "baseline_vuln_count": "250000",
+    "baseline_storage_size": "500GB",
+    "target_vuln_count": "250000",
+}
+
 
 class ExportError(Exception):
     pass
@@ -216,34 +225,41 @@ def browser_string_path_vector(conn: sqlite3.Connection) -> dict:
     }
 
 
+def _pack_scenario_golden_steps(steps) -> list[dict]:
+    packed = []
+    for st in steps:
+        item = {"kind": st.kind, "slug": st.slug}
+        if st.result is not None:
+            item["lo"] = st.result.lo
+            item["mode"] = st.result.mode
+            item["hi"] = st.result.hi
+        if st.instance_pick:
+            for key in ("pick_lo", "pick_mode", "pick_hi"):
+                spec = st.instance_pick.get(key)
+                item[key] = None if spec is None else spec.name
+        if st.gp3_spec:
+            item["volume_gib"] = st.gp3_spec["volume_gib"]
+            item["baseline_iops"] = st.gp3_spec["baseline_iops"]
+        packed.append(item)
+    return packed
+
+
 def scenario_golden_vectors(conn: sqlite3.Connection) -> list[dict]:
     """What Python's chain_evaluate produced, for the JS port to be held to."""
     out = []
     for listed in describe_scenarios(conn):
         if listed.get("disabled") or listed["slug"] != "mongodb.size-to-instance":
             continue
-        steps = chain_evaluate(conn, get_scenario(listed["slug"]), SCENARIO_GOLDEN_INPUTS)
-        packed = []
-        for st in steps:
-            item = {"kind": st.kind, "slug": st.slug}
-            if st.result is not None:
-                item["lo"] = st.result.lo
-                item["mode"] = st.result.mode
-                item["hi"] = st.result.hi
-            if st.instance_pick:
-                mode = st.instance_pick.get("pick_mode")
-                item["pick_mode"] = None if mode is None else mode.name
-            if st.gp3_spec:
-                item["volume_gib"] = st.gp3_spec["volume_gib"]
-                item["baseline_iops"] = st.gp3_spec["baseline_iops"]
-            packed.append(item)
-        out.append(
-            {
-                "scenario": listed["slug"],
-                "inputs": SCENARIO_GOLDEN_INPUTS,
-                "steps": packed,
-            }
-        )
+        scenario = get_scenario(listed["slug"])
+        for inputs in (SCENARIO_GOLDEN_INPUTS, HOMEPAGE_SIMPLE_INPUTS):
+            steps = chain_evaluate(conn, scenario, inputs)
+            out.append(
+                {
+                    "scenario": listed["slug"],
+                    "inputs": inputs,
+                    "steps": _pack_scenario_golden_steps(steps),
+                }
+            )
     return out
 
 
