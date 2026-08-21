@@ -39,7 +39,7 @@ smoke; order is about *shared failure modes*, not dependency of math.
 
 | Phase | Family | Roadmap / issues | Harness | Why this order |
 |---|---|---|---|---|
-| **A** | Cache / oversubscription | T1 · #9 · inv 006 | `cache_cliff_probe.sh` | Host page-cache trap; teaches the guard used everywhere else |
+| **A** | Cache / oversubscription | T1 · #9 · inv 006 | `cache_cliff_probe.sh` | **Done through 50×** (FINDINGS closed; 100× out of scope) |
 | **B** | IOPS ↔ throughput crossover | T9 · #17 | `io_crossover_probe.sh` | No MongoDB; pure ratio math; cheapest falsification |
 | **C** | Concurrency / tickets / queue | T4-ish · #2 · #3 · inv 003–004 | `ticket_probe.sh`, `celery_probe/` | Needs A’s “device actually binds” discipline; separate cliff |
 
