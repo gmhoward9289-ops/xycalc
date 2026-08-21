@@ -1,0 +1,163 @@
+observations:
+  # -- s3_stack perf.sh on swamplink: Mongo+Redis+Celery+ClickHouse(S3/MinIO)
+  #    three-phase container RSS. ClickHouse MergeTree parts on disk_name=s3.
+  #    host.container_rss_bytes is NOT a mongodb.wt-cache validation quantity. --
+
+  - slug: swamplink-s3-stack-2026-08-21-mongo-idle
+    system: mongodb
+    parameter: host.container_rss_bytes
+    value: 74606182
+    unit: bytes
+    workload: idle -- stack up, no data loaded, colocated with redis/clickhouse(s3)/celery/minio
+    machine_class: swamplink-eu -- Hetzner CX shared vCPU, ~7.6 GB RAM; mongo mem_limit 2g, --wiredTigerCacheSizeGB 0.5
+    system_version: mongo:7 (Docker Hub tag)
+    observed_on: '2026-08-21'
+    source: obs-mongodb-s3-stack-swamplink-2026-08-21
+    notes: docker stats MemUsage, 71.15MiB reported.
+
+  - slug: swamplink-s3-stack-2026-08-21-mongo-loaded
+    system: mongodb
+    parameter: host.container_rss_bytes
+    value: 611948954
+    unit: bytes
+    workload: >-
+      1,500,000-doc synthetic collection resident (dataSize 1086 MB, 2.02×
+      over WiredTiger 0.5 GB cache), no concurrent Celery traffic yet; colocated
+    machine_class: swamplink-eu -- Hetzner CX shared vCPU, ~7.6 GB RAM; mongo mem_limit 2g, --wiredTigerCacheSizeGB 0.5
+    system_version: mongo:7 (Docker Hub tag)
+    observed_on: '2026-08-21'
+    source: obs-mongodb-s3-stack-swamplink-2026-08-21
+    notes: docker stats MemUsage, 583.6MiB reported.
+
+  - slug: swamplink-s3-stack-2026-08-21-mongo-under-load
+    system: mongodb
+    parameter: host.container_rss_bytes
+    value: 621071565
+    unit: bytes
+    workload: >-
+      same 2.02×-oversub dataset under Celery point-lookup drive (PROBE_RATES=50,
+      PROBE_SECONDS=30) overlapping a ClickHouse S3 GROUP BY scan; driver OOM-killed
+      (exit 137) mid-window so Celery JSON is absent — RSS sample still taken
+    machine_class: swamplink-eu -- Hetzner CX shared vCPU, ~7.6 GB RAM; mongo mem_limit 2g, --wiredTigerCacheSizeGB 0.5
+    system_version: mongo:7 (Docker Hub tag)
+    observed_on: '2026-08-21'
+    source: obs-mongodb-s3-stack-swamplink-2026-08-21
+    notes: >-
+      docker stats MemUsage, 592.3MiB reported. Idle→loaded is the large jump
+      (71→584 MiB) once the 2×-oversub working set is present; loaded→under_load
+      is small (~9 MiB). Contrast reef-colocation-probe-2026-08-19 where the
+      big jump was loaded→under_load under a dataset far below cache.
+
+  - slug: swamplink-s3-stack-2026-08-21-clickhouse-idle
+    system: clickhouse
+    parameter: host.container_rss_bytes
+    value: 145856922
+    unit: bytes
+    workload: idle -- ClickHouse up with s3_main storage policy, no table data yet
+    machine_class: swamplink-eu -- clickhouse mem_limit 2g; MergeTree storage_policy=s3_main → MinIO
+    system_version: clickhouse/clickhouse-server:24.8
+    observed_on: '2026-08-21'
+    source: obs-mongodb-s3-stack-swamplink-2026-08-21
+    notes: docker stats MemUsage, 139.1MiB reported.
+
+  - slug: swamplink-s3-stack-2026-08-21-clickhouse-loaded
+    system: clickhouse
+    parameter: host.container_rss_bytes
+    value: 258683699
+    unit: bytes
+    workload: >-
+      5,000,000-row MergeTree on storage_policy=s3_main (system.parts.disk_name=s3),
+      after OPTIMIZE FINAL + one warm GROUP BY; colocated
+    machine_class: swamplink-eu -- clickhouse mem_limit 2g; MergeTree storage_policy=s3_main → MinIO
+    system_version: clickhouse/clickhouse-server:24.8
+    observed_on: '2026-08-21'
+    source: obs-mongodb-s3-stack-swamplink-2026-08-21
+    notes: docker stats MemUsage, 246.7MiB reported.
+
+  - slug: swamplink-s3-stack-2026-08-21-clickhouse-under-load
+    system: clickhouse
+    parameter: host.container_rss_bytes
+    value: 300417024
+    unit: bytes
+    workload: >-
+      same S3-backed table under concurrent GROUP BY scan (0.395s) while Celery
+      hit Mongo; MinIO RSS also rose (73→191 MiB across phases — noted in source)
+    machine_class: swamplink-eu -- clickhouse mem_limit 2g; MergeTree storage_policy=s3_main → MinIO
+    system_version: clickhouse/clickhouse-server:24.8
+    observed_on: '2026-08-21'
+    source: obs-mongodb-s3-stack-swamplink-2026-08-21
+    notes: docker stats MemUsage, 286.5MiB reported.
+
+  - slug: swamplink-s3-stack-2026-08-21-redis-idle
+    system: redis
+    parameter: host.container_rss_bytes
+    value: 5247074
+    unit: bytes
+    workload: idle -- Celery broker Redis, maxmemory capped, no queue traffic
+    machine_class: swamplink-eu -- redis mem_limit 512m
+    system_version: redis:7-alpine
+    observed_on: '2026-08-21'
+    source: obs-mongodb-s3-stack-swamplink-2026-08-21
+    notes: docker stats MemUsage, 5.004MiB reported.
+
+  - slug: swamplink-s3-stack-2026-08-21-redis-loaded
+    system: redis
+    parameter: host.container_rss_bytes
+    value: 3469738
+    unit: bytes
+    workload: loaded phase -- Mongo/CH data present, Celery queue idle
+    machine_class: swamplink-eu -- redis mem_limit 512m
+    system_version: redis:7-alpine
+    observed_on: '2026-08-21'
+    source: obs-mongodb-s3-stack-swamplink-2026-08-21
+    notes: docker stats MemUsage, 3.309MiB reported.
+
+  - slug: swamplink-s3-stack-2026-08-21-redis-under-load
+    system: redis
+    parameter: host.container_rss_bytes
+    value: 3870294
+    unit: bytes
+    workload: under Celery drive (broker traffic) overlapping CH S3 scan
+    machine_class: swamplink-eu -- redis mem_limit 512m
+    system_version: redis:7-alpine
+    observed_on: '2026-08-21'
+    source: obs-mongodb-s3-stack-swamplink-2026-08-21
+    notes: docker stats MemUsage, 3.691MiB reported.
+
+  - slug: swamplink-s3-stack-2026-08-21-celery-idle
+    system: celery
+    parameter: host.container_rss_bytes
+    value: 114294784
+    unit: bytes
+    workload: idle -- Celery prefork worker up (concurrency 4), no tasks
+    machine_class: swamplink-eu -- worker mem_limit 1g; celery[redis]==5.4.0
+    system_version: Celery 5.4.0 (celery_probe image)
+    observed_on: '2026-08-21'
+    source: obs-mongodb-s3-stack-swamplink-2026-08-21
+    notes: docker stats MemUsage, 109MiB reported.
+
+  - slug: swamplink-s3-stack-2026-08-21-celery-loaded
+    system: celery
+    parameter: host.container_rss_bytes
+    value: 114294784
+    unit: bytes
+    workload: loaded phase -- worker idle while Mongo/CH hold data
+    machine_class: swamplink-eu -- worker mem_limit 1g; celery[redis]==5.4.0
+    system_version: Celery 5.4.0 (celery_probe image)
+    observed_on: '2026-08-21'
+    source: obs-mongodb-s3-stack-swamplink-2026-08-21
+    notes: docker stats MemUsage, 109MiB reported.
+
+  - slug: swamplink-s3-stack-2026-08-21-celery-under-load
+    system: celery
+    parameter: host.container_rss_bytes
+    value: 129813709
+    unit: bytes
+    workload: >-
+      under Celery drive; driver container OOM-killed (137) before full JSON —
+      worker RSS still sampled during the overlap window
+    machine_class: swamplink-eu -- worker mem_limit 1g; celery[redis]==5.4.0
+    system_version: Celery 5.4.0 (celery_probe image)
+    observed_on: '2026-08-21'
+    source: obs-mongodb-s3-stack-swamplink-2026-08-21
+    notes: docker stats MemUsage, 123.8MiB reported.

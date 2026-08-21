@@ -325,6 +325,29 @@ sources:
       n=1, one host, one run. See results.json in the same directory for the
       full docker-stats output at each phase.
 
+  - slug: obs-mongodb-s3-stack-swamplink-2026-08-21
+    title: "s3_stack perf: colocated RSS with ClickHouse MergeTree on S3"
+    publisher: xycalc project (benchmark harness, committed)
+    url:
+    version: tools/bench/s3_stack (harness), results.json
+    retrieved_on: '2026-08-21'
+    source_type: benchmark
+    notes: >-
+      Harness: tools/bench/s3_stack/perf.sh (compose.yml, sql/clickhouse_load.sql,
+      sample.py). Docker 29.7.0 / Compose on swamplink-eu (Hetzner CX, ~7.6 GB
+      RAM). Mongo: --wiredTigerCacheSizeGB 0.5, mem_limit 2g, 1,500,000 docs
+      (dataSize 1086 MB, 2.02× cache oversubscription — same refuse gate as
+      celery_probe/drive.py). ClickHouse 24.8: 5,000,000-row MergeTree with
+      storage_policy=s3_main (system.parts.disk_name=s3) against in-compose
+      MinIO. Redis 7-alpine + Celery 5.4.0 worker (concurrency 4) from
+      celery_probe image. Under_load: Celery drive (50/s, 30s) overlapping a
+      ClickHouse S3 GROUP BY (0.395s); the drive container was OOM-killed
+      (exit 137) so celery_drive JSON is null — RSS samples still valid.
+      MinIO RSS rose idle→under_load 72.78→190.7 MiB (not a separate
+      observation row — no minio system slug). n=1. Artifact:
+      tools/bench/s3_stack/results.json (and tmp/s3_stack_results.json on the
+      authoring machine).
+
   - slug: celery-optimizing-guide-5.4
     title: Optimizing — Celery 5.4.0 documentation
     publisher: Celery Project
