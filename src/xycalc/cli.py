@@ -140,6 +140,18 @@ def _print_reframe(model: Model) -> None:
         print()
 
 
+def _print_notes(model: Model) -> None:
+    if not model.notes:
+        return
+    print(f"\n{BAR}")
+    print("  VARIABLES & HOW TO USE THEM")
+    print(BAR)
+    for para in model.notes.strip().split("\n\n"):
+        for line in _wrap(para, 66):
+            print(f"  {line}")
+        print()
+
+
 # ---------------------------------------------------------------------------
 # commands
 # ---------------------------------------------------------------------------
@@ -170,6 +182,7 @@ def cmd_sizing(args) -> int:
     _print_constraints(result)
     _print_validation(conn, model.slug)
     _print_reframe(model)
+    _print_notes(model)
     conn.close()
     return 0
 
@@ -347,6 +360,7 @@ def cmd_scenario(args) -> int:
                 print(f"  utilisation        {h['utilisation_mode_pct']:,.0f}% of available")
                 print(f"  VERDICT  {h['verdict']}")
             _print_reframe(s.model)
+            _print_notes(s.model)
             prev_unit = s.result.unit
         elif s.gp3_spec is not None:
             print(f"STEP {i} — gp3 volume baseline and ceilings")
@@ -487,6 +501,7 @@ def cmd_why(args) -> int:
 
     _print_validation(conn, model.slug)
     _print_reframe(model)
+    _print_notes(model)
     conn.close()
     return 0
 

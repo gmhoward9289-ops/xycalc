@@ -188,6 +188,8 @@ blockquote { margin: .4rem 0 0; padding-left: .7rem; border-left: 2px solid var(
 .reframe { border-left: 3px solid var(--accent); padding: .25rem 0 .25rem 1rem; }
 .reframe h2 { margin-top: 0; color: var(--accent); }
 .reframe p { font-size: .92rem; }
+.notes-body p { font-size: .88rem; margin: 0 0 .65rem; color: var(--text); }
+.notes-body p:last-child { margin-bottom: 0; }
 
 .scroll { overflow-x: auto; }
 .error { color: #b3261e; font-family: var(--mono); font-size: .85rem; }
@@ -393,6 +395,14 @@ svg.nvd-chart { width: 100%; height: auto; display: block; }
   <div class="panel reframe" id="reframe-panel" hidden>
     <h2>Read this before acting on the number</h2>
     <div id="reframe"></div>
+  </div>
+
+  <div class="panel" id="notes-panel" hidden>
+    <h2 style="margin-top:0">Variables &amp; how to use them</h2>
+    <p style="font-size:.82rem;color:var(--muted);margin:0 0 .5rem">
+      From the model notes — examples, not arithmetic.
+    </p>
+    <div id="notes" class="notes-body"></div>
   </div>
   </div>
 </div>
@@ -850,6 +860,11 @@ function render() {
   $("reframe-panel").hidden = !m.reframe;
   if (m.reframe) {
     $("reframe").innerHTML = m.reframe.trim().split(/\n\s*\n/)
+      .map((p) => `<p>${esc(p.replace(/\s+/g, " "))}</p>`).join("");
+  }
+  $("notes-panel").hidden = !m.notes;
+  if (m.notes) {
+    $("notes").innerHTML = m.notes.trim().split(/\n\s*\n/)
       .map((p) => `<p>${esc(p.replace(/\s+/g, " "))}</p>`).join("");
   }
 

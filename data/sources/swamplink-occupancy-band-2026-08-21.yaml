@@ -1,0 +1,20 @@
+sources:
+- slug: obs-mongodb-occupancy-band-swamplink-2026-08-21
+  title: WiredTiger eviction_target 80% vs 90% under throttled 2× oversubscription
+  publisher: xycalc benchmark (swamplink)
+  retrieved_on: '2026-08-21'
+  source_type: benchmark
+  notes: >-
+    Investigation 007 smoke. Harness tools/bench/occupancy_band_probe.sh /
+    .py. MongoDB 7.0.39 in Docker, direct_io=[data], 0.25 GB wiredTiger
+    cache, 640 MB container memory, block-IO cgroup 8 MiB/s and 150 IOPS on
+    this container only. Fresh mongod per target. Dataset sized to 2.0×
+    cache (~710k docs, ~537 MB dataSize). Random point lookups, concurrency
+    1, 12 s per leg. Device-byte guards passed on both legs (pages read into
+    cache non-zero and cgroup rbytes moved). Absolute ops/s are throttle
+    artifacts; the cross-leg delta and occupancy/tcmalloc snapshots are the
+    finding. Artifacts: docs/investigations/007-eviction-band-and-tickets/
+    occ-band-2026-08-21.json (12s smoke), occ-band-run1.json and
+    occ-band-run2.json (25s confirmatory ×2). Confirmatory deltas +6.7%
+    and +13.1% ops/s for target=90 vs 80; occupancy rise is the stable
+    signal. Absolute ops/s are throttle artifacts.

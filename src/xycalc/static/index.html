@@ -618,6 +618,14 @@ function renderAnswerCard(d) {
       </div>
     </details>` : "";
 
+  const notes = d.notes ? `
+    <details open>
+      <summary>variables &amp; how to use them</summary>
+      <div style="margin-top:.6rem;font-size:.88rem">
+        ${d.notes.trim().split(/\n\s*\n/).map(p => `<p>${linkify(esc(p.replace(/\s+/g, " ")))}</p>`).join("")}
+      </div>
+    </details>` : "";
+
   return `
     <div class="answer">
       <div class="label">Answer</div>
@@ -629,7 +637,8 @@ function renderAnswerCard(d) {
     <div class="validation ${d.validation.grade}"><strong>${VALIDATION_LABEL[d.validation.grade]}</strong> — ${d.validation.text}</div>
     ${breakdown}
     ${constraints}
-    ${reframe}`;
+    ${reframe}
+    ${notes}`;
 }
 
 // ---------------------------------------------------------------------------

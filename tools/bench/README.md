@@ -15,6 +15,12 @@ eviction-target coefficient under real pressure), and
 formula against a host's actual RAM, no dataset needed). See each for its own
 README/comments.
 
+**Multi-GB fio scratch** (`.probe-io-test.bin`, gitignored) may stay on
+**COOPER or lynx** only. Do not leave it on **swamplink** — `io_crossover_smoke.sh`
+refuses a default path there; if you must smoke on swamplink, set
+`PROBE_FILE=/tmp/...` and delete after. Distilled YAML/JSON findings still
+commit as usual; never sync the binary to GitHub.
+
 ### cache_cliff_probe (T1 / #9)
 
 ```bash
@@ -85,6 +91,22 @@ collection must clear a ~20 MB floor, and a lone `_id` index is flagged. Records
 observations + a `mongodb.wt-cache` validation case (at_term=indexes); writes no
 coefficient. Needs Docker with network egress; no cloud cost. See
 `docs/plans/issue-5-real-compression-samples.md`.
+
+### occupancy_band_probe (007)
+
+```bash
+# eviction_target 80 vs 90 under the same 2× oversubscription
+./tools/bench/occupancy_band_probe.sh > /tmp/occ-band.json
+
+# Smoke
+PROBE_SECONDS=12 PROBE_TARGET_RATIO=2.0 PROBE_TARGETS=80,90 \
+  ./tools/bench/occupancy_band_probe.sh
+```
+
+Fresh `mongod` per target; concurrency defaults to 1; records occupancy %,
+dirty %, tickets, and tcmalloc heap/allocated during the window. Device-byte
+guard same class as `cache_cliff_probe`. See
+`docs/investigations/007-eviction-band-and-tickets/FINDINGS.md`.
 
 ## Before you believe a result
 

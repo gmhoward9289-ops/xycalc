@@ -452,6 +452,7 @@ const XY = (() => {
       })),
       validation: model.validation,
       reframe: model.reframe,
+      notes: model.notes,
     };
   }
 

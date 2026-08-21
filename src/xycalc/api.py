@@ -92,6 +92,7 @@ def _serialise(result, model: Model) -> dict:
         # would read as a validated answer to anything that forgot to check.
         "validation": validation_status(_conn(), model.slug),
         "reframe": model.reframe,
+        "notes": model.notes,
     }
 
 
@@ -236,6 +237,7 @@ def why(model_slug: str):
         "question": model.question,
         "summary": model.summary,
         "reframe": model.reframe,
+        "notes": model.notes,
         "validation": validation_status(_conn(), model.slug),
         "terms": [
             {

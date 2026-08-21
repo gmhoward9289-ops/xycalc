@@ -1,0 +1,179 @@
+observations:
+# -- 12s smoke (kept; confirmatory 25s rows below supersede delta direction) --
+- slug: swamplink-2026-08-21-occ80-ops
+  system: mongodb
+  parameter: db.ops_per_second
+  value: 103.6
+  unit: ops/s
+  workload: >-
+    random point lookups, c=1, 2.0× oversub, eviction_target=80,
+    throttled device (8 MiB/s, 150 IOPS), 12s window
+  machine_class: Hetzner CX shared vCPU, 7.6 GB RAM (swamplink-eu)
+  system_version: 7.0.39
+  observed_on: '2026-08-21'
+  source: obs-mongodb-occupancy-band-swamplink-2026-08-21
+  notes: >-
+    Smoke. Paired with occ90-ops. Mean occupancy 78.25%, app-thread
+    evictions 0, tickets 4→4. See confirm-run1/run2 for 25s repeats.
+
+- slug: swamplink-2026-08-21-occ90-ops
+  system: mongodb
+  parameter: db.ops_per_second
+  value: 102.6
+  unit: ops/s
+  workload: >-
+    random point lookups, c=1, 2.0× oversub, eviction_target=90,
+    throttled device (8 MiB/s, 150 IOPS), 12s window
+  machine_class: Hetzner CX shared vCPU, 7.6 GB RAM (swamplink-eu)
+  system_version: 7.0.39
+  observed_on: '2026-08-21'
+  source: obs-mongodb-occupancy-band-swamplink-2026-08-21
+  notes: >-
+    Smoke: −0.97% vs 80-target. 25s confirmatory passes later showed
+    +6.7% and +13.1% — short window was noisy; occupancy rise is the
+    stable signal.
+
+- slug: swamplink-2026-08-21-occ80-occupancy
+  system: mongodb
+  parameter: cache.eviction_target_pct
+  value: 78.25
+  unit: percent
+  workload: >-
+    mean occupancy during 12s probe with eviction_target configured to 80,
+    2.0× oversub, c=1, throttled device
+  machine_class: Hetzner CX shared vCPU, 7.6 GB RAM (swamplink-eu)
+  system_version: 7.0.39
+  observed_on: '2026-08-21'
+  source: obs-mongodb-occupancy-band-swamplink-2026-08-21
+  notes: >-
+    Within ±8 of configured 80. Complements reef 2026-08-19 saturated-scan
+    80.55% under default target.
+
+- slug: swamplink-2026-08-21-occ90-occupancy
+  system: mongodb
+  parameter: cache.eviction_target_pct
+  value: 83.9
+  unit: percent
+  workload: >-
+    mean occupancy during 12s probe with eviction_target configured to 90,
+    2.0× oversub, c=1, throttled device
+  machine_class: Hetzner CX shared vCPU, 7.6 GB RAM (swamplink-eu)
+  system_version: 7.0.39
+  observed_on: '2026-08-21'
+  source: obs-mongodb-occupancy-band-swamplink-2026-08-21
+  notes: >-
+    End-of-window occupancy 90.66%. App-thread eviction 0.
+
+# -- confirmatory 25s pass 1 --
+- slug: swamplink-2026-08-21-occ80-ops-confirm1
+  system: mongodb
+  parameter: db.ops_per_second
+  value: 104.0
+  unit: ops/s
+  workload: >-
+    random point lookups, c=1, 2.0× oversub, eviction_target=80,
+    throttled device (8 MiB/s, 150 IOPS), 25s window, confirm pass 1
+  machine_class: Hetzner CX shared vCPU, 7.6 GB RAM (swamplink-eu)
+  system_version: 7.0.39
+  observed_on: '2026-08-21'
+  source: obs-mongodb-occupancy-band-swamplink-2026-08-21
+  notes: >-
+    Artifact occ-band-run1.json. Mean occupancy 78.25%, tickets 4→4,
+    app-evict 0, deviceByteGuardOk.
+
+- slug: swamplink-2026-08-21-occ90-ops-confirm1
+  system: mongodb
+  parameter: db.ops_per_second
+  value: 111.0
+  unit: ops/s
+  workload: >-
+    random point lookups, c=1, 2.0× oversub, eviction_target=90,
+    throttled device (8 MiB/s, 150 IOPS), 25s window, confirm pass 1
+  machine_class: Hetzner CX shared vCPU, 7.6 GB RAM (swamplink-eu)
+  system_version: 7.0.39
+  observed_on: '2026-08-21'
+  source: obs-mongodb-occupancy-band-swamplink-2026-08-21
+  notes: >-
+    +6.73% vs confirm1 80-leg. Mean occupancy 87.85% (end 91.35%).
+    Not a capacity claim — throttle artifact delta on one host.
+
+- slug: swamplink-2026-08-21-occ80-occupancy-confirm1
+  system: mongodb
+  parameter: cache.eviction_target_pct
+  value: 78.25
+  unit: percent
+  workload: >-
+    mean occupancy during 25s probe, eviction_target=80, confirm pass 1
+  machine_class: Hetzner CX shared vCPU, 7.6 GB RAM (swamplink-eu)
+  system_version: 7.0.39
+  observed_on: '2026-08-21'
+  source: obs-mongodb-occupancy-band-swamplink-2026-08-21
+
+- slug: swamplink-2026-08-21-occ90-occupancy-confirm1
+  system: mongodb
+  parameter: cache.eviction_target_pct
+  value: 87.85
+  unit: percent
+  workload: >-
+    mean occupancy during 25s probe, eviction_target=90, confirm pass 1
+  machine_class: Hetzner CX shared vCPU, 7.6 GB RAM (swamplink-eu)
+  system_version: 7.0.39
+  observed_on: '2026-08-21'
+  source: obs-mongodb-occupancy-band-swamplink-2026-08-21
+
+# -- confirmatory 25s pass 2 --
+- slug: swamplink-2026-08-21-occ80-ops-confirm2
+  system: mongodb
+  parameter: db.ops_per_second
+  value: 104.3
+  unit: ops/s
+  workload: >-
+    random point lookups, c=1, 2.0× oversub, eviction_target=80,
+    throttled device (8 MiB/s, 150 IOPS), 25s window, confirm pass 2
+  machine_class: Hetzner CX shared vCPU, 7.6 GB RAM (swamplink-eu)
+  system_version: 7.0.39
+  observed_on: '2026-08-21'
+  source: obs-mongodb-occupancy-band-swamplink-2026-08-21
+  notes: >-
+    Artifact occ-band-run2.json. Mean occupancy 78.46%, tickets 4→4,
+    app-evict 0, deviceByteGuardOk.
+
+- slug: swamplink-2026-08-21-occ90-ops-confirm2
+  system: mongodb
+  parameter: db.ops_per_second
+  value: 118.0
+  unit: ops/s
+  workload: >-
+    random point lookups, c=1, 2.0× oversub, eviction_target=90,
+    throttled device (8 MiB/s, 150 IOPS), 25s window, confirm pass 2
+  machine_class: Hetzner CX shared vCPU, 7.6 GB RAM (swamplink-eu)
+  system_version: 7.0.39
+  observed_on: '2026-08-21'
+  source: obs-mongodb-occupancy-band-swamplink-2026-08-21
+  notes: >-
+    +13.14% vs confirm2 80-leg. Same direction as confirm1. Mean
+    occupancy 86.71%. Magnitude is host/throttle-specific.
+
+- slug: swamplink-2026-08-21-occ80-occupancy-confirm2
+  system: mongodb
+  parameter: cache.eviction_target_pct
+  value: 78.46
+  unit: percent
+  workload: >-
+    mean occupancy during 25s probe, eviction_target=80, confirm pass 2
+  machine_class: Hetzner CX shared vCPU, 7.6 GB RAM (swamplink-eu)
+  system_version: 7.0.39
+  observed_on: '2026-08-21'
+  source: obs-mongodb-occupancy-band-swamplink-2026-08-21
+
+- slug: swamplink-2026-08-21-occ90-occupancy-confirm2
+  system: mongodb
+  parameter: cache.eviction_target_pct
+  value: 86.71
+  unit: percent
+  workload: >-
+    mean occupancy during 25s probe, eviction_target=90, confirm pass 2
+  machine_class: Hetzner CX shared vCPU, 7.6 GB RAM (swamplink-eu)
+  system_version: 7.0.39
+  observed_on: '2026-08-21'
+  source: obs-mongodb-occupancy-band-swamplink-2026-08-21

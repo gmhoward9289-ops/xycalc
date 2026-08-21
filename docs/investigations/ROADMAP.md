@@ -30,6 +30,14 @@ sweep. Absolute capacity still needs the box class you care about.
 
 ---
 
+## T1b — Occupancy band 80% vs 90% (eviction_target)
+
+Landed 2026-08-21 as investigation 007. Smoke 12s + confirmatory 25s×2 on
+swamplink: raising `eviction_target` 80→90 holds the cache fuller; ops/s
+delta modest/noisy (+7%/+13% at 25s). Education on calculator notes +
+constraints. See
+`docs/investigations/007-eviction-band-and-tickets/FINDINGS.md`.
+
 ## T1 — Where is the cache cliff, and is it a cliff?
 
 **Question.** As the working set grows past the cache, does throughput degrade

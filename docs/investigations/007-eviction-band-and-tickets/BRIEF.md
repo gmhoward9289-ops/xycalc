@@ -6,9 +6,8 @@ WiredTiger cache occupancy, and how might MongoDB 7 throttling
 variables on the calculator page and in docs, with our own backing data.
 Get a `serverStatus` snapshot (cache + tickets + tcmalloc) when we test.
 
-**Status:** education + corpus surface in progress. Focused occupancy-band
-probe harness added; live 80%/90% *ops* comparison still needs a Linux+Docker
-(or reef mongod) run — see FINDINGS for what we already measured.
+**Status:** education landed; smoke 12s + confirmatory 25s×2 measured on
+swamplink 2026-08-21 (see FINDINGS).
 
 **Expected confidence ceiling:**
 

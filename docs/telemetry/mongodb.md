@@ -34,7 +34,28 @@ exists for people who have been handed a number and no access.
 | `pages read into cache` | count | rate | 1 min | `obtainable` | Misses. This is the series that becomes the storage question — every page read into cache came from disk. |
 | `pages evicted by application threads` | count | rate | 1 min | `obtainable` | **The money metric.** Sustained non-zero means queries are doing eviction work: the cache is past `eviction_trigger` and the symptom is latency, not memory. If only one series is graphed, this one. |
 | `eviction server unable to reach eviction goal` | count | rate | 5 min | `obtainable` | Background eviction losing. Precedes the previous metric. |
+| occupancy % = `bytes currently` / `maximum bytes configured` | percent | last | 1 min | `obtainable` | Place yourself on the 80 → 90 → 95 ladder. Default `eviction_target` is 80; 90 is closer to app-thread conscription at 95. Investigation 007: raising the *configured* target 80→90 held the cache fuller (~78% → ~87–88% mean on 25s passes); ops/s delta was modest/noisy on a miss-bound throttle. |
 | `bytes read into cache` | bytes | rate | 1 min | `obtainable` | Miss volume in bytes. Multiply out to get the read bandwidth the storage layer sees — the direct handoff to `ebs.md`. |
+
+**One-shot snapshot (cache + tickets + tcmalloc)** — what investigation 007
+captures at the end of each probe leg:
+
+```javascript
+const s = db.serverStatus();
+const c = s.wiredTiger.cache;
+const t = (s.tcmalloc && s.tcmalloc.generic) || {};
+const max = c["maximum bytes configured"];
+printjson({
+  occupancyPct: 100 * c["bytes currently in the cache"] / max,
+  dirtyPct: 100 * c["tracked dirty bytes in the cache"] / max,
+  appEvict: c["pages evicted by application threads"],
+  unable: c["eviction server unable to reach eviction goal"],
+  tickets: s.wiredTiger.concurrentTransactions.read.totalTickets,
+  queuedMicros: s.wiredTiger.concurrentTransactions.read.totalTimeQueuedMicros,
+  tcmallocHeap: t.heap_size,
+  tcmallocAllocated: t.current_allocated_bytes || t.total_allocated_bytes
+});
+```
 
 **Sampling interval matters.** These are cumulative counters; a rate needs two
 samples. At 60 s you will see sustained pressure and miss bursts entirely. At
