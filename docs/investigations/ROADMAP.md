@@ -3,7 +3,10 @@
 Written 2026-08-01, after three investigations that turned out to be one
 failure told in three parts: the cache cannot hold the working set, so misses
 reach a device that throttles on the peak second, and the throttle becomes a
-concurrency problem whose queue does not drain.
+concurrency problem whose queue does not drain. Extended 2026-08-20/21 by
+investigations 004–007 (Celery amplification, Redis maxmemory conflict,
+provisional cache-cliff shape, occupancy-band education). Landed markers below
+are the source of truth for what is no longer “next.”
 
 Each entry below is a *designed experiment*, not a topic. It names the question,
 what would falsify it, and what the corpus gets if it runs. They are ordered by
@@ -39,6 +42,14 @@ constraints. See
 `docs/investigations/007-eviction-band-and-tickets/FINDINGS.md`.
 
 ## T1 — Where is the cache cliff, and is it a cliff?
+
+**Status (2026-08-21).** Investigation 006: A1-r1 complete, A1-r2 knee
+reproduced through 2×, A2 transfer **not run**. Provisional finding: not a
+plateau-then-cliff at 1.0× — relative ops fall hard 0.5→1.0 (steepest
+0.8→1.0), then a shallow tail. Absolute ops/s are throttle artifacts; no
+wt-cache coefficient until A2. See
+`docs/investigations/006-cache-cliff/FINDINGS.md` and the calculator Cache
+cliff tab.
 
 **Question.** As the working set grows past the cache, does throughput degrade
 smoothly or fall off a knee? If a knee, where — at 1.0× cache, or later?
@@ -190,6 +201,12 @@ the Celery model.
 ---
 
 ## T7 — Redis as a broker: lose the tasks, or deadlock the workers?
+
+**Landed 2026-08-20** as investigation 005. Both documented policies fail on
+Celery 5.4.0 / Redis 7.4.10 under the harness: `noeviction` → workers stall /
+100% task loss; `allkeys-lru` → workers consume but ~69% loss. Conflict
+reported, no winner. See
+`docs/investigations/005-redis-broker-eviction/FINDINGS.md`.
 
 **Question.** What happens when a Celery broker's Redis hits `maxmemory` under
 each eviction policy?

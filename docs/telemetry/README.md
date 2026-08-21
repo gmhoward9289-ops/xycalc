@@ -25,8 +25,9 @@ building a dashboard around the obvious place.
 
 Living recommendations — **Product core** (instance sizing), **Simple** /
 **Advanced** / **Evidence** (ops + catalogs) — live in
-[`recommendations.md`](recommendations.md). Per-system series contracts remain
-in `mongodb.md`, `ebs.md`, and `redis.md`.
+[`recommendations.md`](recommendations.md). [`dashboards.md`](dashboards.md)
+is a short pointer to that file. Per-system series contracts remain in
+`mongodb.md`, `ebs.md`, and `redis.md`.
 
 ## The import contract
 
