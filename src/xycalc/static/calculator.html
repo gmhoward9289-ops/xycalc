@@ -376,7 +376,7 @@ svg.nvd-chart { width: 100%; height: auto; display: block; }
 /* -- Simple / Advanced (#54) -- */
 .mode-bar {
   display: flex; gap: .35rem; align-items: center;
-  margin: 0 0 1.25rem; flex-wrap: wrap;
+  margin: 0 0 .5rem; flex-wrap: wrap;
 }
 .mode-bar .mode-label {
   font-size: .75rem; text-transform: uppercase; letter-spacing: .06em;
@@ -386,11 +386,19 @@ svg.nvd-chart { width: 100%; height: auto; display: block; }
   background: transparent; color: var(--muted);
   border: 1px solid var(--line); font-weight: 600;
   padding: .4rem .9rem; font-size: .85rem; border-radius: 6px;
+  line-height: 1.2; cursor: pointer;
 }
+/* Match .tab.active — not a solid CTA fill (reads as a different, taller control). */
 .mode-btn[aria-pressed="true"] {
-  color: #fff; background: var(--accent); border-color: var(--accent);
+  color: var(--accent); border-color: var(--accent); background: transparent;
 }
-body.mode-simple .claim { display: none; }
+/* Reserve Advanced tab-row height in both modes so the panel below does not jump. */
+.view-subnav {
+  min-height: 2.35rem;
+  margin: 0 0 1.25rem;
+}
+.view-subnav .tabs { margin-bottom: 0; }
+body.mode-simple .view-subnav .tabs { display: none; }
 body.mode-simple #advanced-chrome { display: none !important; }
 body.mode-advanced #simple-view { display: none !important; }
 .simple-answer .band-row {
@@ -453,6 +461,15 @@ body.mode-advanced #simple-view { display: none !important; }
   <button type="button" class="mode-btn" id="mode-simple" aria-pressed="true">Simple</button>
   <button type="button" class="mode-btn" id="mode-advanced" aria-pressed="false">Advanced</button>
 </div>
+<div class="view-subnav" aria-label="Advanced sections">
+  <div class="tabs">
+    <button class="tab active" id="tab-btn-scenario" data-tab="scenario">Scenario</button>
+    <button class="tab" id="tab-btn-single" data-tab="single">Single question</button>
+    <button class="tab" id="tab-btn-flow" data-tab="flow">How it flows</button>
+    <button class="tab" id="tab-btn-occupancy" data-tab="occupancy">Occupancy bands</button>
+    <button class="tab" id="tab-btn-cliff" data-tab="cliff">Cache cliff</button>
+  </div>
+</div>
 
 <div id="simple-view">
   <div class="panel">
@@ -488,13 +505,6 @@ body.mode-advanced #simple-view { display: none !important; }
 </div>
 
 <div id="advanced-chrome">
-<div class="tabs">
-  <button class="tab active" id="tab-btn-scenario" data-tab="scenario">Scenario</button>
-  <button class="tab" id="tab-btn-single" data-tab="single">Single question</button>
-  <button class="tab" id="tab-btn-flow" data-tab="flow">How it flows</button>
-  <button class="tab" id="tab-btn-occupancy" data-tab="occupancy">Occupancy bands</button>
-  <button class="tab" id="tab-btn-cliff" data-tab="cliff">Cache cliff</button>
-</div>
 
 <div id="tab-scenario">
   <div class="panel">
