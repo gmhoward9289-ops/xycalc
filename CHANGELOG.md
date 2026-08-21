@@ -5,6 +5,10 @@ Corpus identity is `corpus_digest` on the exported page. See `docs/VERSIONING.md
 
 ## 0.4.0
 
+- Simple first paint and Advanced Scenario “What you need” show the three
+  measured size-path footnotes (occupancy/cache-cliff, tickets, EBS
+  peak-to-mean). Show the math pins occupancy and EBS on their chain steps
+  only; tickets stay on the size-to-instance scenario (not every model).
 - Simple mode first paint shows the same weakest-chain validation banner as
   Advanced (label + `text`, including n= / in-band / MAE) and a hard
   “not a buy size / uncited path — open Advanced for sources” line with a
