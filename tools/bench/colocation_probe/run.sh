@@ -1,27 +1,32 @@
 #!/usr/bin/env bash
-# Measure what Mongo + Redis + ClickHouse + Celery actually hold in RAM when
-# colocated on one host, at three phases: idle, after each service has real
-# data, and under light concurrent load. See README.md for what question this
-# answers and how the result feeds back into the corpus.
-#
-#   cd tools/bench/colocation_probe && ./run.sh
-#
-# Sizing knobs (env vars, same shape as celery_probe):
-#   MONGO_MEM, REDIS_MEM, CLICKHOUSE_MEM, WORKER_MEM   per-container cgroup caps
-#   MONGO_CACHE_GB                                     WiredTiger cache size
-#   PROBE_DOCS                                         Mongo doc count for the worker/driver
+# Measure RSS for Mongo + Redis + ClickHouse + Celery colocated.
+#   cd tools/bench/colocation_probe && bash ./run.sh
 set -euo pipefail
 cd "$(dirname "$0")"
 
 OUT="${OUT:-./results.json}"
-cleanup() { docker compose down -v --remove-orphans >/dev/null 2>&1 || true; }
+PY="${XYCALC_PY:-}"
+if [ -z "$PY" ]; then
+  if command -v python >/dev/null 2>&1; then PY=python
+  elif command -v python3 >/dev/null 2>&1; then PY=python3
+  else echo "need python" >&2; exit 1; fi
+fi
+# Phase samples: avoid /tmp on broken Git Bash layouts.
+PHASEDIR="${TMPDIR:-.}/xycalc-colocation-$$"
+mkdir -p "$PHASEDIR"
+
+cleanup() {
+  docker compose down -v --remove-orphans >/dev/null 2>&1 || true
+  rm -rf "$PHASEDIR" >/dev/null 2>&1 || true
+}
 trap cleanup EXIT
 cleanup
+mkdir -p "$PHASEDIR"
 
 echo "== phase 1: idle (containers up, no data loaded yet) ==" >&2
 docker compose up -d --build mongo redis clickhouse worker >&2
-sleep 5   # let each service finish its own startup before sampling "idle"
-python3 sample.py idle > /tmp/phase_idle.json
+sleep 5
+"$PY" sample.py idle > "$PHASEDIR/phase_idle.json"
 
 echo "== loading data into mongo (via celery_probe's driver) and clickhouse ==" >&2
 docker compose --profile driver run --rm --no-deps -T driver python drive.py >&2 || true
@@ -29,20 +34,21 @@ docker compose exec -T clickhouse clickhouse-client --multiquery < clickhouse_lo
 
 echo "== phase 2: loaded (data resident, no concurrent traffic) ==" >&2
 sleep 3
-python3 sample.py loaded > /tmp/phase_loaded.json
+"$PY" sample.py loaded > "$PHASEDIR/phase_loaded.json"
 
 echo "== phase 3: under light concurrent load ==" >&2
 docker compose --profile driver run --rm --no-deps -T driver python drive.py &
 DRIVER_PID=$!
 sleep 5
-python3 sample.py under_load > /tmp/phase_under_load.json
+"$PY" sample.py under_load > "$PHASEDIR/phase_under_load.json"
 wait "$DRIVER_PID" || true
 
-python3 - "$OUT" <<'PYEOF'
-import json, sys
+"$PY" - "$OUT" "$PHASEDIR" <<'PYEOF'
+import json, sys, os
+out, phasedir = sys.argv[1], sys.argv[2]
 phases = ["idle", "loaded", "under_load"]
-data = {p: json.load(open(f"/tmp/phase_{p}.json")) for p in phases}
-with open(sys.argv[1], "w") as f:
+data = {p: json.load(open(os.path.join(phasedir, f"phase_{p}.json"))) for p in phases}
+with open(out, "w") as f:
     json.dump(data, f, indent=2)
 
 print("\n=== RSS by service across phases ===")
