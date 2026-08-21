@@ -463,5 +463,10 @@ coefficients:
       percentage form exists so the cache tracks host RAM when the instance
       grows. Calculated values still clamp to the 0.256 GB minimum branch.
       Colocation (multiple mongod / Redis / ClickHouse on one box) still
-      requires decreasing the share — see docs/research/mongodb-vertical-scaling-r8.md
-      and T11; no measured colocation-share coefficient yet.
+      needs an explicit share decision — investigation 009 (AWS T11 share
+      sweep) found neighbor RSS flat from 50%→80% WT share under 2.5×
+      oversub on a host that was not at its RAM ceiling. That is a
+      documented absence of neighbor RSS effect under that harness, not a
+      replacement coefficient for the vendor 50–70% band. See
+      docs/investigations/009-colocation-share/FINDINGS.md and
+      docs/research/mongodb-vertical-scaling-r8.md §7.

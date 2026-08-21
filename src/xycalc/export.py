@@ -274,7 +274,8 @@ def cache_cliff_guide(conn: sqlite3.Connection) -> dict:
 
     Relative ops (normalised to the 0.5× leg) are the transferable claim;
     absolute ops/s stay in the table as throttle artifacts. No wt-cache
-    coefficient is derived here — A2 transfer is still open.
+    sizing coefficient is derived here — relative ops under throttle ≠ hit
+    ratio.
     """
     ratios = (0.5, 0.8, 1.0, 1.2, 1.5, 2.0, 4.0, 8.0, 50.0)
     legs: list[dict] = []
@@ -321,23 +322,41 @@ def cache_cliff_guide(conn: sqlite3.Connection) -> dict:
                 leg["relative_ops_r2"] = None
         else:
             leg["relative_ops_r2"] = None
+    a2_ratios = (0.5, 0.8, 1.0, 1.2, 1.5, 2.0)
+    a2_legs: list[dict] = []
+    for ratio in a2_ratios:
+        tag = _ratio_tag(ratio)
+        ops = _obs_value(conn, f"swamplink-2026-08-21-cliff-a2-ops-{tag}")
+        if ops is None:
+            continue
+        a2_legs.append({"ratio": ratio, "ops": ops,
+                        "ops_slug": f"swamplink-2026-08-21-cliff-a2-ops-{tag}"})
+    a2_base = a2_legs[0]["ops"] if a2_legs else None
+    for leg in a2_legs:
+        leg["relative_ops"] = (
+            None if a2_base in (None, 0) else round(leg["ops"] / a2_base, 4)
+        )
     return {
         "model": "mongodb.wt-cache",
         "source": "obs-mongodb-cache-cliff-swamplink-2026-08-21",
         "investigation": "006-cache-cliff",
-        "status": "provisional",
+        "status": "measured",
         "wt_cache_gb": 0.25,
         "steepest_segment": [0.8, 1.0],
-        "transfer": "A2 (1.0 GB cache) not run — ratio scale-invariance open",
+        "transfer": (
+            "A2 (1.0 GB cache, knee 0.5…2.0) confirms same steepest segment "
+            "0.8→1.0 (slope ≈ −3.8); far oversub still A1-only"
+        ),
         "legs": legs,
+        "a2_legs": a2_legs,
         "verdict": (
             "Throughput vs oversubscription is not a flat plateau then a cliff "
             "at 1.0×. Relative ops/s falls hard already between 0.5× and 1.0× "
-            "(steepest log–log segment 0.8→1.0), then the decline flattens into "
-            "a shallow slope through 50×. Absolute ops/s are throttle artifacts; "
-            "the shape is the claim. A1-r2 reproduces the knee through 2×. Do "
-            "not treat cache-resident as cache == dataSize, and do not promote "
-            "a wt-cache coefficient until A2 confirms transfer."
+            "(steepest log–log segment 0.8→1.0 on A1-r1, A1-r2, and A2), then "
+            "the decline flattens into a shallow slope through 50×. Absolute "
+            "ops/s are throttle artifacts; the shape is the claim. Do not treat "
+            "cache-resident as cache == dataSize. No wt-cache sizing "
+            "coefficient — relative ops under throttle are not a hit-ratio."
         ),
     }
 

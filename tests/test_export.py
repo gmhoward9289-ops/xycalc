@@ -183,7 +183,9 @@ def test_export_blob_carries_occupancy_band(blob):
 
 def test_export_blob_carries_cache_cliff(blob):
     g = blob["cache_cliff"]
-    assert g["status"] == "provisional"
+    assert g["status"] == "measured"
+    assert g["a2_legs"]
+    assert g["a2_legs"][0]["ratio"] == 0.5
     assert g["steepest_segment"] == [0.8, 1.0]
     assert g["wt_cache_gb"] == 0.25
     assert len(g["legs"]) == 9

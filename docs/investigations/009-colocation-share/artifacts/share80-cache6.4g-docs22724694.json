@@ -1,0 +1,89 @@
+{
+  "idle": {
+    "phase": "idle",
+    "services": {
+      "worker": {
+        "mem_used": "110.5MiB",
+        "mem_limit": "2GiB",
+        "mem_pct": "5.39%",
+        "cpu_pct": "0.03%"
+      },
+      "clickhouse": {
+        "mem_used": "122.7MiB",
+        "mem_limit": "8GiB",
+        "mem_pct": "1.50%",
+        "cpu_pct": "1.30%"
+      },
+      "redis": {
+        "mem_used": "4.07MiB",
+        "mem_limit": "4GiB",
+        "mem_pct": "0.10%",
+        "cpu_pct": "0.32%"
+      },
+      "mongo": {
+        "mem_used": "71.73MiB",
+        "mem_limit": "8GiB",
+        "mem_pct": "0.88%",
+        "cpu_pct": "0.19%"
+      }
+    }
+  },
+  "loaded": {
+    "phase": "loaded",
+    "services": {
+      "worker": {
+        "mem_used": "115.4MiB",
+        "mem_limit": "2GiB",
+        "mem_pct": "5.64%",
+        "cpu_pct": "0.05%"
+      },
+      "clickhouse": {
+        "mem_used": "363.1MiB",
+        "mem_limit": "8GiB",
+        "mem_pct": "4.43%",
+        "cpu_pct": "2.08%"
+      },
+      "redis": {
+        "mem_used": "4.117MiB",
+        "mem_limit": "4GiB",
+        "mem_pct": "0.10%",
+        "cpu_pct": "0.32%"
+      },
+      "mongo": {
+        "mem_used": "5.155GiB",
+        "mem_limit": "8GiB",
+        "mem_pct": "64.43%",
+        "cpu_pct": "0.20%"
+      }
+    }
+  },
+  "under_load": {
+    "phase": "under_load",
+    "services": {
+      "worker": {
+        "mem_used": "116.4MiB",
+        "mem_limit": "2GiB",
+        "mem_pct": "5.69%",
+        "cpu_pct": "9.51%"
+      },
+      "clickhouse": {
+        "mem_used": "355.4MiB",
+        "mem_limit": "8GiB",
+        "mem_pct": "4.34%",
+        "cpu_pct": "1.79%"
+      },
+      "redis": {
+        "mem_used": "5.055MiB",
+        "mem_limit": "4GiB",
+        "mem_pct": "0.12%",
+        "cpu_pct": "1.93%"
+      },
+      "mongo": {
+        "mem_used": "5.156GiB",
+        "mem_limit": "8GiB",
+        "mem_pct": "64.45%",
+        "cpu_pct": "2.62%"
+      }
+    }
+  }
+}

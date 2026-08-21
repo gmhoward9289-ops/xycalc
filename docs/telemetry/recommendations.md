@@ -351,7 +351,7 @@ follow from rows here.
 | U10 | Redis FAQ ~20% host RAM beyond maxmemory | `settled` | Documented coefficient | Host headroom panel |
 | U11 | Broker `LLEN` understates outstanding by ~prefetch × concurrency | `provisional` | Issue #14 / T6 plan; inv 004 related | Prefer outstanding for pages; confirm magnitude when T6 lands |
 | U12 | Redis early-warning ratios 0.70 / 0.85 | `provisional` | Ops default; 005 measured cliff at ceiling only | Tune from growth rate — not corpus "safe" fractions |
-| U13 | Cache oversubscription: not plateau-then-cliff at 1.0×; steepest relative-ops drop 0.8→1.0 (A1); A2 transfer open | `provisional` | Inv 006 A1 (+r2 knee); A2 not run | Do not alert on a specific ratio; no wt-cache coefficient yet |
+| U13 | Cache oversubscription: not plateau-then-cliff at 1.0×; steepest relative-ops drop 0.8→1.0; A2 (1 GB) transfers | `measured` | Inv 006 A1×2 + A2 | Shape only — no wt-cache sizing coefficient |
 | U14 | Ticket pool climb under device-bound load | `open` | Inv 003 open question | Watch queue metrics; do not assume auto-scale of tickets |
 | U15 | **Product core:** instance sizing with named picks + spec ranges (AWS / Azure / bare metal) is the primary deliverable; models and telemetry serve that decision | `settled` | Product decision 2026-08-21; scenario `mongodb.size-to-instance` | Do not ship features that orphan the buy/build answer |
 | U16 | Instance pick must be per band-end (lo/mode/hi), never collapsed mode | `settled` | `select_instance` / scenario-chaining design | Three names for one input is correct |
@@ -382,7 +382,8 @@ follow from rows here.
 | Work | Would change |
 |---|---|
 | T6 prefetch backlog magnitudes | U11 → settled; Simple Celery row numbers |
-| T1 cache cliff A2 transfer | U13 → settled or overturned; maybe occupancy ticket thresholds |
+| T1 cache cliff A2 transfer | **done** — U13 measured; still no sizing coefficient |
+| T11 colocation share | **done** — inv 009; neighbor RSS flat 50→80%; no share-pct coefficient |
 | T3 write-rate / dirty onset | Dirty ticket timing |
 | Production observation imports | Tune Redis 0.70/0.85; scrape intervals |
 | Azure VM SKU catalog + scenario provider switch | U17 → closer to settled; Simple provider row |
@@ -394,6 +395,7 @@ follow from rows here.
 | Date | Change |
 |---|---|
 | 2026-08-21 | Docs pass: U13 → provisional (006 A1 shape); README Status/open/next + ROADMAP landed markers for 004–007 |
+| 2026-08-21 | Landed 006 A1-r2+A2 + 009 T11 AWS share sweep; U13 → measured; calculator Cache cliff status measured |
 | 2026-08-21 | Renamed Research layer → **Evidence** (not "belief") |
 | 2026-08-21 | Product core: instance sizing (AWS/Azure/bare metal, named picks + spec ranges) locked as primary deliverable; U15–U18 |
 | 2026-08-21 | Initial living doc: views + understandings U1–U14 from inv 001–007; dashboards/alerts folded from first observability epic |
@@ -405,5 +407,5 @@ follow from rows here.
 - Series contracts: [`mongodb.md`](mongodb.md), [`ebs.md`](ebs.md), [`redis.md`](redis.md)
 - Scenario design: [`../design/scenario-chaining-proposal.md`](../design/scenario-chaining-proposal.md)
 - Import shapes: [`README.md`](README.md) (repo root telemetry README is this folder's)
-- Investigations: 001 cache · 002 EBS · 003 stall→tickets · 004 Celery amplification · 005 maxmemory · 006 cache cliff (provisional) · 007 80 vs 90 · 008 foreign collections rename
+- Investigations: 001 cache · 002 EBS · 003 stall→tickets · 004 Celery amplification · 005 maxmemory · 006 cache cliff (measured) · 007 80 vs 90 · 008 foreign collections rename · 009 colocation share
 - Legacy pointer: [`dashboards.md`](dashboards.md) → this file

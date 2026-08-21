@@ -1,0 +1,101 @@
+observations:
+  # Investigation 009 / ROADMAP T11 — AWS r6i.2xlarge share sweep.
+  # host.container_rss_bytes (docker stats), NOT mongodb.wt-cache validation.
+  # OVERSUB=2.5, MONGO_MEM_GB=8, share = WT cache / mongo mem_limit.
+
+  - slug: aws-t11-2026-08-21-share50-mongo-idle
+    system: mongodb
+    parameter: host.container_rss_bytes
+    value: 74763469
+    unit: bytes
+    workload: >-
+      idle colocated stack; share=50% (--wiredTigerCacheSizeGB 4.0 of 8g
+      mem_limit); OVERSUB=2.5 dataset not yet loaded
+    machine_class: AWS r6i.2xlarge 64 GiB, us-east-2, Docker
+    system_version: mongo:7 (Docker Hub tag)
+    observed_on: '2026-08-21'
+    source: obs-mongodb-colocation-share-aws-2026-08-21
+    notes: docker stats MemUsage 71.33MiB.
+
+  - slug: aws-t11-2026-08-21-share50-mongo-loaded
+    system: mongodb
+    parameter: host.container_rss_bytes
+    value: 3515430732
+    unit: bytes
+    workload: >-
+      14,202,934 docs loaded (2.5× oversub of 4.0 GB cache), no concurrent
+      traffic; colocated redis/clickhouse/celery
+    machine_class: AWS r6i.2xlarge 64 GiB, us-east-2, Docker
+    system_version: mongo:7 (Docker Hub tag)
+    observed_on: '2026-08-21'
+    source: obs-mongodb-colocation-share-aws-2026-08-21
+    notes: docker stats 3.274GiB; ≈0.82× configured cache.
+
+  - slug: aws-t11-2026-08-21-share50-mongo-under-load
+    system: mongodb
+    parameter: host.container_rss_bytes
+    value: 3516504474
+    unit: bytes
+    workload: >-
+      same dataset under colocated point-lookup + ClickHouse scan load;
+      share=50%
+    machine_class: AWS r6i.2xlarge 64 GiB, us-east-2, Docker
+    system_version: mongo:7 (Docker Hub tag)
+    observed_on: '2026-08-21'
+    source: obs-mongodb-colocation-share-aws-2026-08-21
+    notes: >-
+      3.275GiB — flat vs loaded (reef small-probe 1.7× jump did not
+      reproduce at fill).
+
+  - slug: aws-t11-2026-08-21-share60-mongo-under-load
+    system: mongodb
+    parameter: host.container_rss_bytes
+    value: 4183298146
+    unit: bytes
+    workload: share=60% (4.8 GB cache), 17.0M docs, under colocated load
+    machine_class: AWS r6i.2xlarge 64 GiB, us-east-2, Docker
+    system_version: mongo:7 (Docker Hub tag)
+    observed_on: '2026-08-21'
+    source: obs-mongodb-colocation-share-aws-2026-08-21
+    notes: 3.896GiB; ≈0.81× cache.
+
+  - slug: aws-t11-2026-08-21-share70-mongo-under-load
+    system: mongodb
+    parameter: host.container_rss_bytes
+    value: 4919885038
+    unit: bytes
+    workload: share=70% (5.6 GB cache), 19.9M docs, under colocated load
+    machine_class: AWS r6i.2xlarge 64 GiB, us-east-2, Docker
+    system_version: mongo:7 (Docker Hub tag)
+    observed_on: '2026-08-21'
+    source: obs-mongodb-colocation-share-aws-2026-08-21
+    notes: 4.582GiB; ≈0.82× cache.
+
+  - slug: aws-t11-2026-08-21-share80-mongo-under-load
+    system: mongodb
+    parameter: host.container_rss_bytes
+    value: 5536212845
+    unit: bytes
+    workload: share=80% (6.4 GB cache), 22.7M docs, under colocated load
+    machine_class: AWS r6i.2xlarge 64 GiB, us-east-2, Docker
+    system_version: mongo:7 (Docker Hub tag)
+    observed_on: '2026-08-21'
+    source: obs-mongodb-colocation-share-aws-2026-08-21
+    notes: >-
+      5.156GiB; ≈0.81× cache. Neighbor RSS stayed flat vs share50–70
+      (ClickHouse ~340–365 MiB, redis ~5 MiB, worker ~116–123 MiB) —
+      see investigation 009 FINDINGS.
+
+  - slug: aws-t11-2026-08-21-share80-clickhouse-under-load
+    system: clickhouse
+    parameter: host.container_rss_bytes
+    value: 372663910
+    unit: bytes
+    workload: >-
+      colocated under load while mongo share=80%; CH mem_limit 8g; contrasts
+      with mongo 5.16 GiB to show neighbor did not swell
+    machine_class: AWS r6i.2xlarge 64 GiB, us-east-2, Docker
+    system_version: clickhouse/clickhouse-server (compose tag)
+    observed_on: '2026-08-21'
+    source: obs-mongodb-colocation-share-aws-2026-08-21
+    notes: docker stats 355.4MiB under_load at share80.

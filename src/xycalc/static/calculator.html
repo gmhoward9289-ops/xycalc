@@ -656,7 +656,7 @@ svg.nvd-chart { width: 100%; height: auto; display: block; }
 <div id="tab-cliff" hidden>
   <div class="panel">
     <h2 style="margin-top:0">Cache cliff vs oversubscription
-      <span class="status-pill" id="cliff-status">provisional</span>
+      <span class="status-pill" id="cliff-status">measured</span>
     </h2>
     <p style="margin:0 0 .5rem;font-size:.92rem;color:var(--muted)" id="cliff-verdict"></p>
     <p class="chart-hint">X is <code>dataSize / maxCache</code>. Y is relative ops/s (1.0 at 0.5×). Scrub to read a point; absolute rates stay in the table.</p>
@@ -1661,7 +1661,7 @@ function bootCacheCliff() {
     $("cliff-verdict").textContent = "Cache-cliff series missing from this export.";
     return;
   }
-  $("cliff-status").textContent = g.status || "provisional";
+  $("cliff-status").textContent = g.status || "measured";
   $("cliff-verdict").textContent = g.verdict || "";
   $("cliff-transfer").textContent =
     (g.transfer || "") +

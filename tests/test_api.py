@@ -161,5 +161,6 @@ class TestPage:
         assert len(api["occupancy_band"]["passes"]) == 3
         assert len(api["occupancy_band"]["ticket_ladder"]) == 3
         assert len(api["occupancy_band"]["playbook"]) >= 4
-        assert api["cache_cliff"]["status"] == "provisional"
+        assert api["cache_cliff"]["status"] == "measured"
         assert len(api["cache_cliff"]["legs"]) == 9
+        assert len(api["cache_cliff"]["a2_legs"]) == 6
