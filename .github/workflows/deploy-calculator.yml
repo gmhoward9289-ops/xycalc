@@ -13,6 +13,27 @@ name: Deploy calculator
 # needed -- unlike a single-repo deploy that can force-push its own full
 # tree, this job edits one file inside a repo it doesn't otherwise own, so it
 # has to clone, splice in the export, and push a normal commit.
+#
+# A push to main used to start this workflow in parallel with ci.yml, so a
+# red SHA could go live. GitHub `needs:` only names jobs in the SAME
+# workflow, and wiring deploy into ci.yml as a reusable workflow fails
+# closed the other way: ci.yml's GITHUB_TOKEN is contents:read (a
+# Dependabot-compromised pip install must not inherit write), which cannot
+# grant the called workflow checks:read.
+#
+# workflow_run is the other cross-workflow trigger GitHub supports, but it
+# is the wrong shape here: it fires only after the entire `ci` workflow
+# finishes (including test-py311 / test-py313, which are not merge gates),
+# and GITHUB_SHA on the follow-up run is the default-branch tip, not the
+# commit that was evaluated. Combined commit status is also too wide
+# (codespell and the extra Python jobs).
+#
+# So this workflow still starts on push to main (and workflow_dispatch),
+# then the merge-gates job polls the Checks API for the main-protection
+# ruleset required_status_checks on this SHA — audit, build, test,
+# test-py314, not invented names — and the production job does not run
+# until those four are green. A red SHA fails merge-gates and never
+# touches the production environment.
 
 on:
   push:
@@ -25,11 +46,24 @@ concurrency:
 
 # The deploy credentials live on the `production` environment, not on the
 # repo, so a workflow change on a non-protected branch can't read them.
+# checks/actions read is for the merge-gates poll only.
 permissions:
   contents: read
+  actions: read
+  checks: read
 
 jobs:
+  merge-gates:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Wait for merge-gate checks on this SHA
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash .github/scripts/wait-merge-gates.sh
+
   deploy:
+    needs: [merge-gates]
     runs-on: ubuntu-latest
     environment: production
     steps:
@@ -44,6 +78,9 @@ jobs:
           pip install -e .
           xycalc export --out /tmp/calculator.html \
             --crumb '<div class="crumb"><a href="/">swamplink.com</a> / <a href="/tools/">tools</a> / <a href="/tools/xycalc/">xycalc</a> / calculator</div>'
+
+      - name: Fail if Python/JS golden vectors disagree in the export
+        run: node .github/scripts/check-export-goldens.js /tmp/calculator.html
 
       - name: Splice the export into swamplink-root and push
         env:
@@ -81,16 +118,18 @@ jobs:
           git commit -m "chore(xycalc): re-export calculator @ ${GITHUB_SHA}"
           git push origin master
 
-      - name: Verify the page is reachable anonymously
+      - name: Verify the live page is this export and goldens still agree
         run: |
           for i in $(seq 1 12); do
             code="$(curl -s -o /tmp/page.html -w '%{http_code}' https://swamplink.com/tools/xycalc/calculator/)"
             if [ "$code" = "200" ] && grep -qi '<title>xycalc' /tmp/page.html; then
-              echo "anonymous GET is 200 and serves the page"
-              exit 0
+              if node .github/scripts/check-export-goldens.js /tmp/page.html /tmp/calculator.html; then
+                echo "anonymous GET is 200, title matches, goldens agree, corpus_digest matches the export"
+                exit 0
+              fi
             fi
             sleep 5
           done
-          echo "::error::https://swamplink.com/tools/xycalc/calculator/ did not serve 200 with the expected title"
-          head -c 500 /tmp/page.html
+          echo "::error::https://swamplink.com/tools/xycalc/calculator/ did not serve this SHA's export with agreeing goldens"
+          head -c 500 /tmp/page.html || true
           exit 1

@@ -203,6 +203,62 @@ def test_the_check_can_actually_fail(blob, tmp_path):
     assert proc.returncode == 1
 
 
+CHECK_EXPORT_GOLDENS = (
+    Path(__file__).resolve().parents[1] / ".github" / "scripts" / "check-export-goldens.js"
+)
+
+
+@pytest.mark.skipif(NODE is None, reason="node is not installed")
+def test_deploy_golden_script_accepts_a_good_export(blob, tmp_path):
+    """The deploy workflow's Node gate is the same checkGolden() CI already
+    runs, pointed at the exported HTML. Pin the script, not a one-off in YAML,
+    so a 1000x parse regression cannot ship because the live grep still saw 200.
+    """
+    html = tmp_path / "calculator.html"
+    html.write_text(render(blob), encoding="utf-8")
+    proc = subprocess.run(
+        [NODE, str(CHECK_EXPORT_GOLDENS), str(html)],
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+    )
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    assert '"golden_failures":0' in proc.stdout
+
+
+@pytest.mark.skipif(NODE is None, reason="node is not installed")
+def test_deploy_golden_script_rejects_a_bent_export(blob, tmp_path):
+    bent = json.loads(json.dumps(blob))
+    bent["golden"][0]["mode"] *= 1.01
+    html = tmp_path / "bent.html"
+    html.write_text(render(bent), encoding="utf-8")
+    proc = subprocess.run(
+        [NODE, str(CHECK_EXPORT_GOLDENS), str(html)],
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+    )
+    assert proc.returncode == 1
+
+
+@pytest.mark.skipif(NODE is None, reason="node is not installed")
+def test_deploy_golden_script_rejects_a_stale_live_blob(blob, tmp_path):
+    good = tmp_path / "export.html"
+    good.write_text(render(blob), encoding="utf-8")
+    stale_blob = json.loads(json.dumps(blob))
+    stale_blob["corpus_digest"] = "stale-digest"
+    stale = tmp_path / "live.html"
+    stale.write_text(render(stale_blob), encoding="utf-8")
+    proc = subprocess.run(
+        [NODE, str(CHECK_EXPORT_GOLDENS), str(stale), str(good)],
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+    )
+    assert proc.returncode == 1
+    assert "corpus_digest mismatch" in proc.stderr
+
+
 def test_render_is_deterministic(blob):
     # Same corpus, byte-identical page. An export that differs on every run
     # cannot be diffed, and "what changed" is the whole question when
