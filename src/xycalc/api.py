@@ -9,9 +9,11 @@ endpoint to be tempted by.
 
 from __future__ import annotations
 
+import sqlite3
+from collections.abc import Iterator
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 
@@ -39,18 +41,23 @@ app = FastAPI(
 )
 
 
-def _conn():
-    return connect()
-
-
-def _model(slug: str) -> Model:
+def _db() -> Iterator[sqlite3.Connection]:
+    """One connection per request; closed even if the handler raises."""
+    conn = connect()
     try:
-        return Model.load(_conn(), slug)
+        yield conn
+    finally:
+        conn.close()
+
+
+def _model(conn: sqlite3.Connection, slug: str) -> Model:
+    try:
+        return Model.load(conn, slug)
     except ModelError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
 
-def _serialise(result, model: Model) -> dict:
+def _serialise(result, model: Model, conn: sqlite3.Connection) -> dict:
     return {
         "model": model.slug,
         "question": model.question,
@@ -91,15 +98,14 @@ def _serialise(result, model: Model) -> dict:
         ],
         # Never optional, never omitted when absent. A response without it
         # would read as a validated answer to anything that forgot to check.
-        "validation": validation_status(_conn(), model.slug),
+        "validation": validation_status(conn, model.slug),
         "reframe": model.reframe,
         "notes": model.notes,
     }
 
 
 @app.get("/api/models")
-def list_models():
-    conn = _conn()
+def list_models(conn: sqlite3.Connection = Depends(_db)):
     out = []
     for slug in Model.all(conn):
         m = Model.load(conn, slug)
@@ -118,24 +124,28 @@ def list_models():
 
 
 @app.get("/api/sizing/{model_slug:path}")
-def sizing(model_slug: str, **_):
+def sizing(model_slug: str):
     raise HTTPException(status_code=400, detail="use POST /api/sizing")
 
 
 @app.post("/api/sizing")
-def post_sizing(payload: dict):
-    model = _model(payload.get("model", ""))
+def post_sizing(payload: dict, conn: sqlite3.Connection = Depends(_db)):
+    model = _model(conn, payload.get("model", ""))
     try:
         result = model.evaluate(payload.get("inputs", {}))
     except ModelError as e:
         raise HTTPException(status_code=422, detail=str(e))
-    body = _serialise(result, model)
+    body = _serialise(result, model, conn)
 
     available = payload.get("available")
     if available:
         try:
+            if isinstance(available, bool) or not isinstance(
+                available, (str, int, float)
+            ):
+                raise ModelError(f"cannot read a size from {available!r}")
             body["headroom"] = headroom(result, parse_bytes(available))
-        except ModelError as e:
+        except (ModelError, TypeError, ValueError) as e:
             raise HTTPException(status_code=422, detail=str(e))
     return body
 
@@ -167,12 +177,12 @@ def _serialise_instance_pick(pick: dict) -> dict:
 
 
 @app.get("/api/scenarios")
-def list_scenarios():
-    return {"scenarios": describe_scenarios(_conn())}
+def list_scenarios(conn: sqlite3.Connection = Depends(_db)):
+    return {"scenarios": describe_scenarios(conn)}
 
 
 @app.post("/api/scenario")
-def post_scenario(payload: dict):
+def post_scenario(payload: dict, conn: sqlite3.Connection = Depends(_db)):
     scenario = get_scenario(payload.get("scenario", ""))
     if scenario.get("disabled"):
         raise HTTPException(status_code=422, detail=f"{scenario['slug']}: not yet modeled")
@@ -181,7 +191,7 @@ def post_scenario(payload: dict):
     try:
         available_bytes = parse_bytes(available) if available else None
         steps = chain_evaluate(
-            _conn(), scenario, payload.get("inputs", {}), available=available_bytes
+            conn, scenario, payload.get("inputs", {}), available=available_bytes
         )
     except ModelError as e:
         raise HTTPException(status_code=422, detail=str(e))
@@ -189,7 +199,7 @@ def post_scenario(payload: dict):
     body_steps = []
     for s in steps:
         if s.kind == "model":
-            step_body = _serialise(s.result, s.model)
+            step_body = _serialise(s.result, s.model, conn)
             step_body["chained"] = s.chained
             if s.headroom is not None:
                 step_body["headroom"] = s.headroom
@@ -229,17 +239,17 @@ def post_scenario(payload: dict):
 
 
 @app.get("/api/why/{model_slug:path}")
-def why(model_slug: str):
+def why(model_slug: str, conn: sqlite3.Connection = Depends(_db)):
     """The citation chain, without running the model. What a reader wants when
     they distrust a number rather than when they need one."""
-    model = _model(model_slug)
+    model = _model(conn, model_slug)
     return {
         "model": model.slug,
         "question": model.question,
         "summary": model.summary,
         "reframe": model.reframe,
         "notes": model.notes,
-        "validation": validation_status(_conn(), model.slug),
+        "validation": validation_status(conn, model.slug),
         "terms": [
             {
                 "key": t.key,
@@ -267,15 +277,15 @@ def why(model_slug: str):
 
 
 @app.get("/")
-def index():
+def index(conn: sqlite3.Connection = Depends(_db)):
     """Same page as the static export — one calculator for GUI and deploy."""
-    return HTMLResponse(render(corpus_blob(_conn())))
+    return HTMLResponse(render(corpus_blob(conn)))
 
 
 @app.get("/api/corpus")
-def api_corpus():
+def api_corpus(conn: sqlite3.Connection = Depends(_db)):
     """The export blob, for tooling that wants the page without HTML."""
-    return corpus_blob(_conn())
+    return corpus_blob(conn)
 
 
 app.mount("/static", StaticFiles(directory=STATIC), name="static")

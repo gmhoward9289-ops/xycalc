@@ -23,10 +23,11 @@ End-user sizing surface with few inputs; full instrument remains one click away.
 
 | User | Feeds |
 |---|---|
-| Total DB size | `baseline_storage_size` |
+| Total DB size | `baseline_storage_size` (bare number → GB) |
 | Vulns (optional) | `baseline_vuln_count` (else `250000`) |
-| (silent) | `index_size` `40GB`, `foreign_collections_size` `80GB` |
-| (omitted) | `target_vuln_count` → three-year growth path |
+| (silent) | `target_vuln_count` = baseline → **today’s size**, no 3-year growth |
+| (omitted) | `index_size`, `foreign_collections_size` (Advanced only) |
+| Floor | Host RAM band clamped to ≥ **64 GiB** (`r8i.2xlarge`); instances re-picked |
 
 ## Refuses
 

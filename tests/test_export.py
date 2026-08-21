@@ -25,8 +25,10 @@ from pathlib import Path
 import pytest
 
 from xycalc.export import (
+    APP_JS,
     EVALUATE_JS,
     ExportError,
+    TEMPLATE,
     corpus_blob,
     golden_vectors,
     render,
@@ -145,11 +147,16 @@ def test_render_is_deterministic(blob):
 
 def test_render_substitutes_every_placeholder(blob):
     html = render(blob)
-    for marker in ("__XYCALC_CORPUS_JSON__", "__XYCALC_EVALUATE_JS__", "__XYCALC_CRUMB__", "__XYCALC_FAMILY_STRIP__"):
+    for marker in ("__XYCALC_CORPUS_JSON__", "__XYCALC_EVALUATE_JS__", "__XYCALC_APP_JS__", "__XYCALC_CRUMB__", "__XYCALC_FAMILY_STRIP__"):
         assert marker not in html
     assert "XY.checkGolden" in html, "the page shipped without its self-check"
     assert "XY.chainEvaluate" in html, "the page shipped without scenario arithmetic"
     assert "xycalc · a swamplink research property" in html
+    assert "function setTab" in html, "the page shipped without its UI"
+    assert "XYCALC_APP" in html, "the page shipped without the extracted UI script"
+    assert "calculateSimple" in html, "the page shipped without Simple mode"
+    assert 'id="simple-view"' in html
+    assert 'id="mode-simple"' in html
 
 
 def test_export_blob_carries_scenario_chain(blob):
@@ -275,8 +282,66 @@ def test_rendered_page_embeds_git_identity(monkeypatch, conn):
 
 
 def test_calculator_template_prints_git_in_provenance():
-    from xycalc.export import TEMPLATE
-
-    text = TEMPLATE.read_text(encoding="utf-8")
+    text = APP_JS.read_text(encoding="utf-8")
     assert "CORPUS.xycalc_git" in text
     assert "exported by xycalc" in text
+
+
+def test_calculator_template_splices_app_js_like_evaluate():
+    html = TEMPLATE.read_text(encoding="utf-8")
+    assert "/*__XYCALC_APP_JS__*/" in html
+    assert "/*__XYCALC_EVALUATE_JS__*/" in html
+    assert "(() => {" not in html
+    assert "function setTab" not in html
+
+
+@pytest.mark.skipif(NODE is None, reason="node is not installed")
+def test_static_javascript_parses():
+    for path in (EVALUATE_JS, APP_JS):
+        proc = subprocess.run(
+            [NODE, "--check", str(path)],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+        )
+        assert proc.returncode == 0, path.name + ":\n" + proc.stdout + proc.stderr
+
+
+@pytest.mark.skipif(NODE is None, reason="node is not installed")
+def test_app_js_helpers():
+    """Pure UI helpers: ticks, nearestIndex, sweep grid, maybeAuto predicate."""
+    script = Path(__file__).resolve().parent / "check_app_helpers.js"
+    proc = subprocess.run(
+        [NODE, str(script), str(APP_JS.resolve())],
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+    )
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    assert "app helpers ok" in proc.stdout
+
+
+@pytest.mark.skipif(NODE is None, reason="node is not installed")
+def test_static_javascript_lints():
+    """ESLint when present; otherwise the mechanical rules the config encodes."""
+    repo = Path(__file__).resolve().parents[1]
+    eslint = repo / "node_modules" / ".bin" / "eslint"
+    if eslint.exists():
+        proc = subprocess.run(
+            [str(eslint), "src/xycalc/static/app.js"],
+            cwd=repo,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+        )
+        assert proc.returncode == 0, proc.stdout + proc.stderr
+        return
+    # CI does not npm-install. Pin the same rules the config names so a
+    # `var` or an unused helper cannot land without the eslint binary.
+    for path in (EVALUATE_JS, APP_JS):
+        text = path.read_text(encoding="utf-8")
+        for i, line in enumerate(text.splitlines(), 1):
+            stripped = line.lstrip()
+            assert not stripped.startswith("var "), f"{path.name}:{i} uses var"
+            assert "\t" not in line, f"{path.name}:{i} contains a tab"
+
