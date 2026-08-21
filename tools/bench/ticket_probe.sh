@@ -136,8 +136,23 @@ for _ in $(seq 1 40); do
     sleep 1
 done
 
+# Resolve mongo IP via PowerShell — Git Bash mangled go-templates / no python.
+running="$(powershell.exe -NoProfile -Command "(docker inspect '$NAME' | ConvertFrom-Json).State.Status" | tr -d '\r\n')"
+if [ "$running" != "running" ]; then
+    echo "mongo container $NAME is not running after wait" >&2
+    docker logs "$NAME" >&2 || true
+    exit 1
+fi
+mongo_ip="$(powershell.exe -NoProfile -Command "docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' '$NAME'" | tr -d '\r\n')"
+if [ -z "$mongo_ip" ]; then
+    echo "could not resolve IP for $NAME" >&2
+    exit 1
+fi
+mongo_uri="mongodb://${mongo_ip}:27017"
+echo "mongo uri   $mongo_uri (name=$NAME)" >&2
+
 docker run -d --name "$DRIVER" --network "$NET" \
-    -e PROBE_URI="mongodb://${NAME}:27017" \
+    -e PROBE_URI="$mongo_uri" \
     -e PROBE_SECONDS="${PROBE_SECONDS:-25}" \
     -e PROBE_DOCS="${PROBE_DOCS:-1500000}" \
     -e PROBE_LEVELS="${PROBE_LEVELS:-1,2,4,8,16,32,64}" \
@@ -152,17 +167,22 @@ docker run -d --name "$DRIVER" --network "$NET" \
 
 docker exec "$DRIVER" pip install --quiet --no-cache-dir pymongo >&2
 docker cp "$probe_py" "${DRIVER}:/tmp/ticket_probe.py"
-# Optional helper module (ticket path abstraction); ignore if absent.
-if [ -f "${here_win%/}\\mongo_tickets.py" ]; then
-    docker cp "${here_win%/}\\mongo_tickets.py" "${DRIVER}:/tmp/mongo_tickets.py"
-elif [ -f "${here}/mongo_tickets.py" ]; then
-    docker cp "${here}/mongo_tickets.py" "${DRIVER}:/tmp/mongo_tickets.py"
+# mongo_tickets.py must sit beside the probe in /tmp. Copy from a cwd that
+# is the bench dir so Git Bash / docker.exe path conversion cannot invent C:\c:\...
+copied_tickets=0
+if [ -f "${here}/mongo_tickets.py" ]; then
+    (cd "$here" && docker cp mongo_tickets.py "${DRIVER}:/tmp/mongo_tickets.py") && copied_tickets=1
+fi
+if [ "$copied_tickets" -ne 1 ]; then
+    echo "REFUSING: mongo_tickets.py not copied into driver (here=$here)" >&2
+    ls -la "$here/mongo_tickets.py" >&2 || true
+    exit 1
 fi
 
 # Detached exec + file capture: Docker Desktop named-pipe `docker exec`
 # often 500s mid-run on long probes. Poll files instead.
 env_args=(
-    -e "PROBE_URI=mongodb://${NAME}:27017"
+    -e "PROBE_URI=$mongo_uri"
     -e "PROBE_SECONDS=${PROBE_SECONDS:-25}"
     -e "PROBE_DOCS=${PROBE_DOCS:-1500000}"
     -e "PROBE_LEVELS=${PROBE_LEVELS:-1,2,4,8,16,32,64}"
