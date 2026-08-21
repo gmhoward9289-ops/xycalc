@@ -72,6 +72,25 @@ assert.strictEqual(
 );
 assert.strictEqual(APP.scenarioRequiredFieldsMissing([], {}), false);
 
+const sectioned = {
+  input_sections: [
+    { title: "A", inputs: [{ key: "need", required: true }, { key: "opt", required: false }] },
+  ],
+  inputs: [],
+};
+assert.strictEqual(APP.scenarioInputList(sectioned).length, 2);
+assert.strictEqual(
+  APP.scenarioRequiredFieldsMissing(APP.scenarioInputList(sectioned), { need: "", opt: "1" }),
+  true,
+);
+assert.strictEqual(
+  APP.scenarioRequiredFieldsMissing(APP.scenarioInputList(sectioned), { need: "1", opt: "" }),
+  false,
+);
+assert.strictEqual(APP.effectiveYScale("log", 1), "log");
+assert.strictEqual(APP.effectiveYScale("log", 0), "linear");
+assert.strictEqual(APP.effectiveYScale("linear", 10), "linear");
+
 const lay = APP.chartLayout(720, 340, 78, 16, 16, 46);
 assert.strictEqual(lay.iw, 720 - 78 - 16);
 assert.strictEqual(lay.ih, 340 - 16 - 46);

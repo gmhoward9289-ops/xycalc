@@ -3,6 +3,15 @@
 All notable changes to the **xycalc tool** (not the corpus) are recorded here.
 Corpus identity is `corpus_digest` on the exported page. See `docs/VERSIONING.md`.
 
+## 0.4.0
+
+- MCP tool `import_metrics` plus `tools/import_metrics_export.py` — Grafana
+  Explore CSV, Prometheus query JSON / OpenMetrics, and Coralogix metrics JSON
+  → `local/` observations (history for validation)
+- In-repo skill `skills/xycalc/SKILL.md` and `deploy/grafana/` source pack
+  (estate boards live in the monitoring repo; this tree is the recipe source)
+- `python -m xycalc` runs the stdio MCP server
+
 ## 0.3.0
 
 - Optional MCP server (`pip install -e ".[mcp]"`, entry point `xycalc-mcp`)
@@ -12,8 +21,8 @@ Corpus identity is `corpus_digest` on the exported page. See `docs/VERSIONING.md
 
 ## 0.2.0
 
-- Export and `Model` now carry each model's `notes` field (additive blob
-  surface for calculator education text already stored in corpus YAML)
+- Export occupancy/cache-cliff tabs from corpus YAML guides rather than
+  hardcoded Python (latency and cliff-shape figures are observation rows)
 
 ## 0.1.1
 

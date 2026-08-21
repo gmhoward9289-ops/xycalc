@@ -62,6 +62,39 @@ def test_every_model_has_golden_vectors(blob, conn):
     assert covered == set(Model.all(conn))
 
 
+def test_a_golden_vector_uses_the_browser_string_path(blob, conn):
+    """Existing ladder vectors carry numbers. The page sends formatted strings
+    ('4,000 iops'); that path needs its own pin or the comma bug is invisible."""
+    from xycalc.model import format_quantity
+
+    displayed = format_quantity(4000, "iops")
+    assert "," in displayed
+    hits = [
+        g
+        for g in blob["golden"]
+        if g["model"] == "ebs.iops-to-provision"
+        and g["inputs"].get("average_iops") == displayed
+    ]
+    assert hits, f"no string-path vector for {displayed!r}"
+    expected = Model.load(conn, "ebs.iops-to-provision").evaluate({"average_iops": 4000})
+    assert hits[0]["mode"] == expected.mode
+
+
+def test_export_refuses_an_unknown_validation_grade(monkeypatch, conn):
+    import xycalc.export as export_mod
+
+    real = export_mod.validation_status
+
+    def fake(c, slug):
+        d = dict(real(c, slug))
+        d["grade"] = "legendary"
+        return d
+
+    monkeypatch.setattr(export_mod, "validation_status", fake)
+    with pytest.raises(ExportError, match="legendary"):
+        export_mod.corpus_blob(conn)
+
+
 def test_vectors_exercise_the_optional_input_branch(conn):
     """An optional input left out takes a different path through evaluate()
     than one supplied, and a second implementation gets exactly that kind of
@@ -115,6 +148,38 @@ def test_javascript_agrees_with_python(blob, tmp_path):
 
 
 @pytest.mark.skipif(NODE is None, reason="node is not installed")
+def test_js_parse_is_the_inverse_of_format(tmp_path):
+    """Same round-trip the Python tests pin, under Node, so a JS-only parse
+    regression cannot hide behind numeric golden vectors."""
+    script = tmp_path / "roundtrip.js"
+    script.write_text(
+        "const XY = require(process.argv[2]);\n"
+        "const cases = [1, 12, 999, 1000, 3000, 4000, 1280, 1000000];\n"
+        "for (const n of cases) {\n"
+        "  const s = XY.formatQuantity(n, 'iops');\n"
+        "  const got = XY.parseNumber(s);\n"
+        "  if (got !== n) { console.log(n, s, got); process.exit(1); }\n"
+        "}\n"
+        "try { XY.parseBytes('1.2.3 GB'); console.log('accepted 1.2.3'); process.exit(1); }\n"
+        "catch (e) { if (!/cannot read a size/.test(e.message)) { console.log(e.message); process.exit(1); } }\n"
+        "const bytes = XY.parseBytes(XY.formatQuantity(5e11, 'bytes'));\n"
+        "if (Math.abs(bytes - 5e11) > 1e-6) { console.log(bytes); process.exit(1); }\n"
+        "if (XY.parseBytes(XY.formatBytes(1500)) !== 1500) { console.log('1500 B'); process.exit(1); }\n"
+        "if (XY.parseNumber('3,000 iops') !== 3000) { console.log('comma'); process.exit(1); }\n"
+        "console.log('parse/format round-trip ok');\n",
+        encoding="utf-8",
+    )
+    proc = subprocess.run(
+        [NODE, str(script), str(EVALUATE_JS.resolve())],
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+    )
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    assert "round-trip ok" in proc.stdout
+
+
+@pytest.mark.skipif(NODE is None, reason="node is not installed")
 def test_the_check_can_actually_fail(blob, tmp_path):
     """A gate nobody has watched fire is a gate nobody knows is wired up. Bend
     one vector by a percent and the check must reject it — otherwise the test
@@ -164,6 +229,9 @@ def test_render_substitutes_every_placeholder(blob):
     assert "aria-labelledby" not in html
     assert "Show the math" in html
     assert "tabindex=\"0\"" in html
+    assert "renderCascadeModelStep" in html
+    assert "weakestValidation" in html
+    assert "the sentence it was read from" in html
 
 
 def test_export_blob_carries_scenario_chain(blob):
@@ -173,6 +241,8 @@ def test_export_blob_carries_scenario_chain(blob):
     assert inst["nvd_chart"]["annual"][0]["count"] == 28818
     assert inst["nvd_chart"]["annual"][2]["microsoft"] == 1255
     assert blob["instance_catalog"]
+    assert blob["instance_catalogs"]["azure-vm"]
+    assert any(i["name"].startswith("Esv6.") for i in blob["instance_catalogs"]["azure-vm"])
     assert blob["scenario_golden"]
 
 
@@ -182,6 +252,8 @@ def test_export_blob_carries_occupancy_band(blob):
     assert g["ladder"]["eviction_target"]["value"] == 80
     assert g["ladder"]["eviction_trigger"]["value"] == 95
     assert len(g["passes"]) == 3
+    assert g["passes"][1]["label"] == "confirm 25 s #1"
+    assert g["passes"][2]["label"] == "confirm 25 s #2"
     assert g["passes"][1]["ops_delta_pct"] == 6.73
     assert g["reef_saturated_occupancy_pct"] == 80.55
     assert len(g["playbook"]) >= 4
@@ -193,6 +265,23 @@ def test_export_blob_carries_occupancy_band(blob):
     assert g["ticket_ladder"][-1]["latency_ms"] == 535.51
     assert g["weakest_inference"]
     assert any(k["key"] == "eviction_target" for k in g["knobs"])
+
+
+def test_guides_are_loaded_from_corpus_yaml(conn):
+    slugs = {r[0] for r in conn.execute("SELECT slug FROM guide")}
+    assert slugs == {"occupancy_band", "cache_cliff"}
+
+
+def test_export_py_does_not_hardcode_guide_figures():
+    """The whole point of #84: these numbers live on observation rows."""
+    src = Path(__file__).resolve().parent.parent / "src" / "xycalc" / "export.py"
+    text = src.read_text(encoding="utf-8")
+    assert "occupancy_band_guide" not in text
+    assert "cache_cliff_guide" not in text
+    assert "_latency_ms_from_notes" not in text
+    assert "Mean latency" not in text
+    assert "wt_cache_gb\": 0.25" not in text
+    assert "slope ≈" not in text
 
 
 def test_export_blob_carries_cache_cliff(blob):
@@ -210,6 +299,8 @@ def test_export_blob_carries_cache_cliff(blob):
     assert by_ratio[1.0]["pages_per_op"] == 0.4
     assert by_ratio[0.8]["ops_r2"] == 520
     assert by_ratio[0.8]["relative_ops_r2"] == round(520 / 2189, 4)
+    assert "slope ≈ −3.8" in g["transfer"]
+    assert "1.0 GB cache" in g["transfer"]
 
 
 def test_exported_page_has_flow_and_occupancy_tabs(blob):
