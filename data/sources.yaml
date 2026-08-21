@@ -323,7 +323,28 @@ sources:
       Small-scale by design -- this measures per-service RSS *shape* across
       idle/loaded/under-load, not a production-scale colocation footprint.
       n=1, one host, one run. See results.json in the same directory for the
-      full docker-stats output at each phase.
+      full docker-stats output at each phase. Scaled follow-up: investigation
+      009 / obs-mongodb-colocation-share-aws-2026-08-21.
+
+  - slug: obs-mongodb-colocation-share-aws-2026-08-21
+    title: "T11 share sweep: WT 50/60/70/80% under 2.5× oversub, colocated"
+    publisher: xycalc project (benchmark harness, committed)
+    url:
+    version: tools/bench/colocation_probe/share_sweep.sh
+    retrieved_on: '2026-08-21'
+    source_type: benchmark
+    notes: >-
+      Investigation 009 / ROADMAP T11. Harness: tools/bench/colocation_probe/
+      share_sweep.sh (+ run.sh). AWS EC2 r6i.2xlarge (64 GiB) us-east-2,
+      instance terminated after pull. MONGO_MEM_GB=8, OVERSUB=2.5,
+      SHARE_PCTS=50,60,70,80, REDIS_MEM=4g, CLICKHOUSE_MEM=8g, WORKER_MEM=2g
+      (sum of limits ≈22 GiB — host ceiling not contested). Mongo RSS under
+      load ≈0.81× configured cache at every share; neighbor RSS flat through
+      80%. Reef 2026-08-19 loaded→under_load jump did not reproduce at fill.
+      Artifacts: docs/investigations/009-colocation-share/artifacts/.
+      Write-up: docs/investigations/009-colocation-share/FINDINGS.md. No
+      mongodb.colocation-share-pct coefficient promoted (documented absence
+      of neighbor RSS effect under this harness).
 
   - slug: obs-mongodb-s3-stack-swamplink-2026-08-21
     title: "s3_stack perf: colocated RSS with ClickHouse MergeTree on S3"

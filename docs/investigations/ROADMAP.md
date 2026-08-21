@@ -5,7 +5,8 @@ failure told in three parts: the cache cannot hold the working set, so misses
 reach a device that throttles on the peak second, and the throttle becomes a
 concurrency problem whose queue does not drain. Extended 2026-08-20/21 by
 investigations 004–007 (Celery amplification, Redis maxmemory conflict,
-provisional cache-cliff shape, occupancy-band education). Landed markers below
+provisional cache-cliff shape → measured (006), occupancy-band education,
+colocation share sweep (009), compression-shape sweep (010)). Landed markers below
 are the source of truth for what is no longer “next.”
 
 Each entry below is a *designed experiment*, not a topic. It names the question,
@@ -43,13 +44,12 @@ constraints. See
 
 ## T1 — Where is the cache cliff, and is it a cliff?
 
-**Status (2026-08-21).** Investigation 006: A1-r1 complete, A1-r2 knee
-reproduced through 2×, A2 transfer **not run**. Provisional finding: not a
+**Status (2026-08-21).** Investigation 006 **complete**. A1-r1 + A1-r2
+(0.25 GB through 50×) and A2 transfer (1.0 GB, knee 0.5…2.0) agree: not a
 plateau-then-cliff at 1.0× — relative ops fall hard 0.5→1.0 (steepest
 0.8→1.0), then a shallow tail. Absolute ops/s are throttle artifacts; no
-wt-cache coefficient until A2. See
-`docs/investigations/006-cache-cliff/FINDINGS.md` and the calculator Cache
-cliff tab.
+wt-cache *sizing* coefficient (relative shape only). See
+`docs/investigations/006-cache-cliff/FINDINGS.md`.
 
 **Question.** As the working set grows past the cache, does throughput degrade
 smoothly or fall off a knee? If a knee, where — at 1.0× cache, or later?
@@ -78,6 +78,13 @@ host RAM. Same trap that cost two runs in investigation 003.
 ---
 
 ## T2 — Compression ratio as a function of data shape
+
+**Status (2026-08-21).** Investigation 010 **complete**. Five synthetic
+shapes × snappy/zstd/zlib on swamplink (`mongo:7.0.39`) and **reef**
+(`mongo:7`, V: work). Snappy ratios **~0.99–9.22** — wider than the
+1.5–3.5 practitioner band at both ends. Gzip-proxy rank matched
+expected order; band **not** rewritten (synthetic extremes ≠
+population). See `docs/investigations/010-compression-shape/FINDINGS.md`.
 
 **Question.** How does the snappy ratio move between high-entropy and
 structured documents, and where in that range do real collections sit?
@@ -312,6 +319,14 @@ to justify the gate to anyone who thinks it is bureaucracy.
 ---
 
 ## T11 — Colocated Mongo+Redis+ClickHouse+Celery at a scale where they actually compete for RAM
+
+**Status (2026-08-21).** Investigation 009: AWS `r6i.2xlarge` share sweep
+(50/60/70/80%, OVERSUB=2.5, MONGO_MEM=8g) complete; instance torn down.
+Mongo RSS ≈0.81× configured cache; neighbor RSS flat through 80%; reef
+loaded→under_load jump did **not** reproduce at fill. Host ceiling not
+contested (limits sum ~22 GiB on 64 GiB). No `colocation-share-pct`
+coefficient — documented absence of neighbor RSS effect under this
+harness. See `docs/investigations/009-colocation-share/FINDINGS.md`.
 
 **Question.** `docs/research/mongodb-vertical-scaling-r8.md` §7 states, from
 vendor docs rather than any measurement in this repo, that WiredTiger should be

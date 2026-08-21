@@ -354,12 +354,17 @@ count after an incident rather than assuming it has settled.
 **What is still open.** Whether a low, nonzero trickle of subsequent traffic
 would drive the pool back down — the plan's other cooldown branch, not run in
 this pass — and on what timescale if so. Also open: the `64,150` convergence
-run, and the harness-level instrumentation (raw sample series, an automated
-convergence verdict) the plan specifies in its §4a/4b, none of which landed
-here. This pass answered the two questions the issue asked well enough to
-close its immediate concern (the pool does not evaporate back to 4 the moment
-an incident ends), but the full plan is not yet executed and issue #2 still
-wants the `64,150` result specifically.
+run. **Harness residual (2026-08-21):** `ticket_probe.py` now emits the raw
+`series`, prints an automated `convergence` verdict (`CONVERGED` /
+`STILL_MOVING` / `CONVERGED_DEMAND_CAPPED`), and supports
+`PROBE_COOLDOWN_SECONDS` + `PROBE_COOLDOWN_HEARTBEAT_HZ` on a dedicated
+single-connection client (plan §4a/4b/4c). The `64,150` + idle/trickle pair
+still needs a Docker host run; unit coverage for the verdict math is in
+`tests/test_ticket_probe_convergence.py`. This first pass answered the two
+questions the issue asked well enough to close its immediate concern (the
+pool does not evaporate back to 4 the moment an incident ends), but the full
+plan is not yet executed and issue #2 still wants the `64,150` result
+specifically.
 
 ---
 

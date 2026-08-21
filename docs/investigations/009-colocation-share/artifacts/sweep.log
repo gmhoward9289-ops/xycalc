@@ -1,0 +1,6429 @@
+T11 share sweep: mongo_mem=8g shares=[50,60,70,80] oversub=2.5 py=python3
+neighbors redis=4g clickhouse=8g worker=2g
+== share50-cache4.0g-docs14202934 ==
+== phase 1: idle (containers up, no data loaded yet) ==
+ mongo Pulling 
+ redis Pulling 
+ clickhouse Pulling 
+ d9802f032d67 Pulling fs layer 
+ 7a440347ebb9 Pulling fs layer 
+ 4f4fb700ef54 Pulling fs layer 
+ 1c6b8ed57efb Pulling fs layer 
+ 13b555dd8952 Pulling fs layer 
+ 257eb6caeb1c Pulling fs layer 
+ 86bc9af2f896 Pulling fs layer 
+ c7b8cb5bd087 Pulling fs layer 
+ acaad42b6a3c Pulling fs layer 
+ 13b555dd8952 Waiting 
+ 257eb6caeb1c Waiting 
+ 86bc9af2f896 Waiting 
+ c7b8cb5bd087 Waiting 
+ acaad42b6a3c Waiting 
+ 1c6b8ed57efb Waiting 
+ 897d797d2723 Pulling fs layer 
+ d85eda7b0b14 Pulling fs layer 
+ 9516b0cd89c9 Pulling fs layer 
+ de4b872bfdc3 Pulling fs layer 
+ 2c96e5a02ba0 Pulling fs layer 
+ 4f4fb700ef54 Pulling fs layer 
+ 41caa0265cb5 Pulling fs layer 
+ 897d797d2723 Waiting 
+ 2c96e5a02ba0 Waiting 
+ de4b872bfdc3 Waiting 
+ d85eda7b0b14 Waiting 
+ 9516b0cd89c9 Waiting 
+ 4f4fb700ef54 Waiting 
+ 41caa0265cb5 Waiting 
+ d544298cabd5 Pulling fs layer 
+ 6bcb0cd9f68c Pulling fs layer 
+ d544298cabd5 Waiting 
+ 164558a2a8fa Pulling fs layer 
+ 6bcb0cd9f68c Waiting 
+ 77214491514e Pulling fs layer 
+ 164558a2a8fa Waiting 
+ 9dad1a8753e0 Pulling fs layer 
+ 586ba587042d Pulling fs layer 
+ 4afa172ff42c Pulling fs layer 
+ ad1d6026847d Pulling fs layer 
+ 77214491514e Waiting 
+ ad1d6026847d Waiting 
+ 9dad1a8753e0 Waiting 
+ 586ba587042d Waiting 
+ 4afa172ff42c Waiting 
+ 4f4fb700ef54 Downloading [==================================================>]      32B/32B
+ 4f4fb700ef54 Verifying Checksum 
+ 4f4fb700ef54 Download complete 
+ 7a440347ebb9 Downloading [>                                                  ]  97.03kB/8.803MB
+ d9802f032d67 Downloading [>                                                  ]  277.9kB/27.51MB
+ d9802f032d67 Verifying Checksum 
+ d9802f032d67 Download complete 
+ 1c6b8ed57efb Downloading [>                                                  ]  526.9kB/143.4MB
+ d9802f032d67 Extracting [>                                                  ]  294.9kB/27.51MB
+ 7a440347ebb9 Downloading [==============================================>    ]  8.202MB/8.803MB
+ 7a440347ebb9 Verifying Checksum 
+ 7a440347ebb9 Download complete 
+ 13b555dd8952 Downloading [======>                                            ]    3.5kB/25.57kB
+ 13b555dd8952 Downloading [==================================================>]  25.57kB/25.57kB
+ 13b555dd8952 Download complete 
+ 257eb6caeb1c Downloading [>                                                  ]  15.74kB/863.5kB
+ 257eb6caeb1c Verifying Checksum 
+ 257eb6caeb1c Download complete 
+ 1c6b8ed57efb Downloading [==>                                                ]  5.801MB/143.4MB
+ 86bc9af2f896 Downloading [==================================================>]     116B/116B
+ 86bc9af2f896 Verifying Checksum 
+ 86bc9af2f896 Download complete 
+ d9802f032d67 Extracting [=============>                                     ]  7.668MB/27.51MB
+ c7b8cb5bd087 Downloading [==================================================>]     367B/367B
+ c7b8cb5bd087 Verifying Checksum 
+ c7b8cb5bd087 Download complete 
+ acaad42b6a3c Downloading [==================================================>]  3.143kB/3.143kB
+ acaad42b6a3c Verifying Checksum 
+ acaad42b6a3c Download complete 
+ 1c6b8ed57efb Downloading [====>                                              ]   12.7MB/143.4MB
+ 897d797d2723 Downloading [>                                                  ]  48.51kB/3.647MB
+ d9802f032d67 Extracting [======================>                            ]  12.39MB/27.51MB
+ d85eda7b0b14 Downloading [==================================================>]     952B/952B
+ d85eda7b0b14 Verifying Checksum 
+ d85eda7b0b14 Download complete 
+ 897d797d2723 Verifying Checksum 
+ 897d797d2723 Download complete 
+ 897d797d2723 Extracting [>                                                  ]  65.54kB/3.647MB
+ 9516b0cd89c9 Downloading [>                                                  ]  3.459kB/194.3kB
+ 9516b0cd89c9 Downloading [==================================================>]  194.3kB/194.3kB
+ 9516b0cd89c9 Verifying Checksum 
+ 9516b0cd89c9 Download complete 
+ de4b872bfdc3 Downloading [>                                                  ]  130.4kB/12.42MB
+ 1c6b8ed57efb Downloading [==============>                                    ]  41.57MB/143.4MB
+ de4b872bfdc3 Verifying Checksum 
+ de4b872bfdc3 Download complete 
+ 897d797d2723 Extracting [==================================================>]  3.647MB/3.647MB
+ 897d797d2723 Extracting [==================================================>]  3.647MB/3.647MB
+ d9802f032d67 Extracting [====================================>              ]  20.35MB/27.51MB
+ 2c96e5a02ba0 Downloading [==================================================>]     100B/100B
+ 2c96e5a02ba0 Verifying Checksum 
+ 2c96e5a02ba0 Download complete 
+ 897d797d2723 Pull complete 
+ d85eda7b0b14 Extracting [==================================================>]     952B/952B
+ d85eda7b0b14 Extracting [==================================================>]     952B/952B
+ 4f4fb700ef54 Downloading [==================================================>]      32B/32B
+ 4f4fb700ef54 Verifying Checksum 
+ d85eda7b0b14 Pull complete 
+ 9516b0cd89c9 Extracting [========>                                          ]  32.77kB/194.3kB
+ 9516b0cd89c9 Extracting [==================================================>]  194.3kB/194.3kB
+ 41caa0265cb5 Downloading [==================================================>]     604B/604B
+ 41caa0265cb5 Verifying Checksum 
+ 41caa0265cb5 Download complete 
+ 9516b0cd89c9 Extracting [==================================================>]  194.3kB/194.3kB
+ 1c6b8ed57efb Downloading [==========================>                        ]  77.37MB/143.4MB
+ d544298cabd5 Downloading [>                                                  ]  310.7kB/29.74MB
+ 6bcb0cd9f68c Download complete 
+ d9802f032d67 Extracting [==========================================>        ]   23.3MB/27.51MB
+ 9516b0cd89c9 Pull complete 
+ de4b872bfdc3 Extracting [>                                                  ]  131.1kB/12.42MB
+ 164558a2a8fa Downloading [>                                                  ]  15.79kB/1.473MB
+ 164558a2a8fa Download complete 
+ 1c6b8ed57efb Downloading [=======================================>           ]  113.1MB/143.4MB
+ d544298cabd5 Downloading [================================================>  ]  28.95MB/29.74MB
+ d544298cabd5 Verifying Checksum 
+ d544298cabd5 Download complete 
+ 77214491514e Downloading [>                                                  ]  15.79kB/898.3kB
+ d544298cabd5 Extracting [>                                                  ]  327.7kB/29.74MB
+ 77214491514e Downloading [==================================================>]  898.3kB/898.3kB
+ 77214491514e Verifying Checksum 
+ 77214491514e Download complete 
+ d9802f032d67 Extracting [===============================================>   ]  26.25MB/27.51MB
+ 9dad1a8753e0 Downloading [==================================================>]     116B/116B
+ 9dad1a8753e0 Verifying Checksum 
+ 9dad1a8753e0 Download complete 
+ de4b872bfdc3 Extracting [===========================>                       ]  6.816MB/12.42MB
+ 1c6b8ed57efb Verifying Checksum 
+ 1c6b8ed57efb Download complete 
+ 586ba587042d Downloading [==================================================>]     266B/266B
+ 586ba587042d Verifying Checksum 
+ 586ba587042d Download complete 
+ 4afa172ff42c Downloading [>                                                  ]  532.4kB/263.7MB
+ ad1d6026847d Downloading [==================================>                ]  3.502kB/5.005kB
+ ad1d6026847d Downloading [==================================================>]  5.005kB/5.005kB
+ ad1d6026847d Verifying Checksum 
+ ad1d6026847d Download complete 
+ de4b872bfdc3 Extracting [==================================================>]  12.42MB/12.42MB
+ d544298cabd5 Extracting [===========>                                       ]  6.554MB/29.74MB
+ de4b872bfdc3 Pull complete 
+ 2c96e5a02ba0 Extracting [==================================================>]     100B/100B
+ 2c96e5a02ba0 Extracting [==================================================>]     100B/100B
+ 2c96e5a02ba0 Pull complete 
+ 4f4fb700ef54 Extracting [==================================================>]      32B/32B
+ d9802f032d67 Extracting [=================================================> ]  27.43MB/27.51MB
+ 4f4fb700ef54 Extracting [==================================================>]      32B/32B
+ 4f4fb700ef54 Pull complete 
+ 41caa0265cb5 Extracting [==================================================>]     604B/604B
+ 41caa0265cb5 Extracting [==================================================>]     604B/604B
+ d9802f032d67 Extracting [==================================================>]  27.51MB/27.51MB
+ 4afa172ff42c Downloading [========>                                          ]  44.24MB/263.7MB
+ 41caa0265cb5 Pull complete 
+ d544298cabd5 Extracting [================>                                  ]   9.83MB/29.74MB
+ redis Pulled 
+ d9802f032d67 Pull complete 
+ 7a440347ebb9 Extracting [>                                                  ]   98.3kB/8.803MB
+ 4afa172ff42c Downloading [=================>                                 ]  90.04MB/263.7MB
+ d544298cabd5 Extracting [============================>                      ]  17.04MB/29.74MB
+ 7a440347ebb9 Extracting [==================>                                ]  3.342MB/8.803MB
+ 4afa172ff42c Downloading [=========================>                         ]  135.4MB/263.7MB
+ d544298cabd5 Extracting [=========================================>         ]   24.9MB/29.74MB
+ 7a440347ebb9 Extracting [=======================================>           ]   6.98MB/8.803MB
+ 4afa172ff42c Downloading [==================================>                ]  181.7MB/263.7MB
+ d544298cabd5 Extracting [===========================================>       ]  25.89MB/29.74MB
+ 7a440347ebb9 Extracting [==============================================>    ]  8.159MB/8.803MB
+ 4afa172ff42c Downloading [===========================================>       ]  228.6MB/263.7MB
+ d544298cabd5 Extracting [================================================>  ]  28.84MB/29.74MB
+ 4afa172ff42c Verifying Checksum 
+ 4afa172ff42c Download complete 
+ 7a440347ebb9 Extracting [===============================================>   ]  8.356MB/8.803MB
+ 7a440347ebb9 Extracting [==================================================>]  8.803MB/8.803MB
+ d544298cabd5 Extracting [==================================================>]  29.74MB/29.74MB
+ 7a440347ebb9 Pull complete 
+ 4f4fb700ef54 Extracting [==================================================>]      32B/32B
+ 4f4fb700ef54 Extracting [==================================================>]      32B/32B
+ d544298cabd5 Pull complete 
+ 6bcb0cd9f68c Extracting [==================================================>]  1.785kB/1.785kB
+ 6bcb0cd9f68c Extracting [==================================================>]  1.785kB/1.785kB
+ 4f4fb700ef54 Pull complete 
+ 6bcb0cd9f68c Pull complete 
+ 1c6b8ed57efb Extracting [>                                                  ]  557.1kB/143.4MB
+ 164558a2a8fa Extracting [=>                                                 ]  32.77kB/1.473MB
+ 164558a2a8fa Extracting [==================================================>]  1.473MB/1.473MB
+ 164558a2a8fa Extracting [==================================================>]  1.473MB/1.473MB
+ 164558a2a8fa Pull complete 
+ 77214491514e Extracting [=>                                                 ]  32.77kB/898.3kB
+ 1c6b8ed57efb Extracting [====>                                              ]   11.7MB/143.4MB
+ 77214491514e Extracting [==================================================>]  898.3kB/898.3kB
+ 77214491514e Extracting [==================================================>]  898.3kB/898.3kB
+ 77214491514e Pull complete 
+ 9dad1a8753e0 Extracting [==================================================>]     116B/116B
+ 9dad1a8753e0 Extracting [==================================================>]     116B/116B
+ 9dad1a8753e0 Pull complete 
+ 586ba587042d Extracting [==================================================>]     266B/266B
+ 586ba587042d Extracting [==================================================>]     266B/266B
+ 586ba587042d Pull complete 
+ 4afa172ff42c Extracting [>                                                  ]  557.1kB/263.7MB
+ 1c6b8ed57efb Extracting [=======>                                           ]  21.73MB/143.4MB
+ 4afa172ff42c Extracting [=>                                                 ]  10.03MB/263.7MB
+ 1c6b8ed57efb Extracting [===========>                                       ]  31.75MB/143.4MB
+ 4afa172ff42c Extracting [===>                                               ]  17.83MB/263.7MB
+ 1c6b8ed57efb Extracting [=============>                                     ]  40.11MB/143.4MB
+ 4afa172ff42c Extracting [=====>                                             ]   27.3MB/263.7MB
+ 1c6b8ed57efb Extracting [================>                                  ]  48.46MB/143.4MB
+ 4afa172ff42c Extracting [======>                                            ]  36.21MB/263.7MB
+ 1c6b8ed57efb Extracting [===================>                               ]  56.26MB/143.4MB
+ 4afa172ff42c Extracting [========>                                          ]  45.12MB/263.7MB
+ 1c6b8ed57efb Extracting [======================>                            ]  64.62MB/143.4MB
+ 4afa172ff42c Extracting [==========>                                        ]  54.59MB/263.7MB
+ 1c6b8ed57efb Extracting [========================>                          ]   71.3MB/143.4MB
+ 4afa172ff42c Extracting [===========>                                       ]  58.49MB/263.7MB
+ 1c6b8ed57efb Extracting [===========================>                       ]   79.1MB/143.4MB
+ 4afa172ff42c Extracting [============>                                      ]  64.62MB/263.7MB
+ 1c6b8ed57efb Extracting [==============================>                    ]   86.9MB/143.4MB
+ 4afa172ff42c Extracting [==============>                                    ]   79.1MB/263.7MB
+ 1c6b8ed57efb Extracting [=================================>                 ]  95.81MB/143.4MB
+ 4afa172ff42c Extracting [=================>                                 ]  91.36MB/263.7MB
+ 1c6b8ed57efb Extracting [====================================>              ]  104.7MB/143.4MB
+ 4afa172ff42c Extracting [===================>                               ]  103.1MB/263.7MB
+ 1c6b8ed57efb Extracting [=======================================>           ]  113.6MB/143.4MB
+ 4afa172ff42c Extracting [=====================>                             ]  113.1MB/263.7MB
+ 1c6b8ed57efb Extracting [==========================================>        ]  122.6MB/143.4MB
+ 4afa172ff42c Extracting [=======================>                           ]    122MB/263.7MB
+ 1c6b8ed57efb Extracting [=============================================>     ]  131.5MB/143.4MB
+ 4afa172ff42c Extracting [========================>                          ]  130.9MB/263.7MB
+ 1c6b8ed57efb Extracting [================================================>  ]  138.7MB/143.4MB
+ 4afa172ff42c Extracting [==========================>                        ]  139.8MB/263.7MB
+ 1c6b8ed57efb Extracting [=================================================> ]  141.5MB/143.4MB
+ 4afa172ff42c Extracting [===========================>                       ]  146.5MB/263.7MB
+ 1c6b8ed57efb Extracting [==================================================>]  143.4MB/143.4MB
+ 1c6b8ed57efb Pull complete 
+ 13b555dd8952 Extracting [==================================================>]  25.57kB/25.57kB
+ 13b555dd8952 Extracting [==================================================>]  25.57kB/25.57kB
+ 4afa172ff42c Extracting [=============================>                     ]  155.4MB/263.7MB
+ 13b555dd8952 Pull complete 
+ 257eb6caeb1c Extracting [=>                                                 ]  32.77kB/863.5kB
+ 257eb6caeb1c Extracting [==================================================>]  863.5kB/863.5kB
+ 257eb6caeb1c Extracting [==================================================>]  863.5kB/863.5kB
+ 257eb6caeb1c Pull complete 
+ 86bc9af2f896 Extracting [==================================================>]     116B/116B
+ 86bc9af2f896 Extracting [==================================================>]     116B/116B
+ 86bc9af2f896 Pull complete 
+ c7b8cb5bd087 Extracting [==================================================>]     367B/367B
+ c7b8cb5bd087 Extracting [==================================================>]     367B/367B
+ c7b8cb5bd087 Pull complete 
+ acaad42b6a3c Extracting [==================================================>]  3.143kB/3.143kB
+ acaad42b6a3c Extracting [==================================================>]  3.143kB/3.143kB
+ 4afa172ff42c Extracting [===============================>                   ]  164.9MB/263.7MB
+ acaad42b6a3c Pull complete 
+ clickhouse Pulled 
+ 4afa172ff42c Extracting [================================>                  ]  173.2MB/263.7MB
+ 4afa172ff42c Extracting [==================================>                ]  181.6MB/263.7MB
+ 4afa172ff42c Extracting [===================================>               ]  186.6MB/263.7MB
+ 4afa172ff42c Extracting [=====================================>             ]  197.8MB/263.7MB
+ 4afa172ff42c Extracting [=======================================>           ]  208.3MB/263.7MB
+ 4afa172ff42c Extracting [=========================================>         ]  220.6MB/263.7MB
+ 4afa172ff42c Extracting [============================================>      ]  232.8MB/263.7MB
+ 4afa172ff42c Extracting [==============================================>    ]  245.1MB/263.7MB
+ 4afa172ff42c Extracting [================================================>  ]  254.6MB/263.7MB
+ 4afa172ff42c Extracting [=================================================> ]  261.8MB/263.7MB
+ 4afa172ff42c Extracting [=================================================> ]  262.9MB/263.7MB
+ 4afa172ff42c Extracting [==================================================>]  263.7MB/263.7MB
+ 4afa172ff42c Pull complete 
+ ad1d6026847d Extracting [==================================================>]  5.005kB/5.005kB
+ ad1d6026847d Extracting [==================================================>]  5.005kB/5.005kB
+ ad1d6026847d Pull complete 
+ mongo Pulled 
+#0 building with "default" instance using docker driver
+
+#1 [worker internal] load build definition from Dockerfile
+#1 transferring dockerfile: 838B done
+#1 DONE 0.0s
+
+#2 [worker internal] load metadata for docker.io/library/python:3.12-slim
+#2 DONE 0.4s
+
+#3 [worker internal] load .dockerignore
+#3 transferring context: 2B done
+#3 DONE 0.0s
+
+#4 [worker internal] load build context
+#4 transferring context: 33.65kB done
+#4 DONE 0.0s
+
+#5 [worker 1/4] FROM docker.io/library/python:3.12-slim@sha256:2c941e860699f878900b0edc2403613c234d4b32eda3cc9fa7036991a2a63c4a
+#5 resolve docker.io/library/python:3.12-slim@sha256:2c941e860699f878900b0edc2403613c234d4b32eda3cc9fa7036991a2a63c4a 0.0s done
+#5 sha256:26c307b5e35a59ce911f5fde5b9458120ec8734e831ea2da5649a9ad14abfd3d 29.78MB / 29.78MB 0.1s
+#5 sha256:fa18dfb1257a9c1afc75e233c55b0195dd02b8d6d18dd7e24c10238b039e7742 1.29MB / 1.29MB 0.1s
+#5 sha256:b952fe9f6810de5dac5d24a3983aee5fce3884f7359a533ba325e48ecb745994 0B / 12.12MB 0.1s
+#5 sha256:2c941e860699f878900b0edc2403613c234d4b32eda3cc9fa7036991a2a63c4a 10.37kB / 10.37kB done
+#5 sha256:876416ecde9aca2bcc90e1fb0c7a9500bbf749f5788b70f82d4c5a5c2357f8b4 1.75kB / 1.75kB done
+#5 sha256:613c5454f914638dc2bfcab71c8630de0089f7ebff0a7239b54f34866c4b6051 5.66kB / 5.66kB done
+#5 sha256:26c307b5e35a59ce911f5fde5b9458120ec8734e831ea2da5649a9ad14abfd3d 29.78MB / 29.78MB 0.1s done
+#5 sha256:fa18dfb1257a9c1afc75e233c55b0195dd02b8d6d18dd7e24c10238b039e7742 1.29MB / 1.29MB 0.1s done
+#5 sha256:b952fe9f6810de5dac5d24a3983aee5fce3884f7359a533ba325e48ecb745994 12.12MB / 12.12MB 0.1s done
+#5 extracting sha256:26c307b5e35a59ce911f5fde5b9458120ec8734e831ea2da5649a9ad14abfd3d 0.1s
+#5 sha256:6760bfe2ff00c4530bc73b2f88a1e9615a56c9a77028f41f8bb4b978d08b8439 248B / 248B 0.1s done
+#5 extracting sha256:26c307b5e35a59ce911f5fde5b9458120ec8734e831ea2da5649a9ad14abfd3d 0.6s done
+#5 extracting sha256:fa18dfb1257a9c1afc75e233c55b0195dd02b8d6d18dd7e24c10238b039e7742 0.1s done
+#5 extracting sha256:b952fe9f6810de5dac5d24a3983aee5fce3884f7359a533ba325e48ecb745994 0.1s
+#5 extracting sha256:b952fe9f6810de5dac5d24a3983aee5fce3884f7359a533ba325e48ecb745994 0.3s done
+#5 extracting sha256:6760bfe2ff00c4530bc73b2f88a1e9615a56c9a77028f41f8bb4b978d08b8439 done
+#5 DONE 1.3s
+
+#6 [worker 2/4] RUN pip install --no-cache-dir "celery[redis]==5.4.0" "pymongo==4.9.1" "redis==5.0.8"
+#6 1.538 Collecting celery==5.4.0 (from celery[redis]==5.4.0)
+#6 1.585   Downloading celery-5.4.0-py3-none-any.whl.metadata (21 kB)
+#6 1.835 Collecting pymongo==4.9.1
+#6 1.848   Downloading pymongo-4.9.1-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (22 kB)
+#6 1.876 Collecting redis==5.0.8
+#6 1.890   Downloading redis-5.0.8-py3-none-any.whl.metadata (9.2 kB)
+#6 1.906 Collecting billiard<5.0,>=4.2.0 (from celery==5.4.0->celery[redis]==5.4.0)
+#6 1.919   Downloading billiard-4.2.4-py3-none-any.whl.metadata (4.8 kB)
+#6 1.941 Collecting kombu<6.0,>=5.3.4 (from celery==5.4.0->celery[redis]==5.4.0)
+#6 1.953   Downloading kombu-5.6.2-py3-none-any.whl.metadata (3.5 kB)
+#6 1.966 Collecting vine<6.0,>=5.1.0 (from celery==5.4.0->celery[redis]==5.4.0)
+#6 1.978   Downloading vine-5.1.0-py3-none-any.whl.metadata (2.7 kB)
+#6 1.992 Collecting click<9.0,>=8.1.2 (from celery==5.4.0->celery[redis]==5.4.0)
+#6 2.004   Downloading click-8.4.2-py3-none-any.whl.metadata (2.6 kB)
+#6 2.010 Collecting click-didyoumean>=0.3.0 (from celery==5.4.0->celery[redis]==5.4.0)
+#6 2.022   Downloading click_didyoumean-0.3.1-py3-none-any.whl.metadata (3.9 kB)
+#6 2.029 Collecting click-repl>=0.2.0 (from celery==5.4.0->celery[redis]==5.4.0)
+#6 2.041   Downloading click_repl-0.3.0-py3-none-any.whl.metadata (3.6 kB)
+#6 2.047 Collecting click-plugins>=1.1.1 (from celery==5.4.0->celery[redis]==5.4.0)
+#6 2.059   Downloading click_plugins-1.1.1.2-py2.py3-none-any.whl.metadata (6.5 kB)
+#6 2.070 Collecting tzdata>=2022.7 (from celery==5.4.0->celery[redis]==5.4.0)
+#6 2.082   Downloading tzdata-2026.3-py2.py3-none-any.whl.metadata (1.4 kB)
+#6 2.090 Collecting python-dateutil>=2.8.2 (from celery==5.4.0->celery[redis]==5.4.0)
+#6 2.102   Downloading python_dateutil-2.9.0.post0-py2.py3-none-any.whl.metadata (8.4 kB)
+#6 2.113 Collecting dnspython<3.0.0,>=1.16.0 (from pymongo==4.9.1)
+#6 2.127   Downloading dnspython-2.8.0-py3-none-any.whl.metadata (5.7 kB)
+#6 2.177 Collecting prompt-toolkit>=3.0.36 (from click-repl>=0.2.0->celery==5.4.0->celery[redis]==5.4.0)
+#6 2.189   Downloading prompt_toolkit-3.0.53-py3-none-any.whl.metadata (6.4 kB)
+#6 2.203 Collecting amqp<6.0.0,>=5.1.1 (from kombu<6.0,>=5.3.4->celery==5.4.0->celery[redis]==5.4.0)
+#6 2.215   Downloading amqp-5.3.1-py3-none-any.whl.metadata (8.9 kB)
+#6 2.230 Collecting packaging (from kombu<6.0,>=5.3.4->celery==5.4.0->celery[redis]==5.4.0)
+#6 2.242   Downloading packaging-26.3-py3-none-any.whl.metadata (3.5 kB)
+#6 2.252 Collecting six>=1.5 (from python-dateutil>=2.8.2->celery==5.4.0->celery[redis]==5.4.0)
+#6 2.264   Downloading six-1.17.0-py2.py3-none-any.whl.metadata (1.7 kB)
+#6 2.278 Collecting wcwidth>=0.1.4 (from prompt-toolkit>=3.0.36->click-repl>=0.2.0->celery==5.4.0->celery[redis]==5.4.0)
+#6 2.290   Downloading wcwidth-0.8.2-py3-none-any.whl.metadata (43 kB)
+#6 2.315 Downloading celery-5.4.0-py3-none-any.whl (425 kB)
+#6 2.352 Downloading pymongo-4.9.1-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (1.9 MB)
+#6 2.375    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1.9/1.9 MB 83.7 MB/s eta 0:00:00
+#6 2.390 Downloading redis-5.0.8-py3-none-any.whl (255 kB)
+#6 2.402 Downloading billiard-4.2.4-py3-none-any.whl (87 kB)
+#6 2.415 Downloading click-8.4.2-py3-none-any.whl (119 kB)
+#6 2.427 Downloading click_didyoumean-0.3.1-py3-none-any.whl (3.6 kB)
+#6 2.439 Downloading click_plugins-1.1.1.2-py2.py3-none-any.whl (11 kB)
+#6 2.452 Downloading click_repl-0.3.0-py3-none-any.whl (10 kB)
+#6 2.464 Downloading dnspython-2.8.0-py3-none-any.whl (331 kB)
+#6 2.478 Downloading kombu-5.6.2-py3-none-any.whl (214 kB)
+#6 2.490 Downloading vine-5.1.0-py3-none-any.whl (9.6 kB)
+#6 2.502 Downloading python_dateutil-2.9.0.post0-py2.py3-none-any.whl (229 kB)
+#6 2.515 Downloading tzdata-2026.3-py2.py3-none-any.whl (348 kB)
+#6 2.528 Downloading amqp-5.3.1-py3-none-any.whl (50 kB)
+#6 2.540 Downloading prompt_toolkit-3.0.53-py3-none-any.whl (392 kB)
+#6 2.552 Downloading six-1.17.0-py2.py3-none-any.whl (11 kB)
+#6 2.565 Downloading packaging-26.3-py3-none-any.whl (129 kB)
+#6 2.577 Downloading wcwidth-0.8.2-py3-none-any.whl (323 kB)
+#6 2.632 Installing collected packages: wcwidth, vine, tzdata, six, redis, packaging, dnspython, click, billiard, python-dateutil, pymongo, prompt-toolkit, click-plugins, click-didyoumean, amqp, kombu, click-repl, celery
+#6 4.585 Successfully installed amqp-5.3.1 billiard-4.2.4 celery-5.4.0 click-8.4.2 click-didyoumean-0.3.1 click-plugins-1.1.1.2 click-repl-0.3.0 dnspython-2.8.0 kombu-5.6.2 packaging-26.3 prompt-toolkit-3.0.53 pymongo-4.9.1 python-dateutil-2.9.0.post0 redis-5.0.8 six-1.17.0 tzdata-2026.3 vine-5.1.0 wcwidth-0.8.2
+#6 4.585 WARNING: Running pip as the 'root' user can result in broken permissions and conflicting behaviour with the system package manager, possibly rendering your system unusable. It is recommended to use a virtual environment instead: https://pip.pypa.io/warnings/venv. Use the --root-user-action option if you know what you are doing and want to suppress this warning.
+#6 4.637 
+#6 4.637 [notice] A new release of pip is available: 25.0.1 -> 26.2.1
+#6 4.637 [notice] To update, run: pip install --upgrade pip
+#6 DONE 17.0s
+
+#7 [worker 3/4] WORKDIR /app
+#7 DONE 0.0s
+
+#8 [worker 4/4] COPY tasks.py drive.py evict_probe.py ./
+#8 DONE 0.0s
+
+#9 [worker] exporting to image
+#9 exporting layers
+#9 exporting layers 0.2s done
+#9 writing image sha256:bfb5b99d5cc4c264ce557f84e222a989bfb23e8300089f1558779b76e9b5722d done
+#9 naming to docker.io/library/xycalc-colocation-probe-worker done
+#9 DONE 0.2s
+
+#10 [worker] resolving provenance for metadata file
+#10 DONE 0.0s
+ Network xycalc-colocation-probe_default  Creating
+ Network xycalc-colocation-probe_default  Created
+ Container xycalc-colocation-probe-redis-1  Creating
+ Container xycalc-colocation-probe-clickhouse-1  Creating
+ Container xycalc-colocation-probe-mongo-1  Creating
+ Container xycalc-colocation-probe-clickhouse-1  Created
+ Container xycalc-colocation-probe-redis-1  Created
+ Container xycalc-colocation-probe-mongo-1  Created
+ Container xycalc-colocation-probe-worker-1  Creating
+ Container xycalc-colocation-probe-worker-1  Created
+ Container xycalc-colocation-probe-clickhouse-1  Starting
+ Container xycalc-colocation-probe-redis-1  Starting
+ Container xycalc-colocation-probe-mongo-1  Starting
+ Container xycalc-colocation-probe-redis-1  Started
+ Container xycalc-colocation-probe-mongo-1  Started
+ Container xycalc-colocation-probe-worker-1  Starting
+ Container xycalc-colocation-probe-clickhouse-1  Started
+ Container xycalc-colocation-probe-worker-1  Started
+== loading data into mongo (via celery_probe's driver) and clickhouse ==
+#0 building with "default" instance using docker driver
+
+#1 [driver internal] load build definition from Dockerfile
+#1 transferring dockerfile: 838B done
+#1 DONE 0.0s
+
+#2 [driver internal] load metadata for docker.io/library/python:3.12-slim
+#2 DONE 0.1s
+
+#3 [driver internal] load .dockerignore
+#3 transferring context:
+#3 transferring context: 2B done
+#3 DONE 0.0s
+
+#4 [driver 1/4] FROM docker.io/library/python:3.12-slim@sha256:2c941e860699f878900b0edc2403613c234d4b32eda3cc9fa7036991a2a63c4a
+#4 DONE 0.0s
+
+#5 [driver internal] load build context
+#5 transferring context: 251B done
+#5 DONE 0.0s
+
+#6 [driver 2/4] RUN pip install --no-cache-dir "celery[redis]==5.4.0" "pymongo==4.9.1" "redis==5.0.8"
+#6 CACHED
+
+#7 [driver 3/4] WORKDIR /app
+#7 CACHED
+
+#8 [driver 4/4] COPY tasks.py drive.py evict_probe.py ./
+#8 CACHED
+
+#9 [driver] exporting to image
+#9 exporting layers done
+#9 writing image sha256:395b2b4f62c6798dbf1da6e689ea4447dff73bb085d4635abf36cde27d3cf052 done
+#9 naming to docker.io/library/xycalc-colocation-probe-driver done
+#9 DONE 0.0s
+
+#10 [driver] resolving provenance for metadata file
+#10 DONE 0.0s
+loading 14,202,934 documents...
+  loaded. dataSize=10283 MB  cache=4295 MB  oversubscription=2.4x
+  rate   done/s    qmax    qend   dupes   dup%  drain s  tickets
+    50     50.0       0       0       0    0.0      0.0        8
+===JSON===
+{
+ "mongoVersion": "7.0.40",
+ "celeryVersion": "5.4.0",
+ "pymongoVersion": "4.9.1",
+ "redisVersion": "5.0.8",
+ "prefetch": 4,
+ "acksLate": true,
+ "acksLateVacuousZeroDuplicates": false,
+ "visibilityTimeout": 30,
+ "retryPolicy": "none",
+ "retryDeadline": 120.0,
+ "secondsPerRate": 30.0,
+ "docs": 14202934,
+ "dataSizeBytes": 10282924216,
+ "oversubscription": 2.39,
+ "results": [
+  {
+   "targetRatePerSecond": 50,
+   "seconds": 30.0,
+   "enqueued": 1500,
+   "completedDuringLoad": 1500,
+   "completedTotal": 1500,
+   "throughputPerSecond": 50.0,
+   "queueDepthAtEnd": 0,
+   "queueDepthMax": 0,
+   "executionsTotal": 1500,
+   "duplicateExecutions": 0,
+   "duplicateRatePct": 0.0,
+   "drainSeconds": 0.0,
+   "drainTimedOut": false,
+   "ticketsMax": 8,
+   "ticketsOutMax": 1,
+   "queuedMicrosDelta": 0,
+   "pagesReadIntoCache": 2415,
+   "samples": 60,
+   "sampleSeries": [
+    {
+     "t": 0.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 1446,
+     "executions": 0,
+     "completed": 0,
+     "duplicates": 0
+    },
+    {
+     "t": 0.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 1489,
+     "executions": 26,
+     "completed": 26,
+     "duplicates": 0
+    },
+    {
+     "t": 1.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 1534,
+     "executions": 51,
+     "completed": 50,
+     "duplicates": 0
+    },
+    {
+     "t": 1.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 1578,
+     "executions": 76,
+     "completed": 76,
+     "duplicates": 0
+    },
+    {
+     "t": 2.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 1619,
+     "executions": 101,
+     "completed": 101,
+     "duplicates": 0
+    },
+    {
+     "t": 2.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 1661,
+     "executions": 126,
+     "completed": 126,
+     "duplicates": 0
+    },
+    {
+     "t": 3.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 1705,
+     "executions": 151,
+     "completed": 151,
+     "duplicates": 0
+    },
+    {
+     "t": 3.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 1746,
+     "executions": 176,
+     "completed": 175,
+     "duplicates": 0
+    },
+    {
+     "t": 4.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 1786,
+     "executions": 201,
+     "completed": 200,
+     "duplicates": 0
+    },
+    {
+     "t": 4.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 1,
+     "queuedMicros": 0,
+     "pagesRead": 1828,
+     "executions": 226,
+     "completed": 226,
+     "duplicates": 0
+    },
+    {
+     "t": 5.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 1,
+     "queuedMicros": 0,
+     "pagesRead": 1866,
+     "executions": 251,
+     "completed": 251,
+     "duplicates": 0
+    },
+    {
+     "t": 5.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 1,
+     "queuedMicros": 0,
+     "pagesRead": 1908,
+     "executions": 276,
+     "completed": 275,
+     "duplicates": 0
+    },
+    {
+     "t": 6.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 1,
+     "queuedMicros": 0,
+     "pagesRead": 1952,
+     "executions": 301,
+     "completed": 300,
+     "duplicates": 0
+    },
+    {
+     "t": 6.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 1,
+     "queuedMicros": 0,
+     "pagesRead": 1994,
+     "executions": 326,
+     "completed": 326,
+     "duplicates": 0
+    },
+    {
+     "t": 7.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 2038,
+     "executions": 351,
+     "completed": 351,
+     "duplicates": 0
+    },
+    {
+     "t": 7.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 1,
+     "queuedMicros": 0,
+     "pagesRead": 2072,
+     "executions": 376,
+     "completed": 375,
+     "duplicates": 0
+    },
+    {
+     "t": 8.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 2112,
+     "executions": 401,
+     "completed": 401,
+     "duplicates": 0
+    },
+    {
+     "t": 8.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 2153,
+     "executions": 426,
+     "completed": 426,
+     "duplicates": 0
+    },
+    {
+     "t": 9.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 2194,
+     "executions": 451,
+     "completed": 451,
+     "duplicates": 0
+    },
+    {
+     "t": 9.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 2235,
+     "executions": 476,
+     "completed": 476,
+     "duplicates": 0
+    },
+    {
+     "t": 10.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 1,
+     "queuedMicros": 0,
+     "pagesRead": 2275,
+     "executions": 501,
+     "completed": 501,
+     "duplicates": 0
+    },
+    {
+     "t": 10.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 1,
+     "queuedMicros": 0,
+     "pagesRead": 2316,
+     "executions": 526,
+     "completed": 526,
+     "duplicates": 0
+    },
+    {
+     "t": 11.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 1,
+     "queuedMicros": 0,
+     "pagesRead": 2358,
+     "executions": 551,
+     "completed": 551,
+     "duplicates": 0
+    },
+    {
+     "t": 11.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 2396,
+     "executions": 576,
+     "completed": 576,
+     "duplicates": 0
+    },
+    {
+     "t": 12.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 2435,
+     "executions": 601,
+     "completed": 601,
+     "duplicates": 0
+    },
+    {
+     "t": 12.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 2472,
+     "executions": 626,
+     "completed": 626,
+     "duplicates": 0
+    },
+    {
+     "t": 13.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 2513,
+     "executions": 651,
+     "completed": 651,
+     "duplicates": 0
+    },
+    {
+     "t": 13.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 1,
+     "queuedMicros": 0,
+     "pagesRead": 2551,
+     "executions": 676,
+     "completed": 676,
+     "duplicates": 0
+    },
+    {
+     "t": 14.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 2593,
+     "executions": 701,
+     "completed": 701,
+     "duplicates": 0
+    },
+    {
+     "t": 14.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 2633,
+     "executions": 726,
+     "completed": 726,
+     "duplicates": 0
+    },
+    {
+     "t": 15.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 1,
+     "queuedMicros": 0,
+     "pagesRead": 2670,
+     "executions": 751,
+     "completed": 751,
+     "duplicates": 0
+    },
+    {
+     "t": 15.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 1,
+     "queuedMicros": 0,
+     "pagesRead": 2710,
+     "executions": 776,
+     "completed": 776,
+     "duplicates": 0
+    },
+    {
+     "t": 16.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 1,
+     "queuedMicros": 0,
+     "pagesRead": 2754,
+     "executions": 801,
+     "completed": 801,
+     "duplicates": 0
+    },
+    {
+     "t": 16.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 2797,
+     "executions": 826,
+     "completed": 826,
+     "duplicates": 0
+    },
+    {
+     "t": 17.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 1,
+     "queuedMicros": 0,
+     "pagesRead": 2837,
+     "executions": 851,
+     "completed": 851,
+     "duplicates": 0
+    },
+    {
+     "t": 17.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 1,
+     "queuedMicros": 0,
+     "pagesRead": 2875,
+     "executions": 876,
+     "completed": 876,
+     "duplicates": 0
+    },
+    {
+     "t": 18.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 2919,
+     "executions": 901,
+     "completed": 901,
+     "duplicates": 0
+    },
+    {
+     "t": 18.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 2961,
+     "executions": 926,
+     "completed": 926,
+     "duplicates": 0
+    },
+    {
+     "t": 19.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 3003,
+     "executions": 951,
+     "completed": 951,
+     "duplicates": 0
+    },
+    {
+     "t": 19.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 1,
+     "queuedMicros": 0,
+     "pagesRead": 3041,
+     "executions": 976,
+     "completed": 976,
+     "duplicates": 0
+    },
+    {
+     "t": 20.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 3075,
+     "executions": 1001,
+     "completed": 1001,
+     "duplicates": 0
+    },
+    {
+     "t": 20.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 3116,
+     "executions": 1026,
+     "completed": 1026,
+     "duplicates": 0
+    },
+    {
+     "t": 21.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 3158,
+     "executions": 1051,
+     "completed": 1051,
+     "duplicates": 0
+    },
+    {
+     "t": 21.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 3197,
+     "executions": 1076,
+     "completed": 1076,
+     "duplicates": 0
+    },
+    {
+     "t": 22.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 3237,
+     "executions": 1101,
+     "completed": 1101,
+     "duplicates": 0
+    },
+    {
+     "t": 22.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 3282,
+     "executions": 1126,
+     "completed": 1126,
+     "duplicates": 0
+    },
+    {
+     "t": 23.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 3323,
+     "executions": 1151,
+     "completed": 1151,
+     "duplicates": 0
+    },
+    {
+     "t": 23.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 3363,
+     "executions": 1176,
+     "completed": 1176,
+     "duplicates": 0
+    },
+    {
+     "t": 24.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 3402,
+     "executions": 1201,
+     "completed": 1201,
+     "duplicates": 0
+    },
+    {
+     "t": 24.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 3444,
+     "executions": 1226,
+     "completed": 1226,
+     "duplicates": 0
+    },
+    {
+     "t": 25.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 3485,
+     "executions": 1251,
+     "completed": 1251,
+     "duplicates": 0
+    },
+    {
+     "t": 25.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 3521,
+     "executions": 1276,
+     "completed": 1276,
+     "duplicates": 0
+    },
+    {
+     "t": 26.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 3565,
+     "executions": 1301,
+     "completed": 1301,
+     "duplicates": 0
+    },
+    {
+     "t": 26.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 3600,
+     "executions": 1326,
+     "completed": 1326,
+     "duplicates": 0
+    },
+    {
+     "t": 27.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 3637,
+     "executions": 1351,
+     "completed": 1351,
+     "duplicates": 0
+    },
+    {
+     "t": 27.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 3674,
+     "executions": 1376,
+     "completed": 1376,
+     "duplicates": 0
+    },
+    {
+     "t": 28.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 3713,
+     "executions": 1401,
+     "completed": 1401,
+     "duplicates": 0
+    },
+    {
+     "t": 28.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 3753,
+     "executions": 1426,
+     "completed": 1426,
+     "duplicates": 0
+    },
+    {
+     "t": 29.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 3789,
+     "executions": 1451,
+     "completed": 1451,
+     "duplicates": 0
+    },
+    {
+     "t": 29.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 3826,
+     "executions": 1476,
+     "completed": 1476,
+     "duplicates": 0
+    }
+   ]
+  }
+ ],
+ "at": "2026-08-21T06:10:42+0000"
+}
+== phase 2: loaded (data resident, no concurrent traffic) ==
+== phase 3: under light concurrent load ==
+reusing existing 14,202,934 documents (idempotent load)
+  loaded. dataSize=10283 MB  cache=4295 MB  oversubscription=2.4x
+  rate   done/s    qmax    qend   dupes   dup%  drain s  tickets
+    50     50.0       0       0       0    0.0      0.0        8
+===JSON===
+{
+ "mongoVersion": "7.0.40",
+ "celeryVersion": "5.4.0",
+ "pymongoVersion": "4.9.1",
+ "redisVersion": "5.0.8",
+ "prefetch": 4,
+ "acksLate": true,
+ "acksLateVacuousZeroDuplicates": false,
+ "visibilityTimeout": 30,
+ "retryPolicy": "none",
+ "retryDeadline": 120.0,
+ "secondsPerRate": 30.0,
+ "docs": 14202934,
+ "dataSizeBytes": 10282924216,
+ "oversubscription": 2.39,
+ "results": [
+  {
+   "targetRatePerSecond": 50,
+   "seconds": 30.0,
+   "enqueued": 1500,
+   "completedDuringLoad": 1500,
+   "completedTotal": 1500,
+   "throughputPerSecond": 50.0,
+   "queueDepthAtEnd": 0,
+   "queueDepthMax": 0,
+   "executionsTotal": 1500,
+   "duplicateExecutions": 0,
+   "duplicateRatePct": 0.0,
+   "drainSeconds": 0.0,
+   "drainTimedOut": false,
+   "ticketsMax": 8,
+   "ticketsOutMax": 1,
+   "queuedMicrosDelta": 0,
+   "pagesReadIntoCache": 2285,
+   "samples": 60,
+   "sampleSeries": [
+    {
+     "t": 0.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 3865,
+     "executions": 1,
+     "completed": 0,
+     "duplicates": 0
+    },
+    {
+     "t": 0.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 3902,
+     "executions": 26,
+     "completed": 25,
+     "duplicates": 0
+    },
+    {
+     "t": 1.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 3943,
+     "executions": 51,
+     "completed": 50,
+     "duplicates": 0
+    },
+    {
+     "t": 1.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 3986,
+     "executions": 76,
+     "completed": 75,
+     "duplicates": 0
+    },
+    {
+     "t": 2.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 4026,
+     "executions": 101,
+     "completed": 101,
+     "duplicates": 0
+    },
+    {
+     "t": 2.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 4069,
+     "executions": 126,
+     "completed": 125,
+     "duplicates": 0
+    },
+    {
+     "t": 3.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 4107,
+     "executions": 151,
+     "completed": 150,
+     "duplicates": 0
+    },
+    {
+     "t": 3.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 4146,
+     "executions": 176,
+     "completed": 175,
+     "duplicates": 0
+    },
+    {
+     "t": 4.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 4181,
+     "executions": 201,
+     "completed": 200,
+     "duplicates": 0
+    },
+    {
+     "t": 4.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 4214,
+     "executions": 226,
+     "completed": 226,
+     "duplicates": 0
+    },
+    {
+     "t": 5.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 4254,
+     "executions": 251,
+     "completed": 251,
+     "duplicates": 0
+    },
+    {
+     "t": 5.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 4289,
+     "executions": 276,
+     "completed": 276,
+     "duplicates": 0
+    },
+    {
+     "t": 6.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 4326,
+     "executions": 301,
+     "completed": 300,
+     "duplicates": 0
+    },
+    {
+     "t": 6.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 4367,
+     "executions": 326,
+     "completed": 325,
+     "duplicates": 0
+    },
+    {
+     "t": 7.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 1,
+     "queuedMicros": 0,
+     "pagesRead": 4403,
+     "executions": 351,
+     "completed": 351,
+     "duplicates": 0
+    },
+    {
+     "t": 7.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 1,
+     "queuedMicros": 0,
+     "pagesRead": 4440,
+     "executions": 376,
+     "completed": 375,
+     "duplicates": 0
+    },
+    {
+     "t": 8.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 1,
+     "queuedMicros": 0,
+     "pagesRead": 4477,
+     "executions": 401,
+     "completed": 401,
+     "duplicates": 0
+    },
+    {
+     "t": 8.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 1,
+     "queuedMicros": 0,
+     "pagesRead": 4515,
+     "executions": 426,
+     "completed": 426,
+     "duplicates": 0
+    },
+    {
+     "t": 9.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 4547,
+     "executions": 451,
+     "completed": 451,
+     "duplicates": 0
+    },
+    {
+     "t": 9.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 1,
+     "queuedMicros": 0,
+     "pagesRead": 4581,
+     "executions": 476,
+     "completed": 475,
+     "duplicates": 0
+    },
+    {
+     "t": 10.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 4615,
+     "executions": 501,
+     "completed": 501,
+     "duplicates": 0
+    },
+    {
+     "t": 10.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 1,
+     "queuedMicros": 0,
+     "pagesRead": 4652,
+     "executions": 526,
+     "completed": 526,
+     "duplicates": 0
+    },
+    {
+     "t": 11.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 4689,
+     "executions": 551,
+     "completed": 551,
+     "duplicates": 0
+    },
+    {
+     "t": 11.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 1,
+     "queuedMicros": 0,
+     "pagesRead": 4726,
+     "executions": 576,
+     "completed": 575,
+     "duplicates": 0
+    },
+    {
+     "t": 12.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 4773,
+     "executions": 601,
+     "completed": 601,
+     "duplicates": 0
+    },
+    {
+     "t": 12.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 1,
+     "queuedMicros": 0,
+     "pagesRead": 4808,
+     "executions": 626,
+     "completed": 626,
+     "duplicates": 0
+    },
+    {
+     "t": 13.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 4844,
+     "executions": 651,
+     "completed": 651,
+     "duplicates": 0
+    },
+    {
+     "t": 13.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 4883,
+     "executions": 676,
+     "completed": 676,
+     "duplicates": 0
+    },
+    {
+     "t": 14.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 4926,
+     "executions": 701,
+     "completed": 701,
+     "duplicates": 0
+    },
+    {
+     "t": 14.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 1,
+     "queuedMicros": 0,
+     "pagesRead": 4963,
+     "executions": 726,
+     "completed": 726,
+     "duplicates": 0
+    },
+    {
+     "t": 15.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 4999,
+     "executions": 751,
+     "completed": 751,
+     "duplicates": 0
+    },
+    {
+     "t": 15.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 5042,
+     "executions": 776,
+     "completed": 776,
+     "duplicates": 0
+    },
+    {
+     "t": 16.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 1,
+     "queuedMicros": 0,
+     "pagesRead": 5080,
+     "executions": 801,
+     "completed": 801,
+     "duplicates": 0
+    },
+    {
+     "t": 16.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 1,
+     "queuedMicros": 0,
+     "pagesRead": 5124,
+     "executions": 826,
+     "completed": 826,
+     "duplicates": 0
+    },
+    {
+     "t": 17.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 1,
+     "queuedMicros": 0,
+     "pagesRead": 5162,
+     "executions": 851,
+     "completed": 851,
+     "duplicates": 0
+    },
+    {
+     "t": 17.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 5201,
+     "executions": 876,
+     "completed": 876,
+     "duplicates": 0
+    },
+    {
+     "t": 18.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 1,
+     "queuedMicros": 0,
+     "pagesRead": 5236,
+     "executions": 901,
+     "completed": 901,
+     "duplicates": 0
+    },
+    {
+     "t": 18.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 5276,
+     "executions": 926,
+     "completed": 926,
+     "duplicates": 0
+    },
+    {
+     "t": 19.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 5316,
+     "executions": 951,
+     "completed": 951,
+     "duplicates": 0
+    },
+    {
+     "t": 19.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 1,
+     "queuedMicros": 0,
+     "pagesRead": 5353,
+     "executions": 976,
+     "completed": 976,
+     "duplicates": 0
+    },
+    {
+     "t": 20.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 1,
+     "queuedMicros": 0,
+     "pagesRead": 5389,
+     "executions": 1001,
+     "completed": 1001,
+     "duplicates": 0
+    },
+    {
+     "t": 20.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 5425,
+     "executions": 1026,
+     "completed": 1026,
+     "duplicates": 0
+    },
+    {
+     "t": 21.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 5463,
+     "executions": 1051,
+     "completed": 1051,
+     "duplicates": 0
+    },
+    {
+     "t": 21.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 1,
+     "queuedMicros": 0,
+     "pagesRead": 5498,
+     "executions": 1076,
+     "completed": 1076,
+     "duplicates": 0
+    },
+    {
+     "t": 22.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 5538,
+     "executions": 1101,
+     "completed": 1101,
+     "duplicates": 0
+    },
+    {
+     "t": 22.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 5575,
+     "executions": 1126,
+     "completed": 1126,
+     "duplicates": 0
+    },
+    {
+     "t": 23.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 5615,
+     "executions": 1151,
+     "completed": 1151,
+     "duplicates": 0
+    },
+    {
+     "t": 23.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 5656,
+     "executions": 1176,
+     "completed": 1176,
+     "duplicates": 0
+    },
+    {
+     "t": 24.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 5697,
+     "executions": 1201,
+     "completed": 1201,
+     "duplicates": 0
+    },
+    {
+     "t": 24.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 5736,
+     "executions": 1226,
+     "completed": 1226,
+     "duplicates": 0
+    },
+    {
+     "t": 25.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 5778,
+     "executions": 1251,
+     "completed": 1251,
+     "duplicates": 0
+    },
+    {
+     "t": 25.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 5817,
+     "executions": 1276,
+     "completed": 1276,
+     "duplicates": 0
+    },
+    {
+     "t": 26.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 5856,
+     "executions": 1301,
+     "completed": 1301,
+     "duplicates": 0
+    },
+    {
+     "t": 26.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 5890,
+     "executions": 1326,
+     "completed": 1326,
+     "duplicates": 0
+    },
+    {
+     "t": 27.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 5928,
+     "executions": 1351,
+     "completed": 1351,
+     "duplicates": 0
+    },
+    {
+     "t": 27.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 5969,
+     "executions": 1376,
+     "completed": 1376,
+     "duplicates": 0
+    },
+    {
+     "t": 28.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 6009,
+     "executions": 1401,
+     "completed": 1401,
+     "duplicates": 0
+    },
+    {
+     "t": 28.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 6042,
+     "executions": 1426,
+     "completed": 1426,
+     "duplicates": 0
+    },
+    {
+     "t": 29.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 6078,
+     "executions": 1451,
+     "completed": 1451,
+     "duplicates": 0
+    },
+    {
+     "t": 29.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 6115,
+     "executions": 1476,
+     "completed": 1476,
+     "duplicates": 0
+    }
+   ]
+  }
+ ],
+ "at": "2026-08-21T06:11:20+0000"
+}
+
+=== RSS by service across phases ===
+service                 idle          loaded      under_load
+clickhouse          129.8MiB          364MiB        351.6MiB
+mongo               71.33MiB        3.274GiB        3.275GiB
+redis               3.617MiB        4.582MiB        4.672MiB
+worker              110.1MiB        119.3MiB        119.3MiB
+wrote /opt/xycalc/results/share50-cache4.0g-docs14202934.json
+{
+  "share_pct": 50,
+  "cache_gb": 4.0,
+  "probe_docs": 14202934,
+  "idle": {
+    "worker": "110.1MiB",
+    "mongo": "71.33MiB",
+    "clickhouse": "129.8MiB",
+    "redis": "3.617MiB"
+  },
+  "mongo_mem": {
+    "idle": "71.33MiB",
+    "loaded": "3.274GiB",
+    "under_load": "3.275GiB"
+  },
+  "loaded": {
+    "worker": "119.3MiB",
+    "mongo": "3.274GiB",
+    "clickhouse": "364MiB",
+    "redis": "4.582MiB"
+  },
+  "under_load": {
+    "worker": "119.3MiB",
+    "mongo": "3.275GiB",
+    "clickhouse": "351.6MiB",
+    "redis": "4.672MiB"
+  }
+}
+== share60-cache4.8g-docs17043521 ==
+== phase 1: idle (containers up, no data loaded yet) ==
+#0 building with "default" instance using docker driver
+
+#1 [worker internal] load build definition from Dockerfile
+#1 DONE 0.0s
+
+#1 [worker internal] load build definition from Dockerfile
+#1 transferring dockerfile: 838B done
+#1 DONE 0.0s
+
+#2 [worker internal] load metadata for docker.io/library/python:3.12-slim
+#2 DONE 0.2s
+
+#3 [worker internal] load .dockerignore
+#3 transferring context: 2B done
+#3 DONE 0.0s
+
+#4 [worker 1/4] FROM docker.io/library/python:3.12-slim@sha256:2c941e860699f878900b0edc2403613c234d4b32eda3cc9fa7036991a2a63c4a
+#4 DONE 0.0s
+
+#5 [worker internal] load build context
+#5 transferring context: 251B done
+#5 DONE 0.0s
+
+#6 [worker 2/4] RUN pip install --no-cache-dir "celery[redis]==5.4.0" "pymongo==4.9.1" "redis==5.0.8"
+#6 CACHED
+
+#7 [worker 3/4] WORKDIR /app
+#7 CACHED
+
+#8 [worker 4/4] COPY tasks.py drive.py evict_probe.py ./
+#8 CACHED
+
+#9 [worker] exporting to image
+#9 exporting layers done
+#9 writing image sha256:bfb5b99d5cc4c264ce557f84e222a989bfb23e8300089f1558779b76e9b5722d done
+#9 naming to docker.io/library/xycalc-colocation-probe-worker done
+#9 DONE 0.0s
+
+#10 [worker] resolving provenance for metadata file
+#10 DONE 0.0s
+ Network xycalc-colocation-probe_default  Creating
+ Network xycalc-colocation-probe_default  Created
+ Container xycalc-colocation-probe-clickhouse-1  Creating
+ Container xycalc-colocation-probe-redis-1  Creating
+ Container xycalc-colocation-probe-mongo-1  Creating
+ Container xycalc-colocation-probe-redis-1  Created
+ Container xycalc-colocation-probe-clickhouse-1  Created
+ Container xycalc-colocation-probe-mongo-1  Created
+ Container xycalc-colocation-probe-worker-1  Creating
+ Container xycalc-colocation-probe-worker-1  Created
+ Container xycalc-colocation-probe-clickhouse-1  Starting
+ Container xycalc-colocation-probe-mongo-1  Starting
+ Container xycalc-colocation-probe-redis-1  Starting
+ Container xycalc-colocation-probe-redis-1  Started
+ Container xycalc-colocation-probe-clickhouse-1  Started
+ Container xycalc-colocation-probe-mongo-1  Started
+ Container xycalc-colocation-probe-worker-1  Starting
+ Container xycalc-colocation-probe-worker-1  Started
+== loading data into mongo (via celery_probe's driver) and clickhouse ==
+loading 17,043,521 documents...
+  loaded. dataSize=12340 MB  cache=5154 MB  oversubscription=2.4x
+  rate   done/s    qmax    qend   dupes   dup%  drain s  tickets
+    50     50.0       0       0       0    0.0      0.0        8
+===JSON===
+{
+ "mongoVersion": "7.0.40",
+ "celeryVersion": "5.4.0",
+ "pymongoVersion": "4.9.1",
+ "redisVersion": "5.0.8",
+ "prefetch": 4,
+ "acksLate": true,
+ "acksLateVacuousZeroDuplicates": false,
+ "visibilityTimeout": 30,
+ "retryPolicy": "none",
+ "retryDeadline": 120.0,
+ "secondsPerRate": 30.0,
+ "docs": 17043521,
+ "dataSizeBytes": 12339509204,
+ "oversubscription": 2.39,
+ "results": [
+  {
+   "targetRatePerSecond": 50,
+   "seconds": 30.0,
+   "enqueued": 1500,
+   "completedDuringLoad": 1500,
+   "completedTotal": 1500,
+   "throughputPerSecond": 50.0,
+   "queueDepthAtEnd": 0,
+   "queueDepthMax": 0,
+   "executionsTotal": 1500,
+   "duplicateExecutions": 0,
+   "duplicateRatePct": 0.0,
+   "drainSeconds": 0.0,
+   "drainTimedOut": false,
+   "ticketsMax": 8,
+   "ticketsOutMax": 1,
+   "queuedMicrosDelta": 0,
+   "pagesReadIntoCache": 2430,
+   "samples": 60,
+   "sampleSeries": [
+    {
+     "t": 0.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 1741,
+     "executions": 0,
+     "completed": 0,
+     "duplicates": 0
+    },
+    {
+     "t": 0.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 1783,
+     "executions": 26,
+     "completed": 25,
+     "duplicates": 0
+    },
+    {
+     "t": 1.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 1827,
+     "executions": 51,
+     "completed": 50,
+     "duplicates": 0
+    },
+    {
+     "t": 1.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 1872,
+     "executions": 76,
+     "completed": 75,
+     "duplicates": 0
+    },
+    {
+     "t": 2.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 1911,
+     "executions": 101,
+     "completed": 100,
+     "duplicates": 0
+    },
+    {
+     "t": 2.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 1956,
+     "executions": 126,
+     "completed": 126,
+     "duplicates": 0
+    },
+    {
+     "t": 3.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 1998,
+     "executions": 151,
+     "completed": 150,
+     "duplicates": 0
+    },
+    {
+     "t": 3.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 2036,
+     "executions": 176,
+     "completed": 175,
+     "duplicates": 0
+    },
+    {
+     "t": 4.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 2077,
+     "executions": 201,
+     "completed": 200,
+     "duplicates": 0
+    },
+    {
+     "t": 4.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 2116,
+     "executions": 226,
+     "completed": 225,
+     "duplicates": 0
+    },
+    {
+     "t": 5.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 1,
+     "queuedMicros": 0,
+     "pagesRead": 2156,
+     "executions": 251,
+     "completed": 251,
+     "duplicates": 0
+    },
+    {
+     "t": 5.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 2201,
+     "executions": 276,
+     "completed": 276,
+     "duplicates": 0
+    },
+    {
+     "t": 6.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 1,
+     "queuedMicros": 0,
+     "pagesRead": 2242,
+     "executions": 301,
+     "completed": 301,
+     "duplicates": 0
+    },
+    {
+     "t": 6.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 1,
+     "queuedMicros": 0,
+     "pagesRead": 2283,
+     "executions": 326,
+     "completed": 325,
+     "duplicates": 0
+    },
+    {
+     "t": 7.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 1,
+     "queuedMicros": 0,
+     "pagesRead": 2329,
+     "executions": 351,
+     "completed": 350,
+     "duplicates": 0
+    },
+    {
+     "t": 7.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 2372,
+     "executions": 376,
+     "completed": 376,
+     "duplicates": 0
+    },
+    {
+     "t": 8.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 1,
+     "queuedMicros": 0,
+     "pagesRead": 2411,
+     "executions": 401,
+     "completed": 401,
+     "duplicates": 0
+    },
+    {
+     "t": 8.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 2449,
+     "executions": 426,
+     "completed": 426,
+     "duplicates": 0
+    },
+    {
+     "t": 9.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 2492,
+     "executions": 451,
+     "completed": 451,
+     "duplicates": 0
+    },
+    {
+     "t": 9.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 2532,
+     "executions": 476,
+     "completed": 475,
+     "duplicates": 0
+    },
+    {
+     "t": 10.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 1,
+     "queuedMicros": 0,
+     "pagesRead": 2577,
+     "executions": 501,
+     "completed": 500,
+     "duplicates": 0
+    },
+    {
+     "t": 10.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 1,
+     "queuedMicros": 0,
+     "pagesRead": 2614,
+     "executions": 526,
+     "completed": 525,
+     "duplicates": 0
+    },
+    {
+     "t": 11.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 1,
+     "queuedMicros": 0,
+     "pagesRead": 2658,
+     "executions": 551,
+     "completed": 550,
+     "duplicates": 0
+    },
+    {
+     "t": 11.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 2701,
+     "executions": 576,
+     "completed": 576,
+     "duplicates": 0
+    },
+    {
+     "t": 12.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 1,
+     "queuedMicros": 0,
+     "pagesRead": 2743,
+     "executions": 601,
+     "completed": 601,
+     "duplicates": 0
+    },
+    {
+     "t": 12.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 1,
+     "queuedMicros": 0,
+     "pagesRead": 2781,
+     "executions": 626,
+     "completed": 625,
+     "duplicates": 0
+    },
+    {
+     "t": 13.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 2823,
+     "executions": 651,
+     "completed": 651,
+     "duplicates": 0
+    },
+    {
+     "t": 13.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 1,
+     "queuedMicros": 0,
+     "pagesRead": 2859,
+     "executions": 676,
+     "completed": 676,
+     "duplicates": 0
+    },
+    {
+     "t": 14.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 1,
+     "queuedMicros": 0,
+     "pagesRead": 2901,
+     "executions": 701,
+     "completed": 700,
+     "duplicates": 0
+    },
+    {
+     "t": 14.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 2944,
+     "executions": 726,
+     "completed": 726,
+     "duplicates": 0
+    },
+    {
+     "t": 15.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 1,
+     "queuedMicros": 0,
+     "pagesRead": 2984,
+     "executions": 751,
+     "completed": 751,
+     "duplicates": 0
+    },
+    {
+     "t": 15.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 1,
+     "queuedMicros": 0,
+     "pagesRead": 3022,
+     "executions": 776,
+     "completed": 776,
+     "duplicates": 0
+    },
+    {
+     "t": 16.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 1,
+     "queuedMicros": 0,
+     "pagesRead": 3063,
+     "executions": 801,
+     "completed": 801,
+     "duplicates": 0
+    },
+    {
+     "t": 16.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 1,
+     "queuedMicros": 0,
+     "pagesRead": 3105,
+     "executions": 826,
+     "completed": 826,
+     "duplicates": 0
+    },
+    {
+     "t": 17.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 3150,
+     "executions": 851,
+     "completed": 851,
+     "duplicates": 0
+    },
+    {
+     "t": 17.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 1,
+     "queuedMicros": 0,
+     "pagesRead": 3189,
+     "executions": 876,
+     "completed": 876,
+     "duplicates": 0
+    },
+    {
+     "t": 18.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 1,
+     "queuedMicros": 0,
+     "pagesRead": 3236,
+     "executions": 901,
+     "completed": 901,
+     "duplicates": 0
+    },
+    {
+     "t": 18.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 3279,
+     "executions": 926,
+     "completed": 926,
+     "duplicates": 0
+    },
+    {
+     "t": 19.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 3321,
+     "executions": 951,
+     "completed": 951,
+     "duplicates": 0
+    },
+    {
+     "t": 19.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 3364,
+     "executions": 976,
+     "completed": 976,
+     "duplicates": 0
+    },
+    {
+     "t": 20.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 1,
+     "queuedMicros": 0,
+     "pagesRead": 3401,
+     "executions": 1001,
+     "completed": 1001,
+     "duplicates": 0
+    },
+    {
+     "t": 20.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 3437,
+     "executions": 1026,
+     "completed": 1026,
+     "duplicates": 0
+    },
+    {
+     "t": 21.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 3480,
+     "executions": 1051,
+     "completed": 1051,
+     "duplicates": 0
+    },
+    {
+     "t": 21.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 3516,
+     "executions": 1076,
+     "completed": 1076,
+     "duplicates": 0
+    },
+    {
+     "t": 22.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 3557,
+     "executions": 1101,
+     "completed": 1101,
+     "duplicates": 0
+    },
+    {
+     "t": 22.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 3593,
+     "executions": 1126,
+     "completed": 1126,
+     "duplicates": 0
+    },
+    {
+     "t": 23.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 3626,
+     "executions": 1151,
+     "completed": 1151,
+     "duplicates": 0
+    },
+    {
+     "t": 23.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 3667,
+     "executions": 1176,
+     "completed": 1176,
+     "duplicates": 0
+    },
+    {
+     "t": 24.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 3707,
+     "executions": 1201,
+     "completed": 1201,
+     "duplicates": 0
+    },
+    {
+     "t": 24.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 3746,
+     "executions": 1226,
+     "completed": 1226,
+     "duplicates": 0
+    },
+    {
+     "t": 25.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 3785,
+     "executions": 1251,
+     "completed": 1251,
+     "duplicates": 0
+    },
+    {
+     "t": 25.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 3828,
+     "executions": 1276,
+     "completed": 1276,
+     "duplicates": 0
+    },
+    {
+     "t": 26.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 3870,
+     "executions": 1301,
+     "completed": 1301,
+     "duplicates": 0
+    },
+    {
+     "t": 26.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 3907,
+     "executions": 1326,
+     "completed": 1326,
+     "duplicates": 0
+    },
+    {
+     "t": 27.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 3944,
+     "executions": 1351,
+     "completed": 1351,
+     "duplicates": 0
+    },
+    {
+     "t": 27.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 3978,
+     "executions": 1376,
+     "completed": 1376,
+     "duplicates": 0
+    },
+    {
+     "t": 28.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 4019,
+     "executions": 1401,
+     "completed": 1401,
+     "duplicates": 0
+    },
+    {
+     "t": 28.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 4062,
+     "executions": 1426,
+     "completed": 1426,
+     "duplicates": 0
+    },
+    {
+     "t": 29.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 4099,
+     "executions": 1451,
+     "completed": 1451,
+     "duplicates": 0
+    },
+    {
+     "t": 29.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 4138,
+     "executions": 1476,
+     "completed": 1476,
+     "duplicates": 0
+    }
+   ]
+  }
+ ],
+ "at": "2026-08-21T06:29:25+0000"
+}
+== phase 2: loaded (data resident, no concurrent traffic) ==
+== phase 3: under light concurrent load ==
+reusing existing 17,043,521 documents (idempotent load)
+  loaded. dataSize=12340 MB  cache=5154 MB  oversubscription=2.4x
+  rate   done/s    qmax    qend   dupes   dup%  drain s  tickets
+    50     50.0       0       0       0    0.0      0.0        8
+===JSON===
+{
+ "mongoVersion": "7.0.40",
+ "celeryVersion": "5.4.0",
+ "pymongoVersion": "4.9.1",
+ "redisVersion": "5.0.8",
+ "prefetch": 4,
+ "acksLate": true,
+ "acksLateVacuousZeroDuplicates": false,
+ "visibilityTimeout": 30,
+ "retryPolicy": "none",
+ "retryDeadline": 120.0,
+ "secondsPerRate": 30.0,
+ "docs": 17043521,
+ "dataSizeBytes": 12339509204,
+ "oversubscription": 2.39,
+ "results": [
+  {
+   "targetRatePerSecond": 50,
+   "seconds": 30.0,
+   "enqueued": 1500,
+   "completedDuringLoad": 1500,
+   "completedTotal": 1500,
+   "throughputPerSecond": 50.0,
+   "queueDepthAtEnd": 0,
+   "queueDepthMax": 0,
+   "executionsTotal": 1500,
+   "duplicateExecutions": 0,
+   "duplicateRatePct": 0.0,
+   "drainSeconds": 0.0,
+   "drainTimedOut": false,
+   "ticketsMax": 8,
+   "ticketsOutMax": 1,
+   "queuedMicrosDelta": 0,
+   "pagesReadIntoCache": 2301,
+   "samples": 60,
+   "sampleSeries": [
+    {
+     "t": 0.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 4173,
+     "executions": 1,
+     "completed": 1,
+     "duplicates": 0
+    },
+    {
+     "t": 0.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 4215,
+     "executions": 26,
+     "completed": 25,
+     "duplicates": 0
+    },
+    {
+     "t": 1.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 4257,
+     "executions": 51,
+     "completed": 50,
+     "duplicates": 0
+    },
+    {
+     "t": 1.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 4292,
+     "executions": 76,
+     "completed": 75,
+     "duplicates": 0
+    },
+    {
+     "t": 2.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 1,
+     "queuedMicros": 0,
+     "pagesRead": 4338,
+     "executions": 101,
+     "completed": 101,
+     "duplicates": 0
+    },
+    {
+     "t": 2.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 1,
+     "queuedMicros": 0,
+     "pagesRead": 4377,
+     "executions": 126,
+     "completed": 126,
+     "duplicates": 0
+    },
+    {
+     "t": 3.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 4417,
+     "executions": 151,
+     "completed": 150,
+     "duplicates": 0
+    },
+    {
+     "t": 3.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 1,
+     "queuedMicros": 0,
+     "pagesRead": 4460,
+     "executions": 176,
+     "completed": 175,
+     "duplicates": 0
+    },
+    {
+     "t": 4.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 1,
+     "queuedMicros": 0,
+     "pagesRead": 4499,
+     "executions": 201,
+     "completed": 200,
+     "duplicates": 0
+    },
+    {
+     "t": 4.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 4543,
+     "executions": 226,
+     "completed": 225,
+     "duplicates": 0
+    },
+    {
+     "t": 5.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 1,
+     "queuedMicros": 0,
+     "pagesRead": 4582,
+     "executions": 251,
+     "completed": 250,
+     "duplicates": 0
+    },
+    {
+     "t": 5.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 1,
+     "queuedMicros": 0,
+     "pagesRead": 4622,
+     "executions": 276,
+     "completed": 276,
+     "duplicates": 0
+    },
+    {
+     "t": 6.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 1,
+     "queuedMicros": 0,
+     "pagesRead": 4663,
+     "executions": 301,
+     "completed": 301,
+     "duplicates": 0
+    },
+    {
+     "t": 6.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 1,
+     "queuedMicros": 0,
+     "pagesRead": 4701,
+     "executions": 326,
+     "completed": 326,
+     "duplicates": 0
+    },
+    {
+     "t": 7.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 4745,
+     "executions": 351,
+     "completed": 351,
+     "duplicates": 0
+    },
+    {
+     "t": 7.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 4784,
+     "executions": 376,
+     "completed": 376,
+     "duplicates": 0
+    },
+    {
+     "t": 8.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 1,
+     "queuedMicros": 0,
+     "pagesRead": 4822,
+     "executions": 401,
+     "completed": 400,
+     "duplicates": 0
+    },
+    {
+     "t": 8.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 1,
+     "queuedMicros": 0,
+     "pagesRead": 4863,
+     "executions": 426,
+     "completed": 426,
+     "duplicates": 0
+    },
+    {
+     "t": 9.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 1,
+     "queuedMicros": 0,
+     "pagesRead": 4902,
+     "executions": 451,
+     "completed": 450,
+     "duplicates": 0
+    },
+    {
+     "t": 9.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 1,
+     "queuedMicros": 0,
+     "pagesRead": 4947,
+     "executions": 476,
+     "completed": 476,
+     "duplicates": 0
+    },
+    {
+     "t": 10.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 1,
+     "queuedMicros": 0,
+     "pagesRead": 4986,
+     "executions": 501,
+     "completed": 500,
+     "duplicates": 0
+    },
+    {
+     "t": 10.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 5027,
+     "executions": 526,
+     "completed": 526,
+     "duplicates": 0
+    },
+    {
+     "t": 11.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 5067,
+     "executions": 551,
+     "completed": 551,
+     "duplicates": 0
+    },
+    {
+     "t": 11.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 1,
+     "queuedMicros": 0,
+     "pagesRead": 5100,
+     "executions": 576,
+     "completed": 576,
+     "duplicates": 0
+    },
+    {
+     "t": 12.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 5133,
+     "executions": 601,
+     "completed": 601,
+     "duplicates": 0
+    },
+    {
+     "t": 12.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 1,
+     "queuedMicros": 0,
+     "pagesRead": 5167,
+     "executions": 626,
+     "completed": 626,
+     "duplicates": 0
+    },
+    {
+     "t": 13.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 1,
+     "queuedMicros": 0,
+     "pagesRead": 5199,
+     "executions": 651,
+     "completed": 651,
+     "duplicates": 0
+    },
+    {
+     "t": 13.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 1,
+     "queuedMicros": 0,
+     "pagesRead": 5230,
+     "executions": 676,
+     "completed": 676,
+     "duplicates": 0
+    },
+    {
+     "t": 14.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 1,
+     "queuedMicros": 0,
+     "pagesRead": 5273,
+     "executions": 701,
+     "completed": 701,
+     "duplicates": 0
+    },
+    {
+     "t": 14.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 1,
+     "queuedMicros": 0,
+     "pagesRead": 5313,
+     "executions": 726,
+     "completed": 726,
+     "duplicates": 0
+    },
+    {
+     "t": 15.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 5354,
+     "executions": 751,
+     "completed": 751,
+     "duplicates": 0
+    },
+    {
+     "t": 15.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 5395,
+     "executions": 776,
+     "completed": 776,
+     "duplicates": 0
+    },
+    {
+     "t": 16.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 1,
+     "queuedMicros": 0,
+     "pagesRead": 5431,
+     "executions": 801,
+     "completed": 801,
+     "duplicates": 0
+    },
+    {
+     "t": 16.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 5472,
+     "executions": 826,
+     "completed": 826,
+     "duplicates": 0
+    },
+    {
+     "t": 17.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 5505,
+     "executions": 851,
+     "completed": 851,
+     "duplicates": 0
+    },
+    {
+     "t": 17.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 5542,
+     "executions": 876,
+     "completed": 876,
+     "duplicates": 0
+    },
+    {
+     "t": 18.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 5583,
+     "executions": 901,
+     "completed": 901,
+     "duplicates": 0
+    },
+    {
+     "t": 18.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 5625,
+     "executions": 926,
+     "completed": 926,
+     "duplicates": 0
+    },
+    {
+     "t": 19.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 5663,
+     "executions": 951,
+     "completed": 951,
+     "duplicates": 0
+    },
+    {
+     "t": 19.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 5697,
+     "executions": 976,
+     "completed": 976,
+     "duplicates": 0
+    },
+    {
+     "t": 20.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 5737,
+     "executions": 1001,
+     "completed": 1001,
+     "duplicates": 0
+    },
+    {
+     "t": 20.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 5774,
+     "executions": 1026,
+     "completed": 1026,
+     "duplicates": 0
+    },
+    {
+     "t": 21.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 5807,
+     "executions": 1051,
+     "completed": 1051,
+     "duplicates": 0
+    },
+    {
+     "t": 21.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 5842,
+     "executions": 1076,
+     "completed": 1076,
+     "duplicates": 0
+    },
+    {
+     "t": 22.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 5881,
+     "executions": 1101,
+     "completed": 1101,
+     "duplicates": 0
+    },
+    {
+     "t": 22.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 5915,
+     "executions": 1126,
+     "completed": 1126,
+     "duplicates": 0
+    },
+    {
+     "t": 23.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 5949,
+     "executions": 1151,
+     "completed": 1151,
+     "duplicates": 0
+    },
+    {
+     "t": 23.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 5989,
+     "executions": 1176,
+     "completed": 1176,
+     "duplicates": 0
+    },
+    {
+     "t": 24.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 6023,
+     "executions": 1201,
+     "completed": 1201,
+     "duplicates": 0
+    },
+    {
+     "t": 24.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 6064,
+     "executions": 1226,
+     "completed": 1226,
+     "duplicates": 0
+    },
+    {
+     "t": 25.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 6100,
+     "executions": 1251,
+     "completed": 1251,
+     "duplicates": 0
+    },
+    {
+     "t": 25.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 6137,
+     "executions": 1276,
+     "completed": 1276,
+     "duplicates": 0
+    },
+    {
+     "t": 26.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 6174,
+     "executions": 1301,
+     "completed": 1301,
+     "duplicates": 0
+    },
+    {
+     "t": 26.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 6210,
+     "executions": 1326,
+     "completed": 1326,
+     "duplicates": 0
+    },
+    {
+     "t": 27.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 6249,
+     "executions": 1351,
+     "completed": 1351,
+     "duplicates": 0
+    },
+    {
+     "t": 27.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 6286,
+     "executions": 1376,
+     "completed": 1376,
+     "duplicates": 0
+    },
+    {
+     "t": 28.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 6322,
+     "executions": 1401,
+     "completed": 1401,
+     "duplicates": 0
+    },
+    {
+     "t": 28.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 6363,
+     "executions": 1426,
+     "completed": 1426,
+     "duplicates": 0
+    },
+    {
+     "t": 29.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 6399,
+     "executions": 1451,
+     "completed": 1451,
+     "duplicates": 0
+    },
+    {
+     "t": 29.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 6441,
+     "executions": 1476,
+     "completed": 1476,
+     "duplicates": 0
+    }
+   ]
+  }
+ ],
+ "at": "2026-08-21T06:30:03+0000"
+}
+
+=== RSS by service across phases ===
+service                 idle          loaded      under_load
+clickhouse          124.6MiB        353.3MiB        353.1MiB
+mongo               71.16MiB        3.895GiB        3.896GiB
+redis               3.598MiB        4.621MiB        4.855MiB
+worker              110.3MiB        119.2MiB        119.4MiB
+wrote /opt/xycalc/results/share60-cache4.8g-docs17043521.json
+{
+  "share_pct": 60,
+  "cache_gb": 4.8,
+  "probe_docs": 17043521,
+  "idle": {
+    "worker": "110.3MiB",
+    "clickhouse": "124.6MiB",
+    "mongo": "71.16MiB",
+    "redis": "3.598MiB"
+  },
+  "mongo_mem": {
+    "idle": "71.16MiB",
+    "loaded": "3.895GiB",
+    "under_load": "3.896GiB"
+  },
+  "loaded": {
+    "worker": "119.2MiB",
+    "clickhouse": "353.3MiB",
+    "mongo": "3.895GiB",
+    "redis": "4.621MiB"
+  },
+  "under_load": {
+    "worker": "119.4MiB",
+    "clickhouse": "353.1MiB",
+    "mongo": "3.896GiB",
+    "redis": "4.855MiB"
+  }
+}
+== share70-cache5.6g-docs19884107 ==
+== phase 1: idle (containers up, no data loaded yet) ==
+#0 building with "default" instance using docker driver
+
+#1 [worker internal] load build definition from Dockerfile
+#1 transferring dockerfile: 838B done
+#1 DONE 0.0s
+
+#2 [worker internal] load metadata for docker.io/library/python:3.12-slim
+#2 DONE 0.2s
+
+#3 [worker internal] load .dockerignore
+#3 transferring context: 2B done
+#3 DONE 0.0s
+
+#4 [worker 1/4] FROM docker.io/library/python:3.12-slim@sha256:2c941e860699f878900b0edc2403613c234d4b32eda3cc9fa7036991a2a63c4a
+#4 DONE 0.0s
+
+#5 [worker internal] load build context
+#5 transferring context: 251B done
+#5 DONE 0.0s
+
+#6 [worker 2/4] RUN pip install --no-cache-dir "celery[redis]==5.4.0" "pymongo==4.9.1" "redis==5.0.8"
+#6 CACHED
+
+#7 [worker 3/4] WORKDIR /app
+#7 CACHED
+
+#8 [worker 4/4] COPY tasks.py drive.py evict_probe.py ./
+#8 CACHED
+
+#9 [worker] exporting to image
+#9 exporting layers done
+#9 writing image sha256:bfb5b99d5cc4c264ce557f84e222a989bfb23e8300089f1558779b76e9b5722d done
+#9 naming to docker.io/library/xycalc-colocation-probe-worker done
+#9 DONE 0.0s
+
+#10 [worker] resolving provenance for metadata file
+#10 DONE 0.0s
+ Network xycalc-colocation-probe_default  Creating
+ Network xycalc-colocation-probe_default  Created
+ Container xycalc-colocation-probe-mongo-1  Creating
+ Container xycalc-colocation-probe-redis-1  Creating
+ Container xycalc-colocation-probe-clickhouse-1  Creating
+ Container xycalc-colocation-probe-clickhouse-1  Created
+ Container xycalc-colocation-probe-redis-1  Created
+ Container xycalc-colocation-probe-mongo-1  Created
+ Container xycalc-colocation-probe-worker-1  Creating
+ Container xycalc-colocation-probe-worker-1  Created
+ Container xycalc-colocation-probe-mongo-1  Starting
+ Container xycalc-colocation-probe-clickhouse-1  Starting
+ Container xycalc-colocation-probe-redis-1  Starting
+ Container xycalc-colocation-probe-clickhouse-1  Started
+ Container xycalc-colocation-probe-mongo-1  Started
+ Container xycalc-colocation-probe-redis-1  Started
+ Container xycalc-colocation-probe-worker-1  Starting
+ Container xycalc-colocation-probe-worker-1  Started
+== loading data into mongo (via celery_probe's driver) and clickhouse ==
+loading 19,884,107 documents...
+  loaded. dataSize=14396 MB  cache=6013 MB  oversubscription=2.4x
+  rate   done/s    qmax    qend   dupes   dup%  drain s  tickets
+    50     50.0       0       0       0    0.0      0.0        8
+===JSON===
+{
+ "mongoVersion": "7.0.40",
+ "celeryVersion": "5.4.0",
+ "pymongoVersion": "4.9.1",
+ "redisVersion": "5.0.8",
+ "prefetch": 4,
+ "acksLate": true,
+ "acksLateVacuousZeroDuplicates": false,
+ "visibilityTimeout": 30,
+ "retryPolicy": "none",
+ "retryDeadline": 120.0,
+ "secondsPerRate": 30.0,
+ "docs": 19884107,
+ "dataSizeBytes": 14396093468,
+ "oversubscription": 2.39,
+ "results": [
+  {
+   "targetRatePerSecond": 50,
+   "seconds": 30.0,
+   "enqueued": 1500,
+   "completedDuringLoad": 1500,
+   "completedTotal": 1500,
+   "throughputPerSecond": 50.0,
+   "queueDepthAtEnd": 0,
+   "queueDepthMax": 0,
+   "executionsTotal": 1500,
+   "duplicateExecutions": 0,
+   "duplicateRatePct": 0.0,
+   "drainSeconds": 0.0,
+   "drainTimedOut": false,
+   "ticketsMax": 8,
+   "ticketsOutMax": 1,
+   "queuedMicrosDelta": 0,
+   "pagesReadIntoCache": 2721,
+   "samples": 60,
+   "sampleSeries": [
+    {
+     "t": 0.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 1864,
+     "executions": 0,
+     "completed": 0,
+     "duplicates": 0
+    },
+    {
+     "t": 0.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 1923,
+     "executions": 26,
+     "completed": 25,
+     "duplicates": 0
+    },
+    {
+     "t": 1.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 1978,
+     "executions": 51,
+     "completed": 50,
+     "duplicates": 0
+    },
+    {
+     "t": 1.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 2026,
+     "executions": 76,
+     "completed": 75,
+     "duplicates": 0
+    },
+    {
+     "t": 2.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 2073,
+     "executions": 101,
+     "completed": 100,
+     "duplicates": 0
+    },
+    {
+     "t": 2.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 2128,
+     "executions": 126,
+     "completed": 126,
+     "duplicates": 0
+    },
+    {
+     "t": 3.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 2185,
+     "executions": 151,
+     "completed": 150,
+     "duplicates": 0
+    },
+    {
+     "t": 3.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 2234,
+     "executions": 176,
+     "completed": 176,
+     "duplicates": 0
+    },
+    {
+     "t": 4.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 2279,
+     "executions": 201,
+     "completed": 200,
+     "duplicates": 0
+    },
+    {
+     "t": 4.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 2322,
+     "executions": 226,
+     "completed": 226,
+     "duplicates": 0
+    },
+    {
+     "t": 5.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 2369,
+     "executions": 251,
+     "completed": 251,
+     "duplicates": 0
+    },
+    {
+     "t": 5.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 2413,
+     "executions": 276,
+     "completed": 276,
+     "duplicates": 0
+    },
+    {
+     "t": 6.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 1,
+     "queuedMicros": 0,
+     "pagesRead": 2454,
+     "executions": 301,
+     "completed": 300,
+     "duplicates": 0
+    },
+    {
+     "t": 6.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 1,
+     "queuedMicros": 0,
+     "pagesRead": 2506,
+     "executions": 326,
+     "completed": 325,
+     "duplicates": 0
+    },
+    {
+     "t": 7.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 1,
+     "queuedMicros": 0,
+     "pagesRead": 2550,
+     "executions": 351,
+     "completed": 350,
+     "duplicates": 0
+    },
+    {
+     "t": 7.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 1,
+     "queuedMicros": 0,
+     "pagesRead": 2595,
+     "executions": 376,
+     "completed": 375,
+     "duplicates": 0
+    },
+    {
+     "t": 8.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 2643,
+     "executions": 401,
+     "completed": 401,
+     "duplicates": 0
+    },
+    {
+     "t": 8.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 2685,
+     "executions": 426,
+     "completed": 426,
+     "duplicates": 0
+    },
+    {
+     "t": 9.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 1,
+     "queuedMicros": 0,
+     "pagesRead": 2729,
+     "executions": 451,
+     "completed": 450,
+     "duplicates": 0
+    },
+    {
+     "t": 9.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 2772,
+     "executions": 476,
+     "completed": 476,
+     "duplicates": 0
+    },
+    {
+     "t": 10.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 1,
+     "queuedMicros": 0,
+     "pagesRead": 2815,
+     "executions": 501,
+     "completed": 501,
+     "duplicates": 0
+    },
+    {
+     "t": 10.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 1,
+     "queuedMicros": 0,
+     "pagesRead": 2860,
+     "executions": 526,
+     "completed": 525,
+     "duplicates": 0
+    },
+    {
+     "t": 11.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 2912,
+     "executions": 551,
+     "completed": 551,
+     "duplicates": 0
+    },
+    {
+     "t": 11.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 1,
+     "queuedMicros": 0,
+     "pagesRead": 2959,
+     "executions": 576,
+     "completed": 576,
+     "duplicates": 0
+    },
+    {
+     "t": 12.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 3007,
+     "executions": 601,
+     "completed": 601,
+     "duplicates": 0
+    },
+    {
+     "t": 12.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 1,
+     "queuedMicros": 0,
+     "pagesRead": 3051,
+     "executions": 626,
+     "completed": 626,
+     "duplicates": 0
+    },
+    {
+     "t": 13.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 1,
+     "queuedMicros": 0,
+     "pagesRead": 3091,
+     "executions": 651,
+     "completed": 651,
+     "duplicates": 0
+    },
+    {
+     "t": 13.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 1,
+     "queuedMicros": 0,
+     "pagesRead": 3134,
+     "executions": 676,
+     "completed": 676,
+     "duplicates": 0
+    },
+    {
+     "t": 14.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 3177,
+     "executions": 701,
+     "completed": 701,
+     "duplicates": 0
+    },
+    {
+     "t": 14.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 1,
+     "queuedMicros": 0,
+     "pagesRead": 3221,
+     "executions": 726,
+     "completed": 726,
+     "duplicates": 0
+    },
+    {
+     "t": 15.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 3261,
+     "executions": 751,
+     "completed": 751,
+     "duplicates": 0
+    },
+    {
+     "t": 15.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 1,
+     "queuedMicros": 0,
+     "pagesRead": 3309,
+     "executions": 776,
+     "completed": 776,
+     "duplicates": 0
+    },
+    {
+     "t": 16.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 3356,
+     "executions": 801,
+     "completed": 801,
+     "duplicates": 0
+    },
+    {
+     "t": 16.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 3397,
+     "executions": 826,
+     "completed": 826,
+     "duplicates": 0
+    },
+    {
+     "t": 17.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 3438,
+     "executions": 851,
+     "completed": 851,
+     "duplicates": 0
+    },
+    {
+     "t": 17.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 1,
+     "queuedMicros": 0,
+     "pagesRead": 3482,
+     "executions": 876,
+     "completed": 876,
+     "duplicates": 0
+    },
+    {
+     "t": 18.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 3517,
+     "executions": 901,
+     "completed": 901,
+     "duplicates": 0
+    },
+    {
+     "t": 18.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 3564,
+     "executions": 926,
+     "completed": 926,
+     "duplicates": 0
+    },
+    {
+     "t": 19.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 1,
+     "queuedMicros": 0,
+     "pagesRead": 3609,
+     "executions": 951,
+     "completed": 951,
+     "duplicates": 0
+    },
+    {
+     "t": 19.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 1,
+     "queuedMicros": 0,
+     "pagesRead": 3644,
+     "executions": 976,
+     "completed": 976,
+     "duplicates": 0
+    },
+    {
+     "t": 20.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 3690,
+     "executions": 1001,
+     "completed": 1001,
+     "duplicates": 0
+    },
+    {
+     "t": 20.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 3733,
+     "executions": 1026,
+     "completed": 1026,
+     "duplicates": 0
+    },
+    {
+     "t": 21.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 3769,
+     "executions": 1051,
+     "completed": 1051,
+     "duplicates": 0
+    },
+    {
+     "t": 21.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 3817,
+     "executions": 1076,
+     "completed": 1076,
+     "duplicates": 0
+    },
+    {
+     "t": 22.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 3860,
+     "executions": 1101,
+     "completed": 1101,
+     "duplicates": 0
+    },
+    {
+     "t": 22.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 3898,
+     "executions": 1126,
+     "completed": 1126,
+     "duplicates": 0
+    },
+    {
+     "t": 23.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 3939,
+     "executions": 1151,
+     "completed": 1151,
+     "duplicates": 0
+    },
+    {
+     "t": 23.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 3984,
+     "executions": 1176,
+     "completed": 1176,
+     "duplicates": 0
+    },
+    {
+     "t": 24.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 4028,
+     "executions": 1201,
+     "completed": 1201,
+     "duplicates": 0
+    },
+    {
+     "t": 24.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 4065,
+     "executions": 1226,
+     "completed": 1226,
+     "duplicates": 0
+    },
+    {
+     "t": 25.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 4106,
+     "executions": 1251,
+     "completed": 1251,
+     "duplicates": 0
+    },
+    {
+     "t": 25.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 4143,
+     "executions": 1276,
+     "completed": 1276,
+     "duplicates": 0
+    },
+    {
+     "t": 26.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 4181,
+     "executions": 1301,
+     "completed": 1301,
+     "duplicates": 0
+    },
+    {
+     "t": 26.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 4306,
+     "executions": 1326,
+     "completed": 1326,
+     "duplicates": 0
+    },
+    {
+     "t": 27.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 4344,
+     "executions": 1351,
+     "completed": 1351,
+     "duplicates": 0
+    },
+    {
+     "t": 27.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 4382,
+     "executions": 1376,
+     "completed": 1376,
+     "duplicates": 0
+    },
+    {
+     "t": 28.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 4425,
+     "executions": 1401,
+     "completed": 1401,
+     "duplicates": 0
+    },
+    {
+     "t": 28.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 4464,
+     "executions": 1426,
+     "completed": 1426,
+     "duplicates": 0
+    },
+    {
+     "t": 29.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 4511,
+     "executions": 1451,
+     "completed": 1451,
+     "duplicates": 0
+    },
+    {
+     "t": 29.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 4543,
+     "executions": 1476,
+     "completed": 1476,
+     "duplicates": 0
+    }
+   ]
+  }
+ ],
+ "at": "2026-08-21T06:50:47+0000"
+}
+== phase 2: loaded (data resident, no concurrent traffic) ==
+== phase 3: under light concurrent load ==
+reusing existing 19,884,107 documents (idempotent load)
+  loaded. dataSize=14396 MB  cache=6013 MB  oversubscription=2.4x
+  rate   done/s    qmax    qend   dupes   dup%  drain s  tickets
+    50     50.0       0       0       0    0.0      0.0        8
+===JSON===
+{
+ "mongoVersion": "7.0.40",
+ "celeryVersion": "5.4.0",
+ "pymongoVersion": "4.9.1",
+ "redisVersion": "5.0.8",
+ "prefetch": 4,
+ "acksLate": true,
+ "acksLateVacuousZeroDuplicates": false,
+ "visibilityTimeout": 30,
+ "retryPolicy": "none",
+ "retryDeadline": 120.0,
+ "secondsPerRate": 30.0,
+ "docs": 19884107,
+ "dataSizeBytes": 14396093468,
+ "oversubscription": 2.39,
+ "results": [
+  {
+   "targetRatePerSecond": 50,
+   "seconds": 30.0,
+   "enqueued": 1500,
+   "completedDuringLoad": 1500,
+   "completedTotal": 1500,
+   "throughputPerSecond": 50.0,
+   "queueDepthAtEnd": 0,
+   "queueDepthMax": 0,
+   "executionsTotal": 1500,
+   "duplicateExecutions": 0,
+   "duplicateRatePct": 0.0,
+   "drainSeconds": 0.0,
+   "drainTimedOut": false,
+   "ticketsMax": 8,
+   "ticketsOutMax": 1,
+   "queuedMicrosDelta": 0,
+   "pagesReadIntoCache": 2335,
+   "samples": 60,
+   "sampleSeries": [
+    {
+     "t": 0.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 4585,
+     "executions": 1,
+     "completed": 0,
+     "duplicates": 0
+    },
+    {
+     "t": 0.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 4630,
+     "executions": 26,
+     "completed": 25,
+     "duplicates": 0
+    },
+    {
+     "t": 1.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 4672,
+     "executions": 51,
+     "completed": 50,
+     "duplicates": 0
+    },
+    {
+     "t": 1.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 4711,
+     "executions": 76,
+     "completed": 76,
+     "duplicates": 0
+    },
+    {
+     "t": 2.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 4753,
+     "executions": 101,
+     "completed": 100,
+     "duplicates": 0
+    },
+    {
+     "t": 2.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 4787,
+     "executions": 126,
+     "completed": 125,
+     "duplicates": 0
+    },
+    {
+     "t": 3.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 1,
+     "queuedMicros": 0,
+     "pagesRead": 4830,
+     "executions": 151,
+     "completed": 151,
+     "duplicates": 0
+    },
+    {
+     "t": 3.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 4870,
+     "executions": 176,
+     "completed": 175,
+     "duplicates": 0
+    },
+    {
+     "t": 4.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 1,
+     "queuedMicros": 0,
+     "pagesRead": 4906,
+     "executions": 201,
+     "completed": 200,
+     "duplicates": 0
+    },
+    {
+     "t": 4.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 1,
+     "queuedMicros": 0,
+     "pagesRead": 4947,
+     "executions": 226,
+     "completed": 226,
+     "duplicates": 0
+    },
+    {
+     "t": 5.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 1,
+     "queuedMicros": 0,
+     "pagesRead": 4991,
+     "executions": 251,
+     "completed": 251,
+     "duplicates": 0
+    },
+    {
+     "t": 5.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 1,
+     "queuedMicros": 0,
+     "pagesRead": 5029,
+     "executions": 276,
+     "completed": 275,
+     "duplicates": 0
+    },
+    {
+     "t": 6.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 1,
+     "queuedMicros": 0,
+     "pagesRead": 5065,
+     "executions": 301,
+     "completed": 300,
+     "duplicates": 0
+    },
+    {
+     "t": 6.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 5109,
+     "executions": 326,
+     "completed": 326,
+     "duplicates": 0
+    },
+    {
+     "t": 7.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 1,
+     "queuedMicros": 0,
+     "pagesRead": 5146,
+     "executions": 351,
+     "completed": 350,
+     "duplicates": 0
+    },
+    {
+     "t": 7.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 1,
+     "queuedMicros": 0,
+     "pagesRead": 5184,
+     "executions": 376,
+     "completed": 376,
+     "duplicates": 0
+    },
+    {
+     "t": 8.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 1,
+     "queuedMicros": 0,
+     "pagesRead": 5226,
+     "executions": 401,
+     "completed": 401,
+     "duplicates": 0
+    },
+    {
+     "t": 8.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 1,
+     "queuedMicros": 0,
+     "pagesRead": 5260,
+     "executions": 426,
+     "completed": 425,
+     "duplicates": 0
+    },
+    {
+     "t": 9.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 5304,
+     "executions": 451,
+     "completed": 451,
+     "duplicates": 0
+    },
+    {
+     "t": 9.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 5344,
+     "executions": 476,
+     "completed": 476,
+     "duplicates": 0
+    },
+    {
+     "t": 10.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 5379,
+     "executions": 501,
+     "completed": 501,
+     "duplicates": 0
+    },
+    {
+     "t": 10.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 1,
+     "queuedMicros": 0,
+     "pagesRead": 5418,
+     "executions": 526,
+     "completed": 525,
+     "duplicates": 0
+    },
+    {
+     "t": 11.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 1,
+     "queuedMicros": 0,
+     "pagesRead": 5458,
+     "executions": 551,
+     "completed": 551,
+     "duplicates": 0
+    },
+    {
+     "t": 11.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 5501,
+     "executions": 576,
+     "completed": 576,
+     "duplicates": 0
+    },
+    {
+     "t": 12.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 5544,
+     "executions": 601,
+     "completed": 601,
+     "duplicates": 0
+    },
+    {
+     "t": 12.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 1,
+     "queuedMicros": 0,
+     "pagesRead": 5583,
+     "executions": 626,
+     "completed": 626,
+     "duplicates": 0
+    },
+    {
+     "t": 13.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 5623,
+     "executions": 651,
+     "completed": 651,
+     "duplicates": 0
+    },
+    {
+     "t": 13.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 1,
+     "queuedMicros": 0,
+     "pagesRead": 5664,
+     "executions": 676,
+     "completed": 676,
+     "duplicates": 0
+    },
+    {
+     "t": 14.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 1,
+     "queuedMicros": 0,
+     "pagesRead": 5706,
+     "executions": 701,
+     "completed": 701,
+     "duplicates": 0
+    },
+    {
+     "t": 14.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 5742,
+     "executions": 726,
+     "completed": 726,
+     "duplicates": 0
+    },
+    {
+     "t": 15.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 1,
+     "queuedMicros": 0,
+     "pagesRead": 5781,
+     "executions": 751,
+     "completed": 751,
+     "duplicates": 0
+    },
+    {
+     "t": 15.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 5820,
+     "executions": 776,
+     "completed": 776,
+     "duplicates": 0
+    },
+    {
+     "t": 16.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 5858,
+     "executions": 801,
+     "completed": 801,
+     "duplicates": 0
+    },
+    {
+     "t": 16.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 1,
+     "queuedMicros": 0,
+     "pagesRead": 5894,
+     "executions": 826,
+     "completed": 826,
+     "duplicates": 0
+    },
+    {
+     "t": 17.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 5934,
+     "executions": 851,
+     "completed": 851,
+     "duplicates": 0
+    },
+    {
+     "t": 17.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 5971,
+     "executions": 876,
+     "completed": 876,
+     "duplicates": 0
+    },
+    {
+     "t": 18.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 6006,
+     "executions": 901,
+     "completed": 901,
+     "duplicates": 0
+    },
+    {
+     "t": 18.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 6045,
+     "executions": 926,
+     "completed": 926,
+     "duplicates": 0
+    },
+    {
+     "t": 19.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 6080,
+     "executions": 951,
+     "completed": 951,
+     "duplicates": 0
+    },
+    {
+     "t": 19.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 1,
+     "queuedMicros": 0,
+     "pagesRead": 6114,
+     "executions": 976,
+     "completed": 976,
+     "duplicates": 0
+    },
+    {
+     "t": 20.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 6158,
+     "executions": 1001,
+     "completed": 1001,
+     "duplicates": 0
+    },
+    {
+     "t": 20.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 1,
+     "queuedMicros": 0,
+     "pagesRead": 6194,
+     "executions": 1026,
+     "completed": 1026,
+     "duplicates": 0
+    },
+    {
+     "t": 21.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 6235,
+     "executions": 1051,
+     "completed": 1051,
+     "duplicates": 0
+    },
+    {
+     "t": 21.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 6277,
+     "executions": 1076,
+     "completed": 1076,
+     "duplicates": 0
+    },
+    {
+     "t": 22.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 6314,
+     "executions": 1101,
+     "completed": 1101,
+     "duplicates": 0
+    },
+    {
+     "t": 22.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 6351,
+     "executions": 1126,
+     "completed": 1126,
+     "duplicates": 0
+    },
+    {
+     "t": 23.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 6393,
+     "executions": 1151,
+     "completed": 1151,
+     "duplicates": 0
+    },
+    {
+     "t": 23.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 6433,
+     "executions": 1176,
+     "completed": 1176,
+     "duplicates": 0
+    },
+    {
+     "t": 24.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 6471,
+     "executions": 1201,
+     "completed": 1201,
+     "duplicates": 0
+    },
+    {
+     "t": 24.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 6512,
+     "executions": 1226,
+     "completed": 1226,
+     "duplicates": 0
+    },
+    {
+     "t": 25.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 6549,
+     "executions": 1251,
+     "completed": 1251,
+     "duplicates": 0
+    },
+    {
+     "t": 25.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 6586,
+     "executions": 1276,
+     "completed": 1276,
+     "duplicates": 0
+    },
+    {
+     "t": 26.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 6621,
+     "executions": 1301,
+     "completed": 1301,
+     "duplicates": 0
+    },
+    {
+     "t": 26.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 6661,
+     "executions": 1326,
+     "completed": 1326,
+     "duplicates": 0
+    },
+    {
+     "t": 27.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 6697,
+     "executions": 1351,
+     "completed": 1351,
+     "duplicates": 0
+    },
+    {
+     "t": 27.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 6735,
+     "executions": 1376,
+     "completed": 1376,
+     "duplicates": 0
+    },
+    {
+     "t": 28.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 6771,
+     "executions": 1401,
+     "completed": 1401,
+     "duplicates": 0
+    },
+    {
+     "t": 28.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 6812,
+     "executions": 1426,
+     "completed": 1426,
+     "duplicates": 0
+    },
+    {
+     "t": 29.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 6849,
+     "executions": 1451,
+     "completed": 1451,
+     "duplicates": 0
+    },
+    {
+     "t": 29.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 6886,
+     "executions": 1476,
+     "completed": 1476,
+     "duplicates": 0
+    }
+   ]
+  }
+ ],
+ "at": "2026-08-21T06:51:25+0000"
+}
+
+=== RSS by service across phases ===
+service                 idle          loaded      under_load
+clickhouse            123MiB        345.4MiB        341.4MiB
+mongo               71.81MiB        4.582GiB        4.582GiB
+redis               3.629MiB        4.375MiB        4.645MiB
+worker              110.8MiB        122.1MiB        122.7MiB
+wrote /opt/xycalc/results/share70-cache5.6g-docs19884107.json
+{
+  "share_pct": 70,
+  "cache_gb": 5.6,
+  "probe_docs": 19884107,
+  "idle": {
+    "worker": "110.8MiB",
+    "clickhouse": "123MiB",
+    "mongo": "71.81MiB",
+    "redis": "3.629MiB"
+  },
+  "mongo_mem": {
+    "idle": "71.81MiB",
+    "loaded": "4.582GiB",
+    "under_load": "4.582GiB"
+  },
+  "loaded": {
+    "worker": "122.1MiB",
+    "clickhouse": "345.4MiB",
+    "mongo": "4.582GiB",
+    "redis": "4.375MiB"
+  },
+  "under_load": {
+    "worker": "122.7MiB",
+    "clickhouse": "341.4MiB",
+    "mongo": "4.582GiB",
+    "redis": "4.645MiB"
+  }
+}
+== share80-cache6.4g-docs22724694 ==
+== phase 1: idle (containers up, no data loaded yet) ==
+#0 building with "default" instance using docker driver
+
+#1 [worker internal] load build definition from Dockerfile
+#1 transferring dockerfile: 838B done
+#1 DONE 0.0s
+
+#2 [worker internal] load metadata for docker.io/library/python:3.12-slim
+#2 DONE 0.2s
+
+#3 [worker internal] load .dockerignore
+#3 transferring context: 2B done
+#3 DONE 0.0s
+
+#4 [worker 1/4] FROM docker.io/library/python:3.12-slim@sha256:2c941e860699f878900b0edc2403613c234d4b32eda3cc9fa7036991a2a63c4a
+#4 DONE 0.0s
+
+#5 [worker internal] load build context
+#5 transferring context: 251B done
+#5 DONE 0.0s
+
+#6 [worker 2/4] RUN pip install --no-cache-dir "celery[redis]==5.4.0" "pymongo==4.9.1" "redis==5.0.8"
+#6 CACHED
+
+#7 [worker 3/4] WORKDIR /app
+#7 CACHED
+
+#8 [worker 4/4] COPY tasks.py drive.py evict_probe.py ./
+#8 CACHED
+
+#9 [worker] exporting to image
+#9 exporting layers done
+#9 writing image sha256:bfb5b99d5cc4c264ce557f84e222a989bfb23e8300089f1558779b76e9b5722d done
+#9 naming to docker.io/library/xycalc-colocation-probe-worker done
+#9 DONE 0.0s
+
+#10 [worker] resolving provenance for metadata file
+#10 DONE 0.0s
+ Network xycalc-colocation-probe_default  Creating
+ Network xycalc-colocation-probe_default  Created
+ Container xycalc-colocation-probe-mongo-1  Creating
+ Container xycalc-colocation-probe-redis-1  Creating
+ Container xycalc-colocation-probe-clickhouse-1  Creating
+ Container xycalc-colocation-probe-clickhouse-1  Created
+ Container xycalc-colocation-probe-redis-1  Created
+ Container xycalc-colocation-probe-mongo-1  Created
+ Container xycalc-colocation-probe-worker-1  Creating
+ Container xycalc-colocation-probe-worker-1  Created
+ Container xycalc-colocation-probe-redis-1  Starting
+ Container xycalc-colocation-probe-clickhouse-1  Starting
+ Container xycalc-colocation-probe-mongo-1  Starting
+ Container xycalc-colocation-probe-redis-1  Started
+ Container xycalc-colocation-probe-mongo-1  Started
+ Container xycalc-colocation-probe-worker-1  Starting
+ Container xycalc-colocation-probe-clickhouse-1  Started
+ Container xycalc-colocation-probe-worker-1  Started
+== loading data into mongo (via celery_probe's driver) and clickhouse ==
+loading 22,724,694 documents...
+  loaded. dataSize=16453 MB  cache=6871 MB  oversubscription=2.4x
+  rate   done/s    qmax    qend   dupes   dup%  drain s  tickets
+    50     50.0       0       0       0    0.0      0.0        8
+===JSON===
+{
+ "mongoVersion": "7.0.40",
+ "celeryVersion": "5.4.0",
+ "pymongoVersion": "4.9.1",
+ "redisVersion": "5.0.8",
+ "prefetch": 4,
+ "acksLate": true,
+ "acksLateVacuousZeroDuplicates": false,
+ "visibilityTimeout": 30,
+ "retryPolicy": "none",
+ "retryDeadline": 120.0,
+ "secondsPerRate": 30.0,
+ "docs": 22724694,
+ "dataSizeBytes": 16452678456,
+ "oversubscription": 2.39,
+ "results": [
+  {
+   "targetRatePerSecond": 50,
+   "seconds": 30.0,
+   "enqueued": 1500,
+   "completedDuringLoad": 1500,
+   "completedTotal": 1500,
+   "throughputPerSecond": 50.0,
+   "queueDepthAtEnd": 0,
+   "queueDepthMax": 0,
+   "executionsTotal": 1500,
+   "duplicateExecutions": 0,
+   "duplicateRatePct": 0.0,
+   "drainSeconds": 0.0,
+   "drainTimedOut": false,
+   "ticketsMax": 8,
+   "ticketsOutMax": 1,
+   "queuedMicrosDelta": 0,
+   "pagesReadIntoCache": 2479,
+   "samples": 60,
+   "sampleSeries": [
+    {
+     "t": 0.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 3471,
+     "executions": 1,
+     "completed": 0,
+     "duplicates": 0
+    },
+    {
+     "t": 0.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 3526,
+     "executions": 26,
+     "completed": 26,
+     "duplicates": 0
+    },
+    {
+     "t": 1.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 3572,
+     "executions": 51,
+     "completed": 50,
+     "duplicates": 0
+    },
+    {
+     "t": 1.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 3625,
+     "executions": 76,
+     "completed": 75,
+     "duplicates": 0
+    },
+    {
+     "t": 2.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 3669,
+     "executions": 101,
+     "completed": 100,
+     "duplicates": 0
+    },
+    {
+     "t": 2.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 3719,
+     "executions": 126,
+     "completed": 126,
+     "duplicates": 0
+    },
+    {
+     "t": 3.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 3761,
+     "executions": 151,
+     "completed": 150,
+     "duplicates": 0
+    },
+    {
+     "t": 3.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 1,
+     "queuedMicros": 0,
+     "pagesRead": 3803,
+     "executions": 176,
+     "completed": 176,
+     "duplicates": 0
+    },
+    {
+     "t": 4.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 1,
+     "queuedMicros": 0,
+     "pagesRead": 3852,
+     "executions": 201,
+     "completed": 200,
+     "duplicates": 0
+    },
+    {
+     "t": 4.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 1,
+     "queuedMicros": 0,
+     "pagesRead": 3897,
+     "executions": 226,
+     "completed": 225,
+     "duplicates": 0
+    },
+    {
+     "t": 5.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 1,
+     "queuedMicros": 0,
+     "pagesRead": 3942,
+     "executions": 251,
+     "completed": 250,
+     "duplicates": 0
+    },
+    {
+     "t": 5.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 1,
+     "queuedMicros": 0,
+     "pagesRead": 3987,
+     "executions": 276,
+     "completed": 276,
+     "duplicates": 0
+    },
+    {
+     "t": 6.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 1,
+     "queuedMicros": 0,
+     "pagesRead": 4027,
+     "executions": 301,
+     "completed": 300,
+     "duplicates": 0
+    },
+    {
+     "t": 6.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 1,
+     "queuedMicros": 0,
+     "pagesRead": 4067,
+     "executions": 326,
+     "completed": 325,
+     "duplicates": 0
+    },
+    {
+     "t": 7.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 1,
+     "queuedMicros": 0,
+     "pagesRead": 4106,
+     "executions": 351,
+     "completed": 351,
+     "duplicates": 0
+    },
+    {
+     "t": 7.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 1,
+     "queuedMicros": 0,
+     "pagesRead": 4146,
+     "executions": 376,
+     "completed": 376,
+     "duplicates": 0
+    },
+    {
+     "t": 8.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 1,
+     "queuedMicros": 0,
+     "pagesRead": 4184,
+     "executions": 401,
+     "completed": 400,
+     "duplicates": 0
+    },
+    {
+     "t": 8.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 1,
+     "queuedMicros": 0,
+     "pagesRead": 4224,
+     "executions": 426,
+     "completed": 425,
+     "duplicates": 0
+    },
+    {
+     "t": 9.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 4262,
+     "executions": 451,
+     "completed": 451,
+     "duplicates": 0
+    },
+    {
+     "t": 9.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 1,
+     "queuedMicros": 0,
+     "pagesRead": 4301,
+     "executions": 476,
+     "completed": 476,
+     "duplicates": 0
+    },
+    {
+     "t": 10.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 4337,
+     "executions": 501,
+     "completed": 501,
+     "duplicates": 0
+    },
+    {
+     "t": 10.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 1,
+     "queuedMicros": 0,
+     "pagesRead": 4375,
+     "executions": 526,
+     "completed": 526,
+     "duplicates": 0
+    },
+    {
+     "t": 11.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 1,
+     "queuedMicros": 0,
+     "pagesRead": 4420,
+     "executions": 551,
+     "completed": 550,
+     "duplicates": 0
+    },
+    {
+     "t": 11.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 4462,
+     "executions": 576,
+     "completed": 576,
+     "duplicates": 0
+    },
+    {
+     "t": 12.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 1,
+     "queuedMicros": 0,
+     "pagesRead": 4501,
+     "executions": 601,
+     "completed": 601,
+     "duplicates": 0
+    },
+    {
+     "t": 12.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 4548,
+     "executions": 626,
+     "completed": 626,
+     "duplicates": 0
+    },
+    {
+     "t": 13.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 1,
+     "queuedMicros": 0,
+     "pagesRead": 4586,
+     "executions": 651,
+     "completed": 651,
+     "duplicates": 0
+    },
+    {
+     "t": 13.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 1,
+     "queuedMicros": 0,
+     "pagesRead": 4630,
+     "executions": 676,
+     "completed": 676,
+     "duplicates": 0
+    },
+    {
+     "t": 14.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 1,
+     "queuedMicros": 0,
+     "pagesRead": 4669,
+     "executions": 701,
+     "completed": 701,
+     "duplicates": 0
+    },
+    {
+     "t": 14.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 4709,
+     "executions": 726,
+     "completed": 726,
+     "duplicates": 0
+    },
+    {
+     "t": 15.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 1,
+     "queuedMicros": 0,
+     "pagesRead": 4748,
+     "executions": 751,
+     "completed": 751,
+     "duplicates": 0
+    },
+    {
+     "t": 15.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 4784,
+     "executions": 776,
+     "completed": 776,
+     "duplicates": 0
+    },
+    {
+     "t": 16.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 4826,
+     "executions": 801,
+     "completed": 801,
+     "duplicates": 0
+    },
+    {
+     "t": 16.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 4866,
+     "executions": 826,
+     "completed": 826,
+     "duplicates": 0
+    },
+    {
+     "t": 17.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 4905,
+     "executions": 851,
+     "completed": 851,
+     "duplicates": 0
+    },
+    {
+     "t": 17.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 4949,
+     "executions": 876,
+     "completed": 876,
+     "duplicates": 0
+    },
+    {
+     "t": 18.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 1,
+     "queuedMicros": 0,
+     "pagesRead": 4990,
+     "executions": 901,
+     "completed": 901,
+     "duplicates": 0
+    },
+    {
+     "t": 18.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 5029,
+     "executions": 926,
+     "completed": 926,
+     "duplicates": 0
+    },
+    {
+     "t": 19.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 5066,
+     "executions": 951,
+     "completed": 951,
+     "duplicates": 0
+    },
+    {
+     "t": 19.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 5105,
+     "executions": 976,
+     "completed": 976,
+     "duplicates": 0
+    },
+    {
+     "t": 20.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 5145,
+     "executions": 1001,
+     "completed": 1001,
+     "duplicates": 0
+    },
+    {
+     "t": 20.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 5188,
+     "executions": 1026,
+     "completed": 1026,
+     "duplicates": 0
+    },
+    {
+     "t": 21.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 5226,
+     "executions": 1051,
+     "completed": 1051,
+     "duplicates": 0
+    },
+    {
+     "t": 21.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 5267,
+     "executions": 1076,
+     "completed": 1076,
+     "duplicates": 0
+    },
+    {
+     "t": 22.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 5309,
+     "executions": 1101,
+     "completed": 1101,
+     "duplicates": 0
+    },
+    {
+     "t": 22.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 5353,
+     "executions": 1126,
+     "completed": 1126,
+     "duplicates": 0
+    },
+    {
+     "t": 23.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 5394,
+     "executions": 1151,
+     "completed": 1151,
+     "duplicates": 0
+    },
+    {
+     "t": 23.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 5434,
+     "executions": 1176,
+     "completed": 1176,
+     "duplicates": 0
+    },
+    {
+     "t": 24.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 5473,
+     "executions": 1201,
+     "completed": 1201,
+     "duplicates": 0
+    },
+    {
+     "t": 24.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 5514,
+     "executions": 1226,
+     "completed": 1226,
+     "duplicates": 0
+    },
+    {
+     "t": 25.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 5555,
+     "executions": 1251,
+     "completed": 1251,
+     "duplicates": 0
+    },
+    {
+     "t": 25.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 5592,
+     "executions": 1276,
+     "completed": 1276,
+     "duplicates": 0
+    },
+    {
+     "t": 26.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 5632,
+     "executions": 1301,
+     "completed": 1301,
+     "duplicates": 0
+    },
+    {
+     "t": 26.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 5674,
+     "executions": 1326,
+     "completed": 1326,
+     "duplicates": 0
+    },
+    {
+     "t": 27.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 5713,
+     "executions": 1351,
+     "completed": 1351,
+     "duplicates": 0
+    },
+    {
+     "t": 27.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 5754,
+     "executions": 1376,
+     "completed": 1376,
+     "duplicates": 0
+    },
+    {
+     "t": 28.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 5791,
+     "executions": 1401,
+     "completed": 1401,
+     "duplicates": 0
+    },
+    {
+     "t": 28.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 5830,
+     "executions": 1426,
+     "completed": 1426,
+     "duplicates": 0
+    },
+    {
+     "t": 29.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 5872,
+     "executions": 1451,
+     "completed": 1451,
+     "duplicates": 0
+    },
+    {
+     "t": 29.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 5909,
+     "executions": 1476,
+     "completed": 1476,
+     "duplicates": 0
+    }
+   ]
+  }
+ ],
+ "at": "2026-08-21T07:15:01+0000"
+}
+== phase 2: loaded (data resident, no concurrent traffic) ==
+== phase 3: under light concurrent load ==
+reusing existing 22,724,694 documents (idempotent load)
+  loaded. dataSize=16453 MB  cache=6871 MB  oversubscription=2.4x
+  rate   done/s    qmax    qend   dupes   dup%  drain s  tickets
+    50     50.0       0       0       0    0.0      0.0        8
+===JSON===
+{
+ "mongoVersion": "7.0.40",
+ "celeryVersion": "5.4.0",
+ "pymongoVersion": "4.9.1",
+ "redisVersion": "5.0.8",
+ "prefetch": 4,
+ "acksLate": true,
+ "acksLateVacuousZeroDuplicates": false,
+ "visibilityTimeout": 30,
+ "retryPolicy": "none",
+ "retryDeadline": 120.0,
+ "secondsPerRate": 30.0,
+ "docs": 22724694,
+ "dataSizeBytes": 16452678456,
+ "oversubscription": 2.39,
+ "results": [
+  {
+   "targetRatePerSecond": 50,
+   "seconds": 30.0,
+   "enqueued": 1500,
+   "completedDuringLoad": 1500,
+   "completedTotal": 1500,
+   "throughputPerSecond": 50.0,
+   "queueDepthAtEnd": 0,
+   "queueDepthMax": 0,
+   "executionsTotal": 1500,
+   "duplicateExecutions": 0,
+   "duplicateRatePct": 0.0,
+   "drainSeconds": 0.0,
+   "drainTimedOut": false,
+   "ticketsMax": 8,
+   "ticketsOutMax": 1,
+   "queuedMicrosDelta": 0,
+   "pagesReadIntoCache": 2296,
+   "samples": 60,
+   "sampleSeries": [
+    {
+     "t": 0.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 5950,
+     "executions": 1,
+     "completed": 0,
+     "duplicates": 0
+    },
+    {
+     "t": 0.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 5987,
+     "executions": 26,
+     "completed": 25,
+     "duplicates": 0
+    },
+    {
+     "t": 1.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 6028,
+     "executions": 51,
+     "completed": 50,
+     "duplicates": 0
+    },
+    {
+     "t": 1.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 6069,
+     "executions": 76,
+     "completed": 76,
+     "duplicates": 0
+    },
+    {
+     "t": 2.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 6105,
+     "executions": 101,
+     "completed": 100,
+     "duplicates": 0
+    },
+    {
+     "t": 2.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 6141,
+     "executions": 126,
+     "completed": 125,
+     "duplicates": 0
+    },
+    {
+     "t": 3.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 6182,
+     "executions": 151,
+     "completed": 150,
+     "duplicates": 0
+    },
+    {
+     "t": 3.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 1,
+     "queuedMicros": 0,
+     "pagesRead": 6225,
+     "executions": 176,
+     "completed": 175,
+     "duplicates": 0
+    },
+    {
+     "t": 4.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 1,
+     "queuedMicros": 0,
+     "pagesRead": 6269,
+     "executions": 201,
+     "completed": 201,
+     "duplicates": 0
+    },
+    {
+     "t": 4.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 1,
+     "queuedMicros": 0,
+     "pagesRead": 6309,
+     "executions": 226,
+     "completed": 226,
+     "duplicates": 0
+    },
+    {
+     "t": 5.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 1,
+     "queuedMicros": 0,
+     "pagesRead": 6348,
+     "executions": 251,
+     "completed": 251,
+     "duplicates": 0
+    },
+    {
+     "t": 5.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 1,
+     "queuedMicros": 0,
+     "pagesRead": 6386,
+     "executions": 276,
+     "completed": 276,
+     "duplicates": 0
+    },
+    {
+     "t": 6.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 1,
+     "queuedMicros": 0,
+     "pagesRead": 6423,
+     "executions": 301,
+     "completed": 301,
+     "duplicates": 0
+    },
+    {
+     "t": 6.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 1,
+     "queuedMicros": 0,
+     "pagesRead": 6459,
+     "executions": 326,
+     "completed": 325,
+     "duplicates": 0
+    },
+    {
+     "t": 7.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 1,
+     "queuedMicros": 0,
+     "pagesRead": 6498,
+     "executions": 351,
+     "completed": 351,
+     "duplicates": 0
+    },
+    {
+     "t": 7.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 6535,
+     "executions": 376,
+     "completed": 376,
+     "duplicates": 0
+    },
+    {
+     "t": 8.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 6575,
+     "executions": 401,
+     "completed": 401,
+     "duplicates": 0
+    },
+    {
+     "t": 8.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 1,
+     "queuedMicros": 0,
+     "pagesRead": 6609,
+     "executions": 426,
+     "completed": 425,
+     "duplicates": 0
+    },
+    {
+     "t": 9.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 1,
+     "queuedMicros": 0,
+     "pagesRead": 6673,
+     "executions": 451,
+     "completed": 451,
+     "duplicates": 0
+    },
+    {
+     "t": 9.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 1,
+     "queuedMicros": 0,
+     "pagesRead": 6713,
+     "executions": 476,
+     "completed": 476,
+     "duplicates": 0
+    },
+    {
+     "t": 10.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 1,
+     "queuedMicros": 0,
+     "pagesRead": 6749,
+     "executions": 501,
+     "completed": 501,
+     "duplicates": 0
+    },
+    {
+     "t": 10.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 1,
+     "queuedMicros": 0,
+     "pagesRead": 6783,
+     "executions": 526,
+     "completed": 526,
+     "duplicates": 0
+    },
+    {
+     "t": 11.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 6824,
+     "executions": 551,
+     "completed": 551,
+     "duplicates": 0
+    },
+    {
+     "t": 11.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 1,
+     "queuedMicros": 0,
+     "pagesRead": 6860,
+     "executions": 576,
+     "completed": 576,
+     "duplicates": 0
+    },
+    {
+     "t": 12.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 6898,
+     "executions": 601,
+     "completed": 601,
+     "duplicates": 0
+    },
+    {
+     "t": 12.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 6934,
+     "executions": 626,
+     "completed": 626,
+     "duplicates": 0
+    },
+    {
+     "t": 13.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 1,
+     "queuedMicros": 0,
+     "pagesRead": 6972,
+     "executions": 651,
+     "completed": 651,
+     "duplicates": 0
+    },
+    {
+     "t": 13.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 7013,
+     "executions": 676,
+     "completed": 676,
+     "duplicates": 0
+    },
+    {
+     "t": 14.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 7052,
+     "executions": 701,
+     "completed": 701,
+     "duplicates": 0
+    },
+    {
+     "t": 14.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 1,
+     "queuedMicros": 0,
+     "pagesRead": 7086,
+     "executions": 726,
+     "completed": 726,
+     "duplicates": 0
+    },
+    {
+     "t": 15.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 1,
+     "queuedMicros": 0,
+     "pagesRead": 7129,
+     "executions": 751,
+     "completed": 751,
+     "duplicates": 0
+    },
+    {
+     "t": 15.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 7170,
+     "executions": 776,
+     "completed": 776,
+     "duplicates": 0
+    },
+    {
+     "t": 16.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 1,
+     "queuedMicros": 0,
+     "pagesRead": 7199,
+     "executions": 801,
+     "completed": 801,
+     "duplicates": 0
+    },
+    {
+     "t": 16.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 7233,
+     "executions": 826,
+     "completed": 826,
+     "duplicates": 0
+    },
+    {
+     "t": 17.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 7268,
+     "executions": 851,
+     "completed": 851,
+     "duplicates": 0
+    },
+    {
+     "t": 17.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 1,
+     "queuedMicros": 0,
+     "pagesRead": 7306,
+     "executions": 876,
+     "completed": 876,
+     "duplicates": 0
+    },
+    {
+     "t": 18.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 7341,
+     "executions": 901,
+     "completed": 901,
+     "duplicates": 0
+    },
+    {
+     "t": 18.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 7378,
+     "executions": 926,
+     "completed": 926,
+     "duplicates": 0
+    },
+    {
+     "t": 19.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 1,
+     "queuedMicros": 0,
+     "pagesRead": 7419,
+     "executions": 951,
+     "completed": 951,
+     "duplicates": 0
+    },
+    {
+     "t": 19.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 7457,
+     "executions": 976,
+     "completed": 976,
+     "duplicates": 0
+    },
+    {
+     "t": 20.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 1,
+     "queuedMicros": 0,
+     "pagesRead": 7499,
+     "executions": 1001,
+     "completed": 1001,
+     "duplicates": 0
+    },
+    {
+     "t": 20.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 7532,
+     "executions": 1026,
+     "completed": 1026,
+     "duplicates": 0
+    },
+    {
+     "t": 21.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 7568,
+     "executions": 1051,
+     "completed": 1051,
+     "duplicates": 0
+    },
+    {
+     "t": 21.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 7610,
+     "executions": 1076,
+     "completed": 1076,
+     "duplicates": 0
+    },
+    {
+     "t": 22.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 7648,
+     "executions": 1101,
+     "completed": 1101,
+     "duplicates": 0
+    },
+    {
+     "t": 22.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 7686,
+     "executions": 1126,
+     "completed": 1126,
+     "duplicates": 0
+    },
+    {
+     "t": 23.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 7726,
+     "executions": 1151,
+     "completed": 1151,
+     "duplicates": 0
+    },
+    {
+     "t": 23.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 7762,
+     "executions": 1176,
+     "completed": 1176,
+     "duplicates": 0
+    },
+    {
+     "t": 24.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 7804,
+     "executions": 1201,
+     "completed": 1201,
+     "duplicates": 0
+    },
+    {
+     "t": 24.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 7840,
+     "executions": 1226,
+     "completed": 1226,
+     "duplicates": 0
+    },
+    {
+     "t": 25.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 7873,
+     "executions": 1251,
+     "completed": 1251,
+     "duplicates": 0
+    },
+    {
+     "t": 25.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 7914,
+     "executions": 1276,
+     "completed": 1276,
+     "duplicates": 0
+    },
+    {
+     "t": 26.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 7957,
+     "executions": 1301,
+     "completed": 1301,
+     "duplicates": 0
+    },
+    {
+     "t": 26.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 7993,
+     "executions": 1326,
+     "completed": 1326,
+     "duplicates": 0
+    },
+    {
+     "t": 27.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 8024,
+     "executions": 1351,
+     "completed": 1351,
+     "duplicates": 0
+    },
+    {
+     "t": 27.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 8057,
+     "executions": 1376,
+     "completed": 1376,
+     "duplicates": 0
+    },
+    {
+     "t": 28.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 8096,
+     "executions": 1401,
+     "completed": 1401,
+     "duplicates": 0
+    },
+    {
+     "t": 28.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 8135,
+     "executions": 1426,
+     "completed": 1426,
+     "duplicates": 0
+    },
+    {
+     "t": 29.0,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 8168,
+     "executions": 1451,
+     "completed": 1451,
+     "duplicates": 0
+    },
+    {
+     "t": 29.5,
+     "queue": 0,
+     "readTotal": 8,
+     "readOut": 0,
+     "queuedMicros": 0,
+     "pagesRead": 8210,
+     "executions": 1476,
+     "completed": 1476,
+     "duplicates": 0
+    }
+   ]
+  }
+ ],
+ "at": "2026-08-21T07:15:39+0000"
+}
+
+=== RSS by service across phases ===
+service                 idle          loaded      under_load
+clickhouse          122.7MiB        363.1MiB        355.4MiB
+mongo               71.73MiB        5.155GiB        5.156GiB
+redis                4.07MiB        4.117MiB        5.055MiB
+worker              110.5MiB        115.4MiB        116.4MiB
+wrote /opt/xycalc/results/share80-cache6.4g-docs22724694.json
+{
+  "share_pct": 80,
+  "cache_gb": 6.4,
+  "probe_docs": 22724694,
+  "idle": {
+    "worker": "110.5MiB",
+    "clickhouse": "122.7MiB",
+    "redis": "4.07MiB",
+    "mongo": "71.73MiB"
+  },
+  "mongo_mem": {
+    "idle": "71.73MiB",
+    "loaded": "5.155GiB",
+    "under_load": "5.156GiB"
+  },
+  "loaded": {
+    "worker": "115.4MiB",
+    "clickhouse": "363.1MiB",
+    "redis": "4.117MiB",
+    "mongo": "5.155GiB"
+  },
+  "under_load": {
+    "worker": "116.4MiB",
+    "clickhouse": "355.4MiB",
+    "redis": "5.055MiB",
+    "mongo": "5.156GiB"
+  }
+}
+wrote /opt/xycalc/results/summary.jsonl

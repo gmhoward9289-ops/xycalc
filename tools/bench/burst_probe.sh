@@ -41,6 +41,7 @@ done
 SIZE_GB="${PROBE_SIZE_GB:-20}"
 IMG="${PROBE_IMG:-/var/tmp/xycalc-burst-probe.img}"
 OUT="${PROBE_OUT:-$(mktemp -d /tmp/burst-probe.XXXXXX)}"
+mkdir -p "$OUT"
 
 if [ "${PROBE_SMOKE:-0}" = "1" ]; then
   CONTROL_RUNTIME="${PROBE_CONTROL_RUNTIME:-12}"

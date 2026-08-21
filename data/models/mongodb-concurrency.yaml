@@ -95,18 +95,20 @@ models:
         unit: tickets
         required: true
         help: >-
-          serverStatus().wiredTiger.concurrentTransactions.read.totalTickets —
-          on 7.0 too; queues.execution does not exist there. There is no
-          default here on purpose: 128 is the pre-7.0 static value and the
-          7.0+ dynamic maximum, but an idle 7.0.39 instance was measured
-          resting at 4, and a fault-injection run under sustained load saw it
-          climb through 71-74 without settling — neither end of that range is
-          a safe stand-in for the other. LOOK IT UP for the instance you are
-          sizing; do not carry a number over from a different one — including
-          from the same instance's own recent past: a 2026-08-19 run found
-          the pool frozen at its post-load value for over ten minutes of true
-          idle with no traffic to react to, so "it was busy earlier" does not
-          mean it has settled back toward 4 by the time you read it.
+          On 7.0.x: serverStatus().wiredTiger.concurrentTransactions.read.totalTickets
+          (queues.execution does not exist there). On 8.0+:
+          serverStatus().queues.execution.read.totalTickets
+          (concurrentTransactions is gone — verified 8.0.29 / 8.2.12). There is
+          no default here on purpose: 128 is the pre-7.0 static value and the
+          7.0+ dynamic maximum, but idle 7.0.39 / 8.0.29 / 8.2.12 instances were
+          measured resting at 4, and a fault-injection run under sustained load
+          saw it climb through 71-74 without settling — neither end of that
+          range is a safe stand-in for the other. LOOK IT UP for the instance
+          you are sizing; do not carry a number over from a different one —
+          including from the same instance's own recent past: a 2026-08-19 run
+          found the pool frozen at its post-load value for over ten minutes of
+          true idle with no traffic to react to, so "it was busy earlier" does
+          not mean it has settled back toward 4 by the time you read it.
       - key: storage_latency_seconds
         label: Storage latency per operation, in seconds
         unit: seconds

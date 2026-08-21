@@ -75,6 +75,11 @@ services:
       PROBE_VISIBILITY_TIMEOUT: ${PROBE_VISIBILITY_TIMEOUT:-30}
       PROBE_IGNORE_RESULT: ${PROBE_IGNORE_RESULT:-1}
       PROBE_RESULT_EXPIRES: ${PROBE_RESULT_EXPIRES:-300}
+      PROBE_RETRY_POLICY: ${PROBE_RETRY_POLICY:-none}
+      PROBE_RETRY_BASE_DELAY: ${PROBE_RETRY_BASE_DELAY:-1}
+      PROBE_RETRY_MAX_DELAY: ${PROBE_RETRY_MAX_DELAY:-60}
+      PROBE_RETRY_DEADLINE: ${PROBE_RETRY_DEADLINE:-120}
+      PROBE_MAX_TIME_MS: ${PROBE_MAX_TIME_MS:-500}
     depends_on: [redis, bookkeeping, mongo]
     mem_limit: 1g
 
@@ -89,8 +94,42 @@ services:
       PROBE_SECONDS: ${PROBE_SECONDS:-30}
       PROBE_ACKS_LATE: ${PROBE_ACKS_LATE:-1}
       PROBE_VISIBILITY_TIMEOUT: ${PROBE_VISIBILITY_TIMEOUT:-30}
+      PROBE_RETRY_POLICY: ${PROBE_RETRY_POLICY:-none}
+      PROBE_RETRY_DEADLINE: ${PROBE_RETRY_DEADLINE:-120}
+      PROBE_MAX_TIME_MS: ${PROBE_MAX_TIME_MS:-500}
     depends_on: [redis, mongo, worker]
     profiles: ["driver"]
+
+  stall-driver:
+    build: .
+    command: ["python", "stall_recover.py"]
+    environment:
+      PROBE_REDIS: redis://redis:6379/0
+      PROBE_MONGO: mongodb://mongo:27017
+      PROBE_DOCS: ${PROBE_DOCS:-1500000}
+      PROBE_RATES: ${PROBE_RATES:-300}
+      PROBE_BASELINE_SECONDS: ${PROBE_BASELINE_SECONDS:-60}
+      PROBE_STALL_SECONDS: ${PROBE_STALL_SECONDS:-90}
+      PROBE_RECOVERY_TIMEOUT: ${PROBE_RECOVERY_TIMEOUT:-180}
+      PROBE_ACKS_LATE: ${PROBE_ACKS_LATE:-1}
+      PROBE_VISIBILITY_TIMEOUT: ${PROBE_VISIBILITY_TIMEOUT:-600}
+      PROBE_RETRY_POLICY: ${PROBE_RETRY_POLICY:-none}
+      PROBE_RETRY_DEADLINE: ${PROBE_RETRY_DEADLINE:-120}
+      PROBE_MAX_TIME_MS: ${PROBE_MAX_TIME_MS:-500}
+      PROBE_MONGO_CONTAINER: ${PROBE_MONGO_CONTAINER:-}
+      PROBE_STALL_MODE: ${PROBE_STALL_MODE:-cgroup}
+      PROBE_READ_BPS: ${PROBE_READ_BPS:-8388608}
+      PROBE_READ_IOPS: ${PROBE_READ_IOPS:-150}
+      PROBE_DEV_MAJOR_MINOR: ${PROBE_DEV_MAJOR_MINOR:-}
+    depends_on: [redis, mongo, worker]
+    profiles: ["stall"]
+    # Needs docker.sock (or host cgroup write) for live throttle rewrite —
+    # run_stall_recover.sh mounts it when available.
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
+    pid: host
+    privileged: true
 
   evict-driver:
     build: .

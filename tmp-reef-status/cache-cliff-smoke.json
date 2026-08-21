@@ -1,0 +1,96 @@
+===JSON===
+{
+ "experiment": "cache-cliff",
+ "issue": 9,
+ "ratios": [
+  1.0,
+  2.0
+ ],
+ "versions": [
+  "7.0.40"
+ ],
+ "versionConsistent": true,
+ "failedDeviceGuards": 0,
+ "legs": [
+  {
+   "targetRatio": 1.0,
+   "directIo": true,
+   "version": "7.0.40",
+   "sizing": {
+    "docs": 355073,
+    "dataSizeBytes": 268435188,
+    "storageSizeBytes": 268877824,
+    "bytesPerDoc": 756.0,
+    "maxCacheBytes": 268435456,
+    "cacheOversubscription": 1.0,
+    "targetRatio": 1.0
+   },
+   "result": {
+    "concurrency": 1,
+    "seconds": 6.0,
+    "ops": 12116,
+    "opsPerSecond": 2019.1,
+    "meanLatencyMs": 0.49,
+    "p95LatencyMs": 1.05,
+    "p50LatencyMs": 0.3,
+    "ticketsStart": 12,
+    "ticketsEnd": 12,
+    "outMax": 1,
+    "queueLengthMax": 0,
+    "queuedMicrosDelta": 0,
+    "pagesReadIntoCache": 3401,
+    "pagesReadIntoCachePerOp": 0.2807,
+    "evictedByAppThreads": 0,
+    "samples": 12,
+    "samplerErrors": 0,
+    "samplerFirstError": null,
+    "checkpointsObserved": 0
+   },
+   "deviceReadBytesDelta": 387215360,
+   "expectedDeviceBytesFromPages": 111443968,
+   "deviceByteGuardOk": true,
+   "deviceByteGuardReason": null,
+   "at": "2026-08-21T05:41:57+0000"
+  },
+  {
+   "targetRatio": 2.0,
+   "directIo": true,
+   "version": "7.0.40",
+   "sizing": {
+    "docs": 710146,
+    "dataSizeBytes": 536870376,
+    "storageSizeBytes": 539422720,
+    "bytesPerDoc": 756.0,
+    "maxCacheBytes": 268435456,
+    "cacheOversubscription": 2.0,
+    "targetRatio": 2.0
+   },
+   "result": {
+    "concurrency": 1,
+    "seconds": 6.0,
+    "ops": 7386,
+    "opsPerSecond": 1230.8,
+    "meanLatencyMs": 0.81,
+    "p95LatencyMs": 1.36,
+    "p50LatencyMs": 0.94,
+    "ticketsStart": 12,
+    "ticketsEnd": 12,
+    "outMax": 1,
+    "queueLengthMax": 0,
+    "queuedMicrosDelta": 0,
+    "pagesReadIntoCache": 5975,
+    "pagesReadIntoCachePerOp": 0.809,
+    "evictedByAppThreads": 2,
+    "samples": 12,
+    "samplerErrors": 0,
+    "samplerFirstError": null,
+    "checkpointsObserved": 2
+   },
+   "deviceReadBytesDelta": 569344000,
+   "expectedDeviceBytesFromPages": 195788800,
+   "deviceByteGuardOk": true,
+   "deviceByteGuardReason": null,
+   "at": "2026-08-21T05:43:02+0000"
+  }
+ ]
+}
