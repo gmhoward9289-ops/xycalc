@@ -1,0 +1,16 @@
+sources:
+  - slug: obs-mongodb-agent-bench-2026-08-21
+    title: MongoDB wt-cache and host-ram bench (generated events), 2026-08-21
+    publisher: local measurement
+    retrieved_on: '2026-08-21'
+    source_type: benchmark
+    notes: >-
+      Produced by tools/bench/mongodb_load.js on mongo:7.0.39 in a cloud-agent
+      sandbox (16 GB host). 500,000 generated "events" documents (high-cardinality
+      ids, timestamps, short varied strings, a few enum fields) with four indexes,
+      then a full collection scan to pull it resident. Same generator shape as
+      obs-mongodb-swamplink-bench-2026-07-31, so the two are comparable. A
+      benchmark's citation is its harness; this names it. The workload is
+      SYNTHETIC (a generator, not real documents), so the compression figure here
+      belongs beside the other synthetic points, not the real sample-collection
+      ratios in obs-mongodb-compression-2026-08-21.
