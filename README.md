@@ -210,7 +210,7 @@ Package versioning and the calculator's `exported by xycalc …` stamp:
 (product core, alerts, evidence):
 [`docs/telemetry/recommendations.md`](docs/telemetry/recommendations.md).
 
-Nine models today (`xycalc models`). The spine is still one failure told in
+Twelve models today (`xycalc models`). The spine is still one failure told in
 three parts, then extended:
 
 1. **[001](docs/investigations/001-wiredtiger-cache/FINDINGS.md)** — the cache
@@ -230,7 +230,8 @@ three parts, then extended:
    a winner.
 6. **[006](docs/investigations/006-cache-cliff/FINDINGS.md)** — measured
    shape: oversubscription is not a plateau-then-cliff at 1.0×; relative ops
-   fall hard 0.5→1.0 (steepest 0.8→1.0); A1 repeats + A2 (1 GB) transfer.
+   fall hard 0.5→1.0 (steepest 0.8→1.0). A2 transferred the A1 shape at
+   1.0 GB cache — not a remaining gate, and still not a wt-cache coefficient.
 7. **[007](docs/investigations/007-eviction-band-and-tickets/FINDINGS.md)** —
    raising eviction target 80→90 holds the cache fuller; ops/s delta modest /
    noisy. Education on calculator Occupancy tab, not a production knob change.
@@ -242,9 +243,11 @@ Each was asked as a separate question. That they compose is the argument for
 one corpus rather than seven spreadsheets.
 
 Systems with real coefficients include MongoDB, EBS, Azure Premium SSD v2,
-Redis/Celery broker defaults and eviction measurements, NVMe plateaus (reef
-fio), NVD growth, and AWS EC2 `r8i` instance pick. ClickHouse and Azure VM /
-bare-metal catalogs are still stubs (named in `data/systems.yaml`).
+Redis/Celery broker defaults and eviction measurements (including
+`celery.worker-prefetch` and `celery.redis-broker-maxmemory`), NVMe plateaus
+(reef fio), NVD growth, ClickHouse `parts-insert-ceiling`, AWS EC2 `r8i`
+(11 sizes), and Azure `Esv5`/`Esv6` (19 sizes). Bare-metal class is still a
+stub (named in `data/systems.yaml`).
 
 `mongodb.wt-cache` is **thinly validated (n=2, both within band, mean abs
 error 28.5%)** — still too few to generalise; compression remains the largest
@@ -253,8 +256,11 @@ abs error 0.8%)** — the cases are self-consistent default-split round-trips
 and none landed inside the (point) predicted band, so it cannot wear the
 Validated badge. Everything else prints **unvalidated (n=0)** on every invocation.
 The EBS provision model is honest about something worse than n=0: its peak-to-
-mean amplifier is a guess of ours with a band spanning a factor of 6.7.
-Fifteen minutes with `iostat -x 1` replaces it with a fact. The ticket model's
+mean amplifier is still graded `estimate` with a band spanning a factor of 6.7.
+One COOPER loop-device run (2026-08-21) landed inside that band on the median
+and overshot `value_hi` on a bursty max; the band was not narrowed. Fifteen
+minutes with `iostat -x 1` on the workload you actually run still replaces it
+with a fact. The ticket model's
 n=0 undersells a 2026-08-01 fault-injection run: throughput stayed flat while
 the pool climbed 4→74 behind a capped device — pool ruled out as the binder,
 device cap never varied, no formal validation case published. See
@@ -269,20 +275,19 @@ capture.
 Tracked as [issues](https://github.com/gmhoward9289-ops/xycalc/issues). The
 short version, worst first:
 
-- **[#2](https://github.com/gmhoward9289-ops/xycalc/issues/2)** — the ticket
-  model's formula assumes a pinned pool, and MongoDB 7.0 does not pin it. It
-  describes pre-7.0 and the ramp, not steady state.
-- **[#4](https://github.com/gmhoward9289-ops/xycalc/issues/4)** — the EBS
-  model's only amplifier is a guess of ours with a 6.7x band.
-- **[#5](https://github.com/gmhoward9289-ops/xycalc/issues/5)** — compression
-  is still the largest error term in the cache model; need production-shaped
-  `db.stats()`, not more synthetic base62.
-- **[#9](https://github.com/gmhoward9289-ops/xycalc/issues/9)** — cache-cliff
-  relative-ops shape is **measured** (A1×2 + A2 at 1 GB); no wt-cache *sizing*
-  coefficient (throttle ops ≠ hit-ratio). See investigation 006 FINDINGS.
-- **[#8](https://github.com/gmhoward9289-ops/xycalc/issues/8)** — two harnesses
-  have produced clean tables that measured nothing. Both guarded now; the next
-  one will invent a fourth way.
+- **Bare-metal class** is still a stub (`data/systems.yaml`). AWS `r8i` and
+  Azure `Esv5`/`Esv6` catalogs ship; off-cloud host classes have no
+  pick-per-band-end table.
+- Compression remains the largest error term in `mongodb.wt-cache` (MAE
+  28.5%). Public sample ratios sit inside the published 1.5–3.5 band
+  ([#5](https://github.com/gmhoward9289-ops/xycalc/issues/5) closed Track A);
+  production-shaped `db.stats()` is still the missing population.
+- **[#13](https://github.com/gmhoward9289-ops/xycalc/issues/13)** — covered
+  queries vs the index term. Reef smoke only; full soak still open. This is
+  the cache model's weakest inference.
+- Two harnesses once produced clean tables that measured nothing
+  ([#8](https://github.com/gmhoward9289-ops/xycalc/issues/8), closed; both
+  guarded). The next one will invent a fourth way.
 
 Contributions of real measurements are worth more here than contributions of
 code.
@@ -291,7 +296,7 @@ code.
 
 Designed experiments live in
 [`docs/investigations/ROADMAP.md`](docs/investigations/ROADMAP.md) and as
-[#9–#18](https://github.com/gmhoward9289-ops/xycalc/labels/roadmap). T1b
+[roadmap-labeled issues](https://github.com/gmhoward9289-ops/xycalc/labels/roadmap). T1b
 (occupancy band) and T7 (Redis broker eviction) have **landed** as
 investigations 007 and 005. T1 (cache cliff) and T11 (colocation share) landed
 in investigations 006 and 009. A2 transferred the A1 shape at 1.0 GB cache —
