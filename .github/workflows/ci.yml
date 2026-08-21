@@ -31,9 +31,14 @@ jobs:
       - uses: actions/setup-python@v7
         with:
           python-version: '3.12'
+          cache: pip
+          cache-dependency-path: pyproject.toml
       - run: pip install -e ".[dev,gui]"
       - run: python -m xycalc.build
 
+  # Required check name is exactly `test` (branch ruleset). Do not turn this
+  # into a matrix -- GitHub renames matrix legs to `test (3.12)` etc. and the
+  # required check never reports. Wider coverage lives in additive jobs below.
   test:
     runs-on: ubuntu-latest
     steps:
@@ -41,6 +46,32 @@ jobs:
       - uses: actions/setup-python@v7
         with:
           python-version: '3.12'
+          cache: pip
+          cache-dependency-path: pyproject.toml
+      - run: pip install -e ".[dev,gui]"
+      - run: pytest -q
+
+  test-py311:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.11'
+          cache: pip
+          cache-dependency-path: pyproject.toml
+      - run: pip install -e ".[dev,gui]"
+      - run: pytest -q
+
+  test-py313:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.13'
+          cache: pip
+          cache-dependency-path: pyproject.toml
       - run: pip install -e ".[dev,gui]"
       - run: pytest -q
 
@@ -66,6 +97,8 @@ jobs:
       - uses: actions/setup-python@v7
         with:
           python-version: '3.14'
+          cache: pip
+          cache-dependency-path: pyproject.toml
       - run: pip install -e ".[dev,gui]"
       - run: pytest -q
 
@@ -76,5 +109,7 @@ jobs:
       - uses: actions/setup-python@v7
         with:
           python-version: '3.12'
+          cache: pip
+          cache-dependency-path: pyproject.toml
       - run: pip install -e ".[dev,gui]"
       - run: python -m xycalc.audit

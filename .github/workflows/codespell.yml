@@ -10,3 +10,6 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: codespell-project/actions-codespell@v2
+        with:
+          path: src,tests,docs,.
+          skip: .git,*.pyc,__pycache__,*.svg,*.png,dist,build,.venv
