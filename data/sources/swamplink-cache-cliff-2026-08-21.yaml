@@ -1,0 +1,20 @@
+sources:
+- slug: obs-mongodb-cache-cliff-swamplink-2026-08-21
+  title: WiredTiger cache oversubscription cliff (A1) on throttled device
+  publisher: xycalc benchmark (swamplink)
+  retrieved_on: '2026-08-21'
+  source_type: benchmark
+  notes: >-
+    Investigation 006 / issue #9 / inference-sizing Phase A. Harness
+    tools/bench/cache_cliff_probe.sh + .py. MongoDB 7.0.39 in Docker on
+    swamplink-eu, direct_io=[data], 0.25 GB wiredTiger cache, 640 MB
+    container memory (fixed across ratios), block-IO cgroup 8 MiB/s and
+    150 IOPS on this container only. Fresh mongod per ratio. Uniform random
+    point lookups, concurrency 1. Device-byte guards passed
+    (failedDeviceGuards=0) on completed legs. 100× leg failed during load
+    and is excluded. Absolute ops/s are throttle artifacts; relative shape
+    vs oversubscription ratio is the claim. A1-r2 reproduces the knee
+    region through 2×; 4×/8×/50× on r2 and A2 (1.0 GB cache transfer) not
+    yet landed. Do not promote a wt-cache coefficient from this source
+    until transfer is settled. Write-up:
+    docs/investigations/006-cache-cliff/FINDINGS.md.

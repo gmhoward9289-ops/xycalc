@@ -170,16 +170,51 @@ def test_export_blob_carries_occupancy_band(blob):
     assert len(g["passes"]) == 3
     assert g["passes"][1]["ops_delta_pct"] == 6.73
     assert g["reef_saturated_occupancy_pct"] == 80.55
+    assert len(g["playbook"]) >= 4
+    assert "occupancyPct" in g["snapshot_recipe"]
+    assert len(g["ticket_ladder"]) == 3
+    assert g["ticket_ladder"][0]["concurrency"] == 1
+    assert g["ticket_ladder"][0]["peak_tickets"] == 4
+    assert g["ticket_ladder"][-1]["peak_tickets"] == 74
+    assert g["ticket_ladder"][-1]["latency_ms"] == 535.51
+    assert g["weakest_inference"]
+    assert any(k["key"] == "eviction_target" for k in g["knobs"])
+
+
+def test_export_blob_carries_cache_cliff(blob):
+    g = blob["cache_cliff"]
+    assert g["status"] == "provisional"
+    assert g["steepest_segment"] == [0.8, 1.0]
+    assert g["wt_cache_gb"] == 0.25
+    assert len(g["legs"]) == 9
+    by_ratio = {leg["ratio"]: leg for leg in g["legs"]}
+    assert by_ratio[0.5]["ops"] == 1590
+    assert by_ratio[0.5]["relative_ops"] == 1.0
+    assert by_ratio[1.0]["ops"] == 219
+    assert by_ratio[1.0]["pages_per_op"] == 0.4
+    assert by_ratio[0.8]["ops_r2"] == 520
+    assert by_ratio[0.8]["relative_ops_r2"] == round(520 / 2189, 4)
 
 
 def test_exported_page_has_flow_and_occupancy_tabs(blob):
     html = render(blob)
     assert 'data-tab="flow"' in html
     assert 'data-tab="occupancy"' in html
+    assert 'data-tab="cliff"' in html
     assert 'id="tab-flow"' in html
     assert 'id="tab-occupancy"' in html
+    assert 'id="tab-cliff"' in html
     assert "Occupancy bands" in html
+    assert "Cache cliff" in html
     assert "How it flows" in html
+    assert "Scrub the curve" in html
+    assert "cache_cliff" in html
+    assert "Operator playbook" in html
+    assert "Not the same cliff" in html
+    assert 'id="occ-dirty"' in html
+    assert 'id="occ-recipe"' in html
+    assert 'id="occ-tickets"' in html
+    assert 'id="occ-playbook"' in html
 
 
 def test_closing_script_tags_in_the_corpus_cannot_escape(blob):

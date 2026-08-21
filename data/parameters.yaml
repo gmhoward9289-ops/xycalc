@@ -88,6 +88,15 @@ parameters:
       sized purely on total bytes can still throttle at 20% occupancy if all
       of it is dirty.
 
+  - slug: cache.pages_read_per_op
+    label: Pages read into cache per operation
+    unit: pages/op
+    dimension: ratio
+    notes: >-
+      From WiredTiger serverStatus under a point-lookup probe: pages read into
+      cache divided by operations. Near zero means the working set is resident;
+      rising with oversubscription means each lookup pays for more device I/O.
+
   # -- host -------------------------------------------------------------
   - slug: host.ram_bytes
     label: Host RAM

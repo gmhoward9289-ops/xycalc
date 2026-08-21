@@ -18,7 +18,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>xycalc — how much X does it take to run Y?</title>
-<meta name="description" content="Infrastructure sizing from a corpus where every number cites a source. Sweep an input and see the whole curve, band and all.">
+<meta name="description" content="Infrastructure sizing from a corpus where every number cites a source. Sweep an input, scrub the band, and inspect the measured cache-cliff shape.">
 <style>
 /* The page is an instrument, so it reads like one: figures in a mono face at a
    size you can compare at a glance, prose in a proportional face and out of the
@@ -160,6 +160,27 @@ svg.chart { width: 100%; height: auto; display: block; touch-action: none; }
 .cursor-line { stroke: var(--ink); stroke-width: 1; opacity: .35; }
 .cursor-dot { fill: var(--accent); }
 .chart-note { font-size: .78rem; color: var(--muted); margin: .6rem 0 0; }
+.chart-hint {
+  font-size: .78rem; color: var(--muted); margin: 0 0 .75rem;
+}
+.chart-hint kbd {
+  font-family: var(--mono); font-size: .72rem;
+  border: 1px solid var(--line); border-radius: 3px; padding: .05rem .3rem;
+}
+.recalc-live { font-size: .78rem; color: var(--muted); margin: .5rem 0 0; min-height: 1.2em; }
+svg.chart.dragging { cursor: ew-resize; }
+.steep-band { fill: var(--amplifier); opacity: .12; }
+.cliff-line { fill: none; stroke: var(--accent); stroke-width: 2; }
+.cliff-line.r2 { stroke: var(--amplifier); stroke-dasharray: 4 3; opacity: .85; }
+.cliff-dot { fill: var(--accent); }
+.cliff-dot.r2 { fill: var(--amplifier); }
+.one-x { stroke: var(--muted); stroke-width: 1; stroke-dasharray: 3 3; opacity: .7; }
+.status-pill {
+  display: inline-block; font-family: var(--mono); font-size: .68rem;
+  text-transform: uppercase; letter-spacing: .05em;
+  border: 1px solid var(--warn-line); background: var(--warn-bg); color: var(--warn-ink);
+  border-radius: 3px; padding: .15rem .45rem; margin-left: .4rem; vertical-align: middle;
+}
 
 /* -- breakdown -- */
 h2 { font-size: .8rem; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin: 2rem 0 .75rem; }
@@ -316,6 +337,31 @@ svg.nvd-chart { width: 100%; height: auto; display: block; }
 .var-card .k { font-family: var(--mono); font-size: .78rem; color: var(--accent); }
 .var-card .v { font-family: var(--mono); font-size: 1.15rem; font-weight: 600; margin: .2rem 0; }
 .var-card p { margin: 0; font-size: .82rem; color: var(--muted); }
+.var-card .ex { margin-top: .35rem; font-size: .78rem; color: var(--ink); opacity: .85; }
+.occ-inputs {
+  display: grid; grid-template-columns: 1fr 1fr; gap: .85rem 1.1rem; margin-top: .25rem;
+}
+@media (max-width: 42rem) { .occ-inputs { grid-template-columns: 1fr; } }
+.ladder.dirty { margin-top: 1.75rem; }
+.ladder .zone.dirty-hold { left: 0; background: color-mix(in srgb, var(--floor) 30%, transparent); }
+.ladder .zone.dirty-warn { background: color-mix(in srgb, var(--warn-ink) 30%, transparent); }
+.ladder .zone.dirty-danger { background: color-mix(in srgb, var(--stop-ink) 45%, transparent); }
+.ladder .you.dirty { background: var(--amplifier); }
+.playbook { list-style: none; padding: 0; margin: .5rem 0 0; display: grid; gap: .55rem; }
+.playbook li {
+  border: 1px solid var(--line); border-radius: 6px; padding: .65rem .8rem; background: var(--bg);
+}
+.playbook .when { font-weight: 600; font-size: .88rem; margin: 0 0 .25rem; }
+.playbook .do { margin: 0; font-size: .82rem; color: var(--muted); }
+.occ-recipe {
+  font-family: var(--mono); font-size: .72rem; line-height: 1.45;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 6px;
+  padding: .75rem .85rem; overflow-x: auto; white-space: pre; margin: .5rem 0 0;
+}
+.occ-weak {
+  font-size: .82rem; color: var(--muted); border-left: 3px solid var(--warn-line);
+  padding: .35rem 0 .35rem .75rem; margin: .85rem 0 0;
+}
 [hidden] { display: none !important; }
 </style>
 </head>
@@ -350,6 +396,7 @@ svg.nvd-chart { width: 100%; height: auto; display: block; }
   <button class="tab" id="tab-btn-single" data-tab="single">Single question</button>
   <button class="tab" id="tab-btn-flow" data-tab="flow">How it flows</button>
   <button class="tab" id="tab-btn-occupancy" data-tab="occupancy">Occupancy bands</button>
+  <button class="tab" id="tab-btn-cliff" data-tab="cliff">Cache cliff</button>
 </div>
 
 <div id="tab-scenario">
@@ -386,6 +433,7 @@ svg.nvd-chart { width: 100%; height: auto; display: block; }
     <input id="available" placeholder="e.g. 256GB" autocomplete="off">
   </div>
   <button id="go">Calculate</button>
+  <p class="recalc-live" id="single-recalc-status">Sizing and the curve update as you type.</p>
   <p id="error" class="error" hidden></p>
 </div>
 
@@ -417,11 +465,12 @@ svg.nvd-chart { width: 100%; height: auto; display: block; }
         <select id="sweep"></select>
       </div>
       <div class="scales">
-        <span>scale</span>
+        <span>y-scale</span>
         <button type="button" class="ghost" id="ylin" aria-pressed="false">linear</button>
         <button type="button" class="ghost" id="ylog" aria-pressed="true">log</button>
       </div>
     </div>
+    <p class="chart-hint">Scrub the curve to preview; <kbd>click</kbd> or release a drag to set that input and recalculate.</p>
     <svg class="chart" id="chart" viewBox="0 0 720 340" role="img" aria-labelledby="chart-desc"></svg>
     <p id="chart-desc" class="chart-readout"></p>
     <p class="chart-note" id="chart-note"></p>
@@ -501,10 +550,12 @@ svg.nvd-chart { width: 100%; height: auto; display: block; }
   <div class="panel">
     <h2 style="margin-top:0">WiredTiger occupancy ladder</h2>
     <p style="margin:0 0 .5rem;font-size:.92rem;color:var(--muted)">
-      Investigation 007 — where measured cache occupancy sits relative to
-      <code>eviction_target</code> (hold) and <code>eviction_trigger</code> (app threads).
-      Paste a live occupancy % to place yourself on the ladder.
+      Investigation 007 — place a live <code>serverStatus</code> reading on the
+      total-bytes ladder (<code>eviction_target</code> → <code>eviction_trigger</code>)
+      and the dirty-bytes ladder. These are different cliffs; size for one and
+      you can still stall on the other.
     </p>
+    <p class="form-heading">Total cache occupancy</p>
     <div class="ladder" id="occ-ladder" aria-hidden="true">
       <div class="zone hold"></div>
       <div class="zone workers"></div>
@@ -514,16 +565,36 @@ svg.nvd-chart { width: 100%; height: auto; display: block; }
       <div class="mark" id="occ-mark-trigger" style="left:95%">trigger 95</div>
       <div class="you" id="occ-you" hidden></div>
     </div>
-    <div class="field">
-      <label for="occ-pct">Measured occupancy % <span class="help" style="display:inline">bytes currently ÷ maximum bytes configured × 100</span></label>
-      <input id="occ-pct" type="number" min="0" max="100" step="0.1" placeholder="e.g. 87.5" autocomplete="off">
+    <p class="form-heading">Dirty occupancy (write path)</p>
+    <div class="ladder dirty" id="occ-dirty-ladder" aria-hidden="true">
+      <div class="zone dirty-hold" id="occ-dirty-hold"></div>
+      <div class="zone dirty-warn" id="occ-dirty-warn"></div>
+      <div class="zone dirty-danger" id="occ-dirty-danger"></div>
+      <div class="mark" id="occ-mark-dirty-target" style="left:5%">dirty target 5</div>
+      <div class="mark" id="occ-mark-dirty-trigger" style="left:20%">dirty trigger 20</div>
+      <div class="you dirty" id="occ-dirty-you" hidden></div>
     </div>
-    <p class="occ-place" id="occ-place">Enter a percentage to see which band you are in.</p>
+    <div class="occ-inputs">
+      <div class="field">
+        <label for="occ-pct">Measured occupancy % <span class="help" style="display:inline">bytes currently ÷ maximum configured × 100</span></label>
+        <input id="occ-pct" type="number" min="0" max="100" step="0.1" placeholder="e.g. 87.5" autocomplete="off">
+      </div>
+      <div class="field">
+        <label for="occ-dirty">Measured dirty % <span class="help" style="display:inline">tracked dirty ÷ maximum configured × 100</span></label>
+        <input id="occ-dirty" type="number" min="0" max="100" step="0.1" placeholder="e.g. 12" autocomplete="off">
+      </div>
+    </div>
+    <p class="occ-place" id="occ-place">Enter occupancy and/or dirty % to place yourself on the ladders.</p>
   </div>
 
   <div class="panel">
     <h2 style="margin-top:0">Documented knobs</h2>
     <div class="var-grid" id="occ-vars"></div>
+  </div>
+
+  <div class="panel">
+    <h2 style="margin-top:0">Operator playbook</h2>
+    <ul class="playbook" id="occ-playbook"></ul>
   </div>
 
   <div class="panel">
@@ -545,7 +616,72 @@ svg.nvd-chart { width: 100%; height: auto; display: block; }
       </table>
     </div>
     <p class="help" id="occ-reef" style="margin-top:.75rem"></p>
+    <p class="occ-weak" id="occ-weak" hidden></p>
     <button type="button" class="ghost" id="occ-open-wt" style="margin-top:.75rem">Open wt-cache sizing + notes →</button>
+  </div>
+
+  <div class="panel">
+    <h2 style="margin-top:0">Not the same cliff — MongoDB 7 tickets</h2>
+    <p style="margin:0 0 .65rem;font-size:.92rem;color:var(--muted)" id="occ-ticket-blurb">
+      Investigation 003 restated: under a device-bound load, <code>totalTickets</code>
+      can climb while ops/s stays flat and latency explodes. That is admission
+      contention, not an eviction-% problem — do not tune the wrong knob.
+    </p>
+    <div class="scroll">
+      <table class="occ-table">
+        <thead>
+          <tr>
+            <th>Concurrency</th>
+            <th style="text-align:right">peak tickets</th>
+            <th style="text-align:right">ops/s</th>
+            <th style="text-align:right">mean latency</th>
+          </tr>
+        </thead>
+        <tbody id="occ-tickets"></tbody>
+      </table>
+    </div>
+    <button type="button" class="ghost" id="occ-open-tickets" style="margin-top:.75rem">Open ticket-throughput-ceiling →</button>
+  </div>
+
+  <div class="panel">
+    <h2 style="margin-top:0">How to measure (mongosh)</h2>
+    <p style="margin:0;font-size:.92rem;color:var(--muted)">
+      Paste occupancy % and dirty % from this snapshot into the ladders above.
+      Sample twice if you need rates — counters are cumulative.
+    </p>
+    <pre class="occ-recipe" id="occ-recipe"></pre>
+  </div>
+</div>
+
+<div id="tab-cliff" hidden>
+  <div class="panel">
+    <h2 style="margin-top:0">Cache cliff vs oversubscription
+      <span class="status-pill" id="cliff-status">provisional</span>
+    </h2>
+    <p style="margin:0 0 .5rem;font-size:.92rem;color:var(--muted)" id="cliff-verdict"></p>
+    <p class="chart-hint">X is <code>dataSize / maxCache</code>. Y is relative ops/s (1.0 at 0.5×). Scrub to read a point; absolute rates stay in the table.</p>
+    <svg class="chart" id="cliff-chart" viewBox="0 0 720 340" role="img" aria-labelledby="cliff-desc"></svg>
+    <p id="cliff-desc" class="chart-readout"></p>
+    <p class="chart-note" id="cliff-note"></p>
+  </div>
+  <div class="panel">
+    <h2 style="margin-top:0">Measured legs (A1)</h2>
+    <div class="scroll">
+      <table class="occ-table">
+        <thead>
+          <tr>
+            <th>ratio</th>
+            <th style="text-align:right">ops/s r1</th>
+            <th style="text-align:right">ops/s r2</th>
+            <th style="text-align:right">rel ops</th>
+            <th style="text-align:right">pages/op</th>
+          </tr>
+        </thead>
+        <tbody id="cliff-rows"></tbody>
+      </table>
+    </div>
+    <p class="help" id="cliff-transfer" style="margin-top:.75rem"></p>
+    <button type="button" class="ghost" id="cliff-open-wt" style="margin-top:.75rem">Open wt-cache sizing →</button>
   </div>
 </div>
 
@@ -587,11 +723,16 @@ function boot() {
     " · " + CORPUS.xycalc_git;
   $("model").innerHTML = MODELS.map((m) => `<option value="${esc(m.slug)}">${esc(m.question)}</option>`).join("");
   renderInputs();
-  $("model").addEventListener("change", renderInputs);
+  $("model").addEventListener("change", () => {
+    renderInputs();
+    scheduleSingleCalc();
+  });
   $("go").addEventListener("click", calculate);
   $("sweep").addEventListener("change", drawChart);
   $("ylin").addEventListener("click", () => setScale("linear"));
   $("ylog").addEventListener("click", () => setScale("log"));
+  $("available").addEventListener("input", scheduleSingleCalc);
+  $("inputs").addEventListener("input", scheduleSingleCalc);
   document.querySelectorAll(".tab").forEach((btn) =>
     btn.addEventListener("click", () => setTab(btn.dataset.tab)));
   document.addEventListener("keydown", (e) => {
@@ -603,6 +744,8 @@ function boot() {
   bootScenario();
   bootFlow();
   bootOccupancy();
+  bootCacheCliff();
+  scheduleSingleCalc();
 }
 
 function setTab(name) {
@@ -610,10 +753,12 @@ function setTab(name) {
   $("tab-single").hidden = name !== "single";
   $("tab-flow").hidden = name !== "flow";
   $("tab-occupancy").hidden = name !== "occupancy";
+  $("tab-cliff").hidden = name !== "cliff";
   $("tab-btn-scenario").classList.toggle("active", name === "scenario");
   $("tab-btn-single").classList.toggle("active", name === "single");
   $("tab-btn-flow").classList.toggle("active", name === "flow");
   $("tab-btn-occupancy").classList.toggle("active", name === "occupancy");
+  $("tab-btn-cliff").classList.toggle("active", name === "cliff");
 }
 
 const SCENARIO_DEFAULTS = {
@@ -622,7 +767,7 @@ const SCENARIO_DEFAULTS = {
     baseline_storage_size: "100GB",
     target_vuln_count: "280000",
     index_size: "40GB",
-    snapshot_search_size: "80GB",
+    foreign_collections_size: "80GB",
   },
   "storage.ebs-vs-nvme-at-io-size": {
     io_size_kib: "64",
@@ -896,6 +1041,8 @@ function renderInputs() {
   $("sweep").innerHTML = m.inputs
     .map((i) => `<option value="${esc(i.key)}">${esc(i.label)}</option>`).join("");
   $("result").hidden = true;
+  const st = $("single-recalc-status");
+  if (st) st.textContent = "Sizing and the curve update as you type.";
 }
 
 function readInputs() {
@@ -908,8 +1055,15 @@ function readInputs() {
 
 let STATE = null;          // {model, inputs, result, available}
 let YSCALE = "log";
+let singleCalcTimer = null;
 
-function calculate() {
+function scheduleSingleCalc() {
+  clearTimeout(singleCalcTimer);
+  singleCalcTimer = setTimeout(() => calculate({ quiet: true }), 180);
+}
+
+function calculate(opts) {
+  const quiet = !!(opts && opts.quiet);
   const m = current();
   const inputs = readInputs();
   let result;
@@ -919,17 +1073,27 @@ function calculate() {
     $("error").textContent = e.message;
     $("error").hidden = false;
     $("result").hidden = true;
+    const st = $("single-recalc-status");
+    if (st) st.textContent = quiet ? "Fill required fields — curve waits." : st.textContent;
     return;
   }
   let available = null;
   const availRaw = $("available").value.trim();
   if (availRaw) {
     try { available = XY.parseBytes(availRaw); }
-    catch (e) { $("error").textContent = e.message; $("error").hidden = false; return; }
+    catch (e) {
+      if (!quiet) {
+        $("error").textContent = e.message;
+        $("error").hidden = false;
+      }
+      return;
+    }
   }
   $("error").hidden = true;
   STATE = { model: m, inputs, result, available };
   render();
+  const st = $("single-recalc-status");
+  if (st) st.textContent = "Up to date — change a field or scrub the curve.";
 }
 
 function render() {
@@ -1161,7 +1325,32 @@ function drawChart() {
       `${esc(fmt(s.xs[i], s.unit))} <span class="dim">→</span> ${esc(fmt(s.modes[i], u))} ` +
       `<span class="dim">(${esc(fmt(s.los[i], u))} – ${esc(fmt(s.his[i], u))})</span>`;
   };
-  svg.querySelector("#hit").addEventListener("pointermove", (e) => show(nearest(e.clientX)));
+  const commit = (i) => {
+    const el = $("in-" + s.key);
+    if (!el) return;
+    el.value = fmt(s.xs[i], s.unit);
+    calculate();
+  };
+  const hit = svg.querySelector("#hit");
+  let dragging = false;
+  hit.addEventListener("pointerdown", (e) => {
+    dragging = true;
+    svg.classList.add("dragging");
+    try { hit.setPointerCapture(e.pointerId); } catch (_) {}
+    show(nearest(e.clientX));
+  });
+  hit.addEventListener("pointermove", (e) => show(nearest(e.clientX)));
+  hit.addEventListener("pointerup", (e) => {
+    const i = nearest(e.clientX);
+    show(i);
+    if (dragging) commit(i);
+    dragging = false;
+    svg.classList.remove("dragging");
+  });
+  hit.addEventListener("pointercancel", () => {
+    dragging = false;
+    svg.classList.remove("dragging");
+  });
 
   const centreIdx = s.centre ? nearestIndex(s.xs, s.centre) : Math.floor(s.xs.length / 2);
   show(centreIdx);
@@ -1268,32 +1457,60 @@ function bootOccupancy() {
   const L = g.ladder || {};
   const target = L.eviction_target && L.eviction_target.value;
   const trigger = L.eviction_trigger && L.eviction_trigger.value;
+  const dirtyTarget = L.eviction_dirty_target && L.eviction_dirty_target.value;
+  const dirtyTrigger = L.eviction_dirty_trigger && L.eviction_dirty_trigger.value;
+
   if (target != null) {
     $("occ-mark-target").style.left = target + "%";
     $("occ-mark-target").textContent = "target " + target;
-    document.querySelector(".ladder .zone.hold").style.width = target + "%";
-    document.querySelector(".ladder .zone.workers").style.left = target + "%";
-    document.querySelector(".ladder .zone.workers").style.width = (trigger - target) + "%";
+    document.querySelector("#occ-ladder .zone.hold").style.width = target + "%";
+    document.querySelector("#occ-ladder .zone.workers").style.left = target + "%";
+    document.querySelector("#occ-ladder .zone.workers").style.width =
+      ((trigger != null ? trigger : 95) - target) + "%";
   }
   if (trigger != null) {
     $("occ-mark-trigger").style.left = trigger + "%";
     $("occ-mark-trigger").textContent = "trigger " + trigger;
-    document.querySelector(".ladder .zone.danger").style.left = trigger + "%";
-    document.querySelector(".ladder .zone.danger").style.width = (100 - trigger) + "%";
+    document.querySelector("#occ-ladder .zone.danger").style.left = trigger + "%";
+    document.querySelector("#occ-ladder .zone.danger").style.width = (100 - trigger) + "%";
+  }
+  if (dirtyTarget != null && dirtyTrigger != null) {
+    $("occ-mark-dirty-target").style.left = dirtyTarget + "%";
+    $("occ-mark-dirty-target").textContent = "dirty target " + dirtyTarget;
+    $("occ-mark-dirty-trigger").style.left = dirtyTrigger + "%";
+    $("occ-mark-dirty-trigger").textContent = "dirty trigger " + dirtyTrigger;
+    $("occ-dirty-hold").style.width = dirtyTarget + "%";
+    $("occ-dirty-warn").style.left = dirtyTarget + "%";
+    $("occ-dirty-warn").style.width = (dirtyTrigger - dirtyTarget) + "%";
+    $("occ-dirty-danger").style.left = dirtyTrigger + "%";
+    $("occ-dirty-danger").style.width = (100 - dirtyTrigger) + "%";
   }
 
-  const cards = [
-    ["eviction_target", L.eviction_target, "Occupancy WT works to hold"],
-    ["eviction_trigger", L.eviction_trigger, "App threads start eviction"],
-    ["dirty_target", L.eviction_dirty_target, "Dirty-page hold"],
-    ["dirty_trigger", L.eviction_dirty_trigger, "Writers stall on dirty eviction"],
-  ].filter(([, c]) => c).map(([label, c, blurb]) => `
-    <div class="var-card">
-      <div class="k">${esc(label)}</div>
+  const knobSrc = (g.knobs && g.knobs.length)
+    ? g.knobs
+    : [
+        ["eviction_target", L.eviction_target, "Occupancy WT works to hold", ""],
+        ["eviction_trigger", L.eviction_trigger, "App threads start eviction", ""],
+        ["dirty_target", L.eviction_dirty_target, "Dirty-page hold", ""],
+        ["dirty_trigger", L.eviction_dirty_trigger, "Writers stall on dirty eviction", ""],
+      ].filter((row) => row[1]).map(([key, c, blurb, example]) => ({
+        key, coeff: c, blurb, example,
+      }));
+
+  $("occ-vars").innerHTML = knobSrc.map((k) => {
+    const c = k.coeff;
+    const applies = c && c.applies_to ? ` ${esc(c.applies_to)}.` : "";
+    return `<div class="var-card">
+      <div class="k">${esc(k.key)}</div>
       <div class="v">${esc(String(c.value))}${c.value <= 100 ? "%" : ""}</div>
-      <p>${esc(blurb)}. ${esc(c.applies_to || "")}</p>
-    </div>`).join("");
-  $("occ-vars").innerHTML = cards;
+      <p>${esc(k.blurb || "")}.${applies}</p>
+      ${k.example ? `<p class="ex">${esc(k.example)}</p>` : ""}
+    </div>`;
+  }).join("");
+
+  $("occ-playbook").innerHTML = (g.playbook || []).map((step) =>
+    `<li><p class="when">${esc(step.when)}</p><p class="do">${esc(step.do)}</p></li>`
+  ).join("") || "<li><p class='do'>Playbook missing from this export.</p></li>";
 
   $("occ-verdict").textContent = g.verdict || "";
   $("occ-passes").innerHTML = (g.passes || []).map((p) => {
@@ -1314,9 +1531,155 @@ function bootOccupancy() {
       `Reef saturated-scan occupancy under default target: ${g.reef_saturated_occupancy_pct}% ` +
       `(observation reef-mongo-bench-2026-08-19-eviction-target-actual).`;
   }
+  if (g.weakest_inference) {
+    $("occ-weak").hidden = false;
+    $("occ-weak").textContent = "Weakest inference — " + g.weakest_inference;
+  }
+
+  $("occ-tickets").innerHTML = (g.ticket_ladder || []).map((row) => {
+    const lat = row.latency_ms == null ? "—" : row.latency_ms.toFixed(1) + " ms";
+    return `<tr>
+      <td class="lab">${row.concurrency}</td>
+      <td style="text-align:right">${row.peak_tickets}</td>
+      <td style="text-align:right">${row.ops_per_s.toFixed(1)}</td>
+      <td style="text-align:right">${esc(lat)}</td>
+    </tr>`;
+  }).join("") || "<tr><td colspan='4' class='lab'>Ticket ladder missing from this export.</td></tr>";
+
+  $("occ-recipe").textContent = g.snapshot_recipe || "";
 
   $("occ-pct").addEventListener("input", placeOccupancy);
-  $("occ-open-wt").addEventListener("click", () => {
+  $("occ-dirty").addEventListener("input", placeOccupancy);
+  $("occ-open-wt").addEventListener("click", () => openModelFromOcc(g.model || "mongodb.wt-cache"));
+  $("occ-open-tickets").addEventListener("click", () =>
+    openModelFromOcc(g.ticket_model || "mongodb.ticket-throughput-ceiling"));
+}
+
+function openModelFromOcc(slug) {
+  setTab("single");
+  $("model").value = slug;
+  renderInputs();
+  if (slug === "mongodb.wt-cache") {
+    const storage = $("in-storage_size");
+    const index = $("in-index_size");
+    if (storage && !storage.value) storage.value = "500GB";
+    if (index && !index.value) index.value = "40GB";
+  }
+  if (typeof scheduleSingleCalc === "function") scheduleSingleCalc();
+  else calculate();
+  requestAnimationFrame(() => {
+    const panel = $("notes-panel");
+    if (panel && !panel.hidden) panel.scrollIntoView({ behavior: "smooth", block: "start" });
+  });
+}
+
+function placeOccupancy() {
+  const g = CORPUS.occupancy_band || {};
+  const L = g.ladder || {};
+  const target = (L.eviction_target && L.eviction_target.value) || 80;
+  const trigger = (L.eviction_trigger && L.eviction_trigger.value) || 95;
+  const dirtyTarget = (L.eviction_dirty_target && L.eviction_dirty_target.value) || 5;
+  const dirtyTrigger = (L.eviction_dirty_trigger && L.eviction_dirty_trigger.value) || 20;
+
+  const raw = $("occ-pct").value.trim();
+  const dirtyRaw = $("occ-dirty").value.trim();
+  const you = $("occ-you");
+  const dirtyYou = $("occ-dirty-you");
+  const bits = [];
+
+  if (!raw && !dirtyRaw) {
+    you.hidden = true;
+    dirtyYou.hidden = true;
+    $("occ-place").textContent = "Enter occupancy and/or dirty % to place yourself on the ladders.";
+    return;
+  }
+
+  if (raw) {
+    const pct = Number(raw);
+    if (!isFinite(pct) || pct < 0 || pct > 100) {
+      you.hidden = true;
+      bits.push("Occupancy needs a number between 0 and 100.");
+    } else {
+      you.hidden = false;
+      you.style.left = pct + "%";
+      let band, advice;
+      if (pct < target - 5) {
+        band = "below target";
+        advice = "Spare headroom relative to the default hold — or the working set is not resident yet.";
+      } else if (pct < target + 5) {
+        band = "near eviction_target (healthy hold)";
+        advice = "Background workers are doing their job. Size cache ≈ working_set ÷ 0.8 so you stay here under load.";
+      } else if (pct < 90) {
+        band = "worker band (above target, before 90)";
+        advice = "Workers are active above the hold. Raising target toward 90 fills the cache fuller but is not a throughput lever.";
+      } else if (pct < trigger) {
+        band = "danger approach (90 → trigger)";
+        advice = "Closer to app-thread conscription than to a healthy hold. Watch pages evicted by application threads and disk.";
+      } else {
+        band = "at/past eviction_trigger";
+        advice = "Application threads are (or will be) doing eviction — latency, not OOM. Raise IOPS, shrink working set, or enlarge cache.";
+      }
+      bits.push(`<strong>${pct.toFixed(1)}%</strong> occupancy — ${esc(band)}. ${esc(advice)}`);
+    }
+  } else {
+    you.hidden = true;
+  }
+
+  if (dirtyRaw) {
+    const d = Number(dirtyRaw);
+    if (!isFinite(d) || d < 0 || d > 100) {
+      dirtyYou.hidden = true;
+      bits.push("Dirty % needs a number between 0 and 100.");
+    } else {
+      dirtyYou.hidden = false;
+      dirtyYou.style.left = d + "%";
+      let band, advice;
+      if (d < dirtyTarget) {
+        band = "below dirty target";
+        advice = "Write path has spare dirty headroom.";
+      } else if (d < dirtyTrigger) {
+        band = "between dirty target and trigger";
+        advice = "Dirty workers are active. A bulk load can sit here with total occupancy still looking fine.";
+      } else {
+        band = "at/past dirty trigger";
+        advice = "Writers (then readers) stall on dirty eviction I/O — this is the write-path cliff, not the 80/95 total-bytes ladder.";
+      }
+      bits.push(`<strong>${d.toFixed(1)}%</strong> dirty — ${esc(band)}. ${esc(advice)}`);
+    }
+  } else {
+    dirtyYou.hidden = true;
+  }
+
+  $("occ-place").innerHTML = bits.join("<br>");
+}
+
+// -- Cache cliff (inv 006 / inference Phase A) ------------------------------
+
+function bootCacheCliff() {
+  const g = CORPUS.cache_cliff;
+  if (!g || !(g.legs || []).length) {
+    $("cliff-verdict").textContent = "Cache-cliff series missing from this export.";
+    return;
+  }
+  $("cliff-status").textContent = g.status || "provisional";
+  $("cliff-verdict").textContent = g.verdict || "";
+  $("cliff-transfer").textContent =
+    (g.transfer || "") +
+    ` · WT cache ${g.wt_cache_gb} GB · source ${g.source} · ${g.investigation}.`;
+  $("cliff-rows").innerHTML = g.legs.map((leg) => {
+    const r2 = leg.ops_r2 == null ? "—" : String(Math.round(leg.ops_r2));
+    const rel = leg.relative_ops == null ? "—" : leg.relative_ops.toFixed(3);
+    const pages = leg.pages_per_op == null ? "—" : leg.pages_per_op.toFixed(3);
+    return `<tr>
+      <td class="lab">${esc(String(leg.ratio))}×</td>
+      <td style="text-align:right">${Math.round(leg.ops)}</td>
+      <td style="text-align:right">${esc(r2)}</td>
+      <td style="text-align:right">${esc(rel)}</td>
+      <td style="text-align:right">${esc(pages)}</td>
+    </tr>`;
+  }).join("");
+  drawCliffChart(g);
+  $("cliff-open-wt").addEventListener("click", () => {
     setTab("single");
     $("model").value = g.model || "mongodb.wt-cache";
     renderInputs();
@@ -1325,52 +1688,118 @@ function bootOccupancy() {
     if (storage && !storage.value) storage.value = "500GB";
     if (index && !index.value) index.value = "40GB";
     calculate();
-    requestAnimationFrame(() => {
-      const panel = $("notes-panel");
-      if (panel && !panel.hidden) panel.scrollIntoView({ behavior: "smooth", block: "start" });
-    });
   });
 }
 
-function placeOccupancy() {
-  const raw = $("occ-pct").value.trim();
-  const you = $("occ-you");
-  if (!raw) {
-    you.hidden = true;
-    $("occ-place").textContent = "Enter a percentage to see which band you are in.";
+function drawCliffChart(g) {
+  const legs = (g.legs || []).filter((l) => l.relative_ops != null);
+  const svg = $("cliff-chart");
+  if (legs.length < 2) {
+    svg.innerHTML = "";
+    $("cliff-desc").textContent = "";
+    $("cliff-note").textContent = "Need at least two measured legs to draw the shape.";
     return;
   }
-  const pct = Number(raw);
-  if (!isFinite(pct) || pct < 0 || pct > 100) {
-    you.hidden = true;
-    $("occ-place").textContent = "Need a number between 0 and 100.";
-    return;
+  const W = 720, H = 340, L = 64, R = 16, T = 16, B = 46;
+  const iw = W - L - R, ih = H - T - B;
+  const xs = legs.map((l) => l.ratio);
+  const ys = legs.map((l) => l.relative_ops);
+  const ys2 = legs.map((l) => l.relative_ops_r2);
+  const xLo = xs[0], xHi = xs[xs.length - 1];
+  let yMin = Math.min.apply(null, ys.filter((y) => y != null));
+  let yMax = Math.max.apply(null, ys.filter((y) => y != null));
+  ys2.forEach((y) => {
+    if (y != null) { yMin = Math.min(yMin, y); yMax = Math.max(yMax, y); }
+  });
+  yMin = yMin / 1.2;
+  yMax = yMax * 1.15;
+  if (yMin <= 0) yMin = Math.min.apply(null, ys.filter((y) => y > 0)) / 1.2;
+
+  const px = (x) => L + (Math.log(x / xLo) / Math.log(xHi / xLo)) * iw;
+  const py = (y) => T + ih - (Math.log(Math.max(y, yMin) / yMin) / Math.log(yMax / yMin)) * ih;
+  const pathOf = (arr) => {
+    let d = "", first = true;
+    for (let i = 0; i < arr.length; i++) {
+      if (arr[i] == null) continue;
+      d += (first ? "M" : "L") + px(xs[i]).toFixed(1) + " " + py(arr[i]).toFixed(1);
+      first = false;
+    }
+    return d;
+  };
+
+  const xTicks = ticks(xLo, xHi, true, 6);
+  const yTicks = ticks(yMin, yMax, true, 5);
+  const parts = [];
+  parts.push(`<g class="axis">`);
+  for (const t of yTicks) {
+    const y = py(t).toFixed(1);
+    parts.push(`<line x1="${L}" x2="${W - R}" y1="${y}" y2="${y}"></line>`);
+    parts.push(`<text x="${L - 6}" y="${y}" text-anchor="end" dominant-baseline="middle">${esc(t.toFixed(t >= 1 ? 1 : 2))}</text>`);
   }
-  you.hidden = false;
-  you.style.left = pct + "%";
-  const g = CORPUS.occupancy_band || {};
-  const L = g.ladder || {};
-  const target = (L.eviction_target && L.eviction_target.value) || 80;
-  const trigger = (L.eviction_trigger && L.eviction_trigger.value) || 95;
-  let band, advice;
-  if (pct < target - 5) {
-    band = "below target";
-    advice = "Cache has spare headroom relative to the default hold — or the working set is not resident yet.";
-  } else if (pct < target + 5) {
-    band = "near eviction_target (healthy hold)";
-    advice = "Background workers are doing their job. Size cache ≈ working_set ÷ 0.8 so you stay here under load.";
-  } else if (pct < 90) {
-    band = "worker band (above target, before 90)";
-    advice = "Workers are active above the hold point. Raising target toward 90 fills the cache fuller but is not a throughput lever.";
-  } else if (pct < trigger) {
-    band = "danger approach (90 → trigger)";
-    advice = "Closer to app-thread conscription than to a healthy hold. Watch pages evicted by application threads and disk.";
-  } else {
-    band = "at/past eviction_trigger";
-    advice = "Application threads are (or will be) doing eviction — latency, not OOM. Raise IOPS, shrink working set, or enlarge cache.";
+  for (const t of xTicks) {
+    const x = px(t).toFixed(1);
+    parts.push(`<line x1="${x}" x2="${x}" y1="${T + ih}" y2="${T + ih + 4}"></line>`);
+    parts.push(`<text x="${x}" y="${T + ih + 16}" text-anchor="middle">${esc(String(t))}×</text>`);
   }
-  $("occ-place").innerHTML =
-    `<strong>${pct.toFixed(1)}%</strong> — ${esc(band)}. ${esc(advice)}`;
+  parts.push(`<text x="${L + iw / 2}" y="${H - 6}" text-anchor="middle">oversubscription (dataSize ÷ maxCache)</text>`);
+  parts.push(`</g>`);
+
+  const steep = g.steepest_segment || [0.8, 1.0];
+  if (steep[0] >= xLo && steep[1] <= xHi) {
+    const x0 = px(steep[0]), x1 = px(steep[1]);
+    parts.push(`<rect class="steep-band" x="${x0.toFixed(1)}" y="${T}" width="${(x1 - x0).toFixed(1)}" height="${ih}"></rect>`);
+  }
+  if (1 >= xLo && 1 <= xHi) {
+    const x = px(1).toFixed(1);
+    parts.push(`<line class="one-x" x1="${x}" x2="${x}" y1="${T}" y2="${T + ih}"></line>`);
+    parts.push(`<text class="have-label" x="${x}" y="${T + 12}" text-anchor="start"> 1.0×</text>`);
+  }
+
+  parts.push(`<path class="cliff-line" d="${pathOf(ys)}"></path>`);
+  if (ys2.some((y) => y != null)) {
+    parts.push(`<path class="cliff-line r2" d="${pathOf(ys2)}"></path>`);
+  }
+  for (let i = 0; i < legs.length; i++) {
+    parts.push(`<circle class="cliff-dot" r="3.5" cx="${px(xs[i]).toFixed(1)}" cy="${py(ys[i]).toFixed(1)}"></circle>`);
+    if (ys2[i] != null) {
+      parts.push(`<circle class="cliff-dot r2" r="3" cx="${px(xs[i]).toFixed(1)}" cy="${py(ys2[i]).toFixed(1)}"></circle>`);
+    }
+  }
+  parts.push(`<circle class="cursor-dot" id="cliff-dot" r="4" cx="-20" cy="-20"></circle>`);
+  parts.push(`<rect x="${L}" y="${T}" width="${iw}" height="${ih}" fill="transparent" id="cliff-hit"></rect>`);
+  svg.innerHTML = parts.join("");
+
+  const nearest = (clientX) => {
+    const box = svg.getBoundingClientRect();
+    const vx = ((clientX - box.left) / box.width) * W;
+    let best = 0, bestD = Infinity;
+    for (let i = 0; i < xs.length; i++) {
+      const d = Math.abs(px(xs[i]) - vx);
+      if (d < bestD) { bestD = d; best = i; }
+    }
+    return best;
+  };
+  const show = (i) => {
+    const leg = legs[i];
+    const dot = svg.querySelector("#cliff-dot");
+    dot.setAttribute("cx", px(xs[i]).toFixed(1));
+    dot.setAttribute("cy", py(ys[i]).toFixed(1));
+    const r2 = leg.relative_ops_r2 == null ? "" :
+      ` <span class="dim">· r2 ${leg.relative_ops_r2.toFixed(3)}</span>`;
+    const pages = leg.pages_per_op == null ? "" :
+      ` <span class="dim">· ${leg.pages_per_op.toFixed(3)} pages/op</span>`;
+    $("cliff-desc").innerHTML =
+      `${esc(String(leg.ratio))}× <span class="dim">→</span> relative ops ${leg.relative_ops.toFixed(3)}` +
+      ` <span class="dim">(${Math.round(leg.ops)} ops/s absolute)</span>${r2}${pages}`;
+  };
+  svg.querySelector("#cliff-hit").addEventListener("pointermove", (e) => show(nearest(e.clientX)));
+  show(Math.max(0, xs.findIndex((x) => x >= 1)));
+
+  $("cliff-note").textContent =
+    `Shaded band = steepest adjacent segment (${steep[0]}→${steep[1]}×). ` +
+    `Solid = A1-r1; dashed = A1-r2 where measured. Absolute ops/s are throttle artifacts.`;
+  svg.setAttribute("aria-label",
+    `Relative ops per second versus cache oversubscription from ${xLo}× to ${xHi}×.`);
 }
 
 // Round tick values so the axis reads in figures a person would say out loud
