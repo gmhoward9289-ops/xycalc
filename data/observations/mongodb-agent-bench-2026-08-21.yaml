@@ -1,0 +1,83 @@
+observations:
+  - slug: mongodb-agent-bench-2026-08-21-datasize
+    system: mongodb
+    parameter: storage.collection_bytes_uncompressed
+    value: 299100000
+    unit: bytes
+    workload: generated events collection (tools/bench/mongodb_load.js), full scan
+    machine_class: Docker mongo:7.0.39, cloud-agent sandbox (16 GB host)
+    system_version: '7.0.39'
+    observed_on: '2026-08-21'
+    source: obs-mongodb-agent-bench-2026-08-21
+    notes: db.stats().dataSize on xycalcbench (events only)
+
+  - slug: mongodb-agent-bench-2026-08-21-storagesize
+    system: mongodb
+    parameter: storage.collection_bytes_on_disk
+    value: 150441984
+    unit: bytes
+    workload: generated events collection (tools/bench/mongodb_load.js), full scan
+    machine_class: Docker mongo:7.0.39, cloud-agent sandbox (16 GB host)
+    system_version: '7.0.39'
+    observed_on: '2026-08-21'
+    source: obs-mongodb-agent-bench-2026-08-21
+    notes: db.stats().storageSize (compressed, snappy)
+
+  - slug: mongodb-agent-bench-2026-08-21-indexsize
+    system: mongodb
+    parameter: storage.index_bytes_on_disk
+    value: 54341632
+    unit: bytes
+    workload: generated events collection (tools/bench/mongodb_load.js), four indexes
+    machine_class: Docker mongo:7.0.39, cloud-agent sandbox (16 GB host)
+    system_version: '7.0.39'
+    observed_on: '2026-08-21'
+    source: obs-mongodb-agent-bench-2026-08-21
+    notes: db.stats().indexSize (account_id, created_at, status+region, idempotency_key)
+
+  - slug: mongodb-agent-bench-2026-08-21-resident
+    system: mongodb
+    parameter: cache.size_bytes
+    value: 371039225
+    unit: bytes
+    workload: generated events collection, resident after full scan (cache 4.7% full)
+    machine_class: Docker mongo:7.0.39, cloud-agent sandbox (16 GB host)
+    system_version: '7.0.39'
+    observed_on: '2026-08-21'
+    source: obs-mongodb-agent-bench-2026-08-21
+    notes: >-
+      serverStatus().wiredTiger.cache['bytes currently in the cache']. The cache
+      was 4.7% full, so this measures the collection's resident footprint, not
+      the cache ceiling — the like-for-like quantity wt-cache's decompression +
+      index terms predict.
+
+  - slug: mongodb-agent-bench-2026-08-21-compression-ratio
+    system: mongodb
+    parameter: storage.compression_ratio
+    value: 1.988
+    unit: ratio
+    workload: generated events collection (synthetic, not real documents)
+    machine_class: Docker mongo:7.0.39, cloud-agent sandbox (16 GB host)
+    system_version: '7.0.39'
+    observed_on: '2026-08-21'
+    source: obs-mongodb-agent-bench-2026-08-21
+    notes: >-
+      dataSize / storageSize = 299,100,000 / 150,441,984. SYNTHETIC generator
+      data, not real documents — belongs beside the other synthetic points, not
+      the real sample-collection ratios. The generator deliberately avoids
+      lorem-ipsum repetition, which is why it lands near 2.0 rather than the 10x+
+      a repetitive corpus would show.
+
+  - slug: mongodb-agent-bench-2026-08-21-ram
+    system: mongodb
+    parameter: host.ram_bytes
+    value: 16791896064
+    unit: bytes
+    workload: host RAM mongod sees (db.hostInfo().system.memSizeMB x 1024^2)
+    machine_class: Docker mongo:7.0.39, cloud-agent sandbox (16 GB host)
+    system_version: '7.0.39'
+    observed_on: '2026-08-21'
+    source: obs-mongodb-agent-bench-2026-08-21
+    notes: >-
+      16,014 MB reported by db.hostInfo(). The default-configured WiredTiger
+      cache on this host was 7,859,077,120 bytes = 0.5 x (RAM - 1 GB) exactly.

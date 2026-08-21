@@ -1,0 +1,34 @@
+validation:
+  - model: mongodb.wt-cache
+    case: mongodb-agent-bench-2026-08-21
+    observation: mongodb-agent-bench-2026-08-21-resident
+    inputs:
+      storage_size: 150441984
+      index_size: 54341632
+    at_term: indexes
+    actual: 371039225
+    notes: >-
+      Second independent generated-events case for mongodb.wt-cache (after
+      obs-mongodb-swamplink-bench-2026-07-31). Predicted in-cache bytes
+      (decompressed collection + indexes) against bytes actually resident after a
+      full scan, cache 4.7% full so it holds the whole collection. Compares the
+      right quantity via at_term=indexes (contents, not the configured cache
+      size). Measured snappy ratio here was ~1.99, near the low end of the model's
+      1.5-2.5-3.5 band, so the mode over-predicts and the resident bytes land in
+      the lower half of the band.
+
+  - model: mongodb.host-ram
+    case: mongodb-agent-bench-2026-08-21-hostram
+    observation: mongodb-agent-bench-2026-08-21-ram
+    inputs:
+      cache_size: 7859077120
+    at_term: os_reserve
+    actual: 16791896064
+    notes: >-
+      Second host for mongodb.host-ram (after reef-mongo-bench-2026-08-19-hostram).
+      cache_size is the default-split value mongod configured on an unmodified
+      instance; actual is the RAM it computed that split from. Like the reef case,
+      this is a self-consistent round-trip (the model inverts the exact formula
+      MongoDB used), confirming the coefficients are implemented correctly against
+      a live host at a different RAM size — not an independent test of MongoDB's
+      behaviour.
