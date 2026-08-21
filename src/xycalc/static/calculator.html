@@ -523,7 +523,7 @@ body.mode-advanced #simple-view { display: none !important; }
     <div class="field">
       <label for="simple-vulns">Vulnerability records <span class="help" style="display:inline">optional</span></label>
       <input id="simple-vulns" placeholder="e.g. 250000" autocomplete="off">
-      <div class="help">Leave blank to use the corpus default count.</div>
+      <div class="help">Optional. Size for this many records, scaled from today's bytes at the 250,000 corpus baseline. Leave blank to size today's footprint only.</div>
     </div>
     <p class="recalc-live" id="simple-status">Enter a database size — sizing updates as you type.</p>
     <p id="simple-error" class="error" hidden></p>
@@ -541,6 +541,7 @@ body.mode-advanced #simple-view { display: none !important; }
       </div>
       <div class="bandends" id="simple-bandends" hidden></div>
       <div class="simple-picks" id="simple-picks"></div>
+      <div class="band" id="simple-vuln-note" hidden></div>
       <div class="validation" id="simple-validation" hidden></div>
       <div id="simple-honesty-slot"></div>
     </div>
