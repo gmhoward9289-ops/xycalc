@@ -24,9 +24,13 @@ corpus or deploy identity changes.
 ## Single source of truth
 
 - **Canonical version:** `pyproject.toml` → `[project].version`
-- **`xycalc.__version__`** and FastAPI `version=` read that via `importlib.metadata`
-  (editable-install fallback reads `pyproject.toml`)
-- **Export blob** sets `xycalc_version` from `__version__` and `xycalc_git` from
+- **`xycalc.__version__`** and FastAPI `version=` read that via `package_version()`
+- **Source / editable checkout:** read `[project].version` from the pyproject
+  sitting next to the code. Installed dist-info is a copy from the last
+  `pip install` and is **not** preferred — it was how an export of 0.4.0
+  code could still stamp `xycalc_version` `0.1.1`.
+- **Wheel with no checkout pyproject:** fall back to `importlib.metadata`
+- **Export blob** sets `xycalc_version` from `package_version()` and `xycalc_git` from
   `GITHUB_SHA` (CI) or `git rev-parse HEAD`, else `"unknown"`
 
 ## Bump ladder (strict)

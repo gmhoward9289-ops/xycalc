@@ -63,9 +63,28 @@ coefficients:
       (default 20%) operate in a similar way to the overall targets, but only
       apply to dirty data in cache.
     notes: >-
-      The ceiling a bulk load hits first. A cache sized correctly for total
-      bytes still throttles here if the writes outrun checkpointing, which is
-      why a sizing answer alone never settles a write-heavy incident.
+      The ceiling a bulk load hits first — in the documented mechanism. A
+      cache sized correctly for total bytes still throttles here if the
+      writes outrun checkpointing. Investigation 014 (T3) on MongoDB 7.0.40
+      under a Docker cgroup write throttle did not observe dirty% approaching
+      20% or pages-evicted-by-application-threads rising: peak dirty stayed
+      ~2.5–4% (near dirty_target) while inserts self-limited to device rate
+      or background eviction kept dirty low. Documented 20% unchanged;
+      measured onset absent under this harness (see FINDINGS).
+
+  - slug: mongodb.checkpoint-interval-seconds
+    parameter: storage.checkpoint_interval_seconds
+    system: mongodb
+    applies_to: MongoDB 7.0 (WiredTiger checkpoints as configured by mongod)
+    value: 60
+    confidence: documented
+    source: mongodb-manual-wiredtiger-v7.0-checkpoints
+    quote: >-
+      MongoDB configures WiredTiger to create checkpoints, specifically,
+      writing the snapshot data to disk at intervals of 60 seconds.
+    notes: >-
+      storage.syncPeriodSecs / --syncdelay default. Load-bearing for T3
+      duration (≥3× interval per level) and for T4 checkpoint-sawtooth work.
 
   # -- the default split -------------------------------------------------
   - slug: mongodb.cache-default-share-pct

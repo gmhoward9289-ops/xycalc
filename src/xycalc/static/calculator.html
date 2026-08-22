@@ -290,7 +290,6 @@ svg.nvd-chart { width: 100%; height: auto; display: block; }
 .form-heading { font-size: .72rem; letter-spacing: .04em; color: var(--muted); margin: 0 0 .65rem; font-weight: 700; }
 @media (max-width: 42rem) {
   .input-grid, .nvd-layout { grid-template-columns: 1fr; }
-  #occ-mark-ninety { display: none; }
   .ladder .mark { font-size: .62rem; }
 }
 
@@ -350,12 +349,30 @@ svg.nvd-chart { width: 100%; height: auto; display: block; }
 .ladder .mark.edge-end { transform: translateX(-100%); }
 .ladder .mark.edge-end.below::after { left: auto; right: 0; margin: 0; }
 
-/* Occupancy-tab tick labels only. Desktop: "90" and "trigger 95" both sat
-   below the bar and overlapped. Keep this block out of Simple/Advanced chrome
-   so it can merge with size-path footnote work. */
+/* Occupancy-tab tick labels only. Desktop (~1024px) already reads: 90 below
+   the bar, trigger 95 above. Keep that. Extra vertical room is for the
+   narrow-width trigger lift in the 42rem query (#132). */
 #tab-occupancy .ladder {
   margin-top: 1.75rem;
   margin-bottom: 2.15rem;
+}
+
+/* After .ladder .mark { top: -1.1rem } so this wins on source order too.
+   Live 375px: target 80 (x 233–294) and trigger 95 (x 238–305) share a row. */
+@media (max-width: 42rem) {
+  #tab-occupancy #occ-ladder {
+    margin-top: 3.8rem;
+  }
+  #tab-occupancy #occ-mark-target,
+  #tab-occupancy #occ-mark-trigger {
+    line-height: 1;
+  }
+  #tab-occupancy #occ-ladder #occ-mark-trigger {
+    top: -3.6rem;
+  }
+  #tab-occupancy #occ-ladder #occ-mark-trigger::after {
+    height: 4.9rem;
+  }
 }
 
 .ladder .you {

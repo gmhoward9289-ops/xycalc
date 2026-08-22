@@ -121,6 +121,21 @@ def format_quantity(n: float, unit: str) -> str:
     return f"{n:,.2f} {unit}"
 
 
+def _sensitivity_sentence(terms: list[TermSensitivity]) -> str:
+    """Human ranking: 'the band is 80% decompression into cache, 20% …'."""
+    if not terms:
+        return "no coefficient band contributes to the answer's spread"
+    parts = []
+    for t in terms:
+        pct = int(round(t.share * 100))
+        if pct <= 0:
+            continue
+        parts.append(f"{pct}% {t.label.lower()}")
+    if not parts:
+        return "no coefficient band contributes to the answer's spread"
+    return "the band is " + ", ".join(parts)
+
+
 def format_bytes(n: float) -> str:
     """One decimal, rounding half away from zero.
 
@@ -189,6 +204,39 @@ class Result:
     steps: list[Step] = field(default_factory=list)
     constraints: list[Term] = field(default_factory=list)
     inputs: dict = field(default_factory=dict)
+
+
+@dataclass
+class TermSensitivity:
+    """One coefficient's contribution to the answer's spread.
+
+    `answer_at_coeff_lo` / `answer_at_coeff_hi` are the point answers produced
+    by pinning this coefficient to its cited lo or hi (as a point band) while
+    every other coefficient sits at mode. For `divide_by_fraction` the lo
+    coefficient is the *high* answer — that inversion lives in `evaluate`, not
+    here. `span` is the absolute difference of those two answers.
+    """
+
+    key: str
+    label: str
+    span: float
+    share: float
+    answer_at_coeff_lo: float
+    answer_at_coeff_hi: float
+    coeff_lo: float
+    coeff_hi: float
+
+
+@dataclass
+class Sensitivity:
+    """Ranked one-at-a-time coefficient sweep. Inputs stay fixed."""
+
+    terms: list[TermSensitivity]
+    total_span: float
+    unit: str
+    sentence: str
+    measure_next_key: str | None
+    measure_next_label: str | None
 
 
 @dataclass
@@ -293,8 +341,19 @@ class Model:
 
     # -- evaluation -------------------------------------------------------
 
-    def evaluate(self, values: dict) -> Result:
-        """Run the model. `values` maps input keys to sizes or numbers."""
+    def evaluate(
+        self,
+        values: dict,
+        *,
+        coeff_bands: dict[str, tuple[float, float, float]] | None = None,
+    ) -> Result:
+        """Run the model. `values` maps input keys to sizes or numbers.
+
+        `coeff_bands` optionally replaces a term's cited (lo, mode, hi) for
+        that run. Sensitivity analysis pins every other coefficient at mode
+        and walks one term across its band through this argument — the apply
+        arithmetic, including fraction inversion, stays on this path.
+        """
         supplied = self._coerce_inputs(values)
         declared_units = {i["key"]: i["unit"] for i in self.inputs}
         lo = mode = hi = 0.0
@@ -422,6 +481,8 @@ class Model:
                 continue
 
             clo, cmode, chi = term.coeff_lo, term.coeff_mode, term.coeff_hi
+            if coeff_bands and term.key in coeff_bands:
+                clo, cmode, chi = coeff_bands[term.key]
 
             if term.apply == "multiply":
                 lo, mode, hi = lo * clo, mode * cmode, hi * chi
@@ -521,6 +582,85 @@ class Model:
             constraints=constraints,
             inputs=supplied,
         )
+
+    def sensitivity(self, values: dict) -> Sensitivity:
+        """Rank coefficients by how much each one moves the answer.
+
+        Inputs stay fixed. Each coefficient with a real lo..hi band is walked
+        from lo to hi as a point value while every other coefficient sits at
+        its mode. The rank is the absolute span of the resulting answers —
+        the same `evaluate` path the sizing answer uses, so fraction terms
+        invert rather than having that arithmetic re-derived here.
+        """
+        ranked: list[TermSensitivity] = []
+        for term in self.terms:
+            if not self._sensitivity_candidate(term, values):
+                continue
+            pins = self._point_bands_at_mode(except_key=term.key)
+            r_lo = self.evaluate(
+                values,
+                coeff_bands={**pins, term.key: (term.coeff_lo, term.coeff_lo, term.coeff_lo)},
+            )
+            r_hi = self.evaluate(
+                values,
+                coeff_bands={**pins, term.key: (term.coeff_hi, term.coeff_hi, term.coeff_hi)},
+            )
+            ranked.append(
+                TermSensitivity(
+                    key=term.key,
+                    label=term.label,
+                    span=abs(r_hi.mode - r_lo.mode),
+                    share=0.0,
+                    answer_at_coeff_lo=r_lo.mode,
+                    answer_at_coeff_hi=r_hi.mode,
+                    coeff_lo=term.coeff_lo,
+                    coeff_hi=term.coeff_hi,
+                )
+            )
+
+        ranked.sort(key=lambda t: (-t.span, t.key))
+        total = sum(t.span for t in ranked)
+        if total:
+            for t in ranked:
+                t.share = t.span / total
+
+        contributing = [t for t in ranked if t.span > 0]
+        sentence = _sensitivity_sentence(contributing)
+        top = contributing[0] if contributing else None
+        return Sensitivity(
+            terms=ranked,
+            total_span=total,
+            unit=self.output_unit,
+            sentence=sentence,
+            measure_next_key=top.key if top else None,
+            measure_next_label=top.label if top else None,
+        )
+
+    def _sensitivity_candidate(self, term: Term, values: dict) -> bool:
+        if term.coefficient is None or term.role == "constraint":
+            return False
+        if term.coeff_lo is None or term.coeff_hi is None:
+            return False
+        if term.coeff_lo == term.coeff_hi:
+            return False
+        supplied = self._coerce_inputs(values)
+        if self._term_skip_reason(term, supplied):
+            return False
+        return True
+
+    def _point_bands_at_mode(
+        self, *, except_key: str | None = None
+    ) -> dict[str, tuple[float, float, float]]:
+        pins: dict[str, tuple[float, float, float]] = {}
+        for term in self.terms:
+            if term.coefficient is None or term.role == "constraint":
+                continue
+            if term.coeff_mode is None:
+                continue
+            if term.key == except_key:
+                continue
+            pins[term.key] = (term.coeff_mode, term.coeff_mode, term.coeff_mode)
+        return pins
 
     def _coerce_inputs(self, values: dict) -> dict:
         declared = {i["key"]: i for i in self.inputs}

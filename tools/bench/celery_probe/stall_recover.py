@@ -54,9 +54,56 @@ RECOVERY_STABLE_SAMPLES = int(os.environ.get("PROBE_RECOVERY_STABLE_SAMPLES", "6
 mongo = MongoClient(MONGO_URL, serverSelectionTimeoutMS=60000)
 r = redis.Redis.from_url(REDIS_URL)
 
+# When mongo is docker-paused, serverStatus hangs until CSOT cancels. Sample
+# queue/redis counters only during that window; resume tickets after unpause.
+_SKIP_TICKETS = False
+
+
+def _safe_tickets() -> dict:
+    if _SKIP_TICKETS:
+        return {
+            "readTotal": None,
+            "readOut": None,
+            "queuedMicros": None,
+            "pagesRead": None,
+            "ticketsSkipped": True,
+        }
+    try:
+        return tickets()
+    except Exception as exc:  # noqa: BLE001 — stall window must keep enqueueing
+        return {
+            "readTotal": None,
+            "readOut": None,
+            "queuedMicros": None,
+            "pagesRead": None,
+            "ticketsError": type(exc).__name__,
+        }
+
 
 def _docker(*args: str) -> str:
-    return subprocess.check_output(["docker", *args], text=True).strip()
+    try:
+        return subprocess.check_output(["docker", *args], text=True).strip()
+    except FileNotFoundError:
+        # Docker Desktop slim images often mount the socket but ship no CLI.
+        import docker as docker_sdk
+
+        client = docker_sdk.from_env()
+        if not args:
+            raise
+        cmd, *rest = args
+        if cmd == "ps" and "--format" in rest:
+            return "\n".join(c.name for c in client.containers.list())
+        if cmd == "inspect" and "-f" in rest and rest:
+            # Used for Pid: docker inspect -f '{{.State.Pid}}' cid
+            cid = rest[-1]
+            return str(client.containers.get(cid).attrs["State"]["Pid"])
+        if cmd == "pause" and rest:
+            client.containers.get(rest[0]).pause()
+            return ""
+        if cmd == "unpause" and rest:
+            client.containers.get(rest[0]).unpause()
+            return ""
+        raise SystemExit(f"REFUSING: docker CLI missing and SDK cannot run: {args}")
 
 
 def resolve_mongo_container() -> str:
@@ -173,7 +220,7 @@ def _enqueue_window(seconds: float, rate: int) -> tuple[list[dict], int]:
                 {
                     "t": round(now - t0, 1),
                     "queue": r.llen(QUEUE),
-                    **tickets(),
+                    **_safe_tickets(),
                     **c,
                 }
             )
@@ -219,7 +266,7 @@ def wait_recovery(baseline_tps: float, baseline_q: float) -> dict:
         c = counters()
         q = r.llen(QUEUE)
         # Instantaneous throughput: short window via consecutive samples.
-        series.append({"t": round(time.time() - t0, 1), "queue": q, **c, **tickets()})
+        series.append({"t": round(time.time() - t0, 1), "queue": q, **c, **_safe_tickets()})
         if len(series) >= 2:
             a, b = series[-2], series[-1]
             dt = max(b["t"] - a["t"], 0.1)
@@ -258,10 +305,13 @@ def run_once() -> dict:
 
     print(f"stall tighten ({STALL_MODE}) {STALL_S}s", file=sys.stderr)
     how = tighten(cid)
+    global _SKIP_TICKETS
+    _SKIP_TICKETS = how.get("mode") == "pause"
     try:
         stall_samples, stall_enq = _enqueue_window(STALL_S, RATE)
         stall = _phase_stats(stall_samples, stall_enq, "stall")
     finally:
+        _SKIP_TICKETS = False
         print("recovery loosen", file=sys.stderr)
         loosen(cid, how)
 
@@ -271,7 +321,7 @@ def run_once() -> dict:
     )
 
     guards: list[str] = []
-    if stall.get("retriesDelta", 0) < MIN_STALL_RETRIES:
+    if policy != "none" and stall.get("retriesDelta", 0) < MIN_STALL_RETRIES:
         guards.append(
             f"stall retries {stall.get('retriesDelta')} < min {MIN_STALL_RETRIES}"
         )
@@ -282,8 +332,8 @@ def run_once() -> dict:
             f"duplicates {stall.get('duplicatesDelta')} not negligible vs retries "
             f"{stall.get('retriesDelta')} — redelivery confound"
         )
-    pages = tickets()  # noqa: just ensure mongo still up
-    _ = pages
+    # Confirm mongo answers again after unpause (pause mode skips tickets in stall).
+    _ = tickets()
 
     ok = not guards
     if not ok:

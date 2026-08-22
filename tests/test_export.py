@@ -27,11 +27,14 @@ import pytest
 from xycalc.export import (
     APP_JS,
     EVALUATE_JS,
-    ExportError,
     TEMPLATE,
+    ExportError,
     corpus_blob,
+    export,
     golden_vectors,
+    provenance_line,
     render,
+    render_stamp_html,
 )
 from xycalc.model import Model
 
@@ -432,11 +435,26 @@ def test_render_always_emits_lf(blob):
 
 def test_blob_carries_xycalc_version_and_git(monkeypatch, conn):
     monkeypatch.setenv("GITHUB_SHA", "deadbeefcafebabe")
-    from xycalc import __version__
+    from xycalc.version import package_version, pyproject_version
 
+    package_version.cache_clear()
     b = corpus_blob(conn)
-    assert b["xycalc_version"] == __version__
+    assert b["xycalc_version"] == pyproject_version()
+    assert b["xycalc_version"] == package_version()
     assert b["xycalc_git"] == "deadbee"
+
+
+def test_blob_version_ignores_stale_install_metadata(monkeypatch, conn):
+    monkeypatch.setattr(
+        "xycalc.version.installed_version", lambda name: "0.1.1"
+    )
+    from xycalc.version import package_version, pyproject_version
+
+    package_version.cache_clear()
+    b = corpus_blob(conn)
+    assert b["xycalc_version"] != "0.1.1"
+    assert b["xycalc_version"] == pyproject_version()
+    package_version.cache_clear()
 
 
 def test_rendered_page_embeds_git_identity(monkeypatch, conn):
@@ -446,10 +464,11 @@ def test_rendered_page_embeds_git_identity(monkeypatch, conn):
     html = render(b)
     assert b["xycalc_git"] == "feedfac"
     compact = html.replace(" ", "")
-    from xycalc import __version__
+    from xycalc.version import package_version, pyproject_version
 
+    package_version.cache_clear()
     assert '"xycalc_git":"feedfac"' in compact
-    assert f'"xycalc_version":"{__version__}"' in compact
+    assert f'"xycalc_version":"{pyproject_version()}"' in compact
 
 
 def test_calculator_template_prints_git_in_provenance():
@@ -490,6 +509,20 @@ def test_app_js_helpers():
     )
     assert proc.returncode == 0, proc.stdout + proc.stderr
     assert "app helpers ok" in proc.stdout
+
+
+@pytest.mark.skipif(NODE is None, reason="node is not installed")
+def test_occupancy_ladder_labels_do_not_collide():
+    """#132: at 375px, target 80 and trigger 95 must not share a row; 90 stays painted."""
+    script = Path(__file__).resolve().parent / "check_occupancy_ladder.js"
+    proc = subprocess.run(
+        [NODE, str(script), str(APP_JS.resolve()), str(TEMPLATE.resolve())],
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+    )
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    assert "occupancy ladder labels ok" in proc.stdout
 
 
 @pytest.mark.skipif(NODE is None, reason="node is not installed")
@@ -549,4 +582,114 @@ def test_static_javascript_lints():
             stripped = line.lstrip()
             assert not stripped.startswith("var "), f"{path.name}:{i} uses var"
             assert "\t" not in line, f"{path.name}:{i} contains a tab"
+
+
+def test_stamp_html_matches_footer_fields(blob):
+    line = provenance_line(blob)
+    html = render_stamp_html(blob)
+    assert line in html
+    assert f'data-corpus-digest="{blob["corpus_digest"]}"' in html
+    assert f'data-xycalc-version="{blob["xycalc_version"]}"' in html
+    assert f'data-xycalc-git="{blob["xycalc_git"]}"' in html
+    assert f'data-models="{len(blob["models"])}"' in html
+    assert "\r" not in html
+
+
+def test_export_writes_stamp_without_inventing_a_hero(db_path, tmp_path, monkeypatch):
+    monkeypatch.setenv("GITHUB_SHA", "abcdef0123456789")
+    from xycalc.db import connect
+    from xycalc.version import package_version
+
+    package_version.cache_clear()
+    html_path = tmp_path / "calculator.html"
+    written = export(html_path, db=db_path)
+    assert written == html_path
+    conn = connect(db_path)
+    blob = corpus_blob(conn)
+    conn.close()
+    html = html_path.read_text(encoding="utf-8")
+    assert html == render(blob)
+    stamp = (tmp_path / "stamp.html").read_text(encoding="utf-8")
+    assert provenance_line(blob) in stamp
+    assert blob["xycalc_version"] in html
+    assert blob["xycalc_version"] in stamp
+    assert blob["corpus_digest"] in stamp
+    assert blob["xycalc_git"] in stamp
+    still = Path(__file__).resolve().parents[1] / "src" / "xycalc" / "static" / "landing-still.png"
+    og = tmp_path / "og.png"
+    if still.is_file():
+        assert og.read_bytes() == still.read_bytes()
+        assert og.read_bytes().startswith(b"\x89PNG\r\n\x1a\n")
+    else:
+        assert not og.exists()
+    assert not (tmp_path / "chart.svg").exists()
+
+
+def test_export_copies_approved_still_when_present(db_path, tmp_path, monkeypatch):
+    monkeypatch.setenv("GITHUB_SHA", "abcdef0123456789")
+    from xycalc.version import package_version
+    from xycalc.pngutil import write_rgb_png
+    import xycalc.export as export_mod
+
+    package_version.cache_clear()
+    still = tmp_path / "landing-still.png"
+    write_rgb_png(still, 2, 2, bytes([10, 20, 30] * 4))
+    monkeypatch.setattr(export_mod, "LANDING_STILL", still)
+    out = tmp_path / "out"
+    out.mkdir()
+    export(out / "calculator.html", db=db_path)
+    og = out / "og.png"
+    assert og.read_bytes() == still.read_bytes()
+    assert not (out / "chart.svg").exists()
+    html = (out / "calculator.html").read_text(encoding="utf-8")
+    from xycalc.db import connect
+
+    conn = connect(db_path)
+    blob = corpus_blob(conn)
+    conn.close()
+    assert html == render(blob)
+
+
+def test_export_skips_og_when_still_missing(db_path, tmp_path, monkeypatch):
+    monkeypatch.setenv("GITHUB_SHA", "abcdef0123456789")
+    import xycalc.export as export_mod
+    from xycalc.db import connect
+    from xycalc.version import package_version
+
+    package_version.cache_clear()
+    monkeypatch.setattr(export_mod, "LANDING_STILL", tmp_path / "no-such-still.png")
+    export(tmp_path / "calculator.html", db=db_path)
+    conn = connect(db_path)
+    blob = corpus_blob(conn)
+    conn.close()
+    assert (tmp_path / "calculator.html").read_text(encoding="utf-8") == render(blob)
+    assert not (tmp_path / "og.png").exists()
+    assert provenance_line(blob) in (tmp_path / "stamp.html").read_text(encoding="utf-8")
+
+
+def test_deploy_workflow_copies_landing_sidecars():
+    text = (
+        Path(__file__).resolve().parents[1]
+        / ".github"
+        / "workflows"
+        / "deploy-calculator.yml"
+    ).read_text(encoding="utf-8")
+    assert "cp /tmp/og.png tools/xycalc/og.png" in text
+    assert "cp /tmp/stamp.html tools/xycalc/stamp.html" in text
+    assert "git add tools/xycalc/og.png" in text
+    assert "git add tools/xycalc/stamp.html" in text
+    assert "chart.svg" not in text
+
+
+def test_docs_name_the_shipped_permalink_shape():
+    docs = (
+        Path(__file__).resolve().parents[1] / "docs" / "CALCULATOR.md"
+    ).read_text(encoding="utf-8")
+    assert "#tab=single&model=<slug>" in docs
+    assert "#tab=scenario&scenario=<slug>" in docs
+    assert "landing-still.png" in docs
+    assert "stamp.html" in docs
+    assert "?model=" in docs
+    assert "substitute" in docs
+
 

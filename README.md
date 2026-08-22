@@ -69,13 +69,15 @@ xycalc models                    # what can be answered, and how well
 xycalc scenarios                 # list scenario chains (multi-model sizing flows)
 xycalc scenario <slug> [flags]   # run a declared scenario end-to-end
 xycalc sizing   <model> [flags]  # how much do I need?
+xycalc sizing   <model> [flags] --sensitivity  # which coefficient dominates the band?
 xycalc headroom <model> --available 256GB [flags]   # how much margin is left?
 xycalc why      <model>          # the citation chain behind every term
+xycalc why      <model> [flags] --sensitivity  # citations plus the ranked band
 xycalc ingest   dump.json        # paste db.stats()/serverStatus → model inputs
 xycalc build                     # compile the YAML corpus into SQLite
 xycalc audit                     # the gates
 xycalc gui                       # the calculator, served locally
-xycalc export --out page.html    # the calculator as one static file
+xycalc export --out page.html    # calculator HTML + stamp.html; og.png from landing-still.png
 ```
 
 Flags for `sizing`, `headroom`, and `scenario` are generated from each model's
@@ -154,6 +156,12 @@ them on load and **renders a refusal instead of a number** if any disagree, and
 a reader can open the file and check them by hand. The export itself is
 deterministic — same corpus, byte-identical file — so a diff on the published
 page is always a real change.
+
+Landing-page assets and calculator hash deep-links (for the model table on
+<https://swamplink.com/tools/xycalc/>) are documented in
+[`docs/CALCULATOR.md`](docs/CALCULATOR.md). `xycalc export` writes `stamp.html`
+next to the HTML and copies `static/landing-still.png` to `og.png`. They are
+**not** inlined into calculator.html.
 
 ## How it works
 

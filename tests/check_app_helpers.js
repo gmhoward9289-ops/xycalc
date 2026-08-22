@@ -141,10 +141,10 @@ assert.ok(APP.occupancyMarkClass(5, 1).includes("below"));
 assert.ok(APP.occupancyMarkClass(5, 1).includes("edge-start"));
 assert.ok(APP.occupancyMarkClass(20, 0).split(" ").indexOf("below") < 0);
 assert.ok(APP.occupancyMarkClass(95, 2).includes("edge-end"));
-// Occupancy total-cache ticks: 90 is odd (below), trigger 95 is even (above)
-// so the two labels do not share a row at desktop width.
+// Desktop (#130): 90 below, trigger 95 above — already readable at ~1024px.
 assert.ok(APP.occupancyMarkClass(90, 1).includes("below"));
 assert.ok(APP.occupancyMarkClass(95, 2).split(" ").indexOf("below") < 0);
+assert.ok(APP.occupancyMarkClass(95, 2).split(" ").indexOf("high") < 0);
 
 const xs = [100, 200, 400];
 const ys = [50, 100, 200];
@@ -204,6 +204,27 @@ const href = APP.permalinkHref("#mode=advanced&tab=cache-cliff", {
   search: "",
 });
 assert.strictEqual(href, "/tools/xycalc/calculator/#mode=advanced&tab=cache-cliff");
+
+const modelOnly = APP.parsePermalink("#tab=single&model=mongodb.wt-cache");
+assert.strictEqual(modelOnly.model, "mongodb.wt-cache");
+assert.strictEqual(APP.permalinkView(modelOnly).tab, "single");
+assert.strictEqual(APP.permalinkView(modelOnly).mode, "advanced");
+
+const qModel = APP.parsePermalink("?model=mongodb.wt-cache");
+assert.strictEqual(qModel.model, "mongodb.wt-cache");
+assert.strictEqual(APP.permalinkView(qModel).tab, "single");
+
+const fromQuery = APP.permalinkFromLocation({
+  hash: "",
+  search: "?model=mongodb.wt-cache",
+});
+assert.strictEqual(fromQuery.model, "mongodb.wt-cache");
+const hashWins = APP.permalinkFromLocation({
+  hash: "#tab=scenario&scenario=mongodb.size-to-instance",
+  search: "?model=mongodb.wt-cache",
+});
+assert.strictEqual(hashWins.scenario, "mongodb.size-to-instance");
+assert.strictEqual(hashWins.model, undefined);
 
 // #113: known grade must render GRADE_LABEL + the corpus `text` clause, never
 // "reasonable —" with an empty tail (the Simple-mode field-name miss).

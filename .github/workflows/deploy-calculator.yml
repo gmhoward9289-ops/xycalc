@@ -109,17 +109,38 @@ jobs:
             echo "::error::tools/xycalc/calculator/index.html not found in swamplink-root -- refusing to guess where the export goes"
             exit 1
           fi
+          if [ ! -d tools/xycalc ]; then
+            echo "::error::tools/xycalc/ not found in swamplink-root -- refusing to guess where og.png / stamp.html go"
+            exit 1
+          fi
           cp /tmp/calculator.html tools/xycalc/calculator/index.html
+          git add tools/xycalc/calculator/index.html
+
+          # Landing assets live next to the calculator, not inside it.
+          # tools/xycalc/ already exists; adding og.png / stamp.html is safe.
+          # og.png is Bill's approved still, copied by export when present.
+          if [ -f /tmp/og.png ]; then
+            cp /tmp/og.png tools/xycalc/og.png
+            git add tools/xycalc/og.png
+          else
+            echo "::warning::og.png was not produced; landing card image not updated (drop Bill's still at src/xycalc/static/landing-still.png)"
+          fi
+          if [ -f /tmp/stamp.html ]; then
+            cp /tmp/stamp.html tools/xycalc/stamp.html
+            git add tools/xycalc/stamp.html
+          else
+            echo "::error::stamp.html was not produced — footer stamp must ship with the export"
+            exit 1
+          fi
 
           git config user.name "xycalc deploy"
           git config user.email "dev@swamplink.com"
 
-          if git diff --quiet -- tools/xycalc/calculator/index.html; then
+          if git diff --cached --quiet; then
             echo "export unchanged, nothing to deploy"
             exit 0
           fi
 
-          git add tools/xycalc/calculator/index.html
           git commit -m "chore(xycalc): re-export calculator @ ${GITHUB_SHA}"
           git push origin master
 

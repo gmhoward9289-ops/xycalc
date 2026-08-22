@@ -240,6 +240,14 @@ const XYCALC_APP = (() => {
     return path + search + frag;
   }
 
+  // Hash is the canonical form landing tables should emit. Query-string
+  // `?model=` is accepted on first paint so a table href that used the
+  // issue-82 sketch still preselects a model.
+  function permalinkFromLocation(loc) {
+    const place = loc || {};
+    return parsePermalink(place.hash) || parsePermalink(place.search);
+  }
+
   function validationClause(v) {
     if (!v) return "";
     return v.text || v.summary || v.note || "";
@@ -528,7 +536,7 @@ const XYCALC_APP = (() => {
   }
 
   function parsePermalink(hash) {
-    const raw = String(hash || "").replace(/^#/, "");
+    const raw = String(hash || "").replace(/^[?#]/, "");
     if (!raw) return null;
     const p = new URLSearchParams(raw);
     const out = { inputs: {} };
@@ -799,7 +807,7 @@ const XYCALC_APP = (() => {
       bootFlow();
       bootOccupancy();
       bootCacheCliff();
-      const restored = applyPermalink(parsePermalink(location.hash));
+      const restored = applyPermalink(permalinkFromLocation(location));
       if (!restored) {
         const scenarios = CORPUS.scenarios || [];
         const def = scenarios.find((s) => s.default && !s.disabled) || scenarios.find((s) => !s.disabled);
@@ -2241,6 +2249,7 @@ const XYCALC_APP = (() => {
     publicTab: publicTab,
     permalinkView: permalinkView,
     permalinkHref: permalinkHref,
+    permalinkFromLocation: permalinkFromLocation,
     validationClause: validationClause,
     validationBannerInner: validationBannerInner,
     validationBannerHtml: validationBannerHtml,

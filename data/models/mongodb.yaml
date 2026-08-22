@@ -231,9 +231,11 @@ models:
           Only 20% of the cache may be dirty before application threads are
           throttled (dirty target 5%). Example — a bulk load can hit the dirty
           trigger at ~20% total occupancy while the total-bytes size still
-          looks fine. Sizing from this model does not settle a write-heavy
-          incident; watch tracked dirty bytes and pages evicted by application
-          threads.
+          looks fine. Investigation 014 did not observe that onset under a
+          synthetic write throttle (dirty stayed ~2.5–4%); treat production
+          dirty% telemetry as the check, not this model alone. Sizing from this
+          model does not settle a write-heavy incident; watch tracked dirty
+          bytes and pages evicted by application threads.
 
       - key: vendor_default
         label: What the vendor recommends instead

@@ -8,6 +8,6 @@
 # versions into its JSON output at runtime, so a rebuild that changes these
 # pins is still traceable from the data itself.
 FROM python:3.12-slim
-RUN pip install --no-cache-dir "celery[redis]==5.4.0" "pymongo==4.9.1" "redis==5.0.8"
+RUN pip install --no-cache-dir "celery[redis]==5.4.0" "pymongo==4.9.1" "redis==5.0.8" "docker==7.1.0"
 WORKDIR /app
-COPY tasks.py drive.py evict_probe.py stall_recover.py ./
+COPY tasks.py drive.py evict_probe.py stall_recover.py mongo_tickets.py ./

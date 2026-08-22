@@ -1,0 +1,75 @@
+# Calculator export, landing assets, permalinks
+
+The live calculator is
+<https://swamplink.com/tools/xycalc/calculator/>.
+The product landing page is hand-maintained in **swamplink-root**
+(<https://swamplink.com/tools/xycalc/>). This repo does not edit that tree;
+`xycalc export` emits the files deploy copies in.
+
+## What `xycalc export` writes
+
+```text
+xycalc export --out /tmp/calculator.html
+```
+
+| File | Role |
+| --- | --- |
+| `calculator.html` (the `--out` path) | Self-contained calculator. Byte-deterministic: same corpus + git identity → identical bytes. No timestamps. |
+| `stamp.html` (same directory) | Snippet the landing can include. Model count, `corpus_digest`, `xycalc_version`, `xycalc_git` — the same string the calculator footer prints. |
+| `og.png` (same directory, optional) | Open Graph / product still. **Not generated.** Export copies `src/xycalc/static/landing-still.png` when that file exists (Bill's approved still). If it is missing, export succeeds, writes no `og.png`, and does not invent a substitute hero. |
+
+`deploy-calculator.yml` copies:
+
+- `/tmp/calculator.html` → `tools/xycalc/calculator/index.html`
+- `/tmp/og.png` → `tools/xycalc/og.png` (when the still was present)
+- `/tmp/stamp.html` → `tools/xycalc/stamp.html`
+
+Suggested landing tags (in swamplink-root, not this repo):
+
+```html
+<meta property="og:image" content="https://swamplink.com/tools/xycalc/og.png">
+<meta name="twitter:image" content="https://swamplink.com/tools/xycalc/og.png">
+```
+
+and include `tools/xycalc/stamp.html` wherever the landing should show corpus freshness. Do not generate a new marketing still in this repo.
+
+## Permalink deep-links (already shipped)
+
+The calculator reads `location.hash` as `URLSearchParams`. Landing table
+rows should emit these fragments on `/tools/xycalc/calculator/`. A query
+string (`?model=mongodb.wt-cache`) is accepted on first paint as an alias;
+do not invent a path scheme.
+
+Single model (One question tab):
+
+```text
+#tab=single&model=<slug>
+```
+
+Example:
+
+```text
+https://swamplink.com/tools/xycalc/calculator/#tab=single&model=mongodb.wt-cache
+```
+
+Scenario (How it flows tab):
+
+```text
+#tab=scenario&scenario=<slug>
+```
+
+Example:
+
+```text
+https://swamplink.com/tools/xycalc/calculator/#tab=scenario&scenario=mongodb.size-to-instance
+```
+
+Optional extras the page already understands (same hash, not a new scheme):
+
+| Param | Meaning |
+| --- | --- |
+| `mode` | `simple` or `advanced` (a model/scenario/tab forces advanced) |
+| `available` | “what you already have”, e.g. `256GB` |
+| other keys | model/scenario inputs (`storage_size=500GB`, …) |
+
+Cache-cliff’s public tab slug is `cache-cliff` (`#tab=cache-cliff`), not `cliff`.

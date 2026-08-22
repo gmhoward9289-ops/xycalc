@@ -1,0 +1,56 @@
+observations:
+- slug: reef-t6-understatement-prefetch-1-2026-08-21
+  parameter: queue.depth_understatement_max
+  value: 9
+  unit: tasks
+  workload: >-
+    celery_probe prefetch=1 rate=200/s 25s docs=900000 oversub=2.43×
+    concurrency default (prefork)
+  system: celery
+  machine_class: reef Docker Desktop
+  system_version: '5.4.0'
+  observed_on: '2026-08-21'
+  source: obs-reef-celery-prefetch-2026-08-21
+  notes: >-
+    understatementMean=8.73; queueDepthMax=1915; throughput≈120/s;
+    drainTimedOut=true. Baseline reserved/off-queue gap near worker
+    concurrency.
+- slug: reef-t6-understatement-prefetch-4-2026-08-21
+  parameter: queue.depth_understatement_max
+  value: 62
+  unit: tasks
+  workload: >-
+    celery_probe prefetch=4 rate=200/s 25s docs=900000 oversub=2.43×
+  system: celery
+  machine_class: reef Docker Desktop
+  system_version: '5.4.0'
+  observed_on: '2026-08-21'
+  source: obs-reef-celery-prefetch-2026-08-21
+  notes: >-
+    understatementMean=48.02; queueDepthMax=2398; throughput≈99/s.
+    Queue depth understates outstanding by tens of tasks vs prefetch=1.
+- slug: reef-t6-understatement-prefetch-8-2026-08-21
+  parameter: queue.depth_understatement_max
+  value: 80
+  unit: tasks
+  workload: >-
+    celery_probe prefetch=8 rate=200/s 25s docs=900000 oversub=2.43×
+  system: celery
+  machine_class: reef Docker Desktop
+  system_version: '5.4.0'
+  observed_on: '2026-08-21'
+  source: obs-reef-celery-prefetch-2026-08-21
+  notes: >-
+    understatementMean=72.58; queueDepthMax=2157; throughput≈109/s.
+    Peak understatement scales with prefetch under the same arrival rate.
+- slug: reef-t6-backlog-max-prefetch-4-2026-08-21
+  parameter: queue.backlog_depth_max
+  value: 2398
+  unit: tasks
+  workload: celery_probe prefetch=4 rate=200/s 25s docs=900000
+  system: celery
+  machine_class: reef Docker Desktop
+  system_version: '5.4.0'
+  observed_on: '2026-08-21'
+  source: obs-reef-celery-prefetch-2026-08-21
+  notes: Companion depth peak at the mid prefetch point of the sweep.

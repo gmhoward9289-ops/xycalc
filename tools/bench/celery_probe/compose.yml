@@ -52,10 +52,10 @@ services:
     memswap_limit: 640m
     blkio_config:
       device_read_bps:
-        - path: /dev/sda
+        - path: ${PROBE_DEV:-/dev/sda}
           rate: 8388608
       device_read_iops:
-        - path: /dev/sda
+        - path: ${PROBE_DEV:-/dev/sda}
           rate: 150
 
   worker:

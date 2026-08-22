@@ -2,6 +2,7 @@
 
     xycalc models
     xycalc sizing   mongodb.wt-cache --storage-size 500GB --index-size 40GB
+    xycalc sizing   mongodb.wt-cache --storage-size 500GB --index-size 40GB --sensitivity
     xycalc headroom mongodb.wt-cache --storage-size 500GB --available 256GB
     xycalc scenarios
     xycalc scenario mongodb.size-to-instance --storage-size 500GB --index-size 40GB
@@ -40,6 +41,7 @@ from .model import (
     DEFAULT_INSTANCE_CEILING,
     Model,
     ModelError,
+    Sensitivity,
     build_instance_sizing_summary,
     chain_evaluate,
     format_quantity,
@@ -155,6 +157,29 @@ def _print_notes(model: Model) -> None:
         print()
 
 
+def _print_sensitivity(report: Sensitivity) -> None:
+    print(f"\n{BAR}")
+    print("  SENSITIVITY — one coefficient at a time, others held at mode")
+    print(BAR)
+    print(f"  {report.sentence}")
+    for t in report.terms:
+        if t.span <= 0:
+            continue
+        pct = f"{int(round(t.share * 100))}%"
+        print(
+            f"    {t.label:<34} {pct:>6}   span {_fmt(t.span, report.unit)}"
+        )
+    if report.measure_next_label:
+        print(f"\n  measure next: {report.measure_next_label}")
+        print("    A measured value for this term is what shrinks the band.")
+        print("    `xycalc ingest` turns a db.stats() paste into model inputs.")
+
+
+def _model_values(args, model: Model) -> dict:
+    values = {i["key"]: getattr(args, i["key"], None) for i in model.inputs}
+    return {k: v for k, v in values.items() if v is not None}
+
+
 # ---------------------------------------------------------------------------
 # commands
 # ---------------------------------------------------------------------------
@@ -174,15 +199,17 @@ def cmd_models(args) -> int:
 def cmd_sizing(args) -> int:
     conn = connect(args.db)
     model = _load(conn, args.model)
-    values = {i["key"]: getattr(args, i["key"]) for i in model.inputs}
-    values = {k: v for k, v in values.items() if v is not None}
+    values = _model_values(args, model)
     try:
         result = model.evaluate(values)
+        report = model.sensitivity(values) if args.sensitivity else None
     except ModelError as e:
         print(f"error: {e}", file=sys.stderr)
         return 2
     _print_breakdown(result, model)
     _print_constraints(result)
+    if report is not None:
+        _print_sensitivity(report)
     _print_validation(conn, model.slug)
     _print_reframe(model)
     _print_notes(model)
@@ -515,6 +542,15 @@ def cmd_why(args) -> int:
         else:
             print(f"      value    supplied by the caller ({term.input_key})")
 
+    if args.sensitivity:
+        values = _model_values(args, model)
+        try:
+            _print_sensitivity(model.sensitivity(values))
+        except ModelError as e:
+            print(f"error: {e}", file=sys.stderr)
+            conn.close()
+            return 2
+
     _print_validation(conn, model.slug)
     _print_reframe(model)
     _print_notes(model)
@@ -720,6 +756,15 @@ def build_parser(db: Path | None = None) -> argparse.ArgumentParser:
             sp.add_argument(
                 "--available", required=True, help="what you actually have, e.g. 256GB"
             )
+        if name == "sizing":
+            sp.add_argument(
+                "--sensitivity",
+                action="store_true",
+                help=(
+                    "rank each coefficient's contribution to the answer's band "
+                    "(one term at a time, others held at mode)"
+                ),
+            )
         _add_model_flags(sp, db)
         sp.set_defaults(func=fn)
 
@@ -770,6 +815,15 @@ def build_parser(db: Path | None = None) -> argparse.ArgumentParser:
 
     sp = sub.add_parser("why", help="the citation chain behind every term")
     sp.add_argument("model")
+    sp.add_argument(
+        "--sensitivity",
+        action="store_true",
+        help=(
+            "rank each coefficient's contribution to the answer's band "
+            "(requires the same input flags as sizing)"
+        ),
+    )
+    _add_model_flags(sp, db)
     sp.set_defaults(func=cmd_why)
 
     sub.add_parser("build", help="compile the YAML corpus").set_defaults(func=cmd_build)

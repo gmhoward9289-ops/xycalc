@@ -3,6 +3,45 @@
 All notable changes to the **xycalc tool** (not the corpus) are recorded here.
 Corpus identity is `corpus_digest` on the exported page. See `docs/VERSIONING.md`.
 
+## 0.6.1
+
+- `xycalc export` copies Bill's approved still from
+  `src/xycalc/static/landing-still.png` to `og.png` (no generated substitute).
+  `stamp.html` is the same digest / version / git as the calculator footer.
+  `deploy-calculator.yml` splices both into `tools/xycalc/`.
+- Calculator first paint accepts `?model=` / `?scenario=` as an alias for
+  the hash permalink (`#tab=single&model=…` remains the form landing
+  tables should emit).
+
+## 0.6.0
+
+- `xycalc sizing … --sensitivity` ranks each coefficient by how much it
+  moves the answer when walked across its lo..hi band with every other
+  coefficient held at mode. The same ranking is on `xycalc why … --sensitivity`
+  (same input flags as sizing). The lead sentence names the shares
+  (`the band is 100% decompression into cache`); `measure next` points at
+  the top term — what to measure to shrink the band, pairing with `xycalc ingest`.
+  Fraction terms invert through `evaluate`, not a second arithmetic path.
+
+## 0.5.0
+
+- Occupancy-band total-cache labels: at ≤42rem, lift `trigger 95` off the
+  `target 80` row and keep the 90 tick visible (#132). Desktop layout is
+  unchanged from #130.
+- `xycalc export` writes landing sidecars next to the calculator HTML:
+  `og.png` (1200×630 sweep chart with the band envelope and “what you
+  already have” line) and `stamp.html` (model count, `corpus_digest`,
+  `xycalc_version`, `xycalc_git` — the same string as the calculator
+  footer). Calculator HTML stays byte-deterministic; a skipped chart
+  does not change it. `deploy-calculator.yml` copies both into
+  `tools/xycalc/` in swamplink-root.
+- `xycalc_version` on the export blob follows `pyproject.toml` when the
+  running code is a source/editable checkout, so a stale `pip install`
+  (metadata still 0.1.1) cannot lie in the footer.
+- Permalink shape for landing deep-links is documented in
+  `docs/CALCULATOR.md` (`#tab=single&model=<slug>`,
+  `#tab=scenario&scenario=<slug>`).
+
 ## 0.4.0
 
 - Homepage 500 GB Simple question names cited SKUs (`r8i.96xlarge` lo/mode,
