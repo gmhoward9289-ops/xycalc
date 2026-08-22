@@ -62,8 +62,7 @@ STATIC = Path(__file__).parent / "static"
 TEMPLATE = STATIC / "calculator.html"
 EVALUATE_JS = STATIC / "evaluate.js"
 APP_JS = STATIC / "app.js"
-# Bill's approved landing still. Absent on purpose until that PNG is dropped
-# here — export will not invent a card image.
+# Bill's approved landing still. Export copies this file to og.png.
 LANDING_STILL = STATIC / "landing-still.png"
 
 FAMILY_STRIP = """<nav class="family" aria-label="swamplink properties">
