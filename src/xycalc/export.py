@@ -26,9 +26,10 @@ every run cannot be diffed, and "what changed" is the question anyone
 re-exporting is actually asking. `xycalc_git` records which commit produced the
 blob, so two exports of the same corpus from different commits differ on purpose.
 
-Sidecars next to the HTML (`og.png`, `stamp.html`) are for the landing page.
-They are not spliced into the calculator file, so a failed chart render cannot
-change calculator.html.
+Sidecars next to the HTML (`stamp.html`, and `og.png` when Bill's approved
+still is present) are for the landing page. They are not spliced into the
+calculator file. Export copies `static/landing-still.png` to `og.png`; it does
+not generate a substitute hero if that file is missing.
 """
 
 from __future__ import annotations
@@ -37,12 +38,12 @@ import argparse
 import hashlib
 import html as html_lib
 import json
+import shutil
 import sqlite3
 import sys
 from pathlib import Path
 
 from .db import connect
-from .ogimage import OgImageError, render_og_png
 from .version import git_identity, package_version
 from .model import (
     Model,
@@ -61,6 +62,8 @@ STATIC = Path(__file__).parent / "static"
 TEMPLATE = STATIC / "calculator.html"
 EVALUATE_JS = STATIC / "evaluate.js"
 APP_JS = STATIC / "app.js"
+# Bill's approved landing still. Export copies this file to og.png.
+LANDING_STILL = STATIC / "landing-still.png"
 
 FAMILY_STRIP = """<nav class="family" aria-label="swamplink properties">
     <span>xycalc · a swamplink research property</span><span class="sep" aria-hidden="true">·</span>
@@ -562,6 +565,22 @@ def render_stamp_html(blob: dict) -> str:
     )
 
 
+def copy_landing_still(dest: Path) -> Path | None:
+    """Copy Bill's approved still to og.png. None if the source file is absent."""
+    if not LANDING_STILL.is_file():
+        print(
+            "landing still missing: add Bill's approved PNG at "
+            f"{LANDING_STILL} — not generating a substitute hero",
+            file=sys.stderr,
+        )
+        if dest.exists():
+            dest.unlink()
+        return None
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copyfile(LANDING_STILL, dest)
+    return dest
+
+
 def export(
     out: Path, db: Path | None = None, crumb: str | None = None
 ) -> Path:
@@ -575,13 +594,7 @@ def export(
     target.write_text(html, encoding="utf-8", newline="")
     stamp = target.parent / "stamp.html"
     stamp.write_text(render_stamp_html(blob), encoding="utf-8", newline="")
-    og = target.parent / "og.png"
-    try:
-        render_og_png(conn, og)
-    except (OgImageError, OSError, ValueError) as e:
-        print(f"og image skipped: {e}", file=sys.stderr)
-        if og.exists():
-            og.unlink()
+    copy_landing_still(target.parent / "og.png")
     return target
 
 
@@ -595,9 +608,9 @@ def main(argv: list[str] | None = None) -> int:
         type=Path,
         default=Path("dist/xycalc.html"),
         help="file to write, or a directory to write index.html into "
-        "(default: dist/xycalc.html). Also writes stamp.html and og.png "
-        "alongside it for the landing page (og.png is skipped if the "
-        "sweep cannot be drawn; calculator.html is still written).",
+        "(default: dist/xycalc.html). Also writes stamp.html alongside it, "
+        "and og.png when static/landing-still.png is present (Bill's "
+        "approved still — export does not generate a substitute).",
     )
     p.add_argument("--db", type=Path, default=None, help="corpus path override")
     p.add_argument(

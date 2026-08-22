@@ -16,12 +16,12 @@ xycalc export --out /tmp/calculator.html
 | --- | --- |
 | `calculator.html` (the `--out` path) | Self-contained calculator. Byte-deterministic: same corpus + git identity → identical bytes. No timestamps. |
 | `stamp.html` (same directory) | Snippet the landing can include. Model count, `corpus_digest`, `xycalc_version`, `xycalc_git` — the same string the calculator footer prints. |
-| `og.png` (same directory) | 1200×630 Open Graph / Twitter card: WiredTiger-cache sweep with the band envelope and the “what you already have” line (500 GB disk, 40 GB indexes, 256 GB RAM). Deterministic PNG (no `tIME` chunk). If the sweep cannot be drawn, export still succeeds and **does not** change calculator.html. |
+| `og.png` (same directory, optional) | Open Graph / product still. **Not generated.** Export copies `src/xycalc/static/landing-still.png` when that file exists (Bill's approved still). If it is missing, export succeeds, writes no `og.png`, and does not invent a substitute hero. |
 
 `deploy-calculator.yml` copies:
 
 - `/tmp/calculator.html` → `tools/xycalc/calculator/index.html`
-- `/tmp/og.png` → `tools/xycalc/og.png` (when produced)
+- `/tmp/og.png` → `tools/xycalc/og.png` (when the still was present)
 - `/tmp/stamp.html` → `tools/xycalc/stamp.html`
 
 Suggested landing tags (in swamplink-root, not this repo):
@@ -31,13 +31,14 @@ Suggested landing tags (in swamplink-root, not this repo):
 <meta name="twitter:image" content="https://swamplink.com/tools/xycalc/og.png">
 ```
 
-and include `tools/xycalc/stamp.html` wherever the landing should show corpus freshness.
+and include `tools/xycalc/stamp.html` wherever the landing should show corpus freshness. Do not generate a new marketing still in this repo.
 
 ## Permalink deep-links (already shipped)
 
-The calculator reads `location.hash` as `URLSearchParams`. Do **not** invent a
-query-string or path scheme; landing table rows should use these fragments on
-`/tools/xycalc/calculator/`.
+The calculator reads `location.hash` as `URLSearchParams`. Landing table
+rows should emit these fragments on `/tools/xycalc/calculator/`. A query
+string (`?model=mongodb.wt-cache`) is accepted on first paint as an alias;
+do not invent a path scheme.
 
 Single model (One question tab):
 
