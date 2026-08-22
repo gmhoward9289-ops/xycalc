@@ -512,6 +512,20 @@ def test_app_js_helpers():
 
 
 @pytest.mark.skipif(NODE is None, reason="node is not installed")
+def test_occupancy_ladder_labels_do_not_collide():
+    """#132: at 375px, target 80 and trigger 95 must not share a row; 90 stays painted."""
+    script = Path(__file__).resolve().parent / "check_occupancy_ladder.js"
+    proc = subprocess.run(
+        [NODE, str(script), str(APP_JS.resolve()), str(TEMPLATE.resolve())],
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+    )
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    assert "occupancy ladder labels ok" in proc.stdout
+
+
+@pytest.mark.skipif(NODE is None, reason="node is not installed")
 def test_simple_first_paint_cannot_show_ram_without_weakest_grade(blob, tmp_path):
     """Default 100GB Simple path: a host-RAM figure without the weakest
     chained grade (and Validated at 0 in-band) is the live honesty miss."""

@@ -137,10 +137,10 @@ assert.ok(APP.occupancyMarkClass(5, 1).includes("below"));
 assert.ok(APP.occupancyMarkClass(5, 1).includes("edge-start"));
 assert.ok(APP.occupancyMarkClass(20, 0).split(" ").indexOf("below") < 0);
 assert.ok(APP.occupancyMarkClass(95, 2).includes("edge-end"));
-// Occupancy total-cache ticks: 90 is odd (below), trigger 95 is even (above)
-// so the two labels do not share a row at desktop width.
+// Desktop (#130): 90 below, trigger 95 above — already readable at ~1024px.
 assert.ok(APP.occupancyMarkClass(90, 1).includes("below"));
 assert.ok(APP.occupancyMarkClass(95, 2).split(" ").indexOf("below") < 0);
+assert.ok(APP.occupancyMarkClass(95, 2).split(" ").indexOf("high") < 0);
 
 const xs = [100, 200, 400];
 const ys = [50, 100, 200];
