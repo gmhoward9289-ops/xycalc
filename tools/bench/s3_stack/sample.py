@@ -15,12 +15,29 @@ in WiredTiger cache.
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
 
 SERVICES = ["mongo", "redis", "clickhouse", "worker", "minio"]
 HERE = Path(__file__).resolve().parent
+
+
+def _services() -> list[str]:
+    # Real-S3 runs skip MinIO; do not require it in docker stats.
+    # Also honor a stamped file in case a wrapper shell drops exports.
+    skip = os.environ.get("SKIP_MINIO", "0") == "1" or (HERE / ".skip_minio").exists()
+    if skip:
+        return [s for s in SERVICES if s != "minio"]
+    return list(SERVICES)
+
+
+def _compose_files() -> list[str]:
+    files = ["-f", "compose.yml"]
+    if os.environ.get("SKIP_MINIO", "0") == "1" or (HERE / ".skip_minio").exists():
+        files += ["-f", "compose.external-s3.yml"]
+    return files
 
 
 def _run(cmd: list[str]) -> str:
@@ -30,10 +47,11 @@ def _run(cmd: list[str]) -> str:
 
 
 def sample(phase: str) -> dict:
-    # Scope to this compose project only.
+    wanted = _services()
+    # Scope to this compose project only (same -f set as perf.sh/run.sh).
     ids = [
         line.strip()
-        for line in _run(["docker", "compose", "-f", "compose.yml", "ps", "-q"]).splitlines()
+        for line in _run(["docker", "compose", *_compose_files(), "ps", "-q"]).splitlines()
         if line.strip()
     ]
     if not ids:
@@ -49,7 +67,7 @@ def sample(phase: str) -> dict:
         name = row["Name"]
         # Prefer longer names first so "clickhouse" wins over accidental substrings.
         service = next(
-            (s for s in sorted(SERVICES, key=len, reverse=True) if s in name), None
+            (s for s in sorted(wanted, key=len, reverse=True) if s in name), None
         )
         if service is None:
             continue
@@ -63,7 +81,7 @@ def sample(phase: str) -> dict:
         }
         matched_names[service] = name
 
-    missing = [s for s in SERVICES if s not in rows]
+    missing = [s for s in wanted if s not in rows]
     if missing:
         raise SystemExit(
             f"FAIL: compose stats missing services {missing}; saw {matched_names}"

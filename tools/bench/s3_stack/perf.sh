@@ -39,6 +39,10 @@ if [[ "${SKIP_MINIO:-0}" == "1" ]]; then
     echo "SKIP_MINIO=1 requires CLICKHOUSE_STORAGE_XML" >&2
     exit 2
   fi
+  # Stamp for sample.py if a wrapper shell drops exports.
+  : > .skip_minio
+else
+  rm -f .skip_minio
 fi
 
 cleanup() {
@@ -49,7 +53,13 @@ cleanup() {
 trap cleanup EXIT
 
 echo "== compose up ==" >&2
-"${COMPOSE[@]}" up -d --build minio createbuckets mongo redis clickhouse worker >&2
+# Do not name minio/createbuckets when SKIP_MINIO=1 — compose.external-s3.yml
+# profile-gates them, but an explicit service name forces them on anyway.
+if [[ "${SKIP_MINIO:-0}" == "1" ]]; then
+  "${COMPOSE[@]}" up -d --build mongo redis clickhouse worker >&2
+else
+  "${COMPOSE[@]}" up -d --build minio createbuckets mongo redis clickhouse worker >&2
+fi
 
 echo "== wait for clickhouse ==" >&2
 for i in $(seq 1 90); do
@@ -80,6 +90,7 @@ echo "== load mongo (celery_probe drive.load, enforces ${PROBE_MIN_OVERSUB}x ove
 "${COMPOSE[@]}" --profile driver build driver >&2
 # Pass sizing env explicitly — compose ${VAR:-default} alone has silently
 # fallen back to 1.5M docs while the shell had PROBE_DOCS=800000.
+set +e
 "${COMPOSE[@]}" --profile driver run --rm --no-deps -T \
   -e "PROBE_DOCS=${PROBE_DOCS}" \
   -e "PROBE_MIN_OVERSUB=${PROBE_MIN_OVERSUB}" \
@@ -89,11 +100,14 @@ echo "== load mongo (celery_probe drive.load, enforces ${PROBE_MIN_OVERSUB}x ove
   driver \
   python -c 'from drive import load; import json; print(json.dumps(load()))' \
   >/tmp/s3_stack_mongo_load.out 2>/tmp/s3_stack_mongo_load.err
+LOAD_RC=$?
+set -e
 cat /tmp/s3_stack_mongo_load.err >&2 || true
 # Last JSON object only — compose/bake noise on stdout produced `?x` before.
 awk '/^{/{line=$0} END{print line}' /tmp/s3_stack_mongo_load.out >/tmp/s3_stack_mongo_load.json
-if [[ ! -s /tmp/s3_stack_mongo_load.json ]]; then
-  echo "FAIL: mongo load produced no JSON (see /tmp/s3_stack_mongo_load.out)" >&2
+if [[ "$LOAD_RC" -ne 0 || ! -s /tmp/s3_stack_mongo_load.json ]]; then
+  echo "FAIL: mongo load rc=${LOAD_RC} (see /tmp/s3_stack_mongo_load.out/.err)" >&2
+  cat /tmp/s3_stack_mongo_load.out >&2 || true
   exit 1
 fi
 MONGO_LOAD=$(cat /tmp/s3_stack_mongo_load.json)
@@ -209,8 +223,12 @@ for path in ("/tmp/s3_stack_drive.out", "/tmp/s3_stack_drive.err"):
         break
 
 
-def _mib(mem_used: str) -> float | None:
-    """Parse docker stats MemUsage like '264.6MiB' / '1.2GiB' to MiB."""
+def _mib(mem_used):
+    """Parse docker stats MemUsage like '264.6MiB' / '1.2GiB' to MiB.
+
+    Return type is float or None — avoid PEP604 unions so Amazon Linux
+    host python3.9 can assemble results.json.
+    """
     if not mem_used or mem_used == "-":
         return None
     m = re.match(r"^\s*([0-9.]+)\s*([KMGT]?i?B)\s*$", mem_used, re.I)

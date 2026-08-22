@@ -1,0 +1,18 @@
+sources:
+  - slug: obs-aws-ch-s3-2026-08-21
+    title: "Arm 4: ClickHouse MergeTree on real AWS S3 (s3_stack SKIP_MINIO=1)"
+    publisher: xycalc project (benchmark harness, committed)
+    version: tools/bench/s3_stack/perf.sh + tools/bench/_aws_ch_s3_launch.sh
+    retrieved_on: "2026-08-21"
+    source_type: benchmark
+    notes: >-
+      Investigation campaign Arm 4. Instance i-019a5e50fb4372399 (m6i.large,
+      us-east-2), tag xycalc-ch-s3-20260821f1858. SKIP_MINIO=1 with
+      storage.local.xml → s3://xycalc-ch-s3-20260821-185845. Guest proved
+      system.parts.disk_name=s3, 2e6 rows / 1 part; bucket held 66 objects /
+      63671360 bytes before teardown. Authoritative RSS+scan numbers from
+      tmp/xycalc-ch-s3-20260821f1858/results/perf.stdout.txt (and stderr load
+      lines); reconstructed live JSON at results/s3_stack_results.live.json
+      because an earlier launch-script `cp results.json` briefly overwrote OUT
+      with the packaged MinIO stub (fixed in _aws_ch_s3_launch.sh). EC2 + IAM +
+      bucket torn down same day.

@@ -10,4 +10,4 @@
 FROM python:3.12-slim
 RUN pip install --no-cache-dir "celery[redis]==5.4.0" "pymongo==4.9.1" "redis==5.0.8"
 WORKDIR /app
-COPY tasks.py drive.py evict_probe.py stall_recover.py ./
+COPY tasks.py drive.py evict_probe.py stall_recover.py mongo_tickets.py ./

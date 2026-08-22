@@ -1,0 +1,116 @@
+{
+  "idle": {
+    "phase": "idle",
+    "services": {
+      "clickhouse": {
+        "mem_used": "143.7MiB",
+        "mem_limit": "2GiB",
+        "mem_bytes": 150680371,
+        "container": "xycalc-s3-stack-clickhouse-1"
+      },
+      "mongo": {
+        "mem_used": "71.55MiB",
+        "mem_limit": "2GiB",
+        "mem_bytes": 75025613,
+        "container": "xycalc-s3-stack-mongo-1"
+      },
+      "redis": {
+        "mem_used": "3.773MiB",
+        "mem_limit": "512MiB",
+        "mem_bytes": 3956277,
+        "container": "xycalc-s3-stack-redis-1"
+      },
+      "worker": {
+        "mem_used": "110.2MiB",
+        "mem_limit": "1GiB",
+        "mem_bytes": 115553075,
+        "container": "xycalc-s3-stack-worker-1"
+      }
+    }
+  },
+  "loaded": {
+    "phase": "loaded",
+    "services": {
+      "clickhouse": {
+        "mem_used": "217.5MiB",
+        "mem_limit": "2GiB",
+        "mem_bytes": 228065280,
+        "container": "xycalc-s3-stack-clickhouse-1"
+      },
+      "mongo": {
+        "mem_used": "518.4MiB",
+        "mem_limit": "2GiB",
+        "mem_bytes": 543581798,
+        "container": "xycalc-s3-stack-mongo-1"
+      },
+      "redis": {
+        "mem_used": "3.777MiB",
+        "mem_limit": "512MiB",
+        "mem_bytes": 3960472,
+        "container": "xycalc-s3-stack-redis-1"
+      },
+      "worker": {
+        "mem_used": "110.5MiB",
+        "mem_limit": "1GiB",
+        "mem_bytes": 115867648,
+        "container": "xycalc-s3-stack-worker-1"
+      }
+    }
+  },
+  "under_load": {
+    "phase": "under_load",
+    "services": {
+      "clickhouse": {
+        "mem_used": "247.7MiB",
+        "mem_limit": "2GiB",
+        "mem_bytes": 259732275,
+        "container": "xycalc-s3-stack-clickhouse-1"
+      },
+      "mongo": {
+        "mem_used": "519.6MiB",
+        "mem_limit": "2GiB",
+        "mem_bytes": 544840090,
+        "container": "xycalc-s3-stack-mongo-1"
+      },
+      "redis": {
+        "mem_used": "3.992MiB",
+        "mem_limit": "512MiB",
+        "mem_bytes": 4185915,
+        "container": "xycalc-s3-stack-redis-1"
+      },
+      "worker": {
+        "mem_used": "119.2MiB",
+        "mem_limit": "1GiB",
+        "mem_bytes": 124990259,
+        "container": "xycalc-s3-stack-worker-1"
+      }
+    }
+  },
+  "run_metadata": {
+    "instance_type": "m6i.large",
+    "region": "us-east-2",
+    "instance_id": "i-019a5e50fb4372399",
+    "purpose": "colocation RSS with ClickHouse MergeTree on real AWS S3 (SKIP_MINIO=1)",
+    "mongo_cache_gb": "0.5",
+    "mongo_mem": "2g",
+    "probe_docs": "1500000",
+    "probe_min_oversub": "2.0",
+    "probe_rates": "50",
+    "probe_seconds": "20",
+    "mongo_load": {
+      "dataSizeBytes": 1086000000,
+      "oversubscription": 2.02
+    },
+    "clickhouse_rows": 2000000,
+    "clickhouse_storage_policy": "s3_main",
+    "clickhouse_disk_name": "s3",
+    "clickhouse_scan_seconds_under_load": 0.29,
+    "s3_backend": "aws-s3",
+    "bucket": "xycalc-ch-s3-20260821-185845",
+    "skip_minio": true,
+    "note": "RSS table from perf.stdout.txt; packed MinIO results.json had clobbered OUT after write",
+    "artifact": "tmp/xycalc-ch-s3-20260821f1858/results/perf.stdout.txt",
+    "window_start": "2026-08-21T23:00:06+00:00",
+    "window_end": "2026-08-21T23:02:49+00:00"
+  }
+}

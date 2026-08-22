@@ -60,12 +60,18 @@ def cache_max() -> int:
 
 
 def tickets() -> dict:
+    """Read ticket/cache counters for the rate table.
+
+    In the celery_probe image mongo_tickets.py is copied next to drive.py.
+    On a host checkout it also lives one directory up (tools/bench/).
+    """
     import sys
     from pathlib import Path
 
-    _bench = Path(__file__).resolve().parents[1]
-    if str(_bench) not in sys.path:
-        sys.path.insert(0, str(_bench))
+    here = Path(__file__).resolve().parent
+    for candidate in (here, here.parent):
+        if str(candidate) not in sys.path:
+            sys.path.insert(0, str(candidate))
     from mongo_tickets import execution_tickets
 
     s = mongo.admin.command("serverStatus")
