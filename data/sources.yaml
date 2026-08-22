@@ -369,6 +369,28 @@ sources:
       tools/bench/s3_stack/results.json (and tmp/s3_stack_results.json on the
       authoring machine).
 
+  - slug: obs-clickhouse-s3-stack-aws-2026-08-21
+    title: "s3_stack perf: colocated RSS with ClickHouse MergeTree on real AWS S3"
+    publisher: xycalc project (benchmark harness, committed)
+    url:
+    version: tools/bench/s3_stack (harness), SKIP_MINIO=1
+    retrieved_on: '2026-08-21'
+    source_type: benchmark
+    notes: >-
+      Harness: tools/bench/s3_stack/perf.sh + compose.external-s3.yml on AWS
+      m6i.large (us-east-2, 8 GiB), Docker 25 / Compose v2.29.7. SKIP_MINIO=1;
+      ClickHouse storage.local.xml pointed at a real S3 bucket
+      (xycalc-ch-s3-20260821-185845, emptied+deleted after). Mongo:
+      --wiredTigerCacheSizeGB 0.5, mem_limit 2g, 1,500,000 docs (dataSize
+      1086 MB, 2.02× oversub). ClickHouse 24.8: 2,000,000-row MergeTree with
+      storage_policy=s3_main and system.parts.disk_name=s3 (verified in
+      perf.stderr). Under_load Celery drive (50/s, 20s) overlapping a
+      ClickHouse S3 GROUP BY (0.29s). No MinIO container in the RSS table.
+      RSS values taken from perf.stdout.txt (authoritative); a packed MinIO
+      results.json briefly clobbered OUT after write — reconstructed as
+      tools/bench/s3_stack/results.aws-m6i.large-2026-08-21.json. Stage:
+      tmp/xycalc-ch-s3-20260821f1858. n=1.
+
   - slug: celery-optimizing-guide-5.4
     title: Optimizing — Celery 5.4.0 documentation
     publisher: Celery Project

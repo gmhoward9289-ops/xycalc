@@ -1,0 +1,161 @@
+observations:
+  # -- s3_stack perf.sh on AWS m6i.large: Mongo+Redis+Celery+ClickHouse(real S3)
+  #    SKIP_MINIO=1, storage_policy=s3_main → AWS S3 (not MinIO).
+  #    host.container_rss_bytes is NOT a mongodb.wt-cache validation quantity. --
+
+  - slug: aws-s3-stack-2026-08-21-mongo-idle
+    system: mongodb
+    parameter: host.container_rss_bytes
+    value: 75025613
+    unit: bytes
+    workload: idle -- stack up, no data loaded, colocated with redis/clickhouse(aws-s3)/celery
+    machine_class: AWS m6i.large 8 GiB, us-east-2; mongo mem_limit 2g, --wiredTigerCacheSizeGB 0.5
+    system_version: mongo:7 (Docker Hub tag)
+    observed_on: '2026-08-21'
+    source: obs-clickhouse-s3-stack-aws-2026-08-21
+    notes: docker stats MemUsage, 71.55MiB reported.
+
+  - slug: aws-s3-stack-2026-08-21-mongo-loaded
+    system: mongodb
+    parameter: host.container_rss_bytes
+    value: 543581798
+    unit: bytes
+    workload: >-
+      1,500,000-doc synthetic collection resident (dataSize 1086 MB, 2.02×
+      over WiredTiger 0.5 GB cache), no concurrent Celery traffic yet; colocated
+    machine_class: AWS m6i.large 8 GiB, us-east-2; mongo mem_limit 2g, --wiredTigerCacheSizeGB 0.5
+    system_version: mongo:7 (Docker Hub tag)
+    observed_on: '2026-08-21'
+    source: obs-clickhouse-s3-stack-aws-2026-08-21
+    notes: docker stats MemUsage, 518.4MiB reported.
+
+  - slug: aws-s3-stack-2026-08-21-mongo-under-load
+    system: mongodb
+    parameter: host.container_rss_bytes
+    value: 544840090
+    unit: bytes
+    workload: >-
+      same 2.02×-oversub dataset under Celery point-lookup drive (PROBE_RATES=50,
+      PROBE_SECONDS=20) overlapping a ClickHouse AWS-S3 GROUP BY scan
+    machine_class: AWS m6i.large 8 GiB, us-east-2; mongo mem_limit 2g, --wiredTigerCacheSizeGB 0.5
+    system_version: mongo:7 (Docker Hub tag)
+    observed_on: '2026-08-21'
+    source: obs-clickhouse-s3-stack-aws-2026-08-21
+    notes: >-
+      docker stats MemUsage, 519.6MiB reported. Idle→loaded is the large jump
+      (72→518 MiB); loaded→under_load is flat (~1 MiB), same shape as the
+      swamplink MinIO s3_stack run.
+
+  - slug: aws-s3-stack-2026-08-21-clickhouse-idle
+    system: clickhouse
+    parameter: host.container_rss_bytes
+    value: 150680371
+    unit: bytes
+    workload: idle -- ClickHouse up with s3_main storage policy → real AWS S3, no table data yet
+    machine_class: AWS m6i.large; clickhouse mem_limit 2g; MergeTree storage_policy=s3_main → AWS S3
+    system_version: clickhouse/clickhouse-server:24.8
+    observed_on: '2026-08-21'
+    source: obs-clickhouse-s3-stack-aws-2026-08-21
+    notes: docker stats MemUsage, 143.7MiB reported.
+
+  - slug: aws-s3-stack-2026-08-21-clickhouse-loaded
+    system: clickhouse
+    parameter: host.container_rss_bytes
+    value: 228065280
+    unit: bytes
+    workload: >-
+      2,000,000-row MergeTree on storage_policy=s3_main (system.parts.disk_name=s3)
+      against real AWS S3; after load + one warm path; colocated
+    machine_class: AWS m6i.large; clickhouse mem_limit 2g; MergeTree storage_policy=s3_main → AWS S3
+    system_version: clickhouse/clickhouse-server:24.8
+    observed_on: '2026-08-21'
+    source: obs-clickhouse-s3-stack-aws-2026-08-21
+    notes: docker stats MemUsage, 217.5MiB reported.
+
+  - slug: aws-s3-stack-2026-08-21-clickhouse-under-load
+    system: clickhouse
+    parameter: host.container_rss_bytes
+    value: 259732275
+    unit: bytes
+    workload: >-
+      same AWS-S3-backed table under concurrent GROUP BY scan (0.29s) while
+      Celery hit Mongo
+    machine_class: AWS m6i.large; clickhouse mem_limit 2g; MergeTree storage_policy=s3_main → AWS S3
+    system_version: clickhouse/clickhouse-server:24.8
+    observed_on: '2026-08-21'
+    source: obs-clickhouse-s3-stack-aws-2026-08-21
+    notes: docker stats MemUsage, 247.7MiB reported.
+
+  - slug: aws-s3-stack-2026-08-21-redis-idle
+    system: redis
+    parameter: host.container_rss_bytes
+    value: 3956277
+    unit: bytes
+    workload: idle -- Celery broker Redis, maxmemory capped, no queue traffic
+    machine_class: AWS m6i.large; redis mem_limit 512m
+    system_version: redis:7-alpine
+    observed_on: '2026-08-21'
+    source: obs-clickhouse-s3-stack-aws-2026-08-21
+    notes: docker stats MemUsage, 3.773MiB reported.
+
+  - slug: aws-s3-stack-2026-08-21-redis-loaded
+    system: redis
+    parameter: host.container_rss_bytes
+    value: 3960472
+    unit: bytes
+    workload: loaded phase -- Mongo/CH data present, Celery queue idle
+    machine_class: AWS m6i.large; redis mem_limit 512m
+    system_version: redis:7-alpine
+    observed_on: '2026-08-21'
+    source: obs-clickhouse-s3-stack-aws-2026-08-21
+    notes: docker stats MemUsage, 3.777MiB reported.
+
+  - slug: aws-s3-stack-2026-08-21-redis-under-load
+    system: redis
+    parameter: host.container_rss_bytes
+    value: 4185915
+    unit: bytes
+    workload: under Celery drive (broker traffic) overlapping CH AWS-S3 scan
+    machine_class: AWS m6i.large; redis mem_limit 512m
+    system_version: redis:7-alpine
+    observed_on: '2026-08-21'
+    source: obs-clickhouse-s3-stack-aws-2026-08-21
+    notes: docker stats MemUsage, 3.992MiB reported.
+
+  - slug: aws-s3-stack-2026-08-21-celery-idle
+    system: celery
+    parameter: host.container_rss_bytes
+    value: 115553075
+    unit: bytes
+    workload: idle -- Celery prefork worker up (concurrency 4), no tasks
+    machine_class: AWS m6i.large; worker mem_limit 1g; celery[redis]==5.4.0
+    system_version: Celery 5.4.0 (celery_probe image)
+    observed_on: '2026-08-21'
+    source: obs-clickhouse-s3-stack-aws-2026-08-21
+    notes: docker stats MemUsage, 110.2MiB reported.
+
+  - slug: aws-s3-stack-2026-08-21-celery-loaded
+    system: celery
+    parameter: host.container_rss_bytes
+    value: 115867648
+    unit: bytes
+    workload: loaded phase -- worker idle while Mongo/CH hold data
+    machine_class: AWS m6i.large; worker mem_limit 1g; celery[redis]==5.4.0
+    system_version: Celery 5.4.0 (celery_probe image)
+    observed_on: '2026-08-21'
+    source: obs-clickhouse-s3-stack-aws-2026-08-21
+    notes: docker stats MemUsage, 110.5MiB reported.
+
+  - slug: aws-s3-stack-2026-08-21-celery-under-load
+    system: celery
+    parameter: host.container_rss_bytes
+    value: 124990259
+    unit: bytes
+    workload: >-
+      under Celery drive overlapping ClickHouse AWS-S3 GROUP BY; worker RSS
+      sampled during the overlap window
+    machine_class: AWS m6i.large; worker mem_limit 1g; celery[redis]==5.4.0
+    system_version: Celery 5.4.0 (celery_probe image)
+    observed_on: '2026-08-21'
+    source: obs-clickhouse-s3-stack-aws-2026-08-21
+    notes: docker stats MemUsage, 119.2MiB reported.
