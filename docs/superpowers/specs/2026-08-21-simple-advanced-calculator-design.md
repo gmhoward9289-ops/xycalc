@@ -12,9 +12,9 @@ End-user sizing surface with few inputs; full instrument remains one click away.
 | Decision | Choice |
 |---|---|
 | Job | Buy/build first pass (`mongodb.size-to-instance`) |
-| Simple inputs | Total DB size (required), vuln count (optional) |
-| Out for now | Devices / asset inventory |
-| Extra scenario fields | Advanced-only (index, foreign collections, current node, target count) |
+| Simple inputs | Total DB size (required) |
+| Out for now | Devices / asset inventory; vuln record count on Simple (math/UX unclear) |
+| Extra scenario fields | Advanced-only (index, foreign collections, current node, vuln counts) |
 | Graphs on Simple | Answer visuals only (RAM band + lo/mode/hi instance picks) |
 | Entry | Persistent Simple \| Advanced control; first visit → Simple; remember in `localStorage` (`xycalc.calcMode`) |
 | Implementation | Single page mode shell |
@@ -24,8 +24,7 @@ End-user sizing surface with few inputs; full instrument remains one click away.
 | User | Feeds |
 |---|---|
 | Total DB size | `baseline_storage_size` (bare number → GB) |
-| Vulns (optional) | `baseline_vuln_count` (else `250000`) |
-| (silent) | `target_vuln_count` = baseline → **today’s size**, no 3-year growth |
+| (silent) | `baseline_vuln_count` / `target_vuln_count` from scenario defaults (equal → **today’s size**, no growth) |
 | (omitted) | `index_size`, `foreign_collections_size` (Advanced only) |
 | Floor | Host RAM band clamped to ≥ **64 GiB** (`r8i.2xlarge`); instances re-picked |
 

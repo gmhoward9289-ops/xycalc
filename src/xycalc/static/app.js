@@ -566,9 +566,7 @@ const XYCALC_APP = (() => {
       const state = { mode: simple ? "simple" : "advanced", inputs: {} };
       if (simple) {
         const size = $("simple-db-size") && $("simple-db-size").value.trim();
-        const vulns = $("simple-vulns") && $("simple-vulns").value.trim();
         if (size) state.inputs.size = size;
-        if (vulns) state.inputs.vulns = vulns;
         return state;
       }
       state.tab = currentTab();
@@ -614,7 +612,6 @@ const XYCALC_APP = (() => {
         if (view.mode === "simple") {
           setMode("simple", { persist: false, hash: false });
           if (parsed.inputs.size && $("simple-db-size")) $("simple-db-size").value = parsed.inputs.size;
-          if (parsed.inputs.vulns && $("simple-vulns")) $("simple-vulns").value = parsed.inputs.vulns;
           calculateSimple();
           return true;
         }
@@ -755,9 +752,7 @@ const XYCALC_APP = (() => {
 
     function bootSimple() {
       $("simple-db-size").value = SCENARIO_DEFAULTS["mongodb.size-to-instance"].baseline_storage_size || "";
-      $("simple-vulns").value = "";
       $("simple-db-size").addEventListener("input", scheduleSimpleCalc);
-      $("simple-vulns").addEventListener("input", scheduleSimpleCalc);
       $("simple-result").addEventListener("click", (ev) => {
         if (ev.target && ev.target.id === "simple-open-advanced") {
           ev.preventDefault();
@@ -769,19 +764,12 @@ const XYCALC_APP = (() => {
 
     function openAdvancedFromSimple() {
       const sizeRaw = ($("simple-db-size").value || "").trim();
-      const vulns = ($("simple-vulns").value || "").trim();
       setMode("advanced");
       setTab("scenario");
       pickScenario("mongodb.size-to-instance");
       if (sizeRaw) {
         const el = $("scn-in-baseline_storage_size");
         if (el) el.value = normalizeSimpleSize(sizeRaw);
-      }
-      if (vulns) {
-        const b = $("scn-in-baseline_vuln_count");
-        if (b) b.value = vulns;
-        const t = $("scn-in-target_vuln_count");
-        if (t) t.value = vulns;
       }
       calculateScenario(true);
       const details = $("scenario-cascade").querySelector("details");
@@ -796,7 +784,6 @@ const XYCALC_APP = (() => {
 
     function calculateSimple() {
       const sizeRaw = ($("simple-db-size").value || "").trim();
-      const vulns = ($("simple-vulns").value || "").trim();
       const err = $("simple-error");
       const status = $("simple-status");
       if (!sizeRaw) {
@@ -807,10 +794,11 @@ const XYCALC_APP = (() => {
       }
       const size = normalizeSimpleSize(sizeRaw);
       const defaults = SCENARIO_DEFAULTS["mongodb.size-to-instance"] || {};
-      const baselineVulns = vulns || defaults.baseline_vuln_count || "250000";
       // Same corpus chain as Advanced — but Simple answers "today's footprint":
       // no demo index/foreign pads, and target == baseline so the 3-year growth
-      // path does not inflate a measured size. Advanced is where those live.
+      // path does not inflate a measured size. Vuln counts stay silent defaults
+      // (Advanced owns growth / record-count projection).
+      const baselineVulns = defaults.baseline_vuln_count || "250000";
       const inputs = {
         baseline_storage_size: size,
         baseline_vuln_count: baselineVulns,
