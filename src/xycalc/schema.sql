@@ -203,6 +203,7 @@ CREATE TABLE model_term (
                         'divide_by_input',      -- divide by a caller quantity
                         'multiply_by_input',    -- multiply by a caller quantity
                         'add_fraction_from_input', -- percent, from the caller
+                        'add_product_of_inputs', -- add (input_key × input_key_b)
                         'multiply',             -- value is a ratio >= 1
                         'divide_by_fraction',   -- value is a percent; /(v/100)
                         'add_bytes',            -- fixed addition
@@ -213,7 +214,8 @@ CREATE TABLE model_term (
                         'cap_at_throughput',    -- min(running, tp_mibps*1024/io_kib)
                         'note'                  -- constraints; no arithmetic
                     )),
-    input_key       TEXT,           -- for apply='input'
+    input_key       TEXT,           -- for apply='input' (and product left factor)
+    input_key_b     TEXT,           -- right factor for apply='add_product_of_inputs'
     coefficient_id  INTEGER REFERENCES coefficient(id),
     optional        INTEGER NOT NULL DEFAULT 0,
     when_input      TEXT,           -- skip unless this input was supplied
@@ -244,16 +246,26 @@ CREATE TABLE model_term (
     -- buffer), not a fact about MongoDB or AWS that this corpus could cite.
     -- Forcing it through a coefficient would misrepresent someone's own
     -- capacity-planning guess as a vendor-documented constant.
+    --
+    -- `add_product_of_inputs` is count × measured bytes-per for a collection
+    -- family (devices, etc.): both factors are caller measurements, so neither
+    -- is a coefficient. Added after amplifiers so it does not inherit another
+    -- family's growth (e.g. NVD compound on vulns).
     CHECK (
         (apply IN ('input', 'divide_by_input', 'multiply_by_input', 'add_fraction_from_input')
-            AND input_key IS NOT NULL AND coefficient_id IS NULL)
+            AND input_key IS NOT NULL AND input_key_b IS NULL AND coefficient_id IS NULL)
+        OR (apply = 'add_product_of_inputs'
+            AND input_key IS NOT NULL AND input_key_b IS NOT NULL
+            AND coefficient_id IS NULL)
         OR (apply = 'cap_at_throughput'
-            AND input_key IS NOT NULL AND coefficient_id IS NOT NULL)
+            AND input_key IS NOT NULL AND input_key_b IS NULL
+            AND coefficient_id IS NOT NULL)
         OR (apply NOT IN (
                 'input', 'divide_by_input', 'multiply_by_input',
-                'add_fraction_from_input', 'cap_at_throughput'
+                'add_fraction_from_input', 'add_product_of_inputs',
+                'cap_at_throughput'
             )
-            AND coefficient_id IS NOT NULL)
+            AND input_key_b IS NULL AND coefficient_id IS NOT NULL)
     )
 );
 

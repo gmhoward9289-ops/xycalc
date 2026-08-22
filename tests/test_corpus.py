@@ -132,7 +132,8 @@ class TestModels:
             conn,
             "SELECT i.key FROM model_input i WHERE NOT EXISTS ("
             "  SELECT 1 FROM model_term t "
-            "  WHERE t.model_id = i.model_id AND t.input_key = i.key)",
+            "  WHERE t.model_id = i.model_id AND ("
+            "    t.input_key = i.key OR t.input_key_b = i.key))",
         )
         assert not [r["key"] for r in unused]
 

@@ -1,0 +1,155 @@
+# Collection-family storage projection (fork A): domain counts × measured
+# bytes-per, plus a residual floor that does not inherit NVD growth.
+#
+# Vuln slice reuses the same arithmetic as nvd.storage-from-vuln-growth.
+# Devices and residual are added AFTER that projection so they cannot be
+# silently scaled by CVE compound growth.
+
+models:
+  - slug: mongodb.storage-from-doc-families
+    question: >-
+      How large is my MongoDB collection footprint from vuln/device document
+      counts and the rest of the data?
+    system: mongodb
+    output: storage.collection_bytes_on_disk
+
+    summary: >-
+      Projects on-disk collection storage as: vulnerability family (measured
+      bytes-per-record × count, or three-year NVD compound growth) plus
+      optional device count × measured average on-disk bytes per device, plus
+      an optional residual floor for everything else. Residual and devices do
+      not inherit CVE growth.
+
+    notes: >-
+      Fork A (locked 2026-08-21): Simple sizing inputs are domain counts ×
+      measured bytes-per per family, with a residual floor — not one whole-DB
+      storageSize with growth checkboxes.
+
+      Measure each family's storageSize and count from collStats / db.stats().
+      On-disk bytes-per = storageSize ÷ count (compressed). Do not use
+      avgObjSize here — that is uncompressed BSON (≈ dataSize ÷ count).
+
+      Vuln paths (exactly one):
+
+      - target_vuln_count set: vuln_storage = baseline × (target ÷ baseline)
+      - otherwise: vuln_storage = baseline × nvd.cve-growth-3yr-multiplier
+
+      Then: total = vuln_storage + (device_count × device_avg_storage_bytes)
+      + residual_storage_size.
+
+      device_count and device_avg_storage_bytes must be supplied together.
+      Enter a future device_count to size growth for that family; there is no
+      separate device-growth coefficient yet.
+
+      Standalone vuln-only projection remains nvd.storage-from-vuln-growth.
+
+    inputs:
+      - key: baseline_vuln_count
+        label: Vulnerability/CVE records stored today
+        unit: count
+        required: true
+        help: >-
+          Count of vulnerability documents in the vuln family — denominator
+          for bytes-per-record on that slice only.
+      - key: baseline_storage_size
+        label: Vuln-family collection storageSize today
+        unit: bytes
+        required: true
+        help: >-
+          Sum storageSize across vulnerability collections only — not the
+          whole database. Compressed on-disk bytes, not dataSize.
+      - key: target_vuln_count
+        label: Target vuln record count (overrides growth projection)
+        unit: count
+        required: false
+        help: >-
+          If set, scale the vuln family linearly to this count instead of
+          applying the three-year NVD compound growth multiplier.
+      - key: device_count
+        label: Device documents (now or target)
+        unit: count
+        required: false
+        help: >-
+          Optional. Document count for the device family. Supply with
+          device_avg_storage_bytes (storageSize ÷ count from collStats).
+      - key: device_avg_storage_bytes
+        label: Avg on-disk bytes per device document
+        unit: bytes
+        required: false
+        help: >-
+          Optional. Measured storageSize ÷ count for the device family.
+          Required whenever device_count is set.
+      - key: residual_storage_size
+        label: Other collection data on disk today
+        unit: bytes
+        required: false
+        help: >-
+          Optional residual: whole-DB collection storageSize minus the vuln
+          and device family totals. Does not scale with NVD growth — a floor
+          for the slice this model does not project.
+
+    terms:
+      - key: vuln_anchor_storage
+        label: Vuln-family storage today
+        role: floor
+        apply: input
+        input_key: baseline_storage_size
+        rationale: >-
+          Measured vuln-slice anchor. Projection starts from what that family
+          holds on disk now, not from a vendor guess about bytes per CVE.
+
+      - key: per_vuln_bytes
+        label: Bytes per vuln record today
+        role: amplifier
+        apply: divide_by_input
+        input_key: baseline_vuln_count
+        when_input: target_vuln_count
+        rationale: >-
+          baseline_storage ÷ baseline_vuln_count — measured on-disk bytes per
+          vulnerability document. Only used when scaling to an explicit target
+          count.
+
+      - key: vuln_target_projection
+        label: Scale vulns to target count
+        role: amplifier
+        apply: multiply_by_input
+        input_key: target_vuln_count
+        when_input: target_vuln_count
+        rationale: >-
+          Multiply bytes-per-vuln by the target count. Equivalent to
+          baseline_storage × (target ÷ baseline) for the vuln family alone.
+
+      - key: vuln_compound_growth
+        label: Three-year compound CVE growth
+        role: amplifier
+        apply: multiply
+        coefficient: nvd.cve-growth-3yr-multiplier
+        unless_input: target_vuln_count
+        rationale: >-
+          When no vuln target count is supplied, scale the vuln family by a
+          compound growth band from 2023–2025 CVE publication rates. Does not
+          apply to devices or residual — those terms are added after this.
+
+      - key: devices
+        label: Device family (count × avg on-disk bytes)
+        role: floor
+        apply: add_product_of_inputs
+        input_key: device_count
+        input_key_b: device_avg_storage_bytes
+        optional: true
+        when_input: device_count
+        rationale: >-
+          Caller-measured device footprint: count × (storageSize ÷ count).
+          Added after vuln growth so device bytes are not multiplied by the
+          NVD compound band.
+
+      - key: residual
+        label: Residual collections (not projected)
+        role: floor
+        apply: input
+        input_key: residual_storage_size
+        optional: true
+        rationale: >-
+          Everything else already on disk that this model does not grow from
+          domain counts. Flat floor — supply a new measurement when that mix
+          changes rather than inheriting CVE growth.

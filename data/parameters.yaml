@@ -40,6 +40,30 @@ parameters:
       Count of vulnerability records stored — may track NVD CVEs, enriched
       documents, or a subset depending on the deployment.
 
+  - slug: device.count
+    label: Device document count
+    unit: count
+    dimension: count
+    notes: >-
+      Count of device (or asset) documents in the device collection family.
+      Paired with measured on-disk bytes-per for storage.from-doc-families.
+
+  - slug: device.avg_storage_bytes
+    label: Average on-disk bytes per device document
+    unit: bytes
+    dimension: bytes
+    notes: >-
+      storageSize ÷ count for the device family (compressed). Not BSON
+      avgObjSize.
+
+  - slug: storage.residual_bytes
+    label: Residual collection storage (non-projected families)
+    unit: bytes
+    dimension: bytes
+    notes: >-
+      On-disk collection bytes not covered by the vuln or device family
+      projections. Flat floor in storage-from-doc-families.
+
   - slug: vuln.yoy_growth_pct
     label: Year-over-year vulnerability publication growth
     unit: percent

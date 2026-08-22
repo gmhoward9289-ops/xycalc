@@ -548,16 +548,16 @@ body.mode-advanced #simple-view { display: none !important; }
 <div id="simple-view">
   <div class="panel">
     <div class="field">
-      <label for="simple-db-size">Total database size</label>
-      <input id="simple-db-size" placeholder="e.g. 500 or 500GB" autocomplete="off">
-      <div class="help">Today’s on-disk footprint (db.stats().storageSize). Bare number = GB. Host floor is 64&nbsp;GB (r8i.2xlarge).</div>
+      <label for="simple-vulns">Vulnerability records</label>
+      <input id="simple-vulns" placeholder="e.g. 250000" autocomplete="off">
+      <div class="help">Document count in your vuln collections today.</div>
     </div>
     <div class="field">
       <label for="simple-vulns">Vulnerability records <span class="help" style="display:inline">optional</span></label>
       <input id="simple-vulns" placeholder="e.g. 250000" autocomplete="off">
       <div class="help">Optional. Size for this many records, scaled from today's bytes at the 250,000 corpus baseline. Leave blank to size today's footprint only.</div>
     </div>
-    <p class="recalc-live" id="simple-status">Enter a database size — sizing updates as you type.</p>
+    <p class="recalc-live" id="simple-status">Enter vuln count and storageSize — sizing updates as you type.</p>
     <p id="simple-error" class="error" hidden></p>
   </div>
   <div id="simple-result" hidden>

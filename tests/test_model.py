@@ -419,6 +419,77 @@ class TestNvdStorageModel:
         assert "target_projection" in skipped
 
 
+class TestDocFamiliesStorageModel:
+    """Fork A: vuln projection + optional devices product + residual floor."""
+
+    @pytest.fixture
+    def model(self, conn):
+        return Model.load(conn, "mongodb.storage-from-doc-families")
+
+    def test_vuln_only_matches_nvd_model(self, conn, model):
+        nvd = Model.load(conn, "nvd.storage-from-vuln-growth")
+        inputs = {
+            "baseline_vuln_count": 100_000,
+            "baseline_storage_size": "500GB",
+            "target_vuln_count": 150_000,
+        }
+        assert model.evaluate(inputs).mode == pytest.approx(nvd.evaluate(inputs).mode)
+
+    def test_devices_and_residual_add_after_vuln_growth(self, model):
+        # Vulns stay at 500 GB (1:1 target); 10k devices × 2 MB; 50 GB residual.
+        r = model.evaluate(
+            {
+                "baseline_vuln_count": 100_000,
+                "baseline_storage_size": "500GB",
+                "target_vuln_count": 100_000,
+                "device_count": 10_000,
+                "device_avg_storage_bytes": "2MB",
+                "residual_storage_size": "50GB",
+            }
+        )
+        expected = (
+            parse_bytes("500GB")
+            + 10_000 * parse_bytes("2MB")
+            + parse_bytes("50GB")
+        )
+        assert r.mode == pytest.approx(expected)
+
+    def test_devices_do_not_inherit_nvd_compound_growth(self, model):
+        # Without target: vulns ×2.0 mode; devices must stay flat at 20 GB.
+        r = model.evaluate(
+            {
+                "baseline_vuln_count": 100_000,
+                "baseline_storage_size": "500GB",
+                "device_count": 10_000,
+                "device_avg_storage_bytes": "2MB",
+            }
+        )
+        assert r.mode == pytest.approx(1000 * 1000**3 + 20 * 1000**3)
+
+    def test_device_count_without_avg_is_an_error(self, model):
+        with pytest.raises(ModelError, match="together"):
+            model.evaluate(
+                {
+                    "baseline_vuln_count": 100_000,
+                    "baseline_storage_size": "500GB",
+                    "target_vuln_count": 100_000,
+                    "device_count": 10_000,
+                }
+            )
+
+    def test_omitted_devices_and_residual_are_skipped(self, model):
+        r = model.evaluate(
+            {
+                "baseline_vuln_count": 100_000,
+                "baseline_storage_size": "500GB",
+                "target_vuln_count": 100_000,
+            }
+        )
+        skipped = [s.term.key for s in r.steps if s.skipped]
+        assert "devices" in skipped
+        assert "residual" in skipped
+
+
 class TestBounds:
     """floor_at / cap_at â€” the first non-monotonic apply modes.
 
@@ -487,6 +558,7 @@ def _term(**kw) -> Term:
         role="amplifier",
         apply="multiply",
         input_key=None,
+        input_key_b=None,
         optional=False,
         when_input=None,
         unless_input=None,

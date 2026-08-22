@@ -65,7 +65,7 @@ class TestChainEvaluate:
     def test_size_to_instance_includes_models_and_lookups(self, conn, scenario):
         steps = chain_evaluate(conn, scenario, INSTANCE_INPUTS)
         assert [(s.kind, s.slug) for s in steps] == [
-            ("model", "nvd.storage-from-vuln-growth"),
+            ("model", "mongodb.storage-from-doc-families"),
             ("model", "mongodb.wt-cache"),
             ("model", "mongodb.host-ram"),
             ("lookup", "aws-ec2.instance-select"),
@@ -73,13 +73,29 @@ class TestChainEvaluate:
             ("lookup", "ebs.gp3-spec"),
             ("model", "ebs.iops-to-provision"),
         ]
-        nvd = steps[0].result
-        assert nvd is not None
-        assert nvd.mode == pytest.approx(parse_bytes("500GB"))
+        families = steps[0].result
+        assert families is not None
+        assert families.mode == pytest.approx(parse_bytes("500GB"))
         ebs = steps[-1]
         assert ebs.assumed_inputs is not None
         assert "average_iops" in ebs.assumed_inputs
         assert ebs.result.mode == pytest.approx(9000.0)
+
+    def test_devices_and_residual_raise_projected_volume(self, conn, scenario):
+        steps = chain_evaluate(
+            conn,
+            scenario,
+            {
+                **INSTANCE_INPUTS,
+                "device_count": "10000",
+                "device_avg_storage_bytes": "2MB",
+                "residual_storage_size": "50GB",
+            },
+        )
+        families = steps[0].result
+        assert families.mode == pytest.approx(
+            parse_bytes("500GB") + 10_000 * parse_bytes("2MB") + parse_bytes("50GB")
+        )
 
     def test_measured_average_replaces_included_iops_assumption(self, conn, scenario):
         without = chain_evaluate(conn, scenario, INSTANCE_INPUTS)

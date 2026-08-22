@@ -604,11 +604,21 @@ const XYCALC_APP = (() => {
   }
 
   // Advanced/corpus parseBytes treats a bare number as bytes. Simple users
-  // mean GB — "50" → "50GB". Explicit units (GB, GiB, TB, …) pass through.
+  // mean GB for collection footprints — "50" → "50GB". Explicit units
+  // (GB, GiB, TB, …) pass through.
   function normalizeSimpleSize(raw) {
     const t = String(raw || "").trim();
     if (!t) return t;
     if (/^[0-9.]+$/.test(t)) return t + "GB";
+    return t;
+  }
+
+  // Per-document averages are usually bytes–KB–MB. Bare number = bytes;
+  // explicit units pass through to parseBytes.
+  function normalizeSimpleAvgBytes(raw) {
+    const t = String(raw || "").trim();
+    if (!t) return t;
+    if (/^[0-9.]+$/.test(t)) return t;
     return t;
   }
 
@@ -892,14 +902,18 @@ const XYCALC_APP = (() => {
     }
 
     function calculateSimple() {
-      const sizeRaw = ($("simple-db-size").value || "").trim();
       const vulns = ($("simple-vulns").value || "").trim();
+      const storageRaw = ($("simple-vuln-storage").value || "").trim();
+      const devices = ($("simple-devices").value || "").trim();
+      const deviceAvgRaw = ($("simple-device-avg").value || "").trim();
+      const residualRaw = ($("simple-residual").value || "").trim();
       const err = $("simple-error");
       const status = $("simple-status");
-      if (!sizeRaw) {
+      if (!vulns || !storageRaw) {
         $("simple-result").hidden = true;
         err.hidden = true;
-        status.textContent = "Enter a database size — sizing updates as you type.";
+        status.textContent =
+          "Enter vuln count and vuln storageSize — sizing updates as you type.";
         return;
       }
       const size = normalizeSimpleSize(sizeRaw);
@@ -914,12 +928,20 @@ const XYCALC_APP = (() => {
         baseline_vuln_count: corpusBaseline,
         target_vuln_count: targetVulns,
       };
+      if (devices) {
+        inputs.device_count = devices;
+        inputs.device_avg_storage_bytes = deviceAvg;
+      }
+      if (residual) inputs.residual_storage_size = residual;
       try {
         const data = applySimpleHostFloor(
           XY.chainEvaluate(CORPUS, "mongodb.size-to-instance", inputs));
         err.hidden = true;
         renderSimpleResult(data);
-        const as = size !== sizeRaw ? ` (read as ${size})` : "";
+        const notes = [];
+        if (storage !== storageRaw) notes.push(`storage as ${storage}`);
+        if (residual && residual !== residualRaw) notes.push(`residual as ${residual}`);
+        const as = notes.length ? ` (${notes.join("; ")})` : "";
         status.textContent = "Up to date" + as + " — change a field to recalculate.";
         const note = document.getElementById("simple-vuln-note");
         if (note) {
@@ -2215,6 +2237,7 @@ const XYCALC_APP = (() => {
     effectiveYScale: effectiveYScale,
     chartLayout: chartLayout,
     normalizeSimpleSize: normalizeSimpleSize,
+    normalizeSimpleAvgBytes: normalizeSimpleAvgBytes,
     gradeSuffix: gradeSuffix,
     weakestValidation: weakestValidation,
     occupancyMarkClass: occupancyMarkClass,

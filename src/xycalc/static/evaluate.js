@@ -177,6 +177,34 @@ const XY = (() => {
       const push = (contribution) =>
         steps.push({ term, contribution, lo, mode, hi, skipped: false, skip_reason: null });
 
+      if (term.apply === "add_product_of_inputs") {
+        const a = supplied[term.input_key];
+        const b = supplied[term.input_key_b];
+        if (a === undefined && b === undefined) {
+          if (term.optional) {
+            steps.push({ term, contribution: "—", lo, mode, hi, skipped: true, skip_reason: "not supplied" });
+            continue;
+          }
+          throw new ModelError(
+            model.slug + ": inputs '" + term.input_key + "' and '" +
+            term.input_key_b + "' are required"
+          );
+        }
+        if (a === undefined || b === undefined) {
+          const missing = a === undefined ? term.input_key : term.input_key_b;
+          throw new ModelError(
+            model.slug + ": '" + term.input_key + "' and '" + term.input_key_b +
+            "' must be supplied together (missing '" + missing + "')"
+          );
+        }
+        const product = a * b;
+        lo += product; mode += product; hi += product;
+        const aUnit = declaredUnits[term.input_key] || "count";
+        const bUnit = declaredUnits[term.input_key_b] || model.output_unit;
+        push("+ " + formatQuantity(a, aUnit) + " × " + formatQuantity(b, bUnit));
+        continue;
+      }
+
       if (term.apply === "input" || term.apply === "divide_by_input" || term.apply === "multiply_by_input" || term.apply === "add_fraction_from_input") {
         const v = supplied[term.input_key];
         if (v === undefined) {

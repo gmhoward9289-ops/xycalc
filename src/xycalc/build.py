@@ -291,14 +291,41 @@ class Builder:
                         "divide_by_input",
                         "multiply_by_input",
                         "add_fraction_from_input",
+                        "add_product_of_inputs",
                     ):
-                        if term["input_key"] not in input_keys:
+                        for ik in (
+                            [term["input_key"], term["input_key_b"]]
+                            if apply == "add_product_of_inputs"
+                            else [term["input_key"]]
+                        ):
+                            if ik not in input_keys:
+                                raise BuildError(
+                                    f"{tctx}: reads input '{ik}', "
+                                    f"which the model does not declare"
+                                )
+                        if apply == "add_product_of_inputs":
+                            if not term.get("input_key_b"):
+                                raise BuildError(
+                                    f"{tctx}: add_product_of_inputs needs "
+                                    f"input_key_b"
+                                )
+                            if term["input_key"] == term["input_key_b"]:
+                                raise BuildError(
+                                    f"{tctx}: input_key and input_key_b must "
+                                    f"name different inputs"
+                                )
+                        elif term.get("input_key_b"):
                             raise BuildError(
-                                f"{tctx}: reads input '{term['input_key']}', "
-                                f"which the model does not declare"
+                                f"{tctx}: input_key_b is only valid with "
+                                f"add_product_of_inputs"
                             )
                         coeff_id = None
                     elif apply == "cap_at_throughput":
+                        if term.get("input_key_b"):
+                            raise BuildError(
+                                f"{tctx}: input_key_b is only valid with "
+                                f"add_product_of_inputs"
+                            )
                         if term.get("input_key") not in input_keys:
                             raise BuildError(
                                 f"{tctx}: cap_at_throughput needs input "
@@ -311,6 +338,11 @@ class Builder:
                             tctx,
                         )
                     else:
+                        if term.get("input_key_b"):
+                            raise BuildError(
+                                f"{tctx}: input_key_b is only valid with "
+                                f"add_product_of_inputs"
+                            )
                         coeff_id = self._ref(
                             "coefficient",
                             self.coefficient,
@@ -325,6 +357,7 @@ class Builder:
                         role=term["role"],
                         apply=apply,
                         input_key=term.get("input_key"),
+                        input_key_b=term.get("input_key_b"),
                         coefficient_id=coeff_id,
                         optional=1 if term.get("optional") else 0,
                         when_input=term.get("when_input"),

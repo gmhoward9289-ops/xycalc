@@ -120,6 +120,7 @@ def _term_dict(t) -> dict:
         "role": t.role,
         "apply": t.apply,
         "input_key": t.input_key,
+        "input_key_b": t.input_key_b,
         "optional": t.optional,
         "when_input": t.when_input,
         "unless_input": t.unless_input,
