@@ -558,6 +558,7 @@ def _term(**kw) -> Term:
         role="amplifier",
         apply="multiply",
         input_key=None,
+        input_key_b=None,
         optional=False,
         when_input=None,
         unless_input=None,

@@ -2237,6 +2237,7 @@ const XYCALC_APP = (() => {
     effectiveYScale: effectiveYScale,
     chartLayout: chartLayout,
     normalizeSimpleSize: normalizeSimpleSize,
+    normalizeSimpleAvgBytes: normalizeSimpleAvgBytes,
     gradeSuffix: gradeSuffix,
     weakestValidation: weakestValidation,
     occupancyMarkClass: occupancyMarkClass,
