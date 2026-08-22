@@ -44,7 +44,7 @@ Install: `pip install -e ".[mcp]"` then `xycalc-mcp` or `python -m xycalc`.
 
 1. `list_models` — note grades
 2. `sizing` or `scenario` with declared inputs
-3. `why` if a coefficient looks wrong
+3. `why` if a coefficient looks wrong; `xycalc sizing … --sensitivity` ranks which term dominates the band
 4. For history: export metrics → `import_metrics` (default `local/`) → `xycalc build && xycalc audit`
 5. For a pasted `db.stats()` / `serverStatus` dump: `ingest_dbstats` (or `xycalc ingest`) — candidate only; fill TODOs before a PR. `ingest_dbstats` does not write files. `xycalc ingest` writes nothing by default; `--emit-observation` refuses the published `data/` tree unless `--force-corpus`.
 

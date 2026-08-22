@@ -69,8 +69,10 @@ xycalc models                    # what can be answered, and how well
 xycalc scenarios                 # list scenario chains (multi-model sizing flows)
 xycalc scenario <slug> [flags]   # run a declared scenario end-to-end
 xycalc sizing   <model> [flags]  # how much do I need?
+xycalc sizing   <model> [flags] --sensitivity  # which coefficient dominates the band?
 xycalc headroom <model> --available 256GB [flags]   # how much margin is left?
 xycalc why      <model>          # the citation chain behind every term
+xycalc why      <model> [flags] --sensitivity  # citations plus the ranked band
 xycalc ingest   dump.json        # paste db.stats()/serverStatus → model inputs
 xycalc build                     # compile the YAML corpus into SQLite
 xycalc audit                     # the gates

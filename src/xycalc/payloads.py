@@ -21,6 +21,7 @@ from .ingest import (
 from .model import (
     Model,
     ModelError,
+    Sensitivity,
     build_instance_sizing_summary,
     chain_evaluate,
     get_scenario,
@@ -103,6 +104,32 @@ def serialise(result, model: Model, conn: sqlite3.Connection) -> dict:
     }
 
 
+def serialise_sensitivity(report: Sensitivity) -> dict:
+    return {
+        "sentence": report.sentence,
+        "unit": report.unit,
+        "total_span": report.total_span,
+        "measure_next": (
+            None
+            if report.measure_next_key is None
+            else {"key": report.measure_next_key, "label": report.measure_next_label}
+        ),
+        "terms": [
+            {
+                "key": t.key,
+                "label": t.label,
+                "span": t.span,
+                "share": t.share,
+                "answer_at_coeff_lo": t.answer_at_coeff_lo,
+                "answer_at_coeff_hi": t.answer_at_coeff_hi,
+                "coeff_lo": t.coeff_lo,
+                "coeff_hi": t.coeff_hi,
+            }
+            for t in report.terms
+        ],
+    }
+
+
 def serialise_instance_spec(spec) -> dict | None:
     if spec is None:
         return None
@@ -147,9 +174,17 @@ def list_models_payload(conn: sqlite3.Connection) -> dict:
     return {"models": out}
 
 
-def why_payload(conn: sqlite3.Connection, model_slug: str) -> dict:
-    model = Model.load(conn, model_slug)
-    return {
+def why_payload(
+    conn: sqlite3.Connection,
+    model_slug,
+    inputs: dict | None = None,
+    sensitivity: bool = False,
+) -> dict:
+    if isinstance(model_slug, Model):
+        model = model_slug
+    else:
+        model = Model.load(conn, model_slug)
+    body = {
         "model": model.slug,
         "question": model.question,
         "summary": model.summary,
@@ -180,6 +215,11 @@ def why_payload(conn: sqlite3.Connection, model_slug: str) -> dict:
             for t in model.terms
         ],
     }
+    if sensitivity:
+        body["sensitivity"] = serialise_sensitivity(
+            model.sensitivity(inputs or {})
+        )
+    return body
 
 
 def sizing_payload(
@@ -187,6 +227,7 @@ def sizing_payload(
     model_slug: str,
     inputs: dict,
     available=None,
+    sensitivity: bool = False,
 ) -> dict:
     model = Model.load(conn, model_slug)
     result = model.evaluate(inputs or {})
@@ -194,6 +235,8 @@ def sizing_payload(
     available_bytes = _available_bytes(available)
     if available_bytes is not None:
         body["headroom"] = headroom(result, available_bytes)
+    if sensitivity:
+        body["sensitivity"] = serialise_sensitivity(model.sensitivity(inputs or {}))
     return body
 
 

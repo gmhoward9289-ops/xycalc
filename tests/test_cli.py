@@ -254,6 +254,82 @@ class TestScenarioRendering:
         assert "microburst cannot stall" not in out
 
 
+class TestSensitivityFlag:
+    def test_sizing_sensitivity_ranks_decompression_and_points_at_it(
+        self, db_path, capsys
+    ):
+        rc, out, err = _run(
+            [
+                "--db",
+                str(db_path),
+                "sizing",
+                "mongodb.wt-cache",
+                "--storage-size",
+                "500GB",
+                "--index-size",
+                "40GB",
+                "--sensitivity",
+            ],
+            capsys,
+        )
+        assert rc == 0, err
+        assert "SENSITIVITY" in out
+        assert "the band is" in out
+        assert "decompression" in out.lower()
+        assert "measure next:" in out.lower()
+        assert "ingest" in out.lower()
+
+    def test_sizing_without_the_flag_does_not_print_the_ranking(
+        self, db_path, capsys
+    ):
+        rc, out, err = _run(
+            [
+                "--db",
+                str(db_path),
+                "sizing",
+                "mongodb.wt-cache",
+                "--storage-size",
+                "500GB",
+                "--index-size",
+                "40GB",
+            ],
+            capsys,
+        )
+        assert rc == 0, err
+        assert "SENSITIVITY" not in out
+        assert "measure next:" not in out.lower()
+
+    def test_why_sensitivity_needs_the_same_inputs(self, db_path, capsys):
+        rc, out, err = _run(
+            [
+                "--db",
+                str(db_path),
+                "why",
+                "mongodb.wt-cache",
+                "--storage-size",
+                "500GB",
+                "--index-size",
+                "40GB",
+                "--sensitivity",
+            ],
+            capsys,
+        )
+        assert rc == 0, err
+        assert "the band is" in out
+        assert "decompression" in out.lower()
+        assert "measure next:" in out.lower()
+
+    def test_why_sensitivity_without_required_input_is_an_error(
+        self, db_path, capsys
+    ):
+        rc, out, err = _run(
+            ["--db", str(db_path), "why", "mongodb.wt-cache", "--sensitivity"],
+            capsys,
+        )
+        assert rc == 2
+        assert "required" in err
+
+
 class TestSelectInstance:
     CATALOG = [
         _inst("r8i.large", "16GiB", 2),

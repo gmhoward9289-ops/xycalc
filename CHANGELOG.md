@@ -3,6 +3,16 @@
 All notable changes to the **xycalc tool** (not the corpus) are recorded here.
 Corpus identity is `corpus_digest` on the exported page. See `docs/VERSIONING.md`.
 
+## 0.6.0
+
+- `xycalc sizing … --sensitivity` ranks each coefficient by how much it
+  moves the answer when walked across its lo..hi band with every other
+  coefficient held at mode. The same ranking is on `xycalc why … --sensitivity`
+  (same input flags as sizing). The lead sentence names the shares
+  (`the band is 100% decompression into cache`); `measure next` points at
+  the top term — what to measure to shrink the band, pairing with `xycalc ingest`.
+  Fraction terms invert through `evaluate`, not a second arithmetic path.
+
 ## 0.5.0
 
 - Occupancy-band total-cache labels: at ≤42rem, lift `trigger 95` off the

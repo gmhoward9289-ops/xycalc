@@ -72,6 +72,7 @@ def post_sizing(payload: dict, conn: sqlite3.Connection = Depends(_db)):
             payload.get("model", ""),
             payload.get("inputs", {}),
             available=payload.get("available"),
+            sensitivity=bool(payload.get("sensitivity")),
         )
     except (ModelError, TypeError, ValueError) as e:
         raise HTTPException(status_code=422, detail=str(e))
