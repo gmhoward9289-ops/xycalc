@@ -201,6 +201,27 @@ const href = APP.permalinkHref("#mode=advanced&tab=cache-cliff", {
 });
 assert.strictEqual(href, "/tools/xycalc/calculator/#mode=advanced&tab=cache-cliff");
 
+const modelOnly = APP.parsePermalink("#tab=single&model=mongodb.wt-cache");
+assert.strictEqual(modelOnly.model, "mongodb.wt-cache");
+assert.strictEqual(APP.permalinkView(modelOnly).tab, "single");
+assert.strictEqual(APP.permalinkView(modelOnly).mode, "advanced");
+
+const qModel = APP.parsePermalink("?model=mongodb.wt-cache");
+assert.strictEqual(qModel.model, "mongodb.wt-cache");
+assert.strictEqual(APP.permalinkView(qModel).tab, "single");
+
+const fromQuery = APP.permalinkFromLocation({
+  hash: "",
+  search: "?model=mongodb.wt-cache",
+});
+assert.strictEqual(fromQuery.model, "mongodb.wt-cache");
+const hashWins = APP.permalinkFromLocation({
+  hash: "#tab=scenario&scenario=mongodb.size-to-instance",
+  search: "?model=mongodb.wt-cache",
+});
+assert.strictEqual(hashWins.scenario, "mongodb.size-to-instance");
+assert.strictEqual(hashWins.model, undefined);
+
 // #113: known grade must render GRADE_LABEL + the corpus `text` clause, never
 // "reasonable —" with an empty tail (the Simple-mode field-name miss).
 const unvalidated = {

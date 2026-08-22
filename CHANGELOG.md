@@ -3,6 +3,16 @@
 All notable changes to the **xycalc tool** (not the corpus) are recorded here.
 Corpus identity is `corpus_digest` on the exported page. See `docs/VERSIONING.md`.
 
+## 0.6.1
+
+- `xycalc export` copies Bill's approved still from
+  `src/xycalc/static/landing-still.png` to `og.png` (no generated substitute).
+  `stamp.html` is the same digest / version / git as the calculator footer.
+  `deploy-calculator.yml` splices both into `tools/xycalc/`.
+- Calculator first paint accepts `?model=` / `?scenario=` as an alias for
+  the hash permalink (`#tab=single&model=…` remains the form landing
+  tables should emit).
+
 ## 0.6.0
 
 - `xycalc sizing … --sensitivity` ranks each coefficient by how much it

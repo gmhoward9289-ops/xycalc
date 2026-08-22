@@ -1,9 +1,8 @@
-"""Sweep-chart OG image (1200×630) for the landing / social card.
+"""Optional renderer for a sweep-chart PNG. Export does not call this.
 
-Renders the same band envelope + "what you already have" line the calculator
-draws, using model.py (not a screenshot). Pure Python + zlib, so export stays
-deterministic and does not need a browser. Fail closed: callers skip the file
-rather than embedding a timestamp.
+The landing og:image is Bill's approved still at
+`static/landing-still.png`, copied by `xycalc export` when that file exists.
+This module must not be used to invent a substitute hero.
 """
 
 from __future__ import annotations

@@ -77,7 +77,7 @@ xycalc ingest   dump.json        # paste db.stats()/serverStatus → model input
 xycalc build                     # compile the YAML corpus into SQLite
 xycalc audit                     # the gates
 xycalc gui                       # the calculator, served locally
-xycalc export --out page.html    # calculator HTML + stamp.html + og.png beside it
+xycalc export --out page.html    # calculator HTML + stamp.html; og.png from landing-still.png
 ```
 
 Flags for `sizing`, `headroom`, and `scenario` are generated from each model's
@@ -160,7 +160,8 @@ page is always a real change.
 Landing-page assets and calculator hash deep-links (for the model table on
 <https://swamplink.com/tools/xycalc/>) are documented in
 [`docs/CALCULATOR.md`](docs/CALCULATOR.md). `xycalc export` writes `stamp.html`
-and `og.png` next to the HTML; they are **not** inlined into calculator.html.
+next to the HTML and copies `static/landing-still.png` to `og.png`. They are
+**not** inlined into calculator.html.
 
 ## How it works
 

@@ -595,7 +595,7 @@ def test_stamp_html_matches_footer_fields(blob):
     assert "\r" not in html
 
 
-def test_export_writes_sidecars_without_changing_html(db_path, tmp_path, monkeypatch):
+def test_export_writes_stamp_without_inventing_a_hero(db_path, tmp_path, monkeypatch):
     monkeypatch.setenv("GITHUB_SHA", "abcdef0123456789")
     from xycalc.db import connect
     from xycalc.version import package_version
@@ -615,38 +615,54 @@ def test_export_writes_sidecars_without_changing_html(db_path, tmp_path, monkeyp
     assert blob["xycalc_version"] in stamp
     assert blob["corpus_digest"] in stamp
     assert blob["xycalc_git"] in stamp
+    still = Path(__file__).resolve().parents[1] / "src" / "xycalc" / "static" / "landing-still.png"
     og = tmp_path / "og.png"
-    assert og.is_file()
-    data = og.read_bytes()
-    assert data.startswith(b"\x89PNG\r\n\x1a\n")
-    assert b"tIME" not in data
-    import struct
-
-    assert struct.unpack(">II", data[16:24]) == (1200, 630)
-    export(tmp_path / "other.html", db=db_path)
-    assert og.read_bytes() == data
+    if still.is_file():
+        assert og.read_bytes() == still.read_bytes()
+        assert og.read_bytes().startswith(b"\x89PNG\r\n\x1a\n")
+    else:
+        assert not og.exists()
+    assert not (tmp_path / "chart.svg").exists()
 
 
-def test_skipped_og_does_not_change_calculator_html(db_path, tmp_path, monkeypatch):
+def test_export_copies_approved_still_when_present(db_path, tmp_path, monkeypatch):
     monkeypatch.setenv("GITHUB_SHA", "abcdef0123456789")
-    import xycalc.export as export_mod
-    from xycalc.ogimage import OgImageError
     from xycalc.version import package_version
+    from xycalc.pngutil import write_rgb_png
+    import xycalc.export as export_mod
 
     package_version.cache_clear()
-
-    def boom(*a, **k):
-        raise OgImageError("no chart")
-
-    monkeypatch.setattr(export_mod, "render_og_png", boom)
-    html_path = tmp_path / "calculator.html"
-    export(html_path, db=db_path)
+    still = tmp_path / "landing-still.png"
+    write_rgb_png(still, 2, 2, bytes([10, 20, 30] * 4))
+    monkeypatch.setattr(export_mod, "LANDING_STILL", still)
+    out = tmp_path / "out"
+    out.mkdir()
+    export(out / "calculator.html", db=db_path)
+    og = out / "og.png"
+    assert og.read_bytes() == still.read_bytes()
+    assert not (out / "chart.svg").exists()
+    html = (out / "calculator.html").read_text(encoding="utf-8")
     from xycalc.db import connect
 
     conn = connect(db_path)
     blob = corpus_blob(conn)
     conn.close()
-    assert html_path.read_text(encoding="utf-8") == render(blob)
+    assert html == render(blob)
+
+
+def test_export_skips_og_when_still_missing(db_path, tmp_path, monkeypatch):
+    monkeypatch.setenv("GITHUB_SHA", "abcdef0123456789")
+    import xycalc.export as export_mod
+    from xycalc.db import connect
+    from xycalc.version import package_version
+
+    package_version.cache_clear()
+    monkeypatch.setattr(export_mod, "LANDING_STILL", tmp_path / "no-such-still.png")
+    export(tmp_path / "calculator.html", db=db_path)
+    conn = connect(db_path)
+    blob = corpus_blob(conn)
+    conn.close()
+    assert (tmp_path / "calculator.html").read_text(encoding="utf-8") == render(blob)
     assert not (tmp_path / "og.png").exists()
     assert provenance_line(blob) in (tmp_path / "stamp.html").read_text(encoding="utf-8")
 
@@ -662,6 +678,7 @@ def test_deploy_workflow_copies_landing_sidecars():
     assert "cp /tmp/stamp.html tools/xycalc/stamp.html" in text
     assert "git add tools/xycalc/og.png" in text
     assert "git add tools/xycalc/stamp.html" in text
+    assert "chart.svg" not in text
 
 
 def test_docs_name_the_shipped_permalink_shape():
@@ -670,7 +687,9 @@ def test_docs_name_the_shipped_permalink_shape():
     ).read_text(encoding="utf-8")
     assert "#tab=single&model=<slug>" in docs
     assert "#tab=scenario&scenario=<slug>" in docs
-    assert "og.png" in docs
+    assert "landing-still.png" in docs
     assert "stamp.html" in docs
+    assert "?model=" in docs
+    assert "substitute" in docs
 
 

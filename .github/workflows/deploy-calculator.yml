@@ -118,11 +118,12 @@ jobs:
 
           # Landing assets live next to the calculator, not inside it.
           # tools/xycalc/ already exists; adding og.png / stamp.html is safe.
+          # og.png is Bill's approved still, copied by export when present.
           if [ -f /tmp/og.png ]; then
             cp /tmp/og.png tools/xycalc/og.png
             git add tools/xycalc/og.png
           else
-            echo "::warning::og.png was not produced; landing card image not updated"
+            echo "::warning::og.png was not produced; landing card image not updated (drop Bill's still at src/xycalc/static/landing-still.png)"
           fi
           if [ -f /tmp/stamp.html ]; then
             cp /tmp/stamp.html tools/xycalc/stamp.html
