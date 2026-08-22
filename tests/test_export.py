@@ -17,9 +17,11 @@ divergence that slips past CI still cannot reach a reader as a wrong figure.
 from __future__ import annotations
 
 import json
+import re
 import shutil
 import sqlite3
 import subprocess
+from collections import Counter
 from pathlib import Path
 
 import pytest
@@ -39,6 +41,20 @@ from xycalc.export import (
 from xycalc.model import Model
 
 NODE = shutil.which("node")
+
+_HTML_ID = re.compile(r'\bid="([^"]+)"', re.I)
+_DOLLAR_ID = re.compile(r'\$\("([^"]+)"\)')
+# Nodes Simple injects into the result panel; they are not in the template.
+_SIMPLE_INJECTED_IDS = frozenset({"simple-open-advanced"})
+
+
+def html_id_counts(html: str) -> Counter:
+    """Real markup ids only — skip JS template literals like scn-in-${esc(i.key)}."""
+    return Counter(i for i in _HTML_ID.findall(html) if "${" not in i)
+
+
+def html_duplicate_ids(html: str) -> list[str]:
+    return sorted(i for i, n in html_id_counts(html).items() if n > 1)
 
 
 @pytest.fixture
@@ -297,6 +313,75 @@ def test_render_substitutes_every_placeholder(blob):
     assert "renderCascadeModelStep" in html
     assert "weakestValidation" in html
     assert "the sentence it was read from" in html
+    assert 'id="simple-vulns"' in html
+    assert 'id="simple-vuln-storage"' in html
+    assert "simple-db-size" not in html
+
+
+def test_duplicate_id_helper_catches_the_issue_137_shape():
+    """#112 shipped two id=simple-vulns. This helper is the silent-ship gate."""
+    broken = (
+        '<label for="simple-vulns">Vulnerability records</label>'
+        '<input id="simple-vulns">'
+        '<label for="simple-vulns">Vulnerability records</label>'
+        '<input id="simple-vulns">'
+    )
+    assert html_duplicate_ids(broken) == ["simple-vulns"]
+    assert html_id_counts(broken)["simple-vulns"] == 2
+    assert html_duplicate_ids('<input id="a"><input id="b">') == []
+
+
+def test_simple_form_ids_unique_and_match_app_js():
+    """bootSimple throws on missing IDs; duplicate IDs bind the wrong node.
+
+    Issue #137: calculator.html duplicated simple-vulns and dropped
+    simple-vuln-storage / devices / residual while app.js still read them.
+    """
+    html = TEMPLATE.read_text(encoding="utf-8")
+    app = APP_JS.read_text(encoding="utf-8")
+    counts = html_id_counts(html)
+    assert html_duplicate_ids(html) == []
+
+    listed = re.search(r"const SIMPLE_FORM_FIELD_IDS = \[([^\]]+)\]", app, re.S)
+    assert listed, "SIMPLE_FORM_FIELD_IDS missing from app.js"
+    field_ids = re.findall(r'"([^"]+)"', listed.group(1))
+    assert field_ids == [
+        "simple-vulns",
+        "simple-vuln-storage",
+        "simple-devices",
+        "simple-device-avg",
+        "simple-residual",
+    ]
+    for fid in field_ids:
+        assert counts[fid] == 1, f"{fid} occurs {counts[fid]} time(s)"
+        assert f'$("{fid}")' in app
+
+    missing = []
+    for rid in sorted(set(_DOLLAR_ID.findall(app))):
+        if not rid.startswith("simple-") or rid in _SIMPLE_INJECTED_IDS:
+            continue
+        if counts[rid] != 1:
+            missing.append((rid, counts[rid]))
+    assert missing == [], f"app.js simple ids missing or duplicated in HTML: {missing}"
+    assert "simple-db-size" not in html
+    assert "simple-db-size" not in app
+
+
+def test_exported_page_simple_ids_stay_unique(blob):
+    html = render(blob)
+    assert html_duplicate_ids(html) == []
+    counts = html_id_counts(html)
+    for fid in (
+        "simple-vulns",
+        "simple-vuln-storage",
+        "simple-devices",
+        "simple-device-avg",
+        "simple-residual",
+        "simple-status",
+        "simple-result",
+    ):
+        assert counts[fid] == 1, fid
+    assert "Enter vuln count and storageSize" in html
 
 
 def test_export_blob_carries_scenario_chain(blob):

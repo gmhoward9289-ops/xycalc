@@ -38,11 +38,7 @@ function applySimpleHostFloor(data) {
 }
 
 function simpleInputs(size) {
-  return {
-    baseline_storage_size: size,
-    baseline_vuln_count: "250000",
-    target_vuln_count: "250000",
-  };
+  return APP.simpleChainInputs({ vulns: "250000", storage: size });
 }
 
 function paint(size) {
@@ -113,5 +109,13 @@ assertHonesty(homepage.panel, "500GB homepage");
 assert.ok(!homepage.panel.picksHtml.includes("custom sizing"), homepage.panel.picksHtml);
 assert.ok(homepage.panel.picksHtml.includes("r8i.96xlarge"), homepage.panel.picksHtml);
 assert.ok(homepage.panel.picksHtml.includes("u7i-12tb.224xlarge"), homepage.panel.picksHtml);
+assert.ok(
+  /3\.1\s*TB/.test(homepage.panel.ramText),
+  "500 GB Simple host RAM should stay ~3.1 TB, got " + homepage.panel.ramText,
+);
+assert.ok(
+  /unvalidated \(n=0\)/i.test(homepage.panel.bannerHtml + homepage.panel.html),
+  homepage.panel.bannerHtml,
+);
 
 console.log("simple first paint ok");

@@ -622,6 +622,47 @@ const XYCALC_APP = (() => {
     return t;
   }
 
+  // IDs calculator.html must ship exactly once. bootSimple() throws if any
+  // are missing; a duplicate id is an HTML uniqueness failure the export
+  // tests catch before the page can boot against the wrong node.
+  const SIMPLE_FORM_FIELD_IDS = [
+    "simple-vulns",
+    "simple-vuln-storage",
+    "simple-devices",
+    "simple-device-avg",
+    "simple-residual",
+  ];
+
+  // Simple → mongodb.size-to-instance. Vuln count + today's storageSize are
+  // the family measurement; target count equals today's count so a 500 GB
+  // footprint stays 500 GB (homepage / Rickey path) instead of picking up
+  // three-year NVD growth.
+  function simpleChainInputs(fields) {
+    const src = fields || {};
+    const vulns = String(src.vulns || "").replace(/,/g, "").trim();
+    const storageRaw = String(src.storage || src.size || "").trim();
+    if (!vulns || !storageRaw) return null;
+    const devices = String(src.devices || "").replace(/,/g, "").trim();
+    const deviceAvgRaw = String(src.deviceAvg || "").trim();
+    const residualRaw = String(src.residual || "").trim();
+    if ((devices && !deviceAvgRaw) || (!devices && deviceAvgRaw)) {
+      throw new Error("Device count and avg on-disk bytes must be supplied together.");
+    }
+    const inputs = {
+      baseline_vuln_count: vulns,
+      baseline_storage_size: normalizeSimpleSize(storageRaw),
+      target_vuln_count: vulns,
+    };
+    if (devices) {
+      inputs.device_count = devices;
+      inputs.device_avg_storage_bytes = normalizeSimpleAvgBytes(deviceAvgRaw);
+    }
+    if (residualRaw) {
+      inputs.residual_storage_size = normalizeSimpleSize(residualRaw);
+    }
+    return inputs;
+  }
+
   function attachUi() {
     if (typeof document === "undefined") return;
     if (!document.getElementById("corpus")) return;
@@ -659,10 +700,16 @@ const XYCALC_APP = (() => {
       const simple = document.body.classList.contains("mode-simple");
       const state = { mode: simple ? "simple" : "advanced", inputs: {} };
       if (simple) {
-        const size = $("simple-db-size") && $("simple-db-size").value.trim();
         const vulns = $("simple-vulns") && $("simple-vulns").value.trim();
-        if (size) state.inputs.size = size;
+        const storage = $("simple-vuln-storage") && $("simple-vuln-storage").value.trim();
+        const devices = $("simple-devices") && $("simple-devices").value.trim();
+        const deviceAvg = $("simple-device-avg") && $("simple-device-avg").value.trim();
+        const residual = $("simple-residual") && $("simple-residual").value.trim();
         if (vulns) state.inputs.vulns = vulns;
+        if (storage) state.inputs.storage = storage;
+        if (devices) state.inputs.devices = devices;
+        if (deviceAvg) state.inputs.deviceAvg = deviceAvg;
+        if (residual) state.inputs.residual = residual;
         return state;
       }
       state.tab = currentTab();
@@ -707,8 +754,12 @@ const XYCALC_APP = (() => {
       try {
         if (view.mode === "simple") {
           setMode("simple", { persist: false, hash: false });
-          if (parsed.inputs.size && $("simple-db-size")) $("simple-db-size").value = parsed.inputs.size;
+          const storageVal = parsed.inputs.storage || parsed.inputs.size;
           if (parsed.inputs.vulns && $("simple-vulns")) $("simple-vulns").value = parsed.inputs.vulns;
+          if (storageVal && $("simple-vuln-storage")) $("simple-vuln-storage").value = storageVal;
+          if (parsed.inputs.devices && $("simple-devices")) $("simple-devices").value = parsed.inputs.devices;
+          if (parsed.inputs.deviceAvg && $("simple-device-avg")) $("simple-device-avg").value = parsed.inputs.deviceAvg;
+          if (parsed.inputs.residual && $("simple-residual")) $("simple-residual").value = parsed.inputs.residual;
           calculateSimple();
           return true;
         }
@@ -848,10 +899,11 @@ const XYCALC_APP = (() => {
     }
 
     function bootSimple() {
-      $("simple-db-size").value = SCENARIO_DEFAULTS["mongodb.size-to-instance"].baseline_storage_size || "";
-      $("simple-vulns").value = "";
-      $("simple-db-size").addEventListener("input", scheduleSimpleCalc);
-      $("simple-vulns").addEventListener("input", scheduleSimpleCalc);
+      for (const id of SIMPLE_FORM_FIELD_IDS) {
+        const el = $(id);
+        if (!el) throw new Error("Simple form missing #" + id);
+        el.addEventListener("input", scheduleSimpleCalc);
+      }
       $("simple-result").addEventListener("click", (ev) => {
         if (ev.target && ev.target.id === "simple-open-advanced") {
           ev.preventDefault();
@@ -872,21 +924,36 @@ const XYCALC_APP = (() => {
     }
 
     function openAdvancedFromSimple() {
-      const sizeRaw = ($("simple-db-size").value || "").trim();
       const vulns = ($("simple-vulns").value || "").trim();
+      const storageRaw = ($("simple-vuln-storage").value || "").trim();
+      const devices = ($("simple-devices").value || "").trim();
+      const deviceAvgRaw = ($("simple-device-avg").value || "").trim();
+      const residualRaw = ($("simple-residual").value || "").trim();
       pendingExpandMathUntil = Date.now() + 600;
       setMode("advanced");
       setTab("scenario");
       pickScenario("mongodb.size-to-instance");
-      if (sizeRaw) {
+      if (storageRaw) {
         const el = $("scn-in-baseline_storage_size");
-        if (el) el.value = normalizeSimpleSize(sizeRaw);
+        if (el) el.value = normalizeSimpleSize(storageRaw);
       }
       if (vulns) {
         const b = $("scn-in-baseline_vuln_count");
-        if (b) b.value = vulns;
+        if (b) b.value = vulns.replace(/,/g, "");
         const t = $("scn-in-target_vuln_count");
-        if (t) t.value = vulns;
+        if (t) t.value = vulns.replace(/,/g, "");
+      }
+      if (devices) {
+        const d = $("scn-in-device_count");
+        if (d) d.value = devices.replace(/,/g, "");
+      }
+      if (deviceAvgRaw) {
+        const a = $("scn-in-device_avg_storage_bytes");
+        if (a) a.value = normalizeSimpleAvgBytes(deviceAvgRaw);
+      }
+      if (residualRaw) {
+        const r = $("scn-in-residual_storage_size");
+        if (r) r.value = normalizeSimpleSize(residualRaw);
       }
       calculateScenario(true, { expandMath: true });
       expandScenarioMath();
@@ -913,31 +980,23 @@ const XYCALC_APP = (() => {
         $("simple-result").hidden = true;
         err.hidden = true;
         status.textContent =
-          "Enter vuln count and vuln storageSize — sizing updates as you type.";
+          "Enter vuln count and storageSize — sizing updates as you type.";
         return;
       }
-      const size = normalizeSimpleSize(sizeRaw);
-      const defaults = SCENARIO_DEFAULTS["mongodb.size-to-instance"] || {};
-      const corpusBaseline = defaults.baseline_vuln_count || "250000";
-      const targetVulns = (vulns || "").replace(/,/g, "") || corpusBaseline;
-      // Size is today's measured footprint. A filled record count is the
-      // target: storage scales by target / corpus baseline (250000). Blank
-      // keeps target == baseline so the host is today's size.
-      const inputs = {
-        baseline_storage_size: size,
-        baseline_vuln_count: corpusBaseline,
-        target_vuln_count: targetVulns,
-      };
-      if (devices) {
-        inputs.device_count = devices;
-        inputs.device_avg_storage_bytes = deviceAvg;
-      }
-      if (residual) inputs.residual_storage_size = residual;
       try {
+        const inputs = simpleChainInputs({
+          vulns: vulns,
+          storage: storageRaw,
+          devices: devices,
+          deviceAvg: deviceAvgRaw,
+          residual: residualRaw,
+        });
         const data = applySimpleHostFloor(
           XY.chainEvaluate(CORPUS, "mongodb.size-to-instance", inputs));
         err.hidden = true;
         renderSimpleResult(data);
+        const storage = inputs.baseline_storage_size;
+        const residual = inputs.residual_storage_size;
         const notes = [];
         if (storage !== storageRaw) notes.push(`storage as ${storage}`);
         if (residual && residual !== residualRaw) notes.push(`residual as ${residual}`);
@@ -945,16 +1004,9 @@ const XYCALC_APP = (() => {
         status.textContent = "Up to date" + as + " — change a field to recalculate.";
         const note = document.getElementById("simple-vuln-note");
         if (note) {
-          if (vulns) {
-            const t = Number(targetVulns);
-            const b = Number(corpusBaseline);
-            const ratio = b ? t / b : 1;
-            note.hidden = false;
-            note.textContent = "Sizing for " + t.toLocaleString() + " records (" + ratio.toFixed(2) + "\u00d7 the " + b.toLocaleString() + " corpus baseline).";
-          } else {
-            note.hidden = true;
-            note.textContent = "";
-          }
+          const n = Number(inputs.baseline_vuln_count);
+          note.hidden = false;
+          note.textContent = "Sizing today's footprint for " + n.toLocaleString() + " vuln records.";
         }
         if (document.body.classList.contains("mode-simple")) scheduleHash();
       } catch (e) {
@@ -2238,6 +2290,8 @@ const XYCALC_APP = (() => {
     chartLayout: chartLayout,
     normalizeSimpleSize: normalizeSimpleSize,
     normalizeSimpleAvgBytes: normalizeSimpleAvgBytes,
+    SIMPLE_FORM_FIELD_IDS: SIMPLE_FORM_FIELD_IDS,
+    simpleChainInputs: simpleChainInputs,
     gradeSuffix: gradeSuffix,
     weakestValidation: weakestValidation,
     occupancyMarkClass: occupancyMarkClass,

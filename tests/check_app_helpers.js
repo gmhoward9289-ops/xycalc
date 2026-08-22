@@ -105,6 +105,45 @@ assert.strictEqual(APP.normalizeSimpleAvgBytes(""), "");
 assert.strictEqual(APP.normalizeSimpleAvgBytes("2048"), "2048");
 assert.strictEqual(APP.normalizeSimpleAvgBytes("2MB"), "2MB");
 assert.strictEqual(APP.normalizeSimpleAvgBytes("2KB"), "2KB");
+
+assert.deepStrictEqual(APP.SIMPLE_FORM_FIELD_IDS, [
+  "simple-vulns",
+  "simple-vuln-storage",
+  "simple-devices",
+  "simple-device-avg",
+  "simple-residual",
+]);
+assert.strictEqual(APP.simpleChainInputs({ vulns: "", storage: "500" }), null);
+assert.strictEqual(APP.simpleChainInputs({ vulns: "250000", storage: "" }), null);
+assert.deepStrictEqual(
+  APP.simpleChainInputs({ vulns: "250,000", storage: "500" }),
+  {
+    baseline_vuln_count: "250000",
+    baseline_storage_size: "500GB",
+    target_vuln_count: "250000",
+  },
+);
+assert.deepStrictEqual(
+  APP.simpleChainInputs({
+    vulns: "250000",
+    size: "500GB",
+    devices: "10000",
+    deviceAvg: "2MB",
+    residual: "50",
+  }),
+  {
+    baseline_vuln_count: "250000",
+    baseline_storage_size: "500GB",
+    target_vuln_count: "250000",
+    device_count: "10000",
+    device_avg_storage_bytes: "2MB",
+    residual_storage_size: "50GB",
+  },
+);
+assert.throws(
+  () => APP.simpleChainInputs({ vulns: "250000", storage: "500", devices: "10" }),
+  /together/,
+);
 assert.strictEqual(APP.esc("<img src=x onerror=alert(1)>"), "&lt;img src=x onerror=alert(1)&gt;");
 assert.strictEqual(APP.esc('a&b"c'), "a&amp;b&quot;c");
 assert.strictEqual(APP.esc("it's"), "it&#39;s");

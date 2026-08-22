@@ -553,9 +553,24 @@ body.mode-advanced #simple-view { display: none !important; }
       <div class="help">Document count in your vuln collections today.</div>
     </div>
     <div class="field">
-      <label for="simple-vulns">Vulnerability records <span class="help" style="display:inline">optional</span></label>
-      <input id="simple-vulns" placeholder="e.g. 250000" autocomplete="off">
-      <div class="help">Optional. Size for this many records, scaled from today's bytes at the 250,000 corpus baseline. Leave blank to size today's footprint only.</div>
+      <label for="simple-vuln-storage">Vuln-family storageSize today</label>
+      <input id="simple-vuln-storage" placeholder="e.g. 500 or 500GB" autocomplete="off">
+      <div class="help">On-disk storageSize for that family (collStats / db.stats). Bare number = GB. Host floor is 64&nbsp;GB (r8i.2xlarge).</div>
+    </div>
+    <div class="field">
+      <label for="simple-devices">Device documents <span class="help" style="display:inline">optional</span></label>
+      <input id="simple-devices" placeholder="e.g. 10000" autocomplete="off">
+      <div class="help">Optional. Supply with avg on-disk bytes. Added after the vuln family; not scaled by CVE growth.</div>
+    </div>
+    <div class="field">
+      <label for="simple-device-avg">Avg on-disk bytes per device <span class="help" style="display:inline">optional</span></label>
+      <input id="simple-device-avg" placeholder="e.g. 2048 or 2KB" autocomplete="off">
+      <div class="help">Optional. storageSize ÷ count for the device family. Bare number = bytes.</div>
+    </div>
+    <div class="field">
+      <label for="simple-residual">Other collection data <span class="help" style="display:inline">optional</span></label>
+      <input id="simple-residual" placeholder="e.g. 50 or 50GB" autocomplete="off">
+      <div class="help">Optional residual floor. Bare number = GB. Does not inherit NVD growth.</div>
     </div>
     <p class="recalc-live" id="simple-status">Enter vuln count and storageSize — sizing updates as you type.</p>
     <p id="simple-error" class="error" hidden></p>
