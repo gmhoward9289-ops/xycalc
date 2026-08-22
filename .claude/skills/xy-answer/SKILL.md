@@ -63,7 +63,10 @@ Include, always:
   most of the answer
 
 Use `xycalc why <model>` when they ask where a number came from. It prints the
-citation chain down to the sentence each figure was read from.
+citation chain down to the sentence each figure was read from. Use
+`xycalc sizing <model> … --sensitivity` (or `why … --sensitivity` with the same
+inputs) to rank which coefficient dominates the band — that term is what to
+measure next (`xycalc ingest` for a db.stats() paste).
 
 ## 5. What to do when the corpus is thin
 

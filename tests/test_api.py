@@ -164,6 +164,15 @@ class TestWhy:
     def test_unknown_model_is_404(self, client):
         assert client.get("/api/why/nope").status_code == 404
 
+    def test_sizing_sensitivity_is_opt_in(self, client):
+        plain = client.post("/api/sizing", json=SIZING).json()
+        assert "sensitivity" not in plain
+        body = client.post(
+            "/api/sizing", json={**SIZING, "sensitivity": True}
+        ).json()
+        assert body["sensitivity"]["measure_next"]["key"] == "decompression"
+        assert "decompression" in body["sensitivity"]["sentence"]
+
 
 class TestPage:
     def test_the_page_is_served(self, client):

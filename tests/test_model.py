@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from xycalc.model import Model, ModelError, format_bytes, headroom, parse_bytes
+from xycalc.model import Model, ModelError, Term, format_bytes, headroom, parse_bytes
 from xycalc.model import validation_status
 
 
@@ -478,3 +478,154 @@ class TestBounds:
                 f"{r['key']} computes but is filed as a constraint, so it is "
                 f"skipped and does nothing"
             )
+
+
+def _term(**kw) -> Term:
+    base = dict(
+        key="k",
+        label="K",
+        role="amplifier",
+        apply="multiply",
+        input_key=None,
+        optional=False,
+        when_input=None,
+        unless_input=None,
+        rationale="test",
+        coefficient="c.k",
+        coeff_lo=1.0,
+        coeff_mode=1.0,
+        coeff_hi=1.0,
+        unit="ratio",
+        confidence="estimate",
+        applies_to="test",
+        source="test",
+        source_title="test",
+        source_url=None,
+        quote="q",
+    )
+    base.update(kw)
+    return Term(**base)
+
+
+def _toy_model(terms: list[Term]) -> Model:
+    return Model(
+        slug="test.sens",
+        question="q",
+        system="test",
+        summary=None,
+        reframe=None,
+        notes=None,
+        output_unit="bytes",
+        output_parameter="x",
+        inputs=[
+            {
+                "key": "size",
+                "label": "Size",
+                "unit": "bytes",
+                "required": True,
+                "default_value": None,
+                "help": "",
+            }
+        ],
+        terms=terms,
+    )
+
+
+class TestSensitivity:
+    def test_ranks_the_wider_coefficient_first(self):
+        """Two amplifiers, others held at mode: the multiply band (1.5–3.5)
+        moves the answer more than the fraction band (50–90%). Rank is the
+        span of evaluate, not a hardcoded name."""
+        model = _toy_model(
+            [
+                _term(
+                    key="floor",
+                    label="Floor",
+                    role="floor",
+                    apply="input",
+                    input_key="size",
+                    coefficient=None,
+                    coeff_lo=None,
+                    coeff_mode=None,
+                    coeff_hi=None,
+                    source=None,
+                ),
+                _term(
+                    key="compression",
+                    label="Compression ratio",
+                    apply="multiply",
+                    coeff_lo=1.5,
+                    coeff_mode=2.5,
+                    coeff_hi=3.5,
+                ),
+                _term(
+                    key="occupancy",
+                    label="Usable fraction",
+                    apply="divide_by_fraction",
+                    coeff_lo=50,
+                    coeff_mode=80,
+                    coeff_hi=90,
+                    unit="percent",
+                ),
+            ]
+        )
+        report = model.sensitivity({"size": 100})
+        assert [t.key for t in report.terms] == ["compression", "occupancy"]
+        assert report.terms[0].span > report.terms[1].span
+        assert report.terms[0].share > report.terms[1].share
+        assert report.measure_next_key == "compression"
+        assert "compression ratio" in report.sentence
+
+    def test_fraction_terms_invert_through_evaluate(self):
+        """Pinning a divide_by_fraction coefficient to its lo must raise the
+        answer. Re-deriving the inversion in the sweeper would be the bug
+        this exists to refuse."""
+        model = _toy_model(
+            [
+                _term(
+                    key="floor",
+                    label="Floor",
+                    role="floor",
+                    apply="input",
+                    input_key="size",
+                    coefficient=None,
+                    coeff_lo=None,
+                    coeff_mode=None,
+                    coeff_hi=None,
+                    source=None,
+                ),
+                _term(
+                    key="occupancy",
+                    label="Usable fraction",
+                    apply="divide_by_fraction",
+                    coeff_lo=50,
+                    coeff_mode=80,
+                    coeff_hi=90,
+                    unit="percent",
+                ),
+            ]
+        )
+        report = model.sensitivity({"size": 100})
+        occ = report.terms[0]
+        assert occ.answer_at_coeff_lo > occ.answer_at_coeff_hi
+        assert occ.span == pytest.approx(occ.answer_at_coeff_lo - occ.answer_at_coeff_hi)
+
+    def test_wt_cache_ranks_decompression_first(self, conn):
+        """The field-review claim: compression dominates the wt-cache band.
+        Computed, not hardcoded — eviction-target is a documented point, so
+        it cannot appear in the ranking."""
+        model = Model.load(conn, "mongodb.wt-cache")
+        report = model.sensitivity(
+            {"storage_size": "500GB", "index_size": "40GB"}
+        )
+        assert report.measure_next_key == "decompression"
+        assert report.terms[0].key == "decompression"
+        assert report.terms[0].share == pytest.approx(1.0)
+        assert all(t.key != "eviction_headroom" for t in report.terms)
+        assert "decompression" in report.sentence
+
+    def test_point_coefficients_are_not_ranked(self, conn):
+        model = Model.load(conn, "mongodb.wt-cache")
+        keys = {t.key for t in model.sensitivity({"storage_size": "500GB"}).terms}
+        assert "minimum_cache" not in keys
+        assert "eviction_headroom" not in keys
