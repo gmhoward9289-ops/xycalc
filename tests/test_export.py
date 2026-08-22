@@ -49,7 +49,8 @@ _SIMPLE_INJECTED_IDS = frozenset({"simple-open-advanced"})
 
 
 def html_id_counts(html: str) -> Counter:
-    return Counter(_HTML_ID.findall(html))
+    """Real markup ids only — skip JS template literals like scn-in-${esc(i.key)}."""
+    return Counter(i for i in _HTML_ID.findall(html) if "${" not in i)
 
 
 def html_duplicate_ids(html: str) -> list[str]:
