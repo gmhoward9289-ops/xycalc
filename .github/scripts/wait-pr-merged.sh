@@ -19,12 +19,11 @@ SLEEP=15
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 
 while true; do
-  json="$(gh pr view "$PR_URL" --json state,merged,mergeCommit)"
-  merged="$(jq -r '.merged' <<<"$json")"
+  json="$(gh pr view "$PR_URL" --json state,mergeCommit)"
   state="$(jq -r '.state' <<<"$json")"
   sha="$(jq -r '.mergeCommit.oid // empty' <<<"$json")"
-  echo "PR state=${state} merged=${merged} sha=${sha:-none}"
-  if [[ "$merged" == "true" ]]; then
+  echo "PR state=${state} sha=${sha:-none}"
+  if [[ "$state" == "MERGED" ]]; then
     bash "${ROOT}/.github/scripts/kick-main-pipelines.sh"
     exit 0
   fi
