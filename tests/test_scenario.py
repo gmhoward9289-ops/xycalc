@@ -98,6 +98,141 @@ class TestChainEvaluate:
             parse_bytes("500GB") + 10_000 * parse_bytes("2MB") + parse_bytes("50GB")
         )
 
+    def test_history_raises_projected_volume(self, conn, scenario):
+        steps = chain_evaluate(
+            conn,
+            scenario,
+            {
+                **INSTANCE_INPUTS,
+                "history_copy_count": "3",
+                "history_avg_storage_bytes": "80GB",
+            },
+        )
+        families = steps[0].result
+        assert families.mode == pytest.approx(
+            parse_bytes("500GB") + 3 * parse_bytes("80GB")
+        )
+        gp3 = next(s for s in steps if s.slug == "ebs.gp3-spec")
+        assert gp3.gp3_spec["volume_bytes"] == pytest.approx(
+            parse_bytes("500GB")
+            + 3 * parse_bytes("80GB")
+            + parse_bytes("40GB")
+        )
+
+    def test_history_measured_total_not_double_counted_on_gp3(self, conn, scenario):
+        steps = chain_evaluate(
+            conn,
+            scenario,
+            {
+                **INSTANCE_INPUTS,
+                "history_storage_size": "240GB",
+            },
+        )
+        families = steps[0].result
+        assert families.mode == pytest.approx(
+            parse_bytes("500GB") + parse_bytes("240GB")
+        )
+        gp3 = next(s for s in steps if s.slug == "ebs.gp3-spec")
+        assert gp3.gp3_spec["volume_bytes"] == pytest.approx(
+            parse_bytes("500GB") + parse_bytes("240GB") + parse_bytes("40GB")
+        )
+
+    def test_size_to_instance_step_list_without_concurrency_unchanged(self, conn, scenario):
+        steps = chain_evaluate(conn, scenario, INSTANCE_INPUTS)
+        assert [s.slug for s in steps] == [
+            "mongodb.storage-from-doc-families",
+            "mongodb.wt-cache",
+            "mongodb.host-ram",
+            "aws-ec2.instance-select",
+            "aws-ec2.instance-select",
+            "azure-vm.instance-select",
+            "ebs.gp3-spec",
+            "ebs.iops-to-provision",
+        ]
+
+    def test_concurrency_alone_does_not_change_host_ram(self, conn, scenario):
+        base = chain_evaluate(conn, scenario, INSTANCE_INPUTS)
+        concurrent = chain_evaluate(conn, scenario, {**INSTANCE_INPUTS, "concurrency": "8"})
+        host = lambda st: next(s for s in st if s.slug == "mongodb.host-ram").result.mode
+        assert host(base) == pytest.approx(host(concurrent))
+
+    def test_ticket_step_skipped_without_L(self, conn, scenario):
+        steps = chain_evaluate(
+            conn, scenario, {**INSTANCE_INPUTS, "concurrency": "16", "tickets": "64"}
+        )
+        slugs = [s.slug for s in steps]
+        assert "celery.worker-prefetch" in slugs
+        assert "mongodb.ticket-throughput-ceiling" not in slugs
+
+    def test_scan_fanout_does_not_change_wt_cache(self, conn, scenario):
+        a = chain_evaluate(conn, scenario, INSTANCE_INPUTS)
+        b = chain_evaluate(
+            conn, scenario, {**INSTANCE_INPUTS, "concurrency": "8", "scan_fanout": "12"}
+        )
+        cache = lambda st: next(s for s in st if s.slug == "mongodb.wt-cache").result.mode
+        assert cache(a) == pytest.approx(cache(b))
+
+    def test_declares_advanced_sections_and_extra_inputs(self, scenario):
+        assert [section["title"] for section in scenario["input_sections"]] == [
+            "Project database size (collection families)",
+            "MongoDB footprint",
+            "Current node (optional)",
+            "Query regime",
+            "Concurrency and Celery",
+        ]
+        assert [section["keys"] for section in scenario["input_sections"]] == [
+            [
+                "baseline_vuln_count",
+                "baseline_storage_size",
+                "target_vuln_count",
+                "device_count",
+                "device_avg_storage_bytes",
+                "residual_storage_size",
+            ],
+            [
+                "index_size",
+                "foreign_collections_size",
+                "history_copy_count",
+                "history_avg_storage_bytes",
+                "history_storage_size",
+            ],
+            [
+                "current_ram",
+                "current_vcpu",
+                "average_iops",
+                "current_disk_throughput",
+                "current_disk_iops",
+            ],
+            ["query_regime", "fallback_reason", "scan_fanout"],
+            [
+                "concurrency",
+                "worker_processes",
+                "tickets",
+                "storage_latency_seconds",
+            ],
+        ]
+        extra_keys = [inp["key"] for inp in scenario["extra_inputs"]]
+        assert extra_keys == [
+            "current_ram",
+            "current_vcpu",
+            "current_disk_iops",
+            "current_disk_throughput",
+            "average_iops",
+            "query_regime",
+            "fallback_reason",
+            "scan_fanout",
+            "concurrency",
+            "worker_processes",
+            "tickets",
+            "storage_latency_seconds",
+        ]
+        regime = next(i for i in scenario["extra_inputs"] if i["key"] == "query_regime")
+        assert "aggregation | fallback" in regime["help"]
+        assert "ticket" not in regime["help"].lower()
+        fallback = next(i for i in scenario["extra_inputs"] if i["key"] == "fallback_reason")
+        assert "allowlist" in fallback["help"]
+        assert "v1/v2" in fallback["help"]
+
     def test_measured_average_replaces_included_iops_assumption(self, conn, scenario):
         without = chain_evaluate(conn, scenario, INSTANCE_INPUTS)
         ebs = next(s for s in without if s.slug == "ebs.iops-to-provision")
@@ -113,6 +248,39 @@ class TestChainEvaluate:
         measured = next(s for s in with_iops if s.slug == "ebs.iops-to-provision")
         assert not measured.assumed_inputs
         assert measured.result.mode == pytest.approx(3600.0)
+
+
+class TestInFlightScans:
+    def test_in_flight_omitted_fanout_is_concurrency(self):
+        from xycalc.model import in_flight_scans
+
+        assert in_flight_scans(8, None) == 8
+        assert in_flight_scans(8, 12) == 96
+        assert in_flight_scans(None, 12) is None
+
+
+class TestWhenAllInputs:
+    def test_skips_step_until_all_inputs_present(self, conn):
+        scenario = {
+            "slug": "test.when-all",
+            "steps": [
+                {
+                    "kind": "model",
+                    "model": "ebs.iops-to-provision",
+                    "when_all_inputs": ["tickets", "storage_latency_seconds"],
+                },
+            ],
+        }
+        base = {"average_iops": "9000"}
+        assert len(chain_evaluate(conn, scenario, base)) == 0
+        assert len(chain_evaluate(conn, scenario, {**base, "tickets": "100"})) == 0
+        steps = chain_evaluate(
+            conn,
+            scenario,
+            {**base, "tickets": "100", "storage_latency_seconds": "0.5"},
+        )
+        assert len(steps) == 1
+        assert steps[0].slug == "ebs.iops-to-provision"
 
 
 class TestBuildInstanceSizingSummary:
@@ -206,6 +374,77 @@ class TestBuildInstanceSizingSummary:
         assert summary["r6i"]["exceeds_pool"]
         assert summary["r6i"]["largest"] == "r6i.32xlarge"
         assert summary["r6i"]["mode"] is None
+
+    def test_concurrency_summary_block_is_optional(self, conn):
+        scenario = get_scenario("mongodb.size-to-instance")
+        base = build_instance_sizing_summary(
+            chain_evaluate(conn, scenario, INSTANCE_INPUTS), INSTANCE_INPUTS
+        )
+        assert "concurrency" not in base
+
+        inputs = {**INSTANCE_INPUTS, "concurrency": "8", "scan_fanout": "12"}
+        summary = build_instance_sizing_summary(chain_evaluate(conn, scenario, inputs), inputs)
+        assert summary["concurrency"] == {
+            "slots": 8.0,
+            "fanout": 12.0,
+            "in_flight": 96.0,
+        }
+        assert summary["ram"]["unit"] == "bytes"
+        assert summary["cpu"]["unit"] == "vcpu"
+
+
+class TestMongoNvdQueryConcurrencyScenario:
+    @pytest.fixture
+    def scenario(self):
+        return get_scenario("mongodb.nvd-query-concurrency")
+
+    def test_declares_expected_sections_and_see_also(self, scenario):
+        assert [section["title"] for section in scenario["input_sections"]] == [
+            "Query regime",
+            "Celery demand",
+            "Tickets (optional, both or neither)",
+        ]
+        assert [section["keys"] for section in scenario["input_sections"]] == [
+            ["query_regime", "fallback_reason", "scan_fanout"],
+            ["concurrency", "worker_processes"],
+            ["tickets", "storage_latency_seconds"],
+        ]
+        assert [item["scenario"] for item in scenario["see_also"]] == [
+            "mongodb.size-to-instance",
+            "celery.queue-amplification",
+            "redis.celery-broker",
+        ]
+
+    def test_query_regime_and_fallback_help(self, scenario):
+        regime = next(i for i in scenario["extra_inputs"] if i["key"] == "query_regime")
+        assert "aggregation | fallback" in regime["help"]
+        assert "ticket" not in regime["help"].lower()
+        fallback = next(i for i in scenario["extra_inputs"] if i["key"] == "fallback_reason")
+        assert "allowlist" in fallback["help"]
+        assert "v1/v2" in fallback["help"]
+
+    def test_runs_prefetch_and_drain_but_skips_ticket_step_without_L(self, conn, scenario):
+        steps = chain_evaluate(conn, scenario, {"concurrency": "16", "tickets": "64"})
+        assert [s.slug for s in steps] == [
+            "celery.worker-prefetch",
+            "celery.queue-amplification",
+        ]
+
+    def test_runs_all_three_steps_when_ticket_inputs_present(self, conn, scenario):
+        steps = chain_evaluate(
+            conn,
+            scenario,
+            {
+                "concurrency": "16",
+                "tickets": "64",
+                "storage_latency_seconds": "0.5",
+            },
+        )
+        assert [s.slug for s in steps] == [
+            "celery.worker-prefetch",
+            "mongodb.ticket-throughput-ceiling",
+            "celery.queue-amplification",
+        ]
 
 
 @pytest.fixture

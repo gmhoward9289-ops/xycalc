@@ -146,9 +146,11 @@ No purpose-built server counter isolates "$lookup cost" as a single number. Prox
 | Series | Unit | Status | Why |
 |---|---|---|---|
 | Aggregation `$lookup` stage explain / profiler | ms | `obtainable` | Per-query latency under a fixed workload — manufacturable, not a vendor constant. |
+| COLLSCAN / `$lookup` stage latency (explain or profiler) | ms | `obtainable` | **The invitation:** measure stage time for a fallback query (COLLSCAN, relationship join, allow-list miss) vs indexed point-lookup on the same collection, at two sizes. |
+| Ticket hold time L under that workload | s | `obtainable` | Pair with `totalTimeQueuedMicros` / `read.out` from the ticket section — L is hold time, not client RTT. Optional `scan_fanout` 1 vs N if tasks fan out. |
 | `db.serverStatus().metrics.commands.aggregate` | count | `obtainable` | Volume, not join cost. |
 
-Corpus holds ObjectId = 12 B and "prefer manual refs over DBRefs"; it does **not** hold a `$lookup` latency multiplier — none is published.
+Corpus holds ObjectId = 12 B and "prefer manual refs over DBRefs"; it does **not** hold a `$lookup` latency multiplier — none is published. **Submit measured stage latency and L as an observation** (`xy-observe` / `data/observations/` with `applies_to`); a measured L band may land later. Until then L stays a pasted input — not a YAML 6–12 coefficient.
 
 ## Alerting (vital subset)
 

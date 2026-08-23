@@ -179,8 +179,8 @@ class TestSizing:
             db_path,
             "sizing",
             {
-                "model": "ebs.iops-to-provision",
-                "inputs": {"average_iops": "1000"},
+                "model": "clickhouse.parts-insert-ceiling",
+                "inputs": {},
             },
         )
         body = payload(result)
@@ -226,7 +226,7 @@ class TestScenario:
 
 
 class TestWhy:
-    def test_citation_chain_and_unvalidated_grade(self, db_path):
+    def test_citation_chain_and_grade(self, db_path):
         result = call(db_path, "why", {"model": "ebs.iops-to-provision"})
         body = payload(result)
         assert body["terms"]
@@ -236,7 +236,8 @@ class TestWhy:
         assert quoted or sourced
         for term in sourced:
             assert term["source"]
-        assert_validation_unavoidable(result, expect_unvalidated=True)
+        assert_validation_unavoidable(result)
+        assert body["validation"]["grade"] in {"none", "thin", "reasonable"}
         wt = call(db_path, "why", {"model": "mongodb.wt-cache"})
         wt_body = payload(wt)
         for term in wt_body["terms"]:

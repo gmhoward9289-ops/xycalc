@@ -1289,7 +1289,57 @@ def build_instance_sizing_summary(
     if current:
         summary["current"] = current
 
+    raw_concurrency = inputs.get("concurrency")
+    if raw_concurrency not in (None, ""):
+        concurrency = parse_number(raw_concurrency)
+        raw_fanout = inputs.get("scan_fanout")
+        fanout = 1.0 if raw_fanout in (None, "") else parse_number(raw_fanout)
+        summary["concurrency"] = {
+            "slots": concurrency,
+            "fanout": fanout,
+            "in_flight": in_flight_scans(concurrency, None if raw_fanout in (None, "") else fanout),
+        }
+
     return summary
+
+
+def in_flight_scans(
+    concurrency: float | None, scan_fanout: float | None = None
+) -> float | None:
+    if concurrency is None:
+        return None
+    fan = 1.0 if scan_fanout is None else float(scan_fanout)
+    return float(concurrency) * fan
+
+
+def _scenario_input_present(key: str, step: dict, supplied: dict) -> bool:
+    raw = supplied.get(key)
+    if raw is not None and raw != "":
+        return True
+    if key in (step.get("defaults") or {}):
+        return True
+    if key in (step.get("defaults_from_coefficient") or {}):
+        return True
+    return False
+
+
+def _scenario_step_skipped(step: dict, supplied: dict, *, bytes_scan: bool = False) -> bool:
+    when = step.get("when_input")
+    if when:
+        if bytes_scan:
+            if not _scenario_input_present(when, step, supplied):
+                return True
+        elif not supplied.get(when):
+            return True
+
+    when_all = step.get("when_all_inputs") or []
+    for key in when_all:
+        if bytes_scan:
+            if not _scenario_input_present(key, step, supplied):
+                return True
+        elif not supplied.get(key):
+            return True
+    return False
 
 
 def chain_evaluate(
@@ -1349,8 +1399,7 @@ def chain_evaluate(
     for s in scenario["steps"]:
         if s.get("kind", "model") != "model":
             continue
-        when = s.get("when_input")
-        if when and not supplied.get(when) and when not in (s.get("defaults") or {}) and when not in (s.get("defaults_from_coefficient") or {}):
+        if _scenario_step_skipped(s, supplied, bytes_scan=True):
             continue
         if Model.load(conn, s["model"]).output_unit == "bytes":
             last_bytes_step = s
@@ -1358,8 +1407,7 @@ def chain_evaluate(
     for step in scenario["steps"]:
         kind = step.get("kind", "model")
 
-        when = step.get("when_input")
-        if when and not supplied.get(when):
+        if _scenario_step_skipped(step, supplied):
             continue
 
         if kind == "model":

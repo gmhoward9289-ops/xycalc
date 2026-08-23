@@ -681,6 +681,104 @@ const XYCALC_APP = (() => {
     return inputs;
   }
 
+  function scenarioChoiceValue(key, raw) {
+    const t = String(raw == null ? "" : raw).trim();
+    if (t) return t;
+    if (key === "query_regime") return "fallback";
+    if (key === "fallback_reason") return "mixed";
+    return "";
+  }
+
+  function scenarioInputControlHtml(input, value) {
+    if (!input || !input.key) return "";
+    const current = scenarioChoiceValue(input.key, value);
+    const optional = input.required ? "" : " <span class='help' style='display:inline'>optional</span>";
+    const help = input.help ? `<div class="help">${esc(input.help)}</div>` : "";
+    const id = `scn-in-${esc(input.key)}`;
+    if (input.key === "query_regime") {
+      const button = (val, label) => {
+        const active = current === val;
+        return `<button type="button" class="scenario-seg-btn${active ? " active" : ""}" data-segment-for="${esc(input.key)}" data-value="${esc(val)}" aria-pressed="${active ? "true" : "false"}">${esc(label)}</button>`;
+      };
+      return `<div class="field">
+        <label>${esc(input.label)}${optional}</label>
+        <div class="scenario-segmented" role="group" aria-label="${esc(input.label)}">
+          ${button("fallback", "fallback")}
+          ${button("aggregation", "aggregation")}
+          <input type="hidden" id="${id}" data-key="${esc(input.key)}" value="${esc(current)}">
+        </div>
+        ${help}
+      </div>`;
+    }
+    if (input.key === "fallback_reason") {
+      const options = [
+        ["mixed", "mixed"],
+        ["limit", "limit"],
+        ["allowlist", "allowlist"],
+      ].map(([val, label]) =>
+        `<option value="${esc(val)}"${current === val ? " selected" : ""}>${esc(label)}</option>`
+      ).join("");
+      return `<div class="field">
+        <label for="${id}">${esc(input.label)}${optional}</label>
+        <select id="${id}" data-key="${esc(input.key)}">${options}</select>
+        ${help}
+      </div>`;
+    }
+    const placeholder = input.unit === "bytes" ? "e.g. 500GB" : esc(input.unit);
+    return `<div class="field">
+      <label for="${id}">${esc(input.label)}${optional}</label>
+      <input id="${id}" data-key="${esc(input.key)}" value="${esc(current)}" placeholder="${placeholder}" autocomplete="off">
+      ${help}
+    </div>`;
+  }
+
+  function scenarioSectionCopyHtml(title) {
+    if (title !== "Concurrency and Celery" && title !== "Celery demand") return "";
+    return `<div class="section-copy">
+      <p>More Celery workers increase in-flight scans and broker occupancy. They do not raise the stall completion ceiling (investigation 004).</p>
+      <p>scan_fanout is how many queries one task issues. It is not a COLSCAN latency multiplier. Measure ticket hold time L under your fallback workload and submit an observation.</p>
+      <p>Allow-list misses never use v1/v2 aggregation; size fallback for that traffic.</p>
+    </div>`;
+  }
+
+  function queryRegimeSizingNote(fallbackReason) {
+    const reason = scenarioChoiceValue("fallback_reason", fallbackReason);
+    if (reason === "allowlist") {
+      return "Allow-list misses never use v1/v2 aggregation; size fallback for that traffic.";
+    }
+    return "The numeric sizing band is the same regardless of query regime; aggregation vs fallback is demand and copy (scan-heavy floor, allow-list), not a second cache formula.";
+  }
+
+  function parseLooseNumber(raw) {
+    const t = String(raw == null ? "" : raw).trim();
+    if (!t) return null;
+    const n = Number(t.replace(/,/g, ""));
+    return isFinite(n) ? n : null;
+  }
+
+  function countLabel(value, unit) {
+    if (value == null || !isFinite(value)) return "";
+    const rounded = Math.abs(value - Math.round(value)) < 1e-9
+      ? Math.round(value).toLocaleString()
+      : String(value);
+    return `${rounded} ${unit}`;
+  }
+
+  function concurrencySummaryHtml(summary, inputs) {
+    if (!summary || summary.in_flight == null) return "";
+    const tickets = parseLooseNumber(inputs && inputs.tickets);
+    const queueNote = tickets != null && summary.in_flight > tickets
+      ? "in-flight scans exceed the ticket pool — arrivals queue; this is not extra ops/s."
+      : "Bound concurrency so in-flight work stays near what tickets × (1/L) can admit.";
+    return `<div class="summary-metric"><div class="kicker">In-flight demand</div>
+      <div class="primary">${esc(countLabel(summary.in_flight, "in-flight scans"))}</div>
+      <div class="sub">${esc(countLabel(summary.slots, "slots"))} × fanout ${esc(String(summary.fanout == null ? 1 : summary.fanout))}</div>
+      <div class="help">More Celery workers increase in-flight scans and broker occupancy. They do not raise the stall completion ceiling (investigation 004).</div>
+      <div class="help">scan_fanout is how many queries one task issues. It is not a COLSCAN latency multiplier. Measure ticket hold time L under your fallback workload and submit an observation.</div>
+      <div class="help">${esc(queueNote)}</div>
+    </div>`;
+  }
+
   function attachUi() {
     if (typeof document === "undefined") return;
     if (!document.getElementById("corpus")) return;
@@ -741,7 +839,7 @@ const XYCALC_APP = (() => {
         if (avail) state.available = avail;
       } else if (state.tab === "scenario" && currentScenario) {
         state.scenario = currentScenario.slug;
-        document.querySelectorAll("#scenario-inputs input").forEach((el) => {
+        document.querySelectorAll("#scenario-inputs input, #scenario-inputs select").forEach((el) => {
           if (el.value.trim()) state.inputs[el.dataset.key] = el.value.trim();
         });
       }
@@ -790,6 +888,7 @@ const XYCALC_APP = (() => {
             const el = $("scn-in-" + key);
             if (el) el.value = parsed.inputs[key];
           }
+          syncScenarioSegmentedControls();
           maybeAuto();
         } else if (!parsed.model) {
           const scenarios = CORPUS.scenarios || [];
@@ -1323,6 +1422,63 @@ const XYCALC_APP = (() => {
         </div></div>`;
     }
 
+    function noteScenarioFieldChange() {
+      scenarioCalcDirty = true;
+      maybeAuto();
+      scheduleHash();
+    }
+
+    function syncScenarioSegmentedControls() {
+      document.querySelectorAll("#scenario-inputs .scenario-segmented").forEach((group) => {
+        const hidden = group.querySelector('input[type="hidden"]');
+        if (!hidden) return;
+        group.querySelectorAll("button[data-value]").forEach((btn) => {
+          const active = btn.dataset.value === hidden.value;
+          btn.classList.toggle("active", active);
+          btn.setAttribute("aria-pressed", active ? "true" : "false");
+        });
+      });
+    }
+
+    function wireScenarioFormInputs() {
+      document.querySelectorAll("#scenario-inputs input, #scenario-inputs select").forEach((el) => {
+        if (el.type === "hidden") return;
+        el.addEventListener("input", noteScenarioFieldChange);
+        el.addEventListener("change", noteScenarioFieldChange);
+      });
+      syncScenarioSegmentedControls();
+      document.querySelectorAll("#scenario-inputs .scenario-segmented").forEach((group) => {
+        const hidden = group.querySelector('input[type="hidden"]');
+        if (!hidden) return;
+        group.querySelectorAll("button[data-value]").forEach((btn) => {
+          btn.addEventListener("click", () => {
+            hidden.value = btn.dataset.value;
+            syncScenarioSegmentedControls();
+            noteScenarioFieldChange();
+          });
+        });
+      });
+    }
+
+    function renderQueryRegimeCard(inputs) {
+      if (scenarioInputList(currentScenario).map((i) => i.key).indexOf("query_regime") < 0) {
+        return "";
+      }
+      const regime = scenarioChoiceValue("query_regime", inputs && inputs.query_regime);
+      const reason = scenarioChoiceValue("fallback_reason", inputs && inputs.fallback_reason);
+      const reasonLabel = reason === "allowlist" ? "allow-list" : reason;
+      const help = reason === "allowlist"
+        ? "Allow-list misses never use v1/v2 aggregation; size fallback for that traffic."
+        : regime === "fallback"
+          ? "Fallback is the planning default for this path."
+          : "Aggregation is the active path for query types that can stay on the pipeline.";
+      return `<div class="summary-metric"><div class="kicker">Query regime</div>
+        <div class="primary">${esc(regime)}</div>
+        <div class="sub">reason ${esc(reasonLabel)}</div>
+        <div class="help">${esc(help)}</div>
+      </div>`;
+    }
+
     function selectScenario(slug) {
       const s = (CORPUS.scenarios || []).find((x) => x.slug === slug);
       if (!s || s.disabled) return;
@@ -1346,24 +1502,23 @@ const XYCALC_APP = (() => {
           maybeAuto();
           return;
         }
+        const defaults = SCENARIO_DEFAULTS[slug] || {};
         const fields = (currentScenario.input_sections || []).map((sec) => `
           <div class="input-section"><h3>${esc(sec.title)}</h3>
-          <div class="input-grid">${(sec.inputs || []).map((i) => `
-            <div class="field"><label for="scn-in-${esc(i.key)}">${esc(i.label)}</label>
-            <input id="scn-in-${esc(i.key)}" data-key="${esc(i.key)}" placeholder="${i.unit === "bytes" ? "e.g. 500GB" : esc(i.unit)}"></div>`).join("")}
+          ${scenarioSectionCopyHtml(sec.title)}
+          <div class="input-grid">${(sec.inputs || []).map((i) =>
+            scenarioInputControlHtml(i, defaults[i.key])
+          ).join("")}
           </div></div>`).join("")
-          || `<div class="input-grid">${(currentScenario.inputs || []).map((i) => `
-            <div class="field"><label for="scn-in-${esc(i.key)}">${esc(i.label)}</label>
-            <input id="scn-in-${esc(i.key)}" data-key="${esc(i.key)}" placeholder="${i.unit === "bytes" ? "e.g. 500GB" : esc(i.unit)}"></div>`).join("")}</div>`;
+          || `<div class="input-grid">${(currentScenario.inputs || []).map((i) =>
+            scenarioInputControlHtml(i, defaults[i.key])
+          ).join("")}</div>`;
         $("scenario-inputs").innerHTML = fields;
-        const defaults = SCENARIO_DEFAULTS[slug] || {};
         for (const key of Object.keys(defaults)) {
           const el = $(`scn-in-${key}`);
           if (el && !el.value) el.value = defaults[key];
         }
-        document.querySelectorAll("#scenario-inputs input").forEach((el) => {
-          el.addEventListener("input", () => { scenarioCalcDirty = true; maybeAuto(); scheduleHash(); });
-        });
+        wireScenarioFormInputs();
         $("scn-recalc-status").textContent = "Fill required fields — sizing updates as you type.";
         maybeAuto();
       } catch (err) {
@@ -1579,7 +1734,7 @@ const XYCALC_APP = (() => {
     function calculateScenario(auto, opts) {
       if (!currentScenario) return;
       const inputs = {};
-      document.querySelectorAll("#scenario-inputs input").forEach((el) => {
+      document.querySelectorAll("#scenario-inputs input, #scenario-inputs select").forEach((el) => {
         if (el.value.trim()) inputs[el.dataset.key] = el.value.trim();
       });
       try {
@@ -1587,10 +1742,13 @@ const XYCALC_APP = (() => {
         $("scn-error").hidden = true;
         const s = data.sizing_summary || {};
         const inst = s.cpu?.instance_mode || "custom sizing";
+        const hasQueryRegime = scenarioInputList(currentScenario).map((i) => i.key).indexOf("query_regime") >= 0;
+        const regimeSizingNote = hasQueryRegime ? queryRegimeSizingNote(inputs && inputs.fallback_reason) : "";
         const instSizing = (s.ram || s.cpu)
           ? `<div class="summary-metric"><div class="kicker">Instance sizing</div>
              <div class="primary">${esc(inst)}</div>
-             <div class="sub">${s.ram ? esc(fmt(s.ram.mode, s.ram.unit) + " RAM") : ""}${s.cpu?.mode != null ? " · " + s.cpu.mode + " vCPU" : ""}</div></div>`
+             <div class="sub">${s.ram ? esc(fmt(s.ram.mode, s.ram.unit) + " RAM") : ""}${s.cpu?.mode != null ? " · " + s.cpu.mode + " vCPU" : ""}</div>
+             ${regimeSizingNote ? `<div class="help">${esc(regimeSizingNote)}</div>` : ""}</div>`
           : "";
         const r6iSizing = s.r6i
           ? `<div class="summary-metric"><div class="kicker">r6i family</div>
@@ -1612,6 +1770,8 @@ const XYCALC_APP = (() => {
              <div class="primary">${Math.round(s.disk.volume_gib).toLocaleString()} GiB</div>
              <div class="help">gp3 volume</div></div>`
           : "";
+        const regime = renderQueryRegimeCard(inputs);
+        const inFlight = concurrencySummaryHtml(s.concurrency, inputs);
         const funnelRows = ["nvd.storage-from-vuln-growth", "mongodb.wt-cache", "mongodb.host-ram"]
           .map((slug) => data.steps.find((st) => st.model === slug))
           .filter((st) => st && st.answer);
@@ -1627,8 +1787,12 @@ const XYCALC_APP = (() => {
         const citeBtn = `<div class="answer-tools"><button type="button" class="ghost" data-copy-cite="scenario">Copy as citation</button></div>`;
         const sizingBlock = (instSizing || r6iSizing || perf || size)
           ? `<div class="panel sizing-summary"><h2>What you need</h2>
-          <div class="summary-grid">${instSizing}${r6iSizing}${perf}${size}</div>${funnel}${chainBanner}${pathNotes}${citeBtn}</div>`
-          : renderCitationSummary(data) + chainBanner + pathNotes + citeBtn;
+          <div class="summary-grid">${instSizing}${regime}${r6iSizing}${perf}${size}${inFlight}</div>${funnel}${chainBanner}${pathNotes}${citeBtn}</div>`
+          : renderCitationSummary(data)
+            + ((regime || inFlight)
+              ? `<div class="panel sizing-summary"><h2>What your inputs mean</h2><div class="summary-grid">${regime}${inFlight}</div></div>`
+              : "")
+            + chainBanner + pathNotes + citeBtn;
         $("scenario-summary").innerHTML = sizingBlock;
         lastScenarioCitation = citationFromChain(data);
         const citationOnly = !(instSizing || r6iSizing || perf || size) && !!sizingBlock;
@@ -2468,6 +2632,10 @@ const XYCALC_APP = (() => {
     simpleCatalogMissReason: simpleCatalogMissReason,
     simpleRamHonestyOk: simpleRamHonestyOk,
     simpleFirstPaintHtml: simpleFirstPaintHtml,
+    scenarioInputControlHtml: scenarioInputControlHtml,
+    scenarioSectionCopyHtml: scenarioSectionCopyHtml,
+    queryRegimeSizingNote: queryRegimeSizingNote,
+    concurrencySummaryHtml: concurrencySummaryHtml,
   };
 })();
 

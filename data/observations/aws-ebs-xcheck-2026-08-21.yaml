@@ -19,6 +19,23 @@ observations:
       (see peak_to_mean row) — do not treat "under mean" as proof of zero
       ExceededChecks once CW publishes.
 
+  - slug: aws-ebs-xcheck-2026-08-21-under-peak-iops
+    system: ebs
+    parameter: io.iops
+    value: 5609
+    unit: iops
+    workload: >-
+      fio randread under provisioned mean (~2000 IOPS rate limit), 16k,
+      direct=1, 1s IOPS log peak second over 170 samples
+    machine_class: AWS m6i.large + gp3 100GiB 3000/125, us-east-2
+    system_version: Amazon Elastic Block Store (gp3)
+    observed_on: '2026-08-21'
+    source: obs-aws-ebs-xcheck-2026-08-21
+    notes: >-
+      Guest 1s peak second cited by the 2026-08-21 under-peak validation
+      case. Mean was 2106.2. CloudWatch ExceededCheck was empty; this
+      number is the guest log, not a 0/1 AWS check.
+
   - slug: aws-ebs-xcheck-2026-08-21-under-peak-to-mean
     system: ebs
     parameter: io.peak_to_mean_ratio

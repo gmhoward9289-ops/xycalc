@@ -1,0 +1,17 @@
+sources:
+  - slug: obs-aws-ebs-xcheck-16k-2026-08-23
+    title: "gp3 16000 IOPS guest 1s peak/mean (r6i.2xlarge, 2026-08-23)"
+    publisher: xycalc project (benchmark harness, committed)
+    version: tools/bench/_aws_ebs_xcheck_launch.sh
+    retrieved_on: "2026-08-23"
+    source_type: benchmark
+    notes: >-
+      16k IOPS / 1000 MiB/s gp3 xcheck via tools/bench/_aws_ebs_xcheck_launch.sh
+      on r6i.2xlarge i-0358d58d0bd497f5f, us-east-2, 100 GiB vol-00d98f23dca013998.
+      First disk pick hit the 30G root (nvme1n1); remounted nvme0n1 as /mnt/gp3
+      and reran. Under rate_iops=8000 4k QD16 5 min; over uncapped QD64 12 min.
+      Guest 1s logs complete (under n=297, over n=720). VolumeReadOps published;
+      VolumeIOPSExceededCheck / VolumeThroughputExceededCheck / VolumeAvgIOPS
+      returned zero datapoints — empty CW is not scored. Mongo ticket_probe.py
+      failed (no pymongo on the guest) in ~4s — no mongo observation. Instance
+      terminated. Artifacts under tmp/xycalc-ebs-xcheck-16k-20260823/.

@@ -373,4 +373,33 @@ assert.deepStrictEqual(
 );
 assert.deepStrictEqual(APP.relatedFootnoteSlugs("ebs.microburst"), []);
 
+const queryRegimeField = {
+  key: "query_regime",
+  label: "Query regime",
+  unit: "text",
+  help: "aggregation | fallback (planning default: fallback). Not consumed by a model.",
+};
+const regimeControl = APP.scenarioInputControlHtml(queryRegimeField, "");
+assert.ok(regimeControl.includes("fallback"), regimeControl);
+assert.ok(regimeControl.includes('type="hidden"'), regimeControl);
+assert.ok(regimeControl.includes('value="fallback"'), regimeControl);
+assert.ok(regimeControl.includes('aria-pressed="true"'), regimeControl);
+
+const celeryCopy = APP.scenarioSectionCopyHtml("Concurrency and Celery");
+assert.ok(celeryCopy.includes("More Celery workers increase in-flight scans and broker occupancy."), celeryCopy);
+assert.ok(celeryCopy.includes("They do not raise the stall completion ceiling"), celeryCopy);
+assert.ok(celeryCopy.includes("scan_fanout is how many queries one task issues."), celeryCopy);
+assert.ok(celeryCopy.includes("Allow-list misses never use v1/v2 aggregation"), celeryCopy);
+
+const mixedNote = APP.queryRegimeSizingNote("mixed");
+assert.ok(mixedNote.includes("same regardless of query regime"), mixedNote);
+assert.ok(!mixedNote.includes("if the DB stays small"), mixedNote);
+const allowlistNote = APP.queryRegimeSizingNote("allowlist");
+assert.ok(allowlistNote.toLowerCase().includes("allow-list"), allowlistNote);
+
+const queued = APP.concurrencySummaryHtml({ slots: 8, fanout: 12, in_flight: 96 }, { tickets: "64" });
+assert.ok(queued.includes("96 in-flight scans"), queued);
+assert.ok(queued.includes("arrivals queue; this is not extra ops/s"), queued);
+assert.ok(queued.includes("More Celery workers increase in-flight scans and broker occupancy."), queued);
+
 console.log("app helpers ok");

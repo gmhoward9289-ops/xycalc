@@ -2,8 +2,8 @@
 # bytes-per, plus a residual floor that does not inherit NVD growth.
 #
 # Vuln slice reuses the same arithmetic as nvd.storage-from-vuln-growth.
-# Devices and residual are added AFTER that projection so they cannot be
-# silently scaled by CVE compound growth.
+# Devices, history, and residual are added AFTER that projection so they cannot
+# be silently scaled by CVE compound growth. History is working set when scanned.
 
 models:
   - slug: mongodb.storage-from-doc-families
@@ -16,9 +16,10 @@ models:
     summary: >-
       Projects on-disk collection storage as: vulnerability family (measured
       bytes-per-record × count, or three-year NVD compound growth) plus
-      optional device count × measured average on-disk bytes per device, plus
-      an optional residual floor for everything else. Residual and devices do
-      not inherit CVE growth.
+      optional device count × measured average on-disk bytes per device,
+      optional queried history copies (or measured history total), plus an
+      optional residual floor for everything else. Residual, devices, and
+      history do not inherit CVE growth.
 
     notes: >-
       Fork A (locked 2026-08-21): Simple sizing inputs are domain counts ×
@@ -35,9 +36,11 @@ models:
       - otherwise: vuln_storage = baseline × nvd.cve-growth-3yr-multiplier
 
       Then: total = vuln_storage + (device_count × device_avg_storage_bytes)
-      + residual_storage_size.
+      + history family (copies × avg or measured total) + residual_storage_size.
 
       device_count and device_avg_storage_bytes must be supplied together.
+      history_copy_count and history_avg_storage_bytes must be supplied together.
+      history_storage_size skips the copy product when set.
       Enter a future device_count to size growth for that family; there is no
       separate device-growth coefficient yet.
 
@@ -87,6 +90,28 @@ models:
           Optional residual: whole-DB collection storageSize minus the vuln
           and device family totals. Does not scale with NVD growth — a floor
           for the slice this model does not project.
+      - key: history_copy_count
+        label: Historical / backup copies that queries load
+        unit: count
+        required: false
+        help: >-
+          Optional. Number of retained copies you actually scan (not EBS
+          snapshots sitting idle). Supply with history_avg_storage_bytes.
+      - key: history_avg_storage_bytes
+        label: Avg on-disk bytes per queried history copy
+        unit: bytes
+        required: false
+        help: >-
+          Optional. Measured storageSize of one copy. Required whenever
+          history_copy_count is set. Do not use this field for cold
+          foreign_collections_size.
+      - key: history_storage_size
+        label: Measured history-family storageSize (alternative to copies × avg)
+        unit: bytes
+        required: false
+        help: >-
+          Optional. Total compressed bytes of queried history. If set, the
+          copy-count product is skipped so bytes are not double-counted.
 
     terms:
       - key: vuln_anchor_storage
@@ -142,6 +167,30 @@ models:
           Caller-measured device footprint: count × (storageSize ÷ count).
           Added after vuln growth so device bytes are not multiplied by the
           NVD compound band.
+
+      - key: history_copies
+        label: History copies (count × avg on-disk bytes)
+        role: floor
+        apply: add_product_of_inputs
+        input_key: history_copy_count
+        input_key_b: history_avg_storage_bytes
+        optional: true
+        when_input: history_copy_count
+        unless_input: history_storage_size
+        rationale: >-
+          Queried PIT / backup copies. Added after vuln growth so they do not
+          inherit the NVD compound band. Not foreign_collections (those stay cold).
+
+      - key: history_measured_total
+        label: History family measured total
+        role: floor
+        apply: input
+        input_key: history_storage_size
+        optional: true
+        when_input: history_storage_size
+        rationale: >-
+          Same family as history_copies when the caller measured the total
+          instead of count × average.
 
       - key: residual
         label: Residual collections (not projected)

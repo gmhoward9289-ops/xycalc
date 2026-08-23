@@ -65,7 +65,7 @@ class TestSizing:
         assert isinstance(body["validation"]["validated"], bool)
 
     def test_an_unchecked_model_still_says_so(self, client):
-        body = client.get("/api/why/ebs.iops-to-provision").json()
+        body = client.get("/api/why/celery.worker-prefetch").json()
         assert body["validation"]["validated"] is False
         assert "unvalidated" in body["validation"]["text"]
 
