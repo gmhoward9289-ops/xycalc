@@ -1,4 +1,4 @@
-# AWS EC2 memory-optimized instance catalog (r8i, U7i).
+# AWS EC2 memory-optimized instance catalog (r8i, r6i, U7i).
 #
 # Not a sizing chain like mongodb.yaml — each entry here is a spec, not an
 # uncertain estimate, so lo == mode == hi. What ties them together is that
@@ -341,3 +341,232 @@ coefficients:
     confidence: practitioner
     source: aws-ec2-instance-types-u7i
     quote: "u7inh-32tb.480xlarge (1,920 vCPU / 32,768 GiB, a 16-socket HPE Compute"
+
+  # -- r6i family: Ice Lake, same 8 GiB/vCPU as r8i, ceiling 1,024 GiB
+  # (r6i.32xlarge). A host-RAM mode above that is custom sizing on r6i,
+  # not a guessed 48xlarge. Unfiltered instance_select still prefers r8i
+  # at equal RAM (see instance_pick_rank); family: r6i is the peer step.
+  - slug: aws.r6i.large.ram-bytes
+    parameter: host.ram_bytes
+    system: aws-ec2
+    applies_to: r6i.large, AWS EC2, 2026
+    value: 17179869184  # 16 GiB
+    confidence: documented
+    source: aws-ec2-instance-types-r6i
+    quote: "r6i.large | 2 | 16 | EBS-Only | Up to 12.5 | Up to 10"
+  - slug: aws.r6i.large.vcpu
+    parameter: instance.vcpu_count
+    system: aws-ec2
+    applies_to: r6i.large, AWS EC2, 2026
+    value: 2
+    confidence: documented
+    source: aws-ec2-instance-types-r6i
+    quote: "r6i.large | 2 | 16 | EBS-Only | Up to 12.5 | Up to 10"
+  - slug: aws.r6i.large.ebs-bandwidth-gbps
+    parameter: instance.ebs_bandwidth_gbps
+    system: aws-ec2
+    applies_to: r6i.large, AWS EC2, 2026
+    value: 10
+    confidence: documented
+    source: aws-ec2-instance-types-r6i
+    quote: "r6i.large | 2 | 16 | EBS-Only | Up to 12.5 | Up to 10"
+
+  - slug: aws.r6i.xlarge.ram-bytes
+    parameter: host.ram_bytes
+    system: aws-ec2
+    applies_to: r6i.xlarge, AWS EC2, 2026
+    value: 34359738368  # 32 GiB
+    confidence: documented
+    source: aws-ec2-instance-types-r6i
+    quote: "r6i.xlarge | 4 | 32 | EBS-Only | Up to 12.5 | Up to 10"
+  - slug: aws.r6i.xlarge.vcpu
+    parameter: instance.vcpu_count
+    system: aws-ec2
+    applies_to: r6i.xlarge, AWS EC2, 2026
+    value: 4
+    confidence: documented
+    source: aws-ec2-instance-types-r6i
+    quote: "r6i.xlarge | 4 | 32 | EBS-Only | Up to 12.5 | Up to 10"
+  - slug: aws.r6i.xlarge.ebs-bandwidth-gbps
+    parameter: instance.ebs_bandwidth_gbps
+    system: aws-ec2
+    applies_to: r6i.xlarge, AWS EC2, 2026
+    value: 10
+    confidence: documented
+    source: aws-ec2-instance-types-r6i
+    quote: "r6i.xlarge | 4 | 32 | EBS-Only | Up to 12.5 | Up to 10"
+
+  - slug: aws.r6i.2xlarge.ram-bytes
+    parameter: host.ram_bytes
+    system: aws-ec2
+    applies_to: r6i.2xlarge, AWS EC2, 2026
+    value: 68719476736  # 64 GiB
+    confidence: documented
+    source: aws-ec2-instance-types-r6i
+    quote: "r6i.2xlarge | 8 | 64 | EBS-Only | Up to 12.5 | Up to 10"
+  - slug: aws.r6i.2xlarge.vcpu
+    parameter: instance.vcpu_count
+    system: aws-ec2
+    applies_to: r6i.2xlarge, AWS EC2, 2026
+    value: 8
+    confidence: documented
+    source: aws-ec2-instance-types-r6i
+    quote: "r6i.2xlarge | 8 | 64 | EBS-Only | Up to 12.5 | Up to 10"
+  - slug: aws.r6i.2xlarge.ebs-bandwidth-gbps
+    parameter: instance.ebs_bandwidth_gbps
+    system: aws-ec2
+    applies_to: r6i.2xlarge, AWS EC2, 2026
+    value: 10
+    confidence: documented
+    source: aws-ec2-instance-types-r6i
+    quote: "r6i.2xlarge | 8 | 64 | EBS-Only | Up to 12.5 | Up to 10"
+
+  - slug: aws.r6i.4xlarge.ram-bytes
+    parameter: host.ram_bytes
+    system: aws-ec2
+    applies_to: r6i.4xlarge, AWS EC2, 2026
+    value: 137438953472  # 128 GiB
+    confidence: documented
+    source: aws-ec2-instance-types-r6i
+    quote: "r6i.4xlarge | 16 | 128 | EBS-Only | Up to 12.5 | Up to 10"
+  - slug: aws.r6i.4xlarge.vcpu
+    parameter: instance.vcpu_count
+    system: aws-ec2
+    applies_to: r6i.4xlarge, AWS EC2, 2026
+    value: 16
+    confidence: documented
+    source: aws-ec2-instance-types-r6i
+    quote: "r6i.4xlarge | 16 | 128 | EBS-Only | Up to 12.5 | Up to 10"
+  - slug: aws.r6i.4xlarge.ebs-bandwidth-gbps
+    parameter: instance.ebs_bandwidth_gbps
+    system: aws-ec2
+    applies_to: r6i.4xlarge, AWS EC2, 2026
+    value: 10
+    confidence: documented
+    source: aws-ec2-instance-types-r6i
+    quote: "r6i.4xlarge | 16 | 128 | EBS-Only | Up to 12.5 | Up to 10"
+
+  - slug: aws.r6i.8xlarge.ram-bytes
+    parameter: host.ram_bytes
+    system: aws-ec2
+    applies_to: r6i.8xlarge, AWS EC2, 2026
+    value: 274877906944  # 256 GiB
+    confidence: documented
+    source: aws-ec2-instance-types-r6i
+    quote: "r6i.8xlarge | 32 | 256 | EBS-Only | 12.5 | 10"
+  - slug: aws.r6i.8xlarge.vcpu
+    parameter: instance.vcpu_count
+    system: aws-ec2
+    applies_to: r6i.8xlarge, AWS EC2, 2026
+    value: 32
+    confidence: documented
+    source: aws-ec2-instance-types-r6i
+    quote: "r6i.8xlarge | 32 | 256 | EBS-Only | 12.5 | 10"
+  - slug: aws.r6i.8xlarge.ebs-bandwidth-gbps
+    parameter: instance.ebs_bandwidth_gbps
+    system: aws-ec2
+    applies_to: r6i.8xlarge, AWS EC2, 2026
+    value: 10
+    confidence: documented
+    source: aws-ec2-instance-types-r6i
+    quote: "r6i.8xlarge | 32 | 256 | EBS-Only | 12.5 | 10"
+
+  - slug: aws.r6i.12xlarge.ram-bytes
+    parameter: host.ram_bytes
+    system: aws-ec2
+    applies_to: r6i.12xlarge, AWS EC2, 2026
+    value: 412316860416  # 384 GiB
+    confidence: documented
+    source: aws-ec2-instance-types-r6i
+    quote: "r6i.12xlarge | 48 | 384 | EBS-Only | 18.75 | 15"
+  - slug: aws.r6i.12xlarge.vcpu
+    parameter: instance.vcpu_count
+    system: aws-ec2
+    applies_to: r6i.12xlarge, AWS EC2, 2026
+    value: 48
+    confidence: documented
+    source: aws-ec2-instance-types-r6i
+    quote: "r6i.12xlarge | 48 | 384 | EBS-Only | 18.75 | 15"
+  - slug: aws.r6i.12xlarge.ebs-bandwidth-gbps
+    parameter: instance.ebs_bandwidth_gbps
+    system: aws-ec2
+    applies_to: r6i.12xlarge, AWS EC2, 2026
+    value: 15
+    confidence: documented
+    source: aws-ec2-instance-types-r6i
+    quote: "r6i.12xlarge | 48 | 384 | EBS-Only | 18.75 | 15"
+
+  - slug: aws.r6i.16xlarge.ram-bytes
+    parameter: host.ram_bytes
+    system: aws-ec2
+    applies_to: r6i.16xlarge, AWS EC2, 2026
+    value: 549755813888  # 512 GiB
+    confidence: documented
+    source: aws-ec2-instance-types-r6i
+    quote: "r6i.16xlarge | 64 | 512 | EBS-Only | 25 | 20"
+  - slug: aws.r6i.16xlarge.vcpu
+    parameter: instance.vcpu_count
+    system: aws-ec2
+    applies_to: r6i.16xlarge, AWS EC2, 2026
+    value: 64
+    confidence: documented
+    source: aws-ec2-instance-types-r6i
+    quote: "r6i.16xlarge | 64 | 512 | EBS-Only | 25 | 20"
+  - slug: aws.r6i.16xlarge.ebs-bandwidth-gbps
+    parameter: instance.ebs_bandwidth_gbps
+    system: aws-ec2
+    applies_to: r6i.16xlarge, AWS EC2, 2026
+    value: 20
+    confidence: documented
+    source: aws-ec2-instance-types-r6i
+    quote: "r6i.16xlarge | 64 | 512 | EBS-Only | 25 | 20"
+
+  - slug: aws.r6i.24xlarge.ram-bytes
+    parameter: host.ram_bytes
+    system: aws-ec2
+    applies_to: r6i.24xlarge, AWS EC2, 2026
+    value: 824633720832  # 768 GiB
+    confidence: documented
+    source: aws-ec2-instance-types-r6i
+    quote: "r6i.24xlarge | 96 | 768 | EBS-Only | 37.5 | 30"
+  - slug: aws.r6i.24xlarge.vcpu
+    parameter: instance.vcpu_count
+    system: aws-ec2
+    applies_to: r6i.24xlarge, AWS EC2, 2026
+    value: 96
+    confidence: documented
+    source: aws-ec2-instance-types-r6i
+    quote: "r6i.24xlarge | 96 | 768 | EBS-Only | 37.5 | 30"
+  - slug: aws.r6i.24xlarge.ebs-bandwidth-gbps
+    parameter: instance.ebs_bandwidth_gbps
+    system: aws-ec2
+    applies_to: r6i.24xlarge, AWS EC2, 2026
+    value: 30
+    confidence: documented
+    source: aws-ec2-instance-types-r6i
+    quote: "r6i.24xlarge | 96 | 768 | EBS-Only | 37.5 | 30"
+
+  - slug: aws.r6i.32xlarge.ram-bytes
+    parameter: host.ram_bytes
+    system: aws-ec2
+    applies_to: r6i.32xlarge, AWS EC2, 2026
+    value: 1099511627776  # 1,024 GiB
+    confidence: documented
+    source: aws-ec2-instance-types-r6i
+    quote: "r6i.32xlarge | 128 | 1,024 | EBS-Only | 50 | 40"
+  - slug: aws.r6i.32xlarge.vcpu
+    parameter: instance.vcpu_count
+    system: aws-ec2
+    applies_to: r6i.32xlarge, AWS EC2, 2026
+    value: 128
+    confidence: documented
+    source: aws-ec2-instance-types-r6i
+    quote: "r6i.32xlarge | 128 | 1,024 | EBS-Only | 50 | 40"
+  - slug: aws.r6i.32xlarge.ebs-bandwidth-gbps
+    parameter: instance.ebs_bandwidth_gbps
+    system: aws-ec2
+    applies_to: r6i.32xlarge, AWS EC2, 2026
+    value: 40
+    confidence: documented
+    source: aws-ec2-instance-types-r6i
+    quote: "r6i.32xlarge | 128 | 1,024 | EBS-Only | 50 | 40"

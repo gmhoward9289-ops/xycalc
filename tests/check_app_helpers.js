@@ -229,6 +229,8 @@ const view = APP.permalinkView(inboundCliff);
 assert.deepStrictEqual(view, { mode: "advanced", tab: "cliff" });
 assert.strictEqual(APP.permalinkView(APP.parsePermalink("#mode=simple")).mode, "simple");
 assert.strictEqual(APP.permalinkView(APP.parsePermalink("#mode=simple")).tab, null);
+assert.strictEqual(APP.permalinkView(APP.parsePermalink("#mode=scientific")).mode, "scientific");
+assert.strictEqual(APP.permalinkView(APP.parsePermalink("#mode=scientific")).tab, null);
 
 const cliffHash = APP.serializePermalink({ mode: "advanced", tab: "cliff", inputs: {} });
 assert.ok(cliffHash.includes("mode=advanced"), cliffHash);
@@ -322,9 +324,11 @@ assert.ok(cite.includes("Corpus abc · xycalc 0.0.0 · deadbee"));
 assert.ok(!cite.includes("<script>"));
 
 assert.ok(APP.SIMPLE_HONESTY_LINE.includes("Not a buy size"));
-assert.ok(APP.SIMPLE_HONESTY_LINE.includes("open Advanced for sources"));
-assert.ok(APP.simpleHonestyBlockHtml().includes("simple-open-advanced"));
+assert.ok(APP.SIMPLE_HONESTY_LINE.includes("open Scientific for sources"));
+assert.ok(APP.simpleHonestyBlockHtml().includes("simple-open-scientific"));
 assert.ok(APP.simpleHonestyBlockHtml().includes(APP.SIMPLE_HONESTY_LINE));
+assert.ok(APP.simpleHonestyBlockHtml("scientific").includes("Cited math is expanded below"));
+assert.ok(!APP.simpleHonestyBlockHtml("scientific").includes("simple-open-scientific"));
 
 const demoted = APP.displayValidation({
   grade: "reasonable",

@@ -184,6 +184,20 @@ sources:
       consequence directly: restricting concurrency produced a "notable
       increase in the Queued Ops rate".
 
+  - slug: aws-ec2-instance-types-r6i
+    title: Amazon EC2 R6i Instances
+    publisher: Amazon Web Services
+    url: https://aws.amazon.com/ec2/instance-types/r6i/
+    version: current as of 2026
+    retrieved_on: '2026-08-23'
+    source_type: vendor_doc
+    notes: >-
+      Live fetch of the R6i product-details table (Ice Lake, 8 GiB RAM per
+      vCPU). Family ceiling is r6i.32xlarge / r6i.metal at 128 vCPU / 1,024 GiB
+      — there is no r6i.48xlarge. r6id (local NVMe) and r6in (100 Gbps EBS)
+      are separate SKUs and are not catalogued here. metal is omitted as a
+      duplicate of 32xlarge RAM/vCPU/EBS.
+
   - slug: aws-ec2-instance-types-r8i
     title: Amazon EC2 R8i Instances
     publisher: Amazon Web Services

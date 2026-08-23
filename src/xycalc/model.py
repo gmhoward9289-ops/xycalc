@@ -746,6 +746,23 @@ class InstanceSpec:
     source_url: str | None
 
 
+def instance_pick_rank(name: str) -> int:
+    """Tie-break when two SKUs publish the same RAM.
+
+    Unfiltered `instance_select` should keep naming r8i (current-gen) rather
+    than r6i at 16–1,024 GiB. The size-to-instance scenario still names r6i
+    via `family: r6i`. Lower rank wins.
+    """
+    n = name.lower()
+    if n.startswith("r8i"):
+        return 0
+    if n.startswith("u7"):
+        return 1
+    if n.startswith("r6i"):
+        return 2
+    return 3
+
+
 def load_instance_catalog(
     conn: sqlite3.Connection, system: str = "aws-ec2"
 ) -> list[InstanceSpec]:
@@ -796,7 +813,7 @@ def load_instance_catalog(
             for name, e in by_name.items()
             if "ram_bytes" in e  # a row with only a vcpu coefficient is unusable
         ),
-        key=lambda i: i.ram_bytes,
+        key=lambda i: (i.ram_bytes, instance_pick_rank(i.name), i.name),
     )
 
 
@@ -856,9 +873,13 @@ def select_instance(
 
     def pick(need: float) -> InstanceSpec | None:
         fits = [i for i in pool if i.ram_bytes >= need]
-        return min(fits, key=lambda i: i.ram_bytes) if fits else None
+        return (
+            min(fits, key=lambda i: (i.ram_bytes, instance_pick_rank(i.name), i.name))
+            if fits
+            else None
+        )
 
-    largest = max(pool, key=lambda i: i.ram_bytes)
+    largest = max(pool, key=lambda i: (i.ram_bytes, -instance_pick_rank(i.name), i.name))
 
     return {
         "required_lo": result.lo,
@@ -1094,6 +1115,7 @@ class ScenarioStepResult:
     headroom: dict | None = None
     assumed_inputs: dict | None = None
     assumed_note: str | None = None
+    family: str | None = None
 
 
 def gp3_volume_spec(volume_bytes: float) -> dict:
@@ -1153,6 +1175,7 @@ def build_instance_sizing_summary(
     host: ScenarioStepResult | None = None
     inst: ScenarioStepResult | None = None
     azure: ScenarioStepResult | None = None
+    r6i: ScenarioStepResult | None = None
     gp3: ScenarioStepResult | None = None
     ebs: ScenarioStepResult | None = None
     for s in steps:
@@ -1163,7 +1186,9 @@ def build_instance_sizing_summary(
         elif s.kind == "lookup" and s.instance_pick is not None:
             if s.slug.startswith("azure-vm"):
                 azure = s
-            elif inst is None or s.slug == "aws-ec2.instance-select":
+            elif (s.family or "") == "r6i":
+                r6i = s
+            elif inst is None or (s.slug == "aws-ec2.instance-select" and not s.family):
                 inst = s
         elif s.kind == "model" and s.slug == "ebs.iops-to-provision":
             ebs = s
@@ -1205,6 +1230,21 @@ def build_instance_sizing_summary(
             "mode": azure_name(ap["pick_mode"]),
             "hi": azure_name(ap["pick_hi"]),
             "exceeds_pool": ap["exceeds_pool"],
+        }
+
+    if r6i and r6i.instance_pick:
+        rp = r6i.instance_pick
+
+        def r6i_name(spec) -> str | None:
+            return None if spec is None else spec.name
+
+        largest = rp.get("largest_in_pool")
+        summary["r6i"] = {
+            "lo": r6i_name(rp["pick_lo"]),
+            "mode": r6i_name(rp["pick_mode"]),
+            "hi": r6i_name(rp["pick_hi"]),
+            "exceeds_pool": rp["exceeds_pool"],
+            "largest": None if largest is None else largest.name,
         }
 
     if gp3 and gp3.gp3_spec:
@@ -1439,8 +1479,11 @@ def chain_evaluate(
             )
             out.append(
                 ScenarioStepResult(
-                    kind="lookup", slug=f"{system}.instance-select", chained=True,
+                    kind="lookup",
+                    slug=f"{system}.instance-select",
+                    chained=True,
                     instance_pick=pick,
+                    family=step.get("family"),
                 )
             )
 

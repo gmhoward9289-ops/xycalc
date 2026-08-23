@@ -246,6 +246,37 @@ footer .family > span:first-child { white-space: nowrap; }
   display: flex; gap: .6rem; align-items: flex-start;
   border: 1px solid var(--line); border-radius: 6px; padding: .65rem .75rem; cursor: pointer;
 }
+.scenario-opt .sub {
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.scenario-compact {
+  display: flex; gap: .75rem; align-items: flex-start; justify-content: space-between;
+}
+.scenario-compact[hidden] { display: none; }
+.scenario-compact .label { font-weight: 600; font-size: .95rem; }
+.scenario-compact .sub {
+  font-size: .8rem; color: var(--muted); margin-top: .15rem;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+#scenario-chooser.collapsed #scenario-catalog { display: none; }
+.scenario-workbench {
+  display: grid; gap: 1rem; margin-bottom: 1rem; align-items: start;
+}
+@media (min-width: 52rem) {
+  .scenario-workbench {
+    grid-template-columns: minmax(0, 1.15fr) minmax(17rem, .9fr);
+  }
+  .scenario-workbench:has(#scenario-form-panel[hidden]) {
+    grid-template-columns: 1fr;
+  }
+  #scenario-summary { position: sticky; top: .75rem; }
+}
+.nvd-fold { margin: 0 0 .75rem; }
+.nvd-fold > summary {
+  cursor: pointer; font-size: .8rem; color: var(--muted); font-weight: 600;
+}
 .scenario-opt:hover { border-color: var(--accent); }
 .scenario-opt input[type=radio] { width: auto; margin: .2rem 0 0; accent-color: var(--accent); }
 .scenario-opt .label { font-weight: 600; font-size: .92rem; }
@@ -266,7 +297,14 @@ footer .family > span:first-child { white-space: nowrap; }
 .stub-notice h3 { margin: 0 0 .45rem; font-size: .95rem; }
 .stub-notice p { margin: 0; color: var(--muted); font-size: .85rem; line-height: 1.5; }
 .scenario-opt.selected { border-color: var(--accent); }
-.input-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .55rem .75rem; }
+.input-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .55rem .75rem; align-items: stretch; }
+.input-grid .field {
+  display: flex; flex-direction: column; margin-bottom: 0;
+}
+.input-grid .field label {
+  flex: 1 1 auto; min-height: 2.5em; line-height: 1.25;
+}
+.input-grid .field input { margin-top: auto; }
 .input-section h3 { font-size: .72rem; letter-spacing: .04em; color: var(--muted); margin: 0 0 .45rem; }
 .recalc-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .5rem; margin-top: .65rem; padding-top: .65rem; border-top: 1px dashed var(--line); }
 .recalc-status { font-size: .78rem; color: var(--muted); margin: 0; }
@@ -454,9 +492,12 @@ svg.nvd-chart { width: 100%; height: auto; display: block; }
   margin: 0 0 1.25rem;
 }
 .view-subnav .tabs { margin-bottom: 0; }
-body.mode-simple .view-subnav .tabs { display: none; }
-body.mode-simple #advanced-chrome { display: none !important; }
+body.mode-simple .view-subnav .tabs,
+body.mode-scientific .view-subnav .tabs { display: none; }
+body.mode-simple #advanced-chrome,
+body.mode-scientific #advanced-chrome { display: none !important; }
 body.mode-advanced #simple-view { display: none !important; }
+body.mode-simple #scientific-math { display: none !important; }
 .simple-answer .band-row {
   display: flex; justify-content: space-between; gap: 1rem;
   font-family: var(--mono); font-size: .85rem; color: var(--muted);
@@ -492,7 +533,7 @@ body.mode-advanced #simple-view { display: none !important; }
   border-radius: 8px; padding: .85rem .95rem; margin-top: .85rem; font-size: .9rem;
 }
 .simple-honesty p { margin: 0 0 .65rem; }
-.simple-honesty #simple-open-advanced {
+.simple-honesty #simple-open-scientific {
   color: var(--stop-ink); border-color: var(--stop-line); font-weight: 600;
   padding: .4rem .75rem; font-size: .82rem;
 }
@@ -533,6 +574,7 @@ body.mode-advanced #simple-view { display: none !important; }
 <div class="mode-bar" role="group" aria-label="Calculator mode">
   <span class="mode-label">View</span>
   <button type="button" class="mode-btn" id="mode-simple" aria-pressed="true">Simple</button>
+  <button type="button" class="mode-btn" id="mode-scientific" aria-pressed="false">Scientific</button>
   <button type="button" class="mode-btn" id="mode-advanced" aria-pressed="false">Advanced</button>
 </div>
 <div class="view-subnav" aria-label="Advanced sections">
@@ -592,28 +634,40 @@ body.mode-advanced #simple-view { display: none !important; }
       <div class="validation" id="simple-validation" hidden></div>
       <div id="simple-honesty-slot"></div>
     </div>
+    <div id="scientific-math"></div>
   </div>
 </div>
 
 <div id="advanced-chrome">
 
 <div id="tab-scenario">
-  <div class="panel">
-    <label>What do you know?</label>
-    <div class="scenario-list" id="scenario-picker"></div>
+  <div class="panel" id="scenario-chooser">
+    <div class="scenario-compact" id="scenario-compact" hidden>
+      <div>
+        <div class="label" id="scenario-compact-title"></div>
+        <div class="sub" id="scenario-compact-sub"></div>
+      </div>
+      <button type="button" class="ghost" id="scenario-change">Change scenario</button>
+    </div>
+    <div id="scenario-catalog">
+      <label>What do you know?</label>
+      <div class="scenario-list" id="scenario-picker"></div>
+    </div>
   </div>
   <div id="scenario-stub-notice" class="stub-notice" hidden></div>
   <div id="scenario-workspace" hidden>
-    <div id="scenario-summary"></div>
-    <div class="panel" id="scenario-form-panel">
-      <h2 class="form-heading">Your specs</h2>
-      <div id="scenario-nvd-chart"></div>
-      <div id="scenario-inputs"></div>
-      <div class="recalc-bar">
-        <p class="recalc-status" id="scn-recalc-status">Fill required fields — sizing updates as you type.</p>
-        <button type="button" id="scn-recalc">Update sizing</button>
+    <div class="scenario-workbench" id="scenario-workbench">
+      <div class="panel" id="scenario-form-panel">
+        <h2 class="form-heading">Your specs</h2>
+        <div id="scenario-nvd-chart"></div>
+        <div id="scenario-inputs"></div>
+        <div class="recalc-bar">
+          <p class="recalc-status" id="scn-recalc-status">Fill required fields — sizing updates as you type.</p>
+          <button type="button" id="scn-recalc">Update sizing</button>
+        </div>
+        <p id="scn-error" class="error" hidden></p>
       </div>
-      <p id="scn-error" class="error" hidden></p>
+      <div id="scenario-summary"></div>
     </div>
     <div id="scenario-cascade"></div>
   </div>

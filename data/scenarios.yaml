@@ -100,6 +100,10 @@ scenarios:
         feed: previous
       - kind: lookup
         lookup: instance_select
+        family: r6i
+        feed: previous
+      - kind: lookup
+        lookup: instance_select
         system: azure-vm
         family: Esv6
         feed: previous

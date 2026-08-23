@@ -95,16 +95,19 @@ systems:
       the smallest instance that covers each of lo/mode/hi — a catalog lookup,
       not a floor/amplifier chain. See instance_select() in model.py and the
       `instance-select` CLI / mongodb.size-to-instance scenario. `--family`
-      filters by name prefix (currently r8i populated). Azure VM and bare-metal
+      filters by name prefix (`r8i`, `r6i`). Azure VM and bare-metal
       catalogs are required peers (same pick-per-band-end contract); they are
       not optional extras — see docs/telemetry/recommendations.md Product core.
 
-      r8i tops out at r8i.96xlarge (3,072 GiB). Cited U7i sizes continue the
+      r8i tops out at r8i.96xlarge (3,072 GiB). r6i tops out at r6i.32xlarge
+      (1,024 GiB) — there is no r6i.48xlarge. Cited U7i sizes continue the
       catalog: u7i-12tb.224xlarge (12,288 GiB) and u7inh-32tb.480xlarge
-      (32,768 GiB). Org policy may cap recommendations lower
-      (DEFAULT_INSTANCE_CEILING, currently the largest cited SKU); above
-      that → custom sizing, not a guessed SKU. Smaller U7i sizes are omitted
-      until they have the same quote bar as these two. See aws-ec2.yaml.
+      (32,768 GiB). Unfiltered picks prefer r8i at equal RAM; the size-to-
+      instance scenario also names the r6i SKU (or custom sizing past 1 TiB).
+      Org policy may cap recommendations lower (DEFAULT_INSTANCE_CEILING,
+      currently the largest cited SKU); above that → custom sizing, not a
+      guessed SKU. Smaller U7i sizes are omitted until they have the same
+      quote bar as these two. See aws-ec2.yaml.
 
   - slug: azure-vm
     label: Azure VMs (memory-optimized)
