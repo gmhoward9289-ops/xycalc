@@ -446,14 +446,26 @@ const XYCALC_APP = (() => {
       { key: "hi", label: "High", name: s.cpu && s.cpu.instance_hi, ram: ram && ram.hi },
     ];
     const picksHtml = ends.map((e) => simplePickCardHtml(e, ram, pick, fmt)).join("");
+    const r6 = s.r6i;
+    const r6iHtml = r6
+      ? `<div class="simple-pick"><div class="which">r6i family</div>
+         <div class="name">${esc(r6.mode || "custom sizing")}</div>
+         <div class="spec">${r6.exceeds_pool
+           ? "ceiling " + esc(r6.largest || "r6i.32xlarge") + " · 1,024 GiB"
+           : ""}</div>
+         ${r6.exceeds_pool
+           ? `<div class="miss">this RAM band is above r6i — stay on r6i only below 1,024 GiB, or use the r8i/U7i pick</div>`
+           : ""}</div>`
+      : "";
     return {
       ramText: ramText,
       weakest: weakest,
       bannerHtml: bannerHtml,
       honestyHtml: honestyHtml,
       picksHtml: picksHtml,
+      r6iHtml: r6iHtml,
       footnotesHtml: footnotesHtml,
-      html: (ramText || "") + bannerHtml + honestyHtml + footnotesHtml + picksHtml,
+      html: (ramText || "") + bannerHtml + honestyHtml + footnotesHtml + picksHtml + r6iHtml,
     };
   }
 
@@ -1067,6 +1079,18 @@ const XYCALC_APP = (() => {
         if (s.ram.mode <= floor) s.cpu.instance_mode = "r8i.2xlarge";
         if (s.ram.hi <= floor) s.cpu.instance_hi = s.cpu.instance_hi || "r8i.2xlarge";
       }
+      const r6iPick = XY.selectInstance
+        ? XY.selectInstance(band, catalog, "r6i", ceiling === 0 ? null : ceiling)
+        : null;
+      if (r6iPick) {
+        s.r6i = {
+          lo: r6iPick.pick_lo && r6iPick.pick_lo.name,
+          mode: r6iPick.pick_mode && r6iPick.pick_mode.name,
+          hi: r6iPick.pick_hi && r6iPick.pick_hi.name,
+          exceeds_pool: r6iPick.exceeds_pool,
+          largest: r6iPick.largest_in_pool && r6iPick.largest_in_pool.name,
+        };
+      }
       data.sizing_summary = s;
       data.simple_instance_pick = pick || null;
       return data;
@@ -1106,7 +1130,7 @@ const XYCALC_APP = (() => {
         $("simple-bandends").hidden = true;
       }
 
-      $("simple-picks").innerHTML = paint.picksHtml;
+      $("simple-picks").innerHTML = paint.picksHtml + (paint.r6iHtml || "");
       const slot = $("simple-honesty-slot");
       if (slot) slot.innerHTML = paint.bannerHtml + paint.honestyHtml + (paint.footnotesHtml || "");
       const val = $("simple-validation");
@@ -1418,6 +1442,54 @@ const XYCALC_APP = (() => {
       </div>`;
     }
 
+    function renderCascadeLookupStep(st, i) {
+      if (st.pick) {
+        const pool = st.family
+          ? (st.family === "r6i"
+            ? "Smallest r6i covering host RAM. Family ceiling is r6i.32xlarge (1,024 GiB)."
+            : "Smallest " + st.family + " SKU covering host RAM.")
+          : (String(st.slug || "").indexOf("azure-vm") === 0
+            ? "Smallest Azure VM covering host RAM."
+            : "Smallest AWS SKU covering host RAM (r8i, then cited U7i).");
+        const rows = [
+          ["low end", st.pick.pick_lo],
+          ["mode", st.pick.pick_mode],
+          ["high end", st.pick.pick_hi],
+        ].map(([label, spec]) => {
+          if (!spec) {
+            return `<tr><td>${esc(label)}</td><td>custom sizing</td><td class="num">over the largest in this pool</td></tr>`;
+          }
+          const ram = spec.ram_bytes != null ? fmt(spec.ram_bytes, "bytes") : "";
+          const cpu = spec.vcpu != null ? spec.vcpu + " vCPU" : "";
+          return `<tr><td>${esc(label)}</td><td>${esc(spec.name)}</td><td class="num">${esc([ram, cpu].filter(Boolean).join(" · "))}</td></tr>`;
+        }).join("");
+        const note = st.pick.exceeds_pool
+          ? `<p class="help">${st.family === "r6i"
+            ? "This band is above r6i.32xlarge — custom sizing on r6i, not a guessed 48xlarge."
+            : "The high end exceeds this pool — custom sizing, not a guessed SKU."}</p>`
+          : "";
+        const modeName = (st.pick.pick_mode && st.pick.pick_mode.name) || "custom sizing";
+        return `<div class="panel cascade-step">
+          <div class="help">Step ${i + 1} · ${esc(st.family || st.slug || "instance pick")}</div>
+          <p>${esc(pool)}</p>
+          <div class="answer"><div class="value">${esc(modeName)}</div></div>
+          ${note}
+          <div class="scroll"><table><thead><tr><th>Band</th><th>SKU</th><th style="text-align:right">Spec</th></tr></thead><tbody>${rows}</tbody></table></div>
+        </div>`;
+      }
+      if (st.gp3) {
+        const g = st.gp3;
+        return `<div class="panel cascade-step">
+          <div class="help">Step ${i + 1} · gp3 volume spec</div>
+          <p>gp3 baseline and provisionable ceilings for the on-disk size (collections + indexes + foreign).</p>
+          <div class="answer"><div class="value">${g.volume_gib.toFixed(1)} GiB</div>
+          <div class="band">${g.baseline_iops.toLocaleString()} IOPS included · ${g.baseline_throughput_mibps} MiB/s included</div></div>
+          <p class="help">Max provisionable ${Math.round(g.max_provisionable_iops).toLocaleString()} IOPS · up to ${g.max_throughput_mibps} MiB/s${g.instance_name ? " · " + esc(g.instance_name) + " EBS pipe " + g.instance_ebs_bandwidth_gbps + " Gbps" : ""}.</p>
+        </div>`;
+      }
+      return "";
+    }
+
     function citationFromEvaluate(model, result) {
       const v = model.validation || {};
       return formatCitation({
@@ -1490,11 +1562,7 @@ const XYCALC_APP = (() => {
           <summary>Show the math · ${steps.length} steps</summary>
           ${steps.map((st, i) => st.kind === "model"
             ? renderCascadeModelStep(st, i)
-            : st.pick
-              ? `<div class="panel">Step ${i + 1}: ${esc((st.pick.pick_mode && st.pick.pick_mode.name) || "custom sizing")}</div>`
-              : st.gp3
-                ? `<div class="panel">Step ${i + 1}: gp3 ${st.gp3.volume_gib.toFixed(1)} GiB · ${st.gp3.baseline_iops} IOPS included</div>`
-                : "") .join("")}
+            : renderCascadeLookupStep(st, i)).join("")}
         </details>`;
     }
 
@@ -1524,6 +1592,13 @@ const XYCALC_APP = (() => {
              <div class="primary">${esc(inst)}</div>
              <div class="sub">${s.ram ? esc(fmt(s.ram.mode, s.ram.unit) + " RAM") : ""}${s.cpu?.mode != null ? " · " + s.cpu.mode + " vCPU" : ""}</div></div>`
           : "";
+        const r6iSizing = s.r6i
+          ? `<div class="summary-metric"><div class="kicker">r6i family</div>
+             <div class="primary">${esc(s.r6i.mode || "custom sizing")}</div>
+             <div class="sub">${s.r6i.exceeds_pool
+               ? "ceiling " + esc(s.r6i.largest || "r6i.32xlarge") + " · 1,024 GiB"
+               : "what you run today"}</div></div>`
+          : "";
         const perf = s.disk?.provisioned_iops
           ? `<div class="summary-metric"><div class="kicker">Storage performance</div>
              <div class="primary">${Math.round(s.disk.provisioned_iops.mode).toLocaleString()} IOPS</div>
@@ -1550,13 +1625,13 @@ const XYCALC_APP = (() => {
         const chainBanner = renderValidationBanner(weakest);
         const pathNotes = sizePathFootnotesHtml(data.steps, currentScenario.slug);
         const citeBtn = `<div class="answer-tools"><button type="button" class="ghost" data-copy-cite="scenario">Copy as citation</button></div>`;
-        const sizingBlock = (instSizing || perf || size)
+        const sizingBlock = (instSizing || r6iSizing || perf || size)
           ? `<div class="panel sizing-summary"><h2>What you need</h2>
-          <div class="summary-grid">${instSizing}${perf}${size}</div>${funnel}${chainBanner}${pathNotes}${citeBtn}</div>`
+          <div class="summary-grid">${instSizing}${r6iSizing}${perf}${size}</div>${funnel}${chainBanner}${pathNotes}${citeBtn}</div>`
           : renderCitationSummary(data) + chainBanner + pathNotes + citeBtn;
         $("scenario-summary").innerHTML = sizingBlock;
         lastScenarioCitation = citationFromChain(data);
-        const citationOnly = !(instSizing || perf || size) && !!sizingBlock;
+        const citationOnly = !(instSizing || r6iSizing || perf || size) && !!sizingBlock;
         const existing = $("scenario-cascade").querySelector("details");
         const open = (opts && opts.expandMath)
           || Date.now() < pendingExpandMathUntil

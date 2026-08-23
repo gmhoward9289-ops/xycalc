@@ -64,14 +64,15 @@ class TestChainEvaluate:
 
     def test_size_to_instance_includes_models_and_lookups(self, conn, scenario):
         steps = chain_evaluate(conn, scenario, INSTANCE_INPUTS)
-        assert [(s.kind, s.slug) for s in steps] == [
-            ("model", "mongodb.storage-from-doc-families"),
-            ("model", "mongodb.wt-cache"),
-            ("model", "mongodb.host-ram"),
-            ("lookup", "aws-ec2.instance-select"),
-            ("lookup", "azure-vm.instance-select"),
-            ("lookup", "ebs.gp3-spec"),
-            ("model", "ebs.iops-to-provision"),
+        assert [(s.kind, s.slug, s.family) for s in steps] == [
+            ("model", "mongodb.storage-from-doc-families", None),
+            ("model", "mongodb.wt-cache", None),
+            ("model", "mongodb.host-ram", None),
+            ("lookup", "aws-ec2.instance-select", None),
+            ("lookup", "aws-ec2.instance-select", "r6i"),
+            ("lookup", "azure-vm.instance-select", "Esv6"),
+            ("lookup", "ebs.gp3-spec", None),
+            ("model", "ebs.iops-to-provision", None),
         ]
         families = steps[0].result
         assert families is not None
@@ -169,6 +170,9 @@ class TestBuildInstanceSizingSummary:
         assert not pick["exceeds_pool"]
         aws = next(s for s in steps if s.slug == "aws-ec2.instance-select")
         assert aws.instance_pick["pick_mode"].name.startswith("r8i")
+        r6 = next(s for s in steps if s.family == "r6i")
+        assert r6.instance_pick["pick_mode"].name.startswith("r6i.")
+        assert not r6.instance_pick["exceeds_pool"]
 
     def test_homepage_500gb_simple_names_cited_skus(self, conn):
         """Issue #114: the landing-page 500 GB question must name a cited SKU.
@@ -195,6 +199,13 @@ class TestBuildInstanceSizingSummary:
         assert summary["cpu"]["instance_lo"] == "r8i.96xlarge"
         assert summary["cpu"]["instance_mode"] == "r8i.96xlarge"
         assert summary["cpu"]["instance_hi"] == "u7i-12tb.224xlarge"
+        r6 = next(s for s in steps if s.family == "r6i")
+        assert r6.instance_pick["pick_mode"] is None
+        assert r6.instance_pick["exceeds_pool"]
+        assert r6.instance_pick["largest_in_pool"].name == "r6i.32xlarge"
+        assert summary["r6i"]["exceeds_pool"]
+        assert summary["r6i"]["largest"] == "r6i.32xlarge"
+        assert summary["r6i"]["mode"] is None
 
 
 @pytest.fixture

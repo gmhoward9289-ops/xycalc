@@ -411,6 +411,11 @@ def test_export_blob_carries_scenario_chain(blob):
     assert aws["pick_mode"] == "r8i.96xlarge"
     assert aws["pick_hi"] == "u7i-12tb.224xlarge"
     assert any(i["name"] == "u7i-12tb.224xlarge" for i in blob["instance_catalog"])
+    assert any(i["name"] == "r6i.32xlarge" for i in blob["instance_catalog"])
+    r6 = next(s for s in homepage["steps"] if s.get("family") == "r6i")
+    assert r6["pick_mode"] is None
+    assert r6["pick_lo"] is None
+    assert r6["pick_hi"] is None
 
 
 def test_export_blob_carries_occupancy_band(blob):

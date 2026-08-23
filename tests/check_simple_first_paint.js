@@ -109,6 +109,9 @@ assertHonesty(homepage.panel, "500GB homepage");
 assert.ok(!homepage.panel.picksHtml.includes("custom sizing"), homepage.panel.picksHtml);
 assert.ok(homepage.panel.picksHtml.includes("r8i.96xlarge"), homepage.panel.picksHtml);
 assert.ok(homepage.panel.picksHtml.includes("u7i-12tb.224xlarge"), homepage.panel.picksHtml);
+assert.ok(homepage.panel.r6iHtml.includes("r6i"), homepage.panel.r6iHtml);
+assert.ok(homepage.panel.r6iHtml.includes("custom sizing"), homepage.panel.r6iHtml);
+assert.ok(homepage.panel.r6iHtml.includes("1,024 GiB"), homepage.panel.r6iHtml);
 assert.ok(
   /3\.1\s*TB/.test(homepage.panel.ramText),
   "500 GB Simple host RAM should stay ~3.1 TB, got " + homepage.panel.ramText,

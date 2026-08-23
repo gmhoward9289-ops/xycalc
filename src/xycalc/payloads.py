@@ -277,14 +277,16 @@ def scenario_payload(
                     }
                 )
             else:
-                body_steps.append(
-                    {
-                        "kind": "lookup",
-                        "lookup": s.slug,
-                        "chained": True,
-                        "pick": serialise_instance_pick(s.instance_pick),
-                    }
-                )
+                body = {
+                    "kind": "lookup",
+                    "lookup": s.slug,
+                    "slug": s.slug,
+                    "chained": True,
+                    "pick": serialise_instance_pick(s.instance_pick),
+                }
+                if s.family:
+                    body["family"] = s.family
+                body_steps.append(body)
 
     summary = build_instance_sizing_summary(steps, inputs or {})
 

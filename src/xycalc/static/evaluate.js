@@ -443,6 +443,25 @@ const XY = (() => {
     return out;
   }
 
+  function instancePickRank(name) {
+    const n = String(name || "").toLowerCase();
+    if (n.indexOf("r8i") === 0) return 0;
+    if (n.indexOf("u7") === 0) return 1;
+    if (n.indexOf("r6i") === 0) return 2;
+    return 3;
+  }
+
+  function betterInstance(a, b, preferLarger) {
+    if (a.ram_bytes !== b.ram_bytes) {
+      if (preferLarger) return a.ram_bytes > b.ram_bytes ? a : b;
+      return a.ram_bytes < b.ram_bytes ? a : b;
+    }
+    const ra = instancePickRank(a.name), rb = instancePickRank(b.name);
+    if (ra !== rb) return ra < rb ? a : b;
+    if (preferLarger) return a.name >= b.name ? a : b;
+    return a.name < b.name ? a : b;
+  }
+
   function selectInstance(result, catalog, family, ceilingBytes) {
     let pool = catalog.filter((i) => !family || i.name.toLowerCase().indexOf(family.toLowerCase()) === 0);
     if (!pool.length) throw new ModelError("no instances in catalog matching family '" + family + "'");
@@ -455,9 +474,9 @@ const XY = (() => {
     const pick = (need) => {
       const fits = pool.filter((i) => i.ram_bytes >= need);
       if (!fits.length) return null;
-      return fits.reduce((a, b) => (a.ram_bytes < b.ram_bytes ? a : b));
+      return fits.reduce((a, b) => betterInstance(a, b, false));
     };
-    const largest = pool.reduce((a, b) => (a.ram_bytes > b.ram_bytes ? a : b));
+    const largest = pool.reduce((a, b) => betterInstance(a, b, true));
     return {
       required_lo: result.lo,
       required_mode: result.mode,
@@ -523,13 +542,14 @@ const XY = (() => {
 
   function buildInstanceSizingSummary(presented, inputs) {
     const summary = {};
-    let host, inst, azure, gp3, ebs;
+    let host, inst, azure, r6i, gp3, ebs;
     for (const s of presented) {
       if (s.kind === "model" && s.model === "mongodb.host-ram") host = s;
       else if (s.kind === "lookup" && s.gp3) gp3 = s;
       else if (s.kind === "lookup" && s.pick) {
         if ((s.slug || "").indexOf("azure-vm") === 0) azure = s;
-        else if (!inst || s.slug === "aws-ec2.instance-select") inst = s;
+        else if ((s.family || "") === "r6i") r6i = s;
+        else if (!inst || ((s.slug === "aws-ec2.instance-select" || (s.slug || "").indexOf("aws-ec2") === 0) && !s.family)) inst = s;
       }
       else if (s.kind === "model" && s.model === "ebs.iops-to-provision") ebs = s;
     }
@@ -557,6 +577,17 @@ const XY = (() => {
         mode: name(pick.pick_mode),
         hi: name(pick.pick_hi),
         exceeds_pool: pick.exceeds_pool,
+      };
+    }
+    if (r6i && r6i.pick) {
+      const pick = r6i.pick;
+      const name = (spec) => (spec == null ? null : spec.name);
+      summary.r6i = {
+        lo: name(pick.pick_lo),
+        mode: name(pick.pick_mode),
+        hi: name(pick.pick_hi),
+        exceeds_pool: pick.exceeds_pool,
+        largest: pick.largest_in_pool && pick.largest_in_pool.name,
       };
     }
     if (gp3 && gp3.gp3) {
@@ -737,6 +768,7 @@ const XY = (() => {
           kind: "lookup",
           slug: slug,
           lookup: slug,
+          family: step.family || null,
           chained: true,
           pick: pick,
           pick_lo: pick.pick_lo ? pick.pick_lo.name : null,

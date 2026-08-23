@@ -248,6 +248,8 @@ def _pack_scenario_golden_steps(steps) -> list[dict]:
             for key in ("pick_lo", "pick_mode", "pick_hi"):
                 spec = st.instance_pick.get(key)
                 item[key] = None if spec is None else spec.name
+            if st.family:
+                item["family"] = st.family
         if st.gp3_spec:
             item["volume_gib"] = st.gp3_spec["volume_gib"]
             item["baseline_iops"] = st.gp3_spec["baseline_iops"]

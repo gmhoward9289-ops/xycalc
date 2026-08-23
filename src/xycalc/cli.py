@@ -411,7 +411,11 @@ def cmd_scenario(args) -> int:
             pool = (
                 "smallest Azure VM covering the band above"
                 if s.slug.startswith("azure-vm")
-                else "smallest AWS instance covering the band above"
+                else (
+                    f"smallest {s.family} instance covering the band above"
+                    if s.family
+                    else "smallest AWS instance covering the band above"
+                )
             )
             print(f"STEP {i} — {pool}")
             pick = s.instance_pick
@@ -469,6 +473,17 @@ def cmd_scenario(args) -> int:
                 print(
                     "  Azure NOTE         high end exceeds this pool — custom "
                     "sizing, not a recommendation."
+                )
+        if r6i := summary.get("r6i"):
+            print(
+                f"  r6i                {r6i['lo'] or 'custom'} – "
+                f"{r6i['hi'] or 'custom'}  "
+                f"(mode {r6i['mode'] or 'custom sizing'})"
+            )
+            if r6i.get("exceeds_pool"):
+                print(
+                    "  r6i NOTE           band exceeds r6i.32xlarge (1,024 GiB) "
+                    "— custom sizing on this family, not a guessed 48xlarge."
                 )
         if disk := summary.get("disk"):
             line = (

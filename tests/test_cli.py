@@ -346,6 +346,16 @@ class TestSelectInstance:
         assert sel["largest_in_pool"].name == "r8i.2xlarge"
         assert sel["exceeds_pool"] is False
 
+    def test_equal_ram_prefers_r8i_over_r6i(self):
+        catalog = [
+            _inst("r6i.2xlarge", "64GiB", 8),
+            _inst("r8i.2xlarge", "64GiB", 8),
+        ]
+        sel = select_instance(_need("64GiB", "64GiB", "64GiB"), catalog)
+        assert sel["pick_mode"].name == "r8i.2xlarge"
+        r6 = select_instance(_need("64GiB", "64GiB", "64GiB"), catalog, family="r6i")
+        assert r6["pick_mode"].name == "r6i.2xlarge"
+
     def test_empty_family_filter_raises(self):
         with pytest.raises(ModelError, match="no instances"):
             select_instance(_need("1GiB", "1GiB", "1GiB"), self.CATALOG, family="c7i")
