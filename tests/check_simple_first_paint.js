@@ -61,7 +61,7 @@ function assertHonesty(panel, label) {
   assert.ok(panel.bannerHtml.includes(clause) || panel.bannerHtml.includes(APP.esc(clause)), panel.bannerHtml);
   assert.ok(/\bn=\d+/.test(clause) || /unvalidated \(n=0\)/.test(clause), clause);
   assert.ok(panel.html.includes(APP.SIMPLE_HONESTY_LINE), panel.html);
-  assert.ok(panel.html.includes("simple-open-advanced"), panel.html);
+  assert.ok(panel.html.includes("simple-open-scientific"), panel.html);
   const fn = APP.SIZE_PATH_FOOTNOTES;
   assert.ok(hasSentence(panel.html, fn["mongodb.wt-cache"].text), panel.html);
   assert.ok(hasSentence(panel.html, fn["mongodb.ticket-throughput-ceiling"].text), panel.html);

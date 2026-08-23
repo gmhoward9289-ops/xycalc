@@ -45,7 +45,7 @@ NODE = shutil.which("node")
 _HTML_ID = re.compile(r'\bid="([^"]+)"', re.I)
 _DOLLAR_ID = re.compile(r'\$\("([^"]+)"\)')
 # Nodes Simple injects into the result panel; they are not in the template.
-_SIMPLE_INJECTED_IDS = frozenset({"simple-open-advanced"})
+_SIMPLE_INJECTED_IDS = frozenset({"simple-open-scientific"})
 
 
 def html_id_counts(html: str) -> Counter:
@@ -303,12 +303,18 @@ def test_render_substitutes_every_placeholder(blob):
     assert 'id="single-model-footnotes"' in html
     assert 'id="simple-honesty-slot"' in html
     assert 'id="mode-simple"' in html
+    assert 'id="mode-scientific"' in html
+    assert 'id="scientific-math"' in html
     assert "--btn-ink" in html
     assert "--error" in html
     assert "Copy as citation" in html
     assert 'aria-live="polite"' in html
     assert "aria-labelledby" not in html
     assert "Show the math" in html
+    assert 'id="scenario-workbench"' in html
+    assert 'id="scenario-compact"' in html
+    assert "existing ? existing.open : false" in html
+    assert 'class="nvd-fold"' in html
     assert "tabindex=\"0\"" in html
     assert "renderCascadeModelStep" in html
     assert "weakestValidation" in html
