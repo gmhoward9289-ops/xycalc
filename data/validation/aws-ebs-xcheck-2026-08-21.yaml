@@ -1,0 +1,16 @@
+validation:
+  # Guest 1s fio peak vs ebs.iops-to-provision(average). This tests the
+  # burst_factor arithmetic against a measured peak second. It does not
+  # test VolumeIOPSExceededCheck — that series was empty on this volume.
+
+  - model: ebs.iops-to-provision
+    case: aws-ebs-xcheck-2026-08-21-under-peak
+    observation: aws-ebs-xcheck-2026-08-21-under-peak-iops
+    inputs:
+      average_iops: 2106.2
+    actual: 5609
+    notes: >-
+      Under-phase guest log: mean 2106.2 IOPS, peak second 5609. Model
+      multiplies the mean by ebs.peak-to-mean-iops-ratio (1.5–3–10). Peak
+      is the quantity the model claims you must provision. CloudWatch
+      ExceededCheck was not published; do not read this as AWS agreeing.

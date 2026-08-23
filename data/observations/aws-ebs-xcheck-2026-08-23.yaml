@@ -1,0 +1,94 @@
+observations:
+  # Guest 1s peak/mean on real gp3 3000/125. VolumeIOPSExceededCheck returned
+  # zero datapoints — empty CloudWatch is a note, not a 0/1 pass/fail case.
+
+  - slug: aws-ebs-xcheck-2026-08-23-under-mean-iops
+    system: ebs
+    parameter: io.iops
+    value: 1546.75
+    unit: iops
+    workload: >-
+      fio randread under provisioned mean (rate-limited), 4k, direct=1,
+      1s IOPS log mean over 290 samples
+    machine_class: AWS m6i.large + gp3 100GiB 3000/125, us-east-2
+    system_version: Amazon Elastic Block Store (gp3)
+    observed_on: '2026-08-23'
+    source: obs-aws-ebs-xcheck-2026-08-23
+    notes: >-
+      Under-phase mean 1546.75, p50 1500. Peak second 5528 is the second
+      sample (first was 605); after those two seconds the log holds near
+      3000 then the rate cap. Not scored as ExceededCheck 0/1 — that
+      series was empty. VolumeReadOps did publish.
+
+  - slug: aws-ebs-xcheck-2026-08-23-under-peak-iops
+    system: ebs
+    parameter: io.iops
+    value: 5528
+    unit: iops
+    workload: >-
+      fio randread under provisioned mean, 4k, direct=1, 1s IOPS log peak
+      second over 290 samples
+    machine_class: AWS m6i.large + gp3 100GiB 3000/125, us-east-2
+    system_version: Amazon Elastic Block Store (gp3)
+    observed_on: '2026-08-23'
+    source: obs-aws-ebs-xcheck-2026-08-23
+    notes: >-
+      First-second-class fio overshoot (sample 2), not a sustained EBS
+      throttle second. Peak after skipping the first two samples is 3001.
+      Observed, not used as a validation actual.
+
+  - slug: aws-ebs-xcheck-2026-08-23-under-peak-to-mean
+    system: ebs
+    parameter: io.peak_to_mean_ratio
+    value: 3.574
+    unit: ratio
+    workload: fio randread under provisioned mean, peak/mean of 1s IOPS samples
+    machine_class: AWS m6i.large + gp3 100GiB 3000/125, us-east-2
+    system_version: Amazon Elastic Block Store (gp3)
+    observed_on: '2026-08-23'
+    source: obs-aws-ebs-xcheck-2026-08-23
+    notes: peak=5528 / mean=1546.75 over n=290. Ratio is dominated by the startup second.
+
+  - slug: aws-ebs-xcheck-2026-08-23-over-mean-iops
+    system: ebs
+    parameter: io.iops
+    value: 3004.58
+    unit: iops
+    workload: >-
+      fio randread uncapped QD64 vs 3000 provisioned, 4k, direct=1,
+      1s IOPS log mean over 720 samples
+    machine_class: AWS m6i.large + gp3 100GiB 3000/125, us-east-2
+    system_version: Amazon Elastic Block Store (gp3)
+    observed_on: '2026-08-23'
+    source: obs-aws-ebs-xcheck-2026-08-23
+    notes: >-
+      Held at the volume ceiling (mean 3004.58, p50 3002). CW VolumeReadOps
+      ~180k/min. VolumeIOPSExceededCheck still empty — not scored as 0.
+
+  - slug: aws-ebs-xcheck-2026-08-23-over-peak-iops
+    system: ebs
+    parameter: io.iops
+    value: 5989
+    unit: iops
+    workload: >-
+      fio randread uncapped QD64 vs 3000 provisioned, 4k, direct=1,
+      1s IOPS log peak second over 720 samples
+    machine_class: AWS m6i.large + gp3 100GiB 3000/125, us-east-2
+    system_version: Amazon Elastic Block Store (gp3)
+    observed_on: '2026-08-23'
+    source: obs-aws-ebs-xcheck-2026-08-23
+    notes: >-
+      Peak is the first sample; after skipping two seconds the peak is 3007.
+      Observed, not scored as a provision-this-peak case.
+
+  - slug: aws-ebs-xcheck-2026-08-23-over-peak-to-mean
+    system: ebs
+    parameter: io.peak_to_mean_ratio
+    value: 1.993
+    unit: ratio
+    workload: fio randread over provisioned, peak/mean of 1s IOPS samples
+    machine_class: AWS m6i.large + gp3 100GiB 3000/125, us-east-2
+    system_version: Amazon Elastic Block Store (gp3)
+    observed_on: '2026-08-23'
+    source: obs-aws-ebs-xcheck-2026-08-23
+    notes: peak=5989 / mean=3004.58 over n=720. Ratio is the startup second over a capped mean.

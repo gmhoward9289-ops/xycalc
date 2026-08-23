@@ -22,6 +22,44 @@ observations:
       figure ebs.gp3-baseline-io-crossover-kib (42.7) kept; this row is the
       measured real-gp3 observation.
 
+  - slug: aws-t9c-gp3-2026-08-21-iops-16kib
+    system: ebs
+    parameter: io.iops
+    value: 3210.140704
+    unit: iops
+    workload: fio randread QD32, 16 KiB, 12s point, direct=1 on dedicated gp3
+    machine_class: AWS m6i.large + gp3 3000/125, us-east-2
+    system_version: Amazon Elastic Block Store (gp3)
+    observed_on: '2026-08-21'
+    source: obs-aws-t9c-gp3-2026-08-21
+    notes: >-
+      IOPS-bound 16 KiB point cited by the 2026-08-21 gp3-at-io-size case.
+      ~7% over provisioned 3000 on a short run.
+
+  - slug: aws-t9c-gp3-2026-08-21-iops-64kib
+    system: ebs
+    parameter: io.iops
+    value: 2167.443409
+    unit: iops
+    workload: fio randread QD32, 64 KiB, 12s point, direct=1 on dedicated gp3
+    machine_class: AWS m6i.large + gp3 3000/125, us-east-2
+    system_version: Amazon Elastic Block Store (gp3)
+    observed_on: '2026-08-21'
+    source: obs-aws-t9c-gp3-2026-08-21
+    notes: First throughput-bound size in the sweep (model predicts 2000 IOPS).
+
+  - slug: aws-t9c-gp3-2026-08-21-iops-256kib
+    system: ebs
+    parameter: io.iops
+    value: 537.135279
+    unit: iops
+    workload: fio randread QD32, 256 KiB, 12s point, direct=1 on dedicated gp3
+    machine_class: AWS m6i.large + gp3 3000/125, us-east-2
+    system_version: Amazon Elastic Block Store (gp3)
+    observed_on: '2026-08-21'
+    source: obs-aws-t9c-gp3-2026-08-21
+    notes: SSD max I/O size; model predicts 500 IOPS (125 MiB/s ÷ 256 KiB).
+
   - slug: aws-t9c-gp3-2026-08-21-iops-plateau
     system: ebs
     parameter: io.iops

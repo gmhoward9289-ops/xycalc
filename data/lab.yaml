@@ -27,13 +27,13 @@ models:
 
   - model: ebs.iops-to-provision
     label: EBS IOPS to provision
-    measured: gp3 peak/mean ratios on m6i.large (xcheck 2026-08-21). CloudWatch still drops the peak second.
-    still_needs: Paired peak-second vs mean-minute IOPS on the same volume, with ExceededCheck when AWS publishes it.
+    measured: Guest 1s peak vs mean scored on m6i.large 3000 (xcheck 2026-08-21 only). 2026-08-23 3k and 16k guest peak/mean observed; not scored — recorded peaks are fio startup seconds, and ExceededCheck was empty.
+    still_needs: VolumeIOPSExceededCheck 0/1 on the same window as a sustained guest peak second (not fio startup). Production db.stats() and NVD collStats still need a paste.
 
   - model: ebs.gp3-iops-at-io-size
     label: gp3 IOPS at I/O size
-    measured: Vendor crossover arithmetic plus gp3 fio points in observations. No model case yet.
-    still_needs: Sustained random-read IOPS at a stated I/O size vs the model’s min(IOPS, throughput) prediction.
+    measured: T9 Arm C gp3 fio at 16/64/256 KiB vs min(3000, 125 MiB/s ÷ size). Short points ~7% over documented caps.
+    still_needs: A longer soak on a second volume; 12s points over-deliver.
 
   - model: mongodb.ticket-throughput-ceiling
     label: Ticket throughput ceiling

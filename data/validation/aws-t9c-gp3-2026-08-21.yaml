@@ -1,0 +1,39 @@
+validation:
+  # Investigation 017 Arm C — real gp3 fio vs ebs.gp3-iops-at-io-size.
+  # Predicted is min(provisioned 3000, 125 MiB/s × 1024 / io_size_kib).
+  # Short-run points sit ~7% above the documented caps; that is a finding,
+  # not a reason to skip the case. Cold 4 KiB (801 IOPS) is not scored.
+
+  - model: ebs.gp3-iops-at-io-size
+    case: aws-t9c-gp3-2026-08-21-16kib
+    observation: aws-t9c-gp3-2026-08-21-iops-16kib
+    inputs:
+      io_size_kib: 16
+      provisioned_iops: 3000
+    actual: 3210.140704
+    notes: >-
+      IOPS-bound size. Model predicts 3,000; guest delivered 3,210 on a 12s
+      point (~7% over provisioned). Tests the provisioned floor, not the
+      throughput cap.
+
+  - model: ebs.gp3-iops-at-io-size
+    case: aws-t9c-gp3-2026-08-21-64kib
+    observation: aws-t9c-gp3-2026-08-21-iops-64kib
+    inputs:
+      io_size_kib: 64
+      provisioned_iops: 3000
+    actual: 2167.443409
+    notes: >-
+      First throughput-bound size in the sweep. Model predicts 2,000 IOPS
+      (125 MiB/s ÷ 64 KiB); guest 2,167.
+
+  - model: ebs.gp3-iops-at-io-size
+    case: aws-t9c-gp3-2026-08-21-256kib
+    observation: aws-t9c-gp3-2026-08-21-iops-256kib
+    inputs:
+      io_size_kib: 256
+      provisioned_iops: 3000
+    actual: 537.135279
+    notes: >-
+      SSD max I/O size. Model predicts 500 IOPS (125 MiB/s ÷ 256 KiB);
+      guest 537.

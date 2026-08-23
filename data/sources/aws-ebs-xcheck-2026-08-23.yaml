@@ -1,0 +1,17 @@
+sources:
+  - slug: obs-aws-ebs-xcheck-2026-08-23
+    title: "gp3 3000 IOPS guest 1s peak/mean (m6i.large, 2026-08-23)"
+    publisher: xycalc project (benchmark harness, committed)
+    version: tools/bench/_aws_ebs_xcheck_launch.sh
+    retrieved_on: "2026-08-23"
+    source_type: benchmark
+    notes: >-
+      Repeat of the 2026-08-21 xcheck via tools/bench/_aws_ebs_xcheck_launch.sh
+      on m6i.large i-04387901e43bca827, us-east-2, dedicated 100 GiB gp3
+      3000/125 (vol-08c4428a6f34f1258). Under ~1500 IOPS 5 min; over QD64
+      12 min. Guest 1s fio logs are complete (under n=290, over n=720).
+      CloudWatch VolumeReadOps confirmed load (~180k ops/min in the over
+      window). VolumeIOPSExceededCheck, VolumeThroughputExceededCheck, and
+      VolumeAvgIOPS returned zero datapoints — empty CW is not a 0/1 result
+      and is not scored. Instance terminated; volume deleted. Artifacts
+      under tmp/xycalc-ebs-xcheck-20260823/.

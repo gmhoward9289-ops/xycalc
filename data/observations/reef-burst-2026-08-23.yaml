@@ -1,0 +1,27 @@
+observations:
+- slug: reef-burst-2026-08-23-batch
+  system: ebs
+  parameter: io.peak_to_mean_ratio
+  value: 1.014
+  unit: ratio
+  workload: fio steady sequential write, iodepth 8, uncapped
+  machine_class: reef WSL2 loop device (SN770)
+  system_version: loop device, fio --direct=1
+  observed_on: '2026-08-23'
+  source: obs-reef-burst-2026-08-23
+  notes: "Median of 15 per-minute peak/mean ratios; spread 1.008\u20131.026 (min\u2013\
+    max), mean 2753.4 IOPS, peak 2915.0 IOPS. Recorded as evidence for ebs.peak-to-mean-iops-ratio;\
+    \ the coefficient is NOT narrowed on one host's runs."
+- slug: reef-burst-2026-08-23-bursty
+  system: ebs
+  parameter: io.peak_to_mean_ratio
+  value: 1.117
+  unit: ratio
+  workload: fio Poisson-arrival random read, rate_iops=400, iodepth 8
+  machine_class: reef WSL2 loop device (SN770)
+  system_version: loop device, fio --direct=1
+  observed_on: '2026-08-23'
+  source: obs-reef-burst-2026-08-23
+  notes: "Median of 15 per-minute peak/mean ratios; spread 1.08\u20131.163 (min\u2013\
+    max), mean 399.1 IOPS, peak 466.0 IOPS. Recorded as evidence for ebs.peak-to-mean-iops-ratio;\
+    \ the coefficient is NOT narrowed on one host's runs."
