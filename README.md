@@ -264,7 +264,11 @@ error 28.5%)** — still too few to generalise; compression remains the largest
 error term. `mongodb.host-ram` is **thinly validated (n=3, 0 within band, mean
 abs error 0.8%)** — the cases are self-consistent default-split round-trips
 and none landed inside the (point) predicted band, so it cannot wear the
-Validated badge. Everything else prints **unvalidated (n=0)** on every invocation.
+Validated badge. `azure.premium-v2-throughput-ceiling` is **thinly
+validated (n=2, both within band)** against the live control plane (settable
+MB/s, not fio delivery). Everything else prints **unvalidated (n=0)** on
+every invocation; `data/lab.yaml` records what was measured anyway and what
+would make an honest case.
 The EBS provision model is honest about something worse than n=0: its peak-to-
 mean amplifier is still graded `estimate` with a band spanning a factor of 6.7.
 One COOPER loop-device run (2026-08-21) landed inside that band on the median

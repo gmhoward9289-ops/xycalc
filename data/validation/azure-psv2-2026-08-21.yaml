@@ -1,0 +1,22 @@
+validation:
+  - model: azure.premium-v2-throughput-ceiling
+    case: azure-psv2-2026-08-21-4k-ceiling
+    observation: azure-psv2-2026-08-21-4k-settable
+    inputs:
+      provisioned_iops: 4000
+    actual: 1000
+    notes: >-
+      Live control plane (az disk show diskMBpsReadWrite) against the model’s
+      0.25 MB/s per IOPS ceiling at 4,000 IOPS. Not a delivery test — fio at
+      this point is the 4k-delivered observation.
+
+  - model: azure.premium-v2-throughput-ceiling
+    case: azure-psv2-2026-08-21-8k-ceiling
+    observation: azure-psv2-2026-08-21-8k-settable
+    inputs:
+      provisioned_iops: 8000
+    actual: 2000
+    notes: >-
+      Live control plane accepted 2,000 MB/s at 8,000 IOPS — the technical
+      reference cap, not the pricing-page 1,200 summary. Same probe as 4k;
+      still n=2 / thin.

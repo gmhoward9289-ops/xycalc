@@ -28,15 +28,15 @@ models:
       either page alone.
 
     notes: >-
-      Unvalidated against a running disk, and honestly so: every term is a
-      vendor constant, so the model reproduces Azure's own documented worked
-      examples by construction (3,000 IOPS -> 750 MB/s, 4,000 -> 1,000, 8,000 ->
-      2,000). That is a correctness check on the arithmetic, not validation
-      against reality — a disk's achievable throughput under a real workload is
-      what a measurement would add, and none has been taken. The IOPS you can
-      set is itself bounded by disk size (500 IOPS/GiB after 6 GiB, so 160 GiB
-      to reach 80,000); that bound is carried as a constraint here rather than
-      recomputed.
+      Thinly validated (n=2) against the live Azure control plane in
+      westcentralus on 2026-08-21: 4,000 IOPS → 1,000 MB/s and 8,000 IOPS →
+      2,000 MB/s were the ceilings az disk show reported. That is a check that
+      the documented formula is what the API enforces, including the 2,000
+      cap vs the pricing-page 1,200 summary. It is not a delivery proof —
+      fio at 3,000 IOPS overran the settable ceiling (observation only, no
+      case). Still n=2 / thin. IOPS remain bounded by disk size (500 IOPS/GiB
+      after 6 GiB, so 160 GiB to reach 80,000); that bound is a constraint
+      here rather than recomputed.
 
     inputs:
       - key: provisioned_iops

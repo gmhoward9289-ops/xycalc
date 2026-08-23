@@ -1520,3 +1520,20 @@ def validation_status(conn: sqlite3.Connection, model_slug: str) -> dict:
         "mean_abs_error_pct": err,
         "text": text,
     }
+
+
+def lab_status(conn: sqlite3.Connection, model_slug: str) -> dict:
+    """Short measured / still-needs copy from lab.yaml. Empty dict if absent."""
+    conn.row_factory = sqlite3.Row
+    row = conn.execute(
+        "SELECT l.label, l.measured, l.still_needs "
+        "FROM lab l JOIN model m ON m.id = l.model_id WHERE m.slug = ?",
+        (model_slug,),
+    ).fetchone()
+    if row is None:
+        return {}
+    return {
+        "label": row["label"],
+        "measured": row["measured"],
+        "still_needs": row["still_needs"],
+    }

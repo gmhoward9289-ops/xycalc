@@ -80,6 +80,7 @@ az disk list -o table
 
 ## Publish gate
 
-Rows sit in `local/` for human review. Re-import with `--publish` only after
-accepting that (a) 3k has observations but no validation case, and (b) 4k/8k
-ceiling cases are control-plane acceptances, not delivery proofs.
+Published 2026-08-23 into `data/`: 4k and 8k control-plane ceilings as
+validation cases; 3k/4k/8k delivery as observations only. 3k still has no
+ceiling case (delivery overran the guard). Cases are API acceptances, not
+fio proofs. See `data/validation/azure-psv2-2026-08-21.yaml`.

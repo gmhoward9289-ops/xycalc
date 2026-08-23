@@ -696,6 +696,8 @@ def test_export_writes_stamp_without_inventing_a_hero(db_path, tmp_path, monkeyp
     assert html == render(blob)
     stamp = (tmp_path / "stamp.html").read_text(encoding="utf-8")
     assert provenance_line(blob) in stamp
+    lab_html = (tmp_path / "lab-table.html").read_text(encoding="utf-8")
+    assert "Still needs a case" in lab_html
     assert blob["xycalc_version"] in html
     assert blob["xycalc_version"] in stamp
     assert blob["corpus_digest"] in stamp

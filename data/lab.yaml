@@ -1,0 +1,81 @@
+# Compact lab status — what we already measured vs what would make a
+# validation case. Not investigation FINDINGS. Build fails if a model is
+# missing. Keep each field under 400 characters.
+landing:
+  - sequence: 0
+    slug: mongodb.size-to-instance
+    kind: scenario
+    label: MongoDB → instance pick
+    blurb: >-
+      Default scenario: size → named EC2 (r8i + U7i, 13 SKUs) or Azure
+      Esv5/Esv6 (19) when the band fits; bare-metal catalog still a gap.
+    href: /tools/xycalc/calculator/#tab=scenario&scenario=mongodb.size-to-instance
+    validated: composed — inherits the models below
+    measured: AWS r8i+U7i (13 SKUs) and Azure Esv5/Esv6 (19) catalogs shipped.
+    still_needs: A cited bare-metal class table; not more SKU rows on the clouds we already carry.
+
+models:
+  - model: mongodb.wt-cache
+    label: WiredTiger cache size
+    measured: Two resident-cache cases (swamplink 2026-07-31, agent bench 2026-08-21). Both in band; MAE 28.5% (compression).
+    still_needs: Production-shaped db.stats() from independent collections, working set actually in cache.
+
+  - model: mongodb.host-ram
+    label: Host RAM
+    measured: Three default-split round-trips (reef, agent bench, COOPER). MAE 0.8%; 0 in band — the formula inverted, not RSS under load.
+    still_needs: RSS vs predicted host RAM on a loaded mongod, not another invert of the default cache split.
+
+  - model: ebs.iops-to-provision
+    label: EBS IOPS to provision
+    measured: gp3 peak/mean ratios on m6i.large (xcheck 2026-08-21). CloudWatch still drops the peak second.
+    still_needs: Paired peak-second vs mean-minute IOPS on the same volume, with ExceededCheck when AWS publishes it.
+
+  - model: ebs.gp3-iops-at-io-size
+    label: gp3 IOPS at I/O size
+    measured: Vendor crossover arithmetic plus gp3 fio points in observations. No model case yet.
+    still_needs: Sustained random-read IOPS at a stated I/O size vs the model’s min(IOPS, throughput) prediction.
+
+  - model: mongodb.ticket-throughput-ceiling
+    label: Ticket throughput ceiling
+    measured: Fault-injection stalls (003). Tickets climbed while ops/s stayed flat — pool was not the binder.
+    still_needs: A run where tickets are the binder (device not saturating) before minting a case.
+
+  - model: celery.queue-amplification
+    label: Celery queue amplification
+    measured: Drain 32.5s / 36.5s at 200/s on swamplink 2026-08-20 (observations + coefficient). Same run as the coefficient.
+    still_needs: An independent stall (different host or broker) scored as a case, not the row that set the constant.
+
+  - model: celery.worker-prefetch
+    label: Celery worker prefetch
+    measured: Prefetch 1–16 understatement and backlog rows (swamplink + reef 2026-08-21).
+    still_needs: A case of reserved = multiplier × concurrency against a live worker fleet, not only LIST depth.
+
+  - model: celery.redis-broker-maxmemory
+    label: Celery Redis broker maxmemory
+    measured: noeviction vs allkeys-lru failure modes on swamplink 2026-08-20 (observations).
+    still_needs: A case of broker RSS / evicted keys vs the maxmemory the model names, with the policy declared.
+
+  - model: clickhouse.parts-insert-ceiling
+    label: ClickHouse parts-insert ceiling
+    measured: 23.3 vs 24.8 settings (150/300 vs 1000/3000) on reef. Peak parts stayed under throw.
+    still_needs: Inserts that actually hit parts_to_throw_insert. Reading the setting is not a ceiling case.
+
+  - model: nvme-ssd.random-read-at-io-size
+    label: NVMe random-read at I/O size
+    measured: Reef SN770 fio plateaus (33.5k IOPS, 269 MiB/s, knee 16 KiB) are the coefficients.
+    still_needs: A second device. Scoring this model on the same fio that set the constants is a round-trip.
+
+  - model: azure.premium-v2-throughput-ceiling
+    label: Azure Premium SSD v2 throughput
+    measured: westcentralus 2026-08-21, Standard_D2s_v5. Control plane accepted 4k→1000 and 8k→2000 MB/s. 3k delivery overran the guard (observations only).
+    still_needs: A second region/SKU, and a delivery model if we ever predict sustained MB/s rather than settable ceiling.
+
+  - model: nvd.storage-from-vuln-growth
+    label: NVD storage from vuln growth
+    measured: Growth multiplier from published CVE counts. No on-disk storageSize case.
+    still_needs: db.stats().storageSize paired with vuln counts at two dates (or baseline vs target).
+
+  - model: mongodb.storage-from-doc-families
+    label: NVD storage from doc families
+    measured: Formula only. No collStats family split in the corpus.
+    still_needs: storageSize and count per family (vuln, device, residual) from a real cluster.

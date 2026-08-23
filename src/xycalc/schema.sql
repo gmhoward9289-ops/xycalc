@@ -332,6 +332,32 @@ CREATE TABLE validation (
 );
 
 
+-- Compact lab status. Investigation FINDINGS stay in docs/; this is the
+-- one-line public record of what we already measured vs what would make a
+-- validation case. Both columns are required so "we ran a probe" cannot hide
+-- that the model is still n=0.
+CREATE TABLE lab (
+    model_id     INTEGER PRIMARY KEY REFERENCES model(id),
+    sequence     INTEGER NOT NULL,
+    label        TEXT    NOT NULL,
+    measured     TEXT    NOT NULL,
+    still_needs  TEXT    NOT NULL
+);
+
+-- Optional extra landing rows (scenarios) that are not models.
+CREATE TABLE lab_landing (
+    sequence     INTEGER PRIMARY KEY,
+    slug         TEXT    NOT NULL,
+    kind         TEXT    NOT NULL,
+    label        TEXT    NOT NULL,
+    blurb        TEXT,
+    href         TEXT    NOT NULL,
+    validated    TEXT    NOT NULL,
+    measured     TEXT    NOT NULL,
+    still_needs  TEXT    NOT NULL
+);
+
+
 -- A calculator tab whose numbers all live on coefficient/observation rows.
 -- The YAML under data/guides/ is the source; spec_json is that document
 -- after build has checked every cited slug exists. export.py walks the

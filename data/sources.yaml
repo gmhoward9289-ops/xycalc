@@ -637,3 +637,19 @@ sources:
       isolated Standard_E192is_v6 (192 vCPU / 1,832 GB) is on the table but
       disagrees with that include range and is not catalogued. Same GiB
       treatment as Esv5. Source markdown in MicrosoftDocs azure-compute-docs.
+
+  - slug: obs-azure-psv2-2026-08-21
+    title: Premium SSD v2 control-plane ceiling probe, westcentralus
+    publisher: xycalc probe (westcentralus, Standard_D2s_v5)
+    url:
+    version: tools/bench/azure_premium_v2_probe.sh, 2026-08-21
+    retrieved_on: '2026-08-21'
+    source_type: benchmark
+    notes: >-
+      Harness: tools/bench/azure_premium_v2_probe.sh. Live az disk
+      create/update plus fio --direct=1 on a 64 GiB PremiumV2_LRS data disk
+      (/dev/sdb, not the OS disk; this SKU has no local NVMe). Control plane
+      accepted the model ceiling at 4k and 8k IOPS. 3k delivery exceeded the
+      settable ceiling; that point is an observation only. Resource group
+      deleted after import. See
+      docs/investigations/011-azure-premium-v2/FINDINGS.md.

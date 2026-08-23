@@ -16,6 +16,7 @@ xycalc export --out /tmp/calculator.html
 | --- | --- |
 | `calculator.html` (the `--out` path) | Self-contained calculator. Byte-deterministic: same corpus + git identity → identical bytes. No timestamps. |
 | `stamp.html` (same directory) | Snippet the landing can include. Model count, `corpus_digest`, `xycalc_version`, `xycalc_git` — the same string the calculator footer prints. |
+| `lab-table.html` (same directory) | Model table with **Validated / Measured / Still needs a case**. Measured is corpus lab copy, not FINDINGS. Validated is live `validation_status`. |
 | `og.png` (same directory, optional) | Open Graph / product still. **Not generated.** Export copies `src/xycalc/static/landing-still.png` when that file exists (Bill's approved still). If it is missing, export succeeds, writes no `og.png`, and does not invent a substitute hero. |
 
 `deploy-calculator.yml` copies:
@@ -23,6 +24,7 @@ xycalc export --out /tmp/calculator.html
 - `/tmp/calculator.html` → `tools/xycalc/calculator/index.html`
 - `/tmp/og.png` → `tools/xycalc/og.png` (when the still was present)
 - `/tmp/stamp.html` → `tools/xycalc/stamp.html`
+- `/tmp/lab-table.html` → `tools/xycalc/lab-table.html`
 
 Suggested landing tags (in swamplink-root, not this repo):
 
@@ -31,7 +33,9 @@ Suggested landing tags (in swamplink-root, not this repo):
 <meta name="twitter:image" content="https://swamplink.com/tools/xycalc/og.png">
 ```
 
-and include `tools/xycalc/stamp.html` wherever the landing should show corpus freshness. Do not generate a new marketing still in this repo.
+and include `tools/xycalc/stamp.html` for corpus freshness and
+`tools/xycalc/lab-table.html` for the model table (Validated / Measured /
+Still needs a case). Do not generate a new marketing still in this repo.
 
 ## Permalink deep-links (already shipped)
 

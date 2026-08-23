@@ -1,0 +1,67 @@
+observations:
+  - slug: azure-psv2-2026-08-21-4k-settable
+    system: azure-disks
+    parameter: io.throughput_mbps
+    value: 1000
+    unit: MB/s
+    workload: az disk show diskMBpsReadWrite after setting 4000 IOPS to the model ceiling
+    machine_class: Standard_D2s_v5, westcentralus, 64 GiB PremiumV2_LRS
+    system_version: Premium SSD v2
+    observed_on: '2026-08-21'
+    source: obs-azure-psv2-2026-08-21
+    notes: >-
+      Control-plane settable ceiling Azure accepted at 4,000 IOPS. This is
+      the quantity azure.premium-v2-throughput-ceiling predicts, not fio
+      delivery (see the 4k-delivered row).
+  - slug: azure-psv2-2026-08-21-8k-settable
+    system: azure-disks
+    parameter: io.throughput_mbps
+    value: 2000
+    unit: MB/s
+    workload: az disk show diskMBpsReadWrite after setting 8000 IOPS to the model ceiling
+    machine_class: Standard_D2s_v5, westcentralus, 64 GiB PremiumV2_LRS
+    system_version: Premium SSD v2
+    observed_on: '2026-08-21'
+    source: obs-azure-psv2-2026-08-21
+    notes: >-
+      Control-plane settable ceiling Azure accepted at 8,000 IOPS (2,000 MB/s).
+      Settles the pricing-page 1,200 vs technical-reference 2,000 cap for this
+      subscription/region in favor of the model’s 2,000 cap.
+  - slug: azure-psv2-2026-08-21-3k-delivered
+    system: azure-disks
+    parameter: io.throughput_mbps
+    value: 863
+    unit: MB/s
+    workload: fio --direct=1 seq write 20s iodepth 32 size 1G at 3000 IOPS / 750 MB/s settable
+    machine_class: Standard_D2s_v5, westcentralus, 64 GiB PremiumV2_LRS
+    system_version: Premium SSD v2
+    observed_on: '2026-08-21'
+    source: obs-azure-psv2-2026-08-21
+    notes: >-
+      Short-run delivery ~15% above the 750 MB/s settable ceiling. Importer
+      refused a ceiling validation case. Not a model miss — delivery is a
+      different question. Managed disk confirmed (no local NVMe on this SKU).
+  - slug: azure-psv2-2026-08-21-4k-delivered
+    system: azure-disks
+    parameter: io.throughput_mbps
+    value: 867
+    unit: MB/s
+    workload: fio --direct=1 seq write 20s iodepth 32 size 1G at 4000 IOPS / 1000 MB/s settable
+    machine_class: Standard_D2s_v5, westcentralus, 64 GiB PremiumV2_LRS
+    system_version: Premium SSD v2
+    observed_on: '2026-08-21'
+    source: obs-azure-psv2-2026-08-21
+    notes: Delivered under the settable ceiling. Not a validation actual for the ceiling model.
+  - slug: azure-psv2-2026-08-21-8k-delivered
+    system: azure-disks
+    parameter: io.throughput_mbps
+    value: 1172
+    unit: MB/s
+    workload: fio --direct=1 seq write 20s iodepth 32 size 1G at 8000 IOPS / 2000 MB/s settable
+    machine_class: Standard_D2s_v5, westcentralus, 64 GiB PremiumV2_LRS
+    system_version: Premium SSD v2
+    observed_on: '2026-08-21'
+    source: obs-azure-psv2-2026-08-21
+    notes: >-
+      Delivered well under 2,000 MB/s on a small VM. Expected; does not
+      falsify the settable ceiling.

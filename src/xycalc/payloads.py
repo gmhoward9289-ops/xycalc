@@ -28,6 +28,7 @@ from .model import (
     headroom,
     parse_bytes,
     validation_status,
+    lab_status,
 )
 
 
@@ -169,6 +170,7 @@ def list_models_payload(conn: sqlite3.Connection) -> dict:
                 "unit": m.output_unit,
                 "inputs": m.inputs,
                 "validation": validation_status(conn, slug),
+                "lab": lab_status(conn, slug),
             }
         )
     return {"models": out}

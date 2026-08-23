@@ -132,6 +132,13 @@ jobs:
             echo "::error::stamp.html was not produced — footer stamp must ship with the export"
             exit 1
           fi
+          if [ -f /tmp/lab-table.html ]; then
+            cp /tmp/lab-table.html tools/xycalc/lab-table.html
+            git add tools/xycalc/lab-table.html
+          else
+            echo "::error::lab-table.html was not produced — landing lab table must ship with the export"
+            exit 1
+          fi
 
           git config user.name "xycalc deploy"
           git config user.email "dev@swamplink.com"

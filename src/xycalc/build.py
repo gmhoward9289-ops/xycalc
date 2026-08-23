@@ -366,6 +366,78 @@ class Builder:
                         sequence=i,
                     )
 
+    def lab(self):
+        """One short measured / still-needs pair per model. Not FINDINGS.md.
+
+        Missing a model fails the build so a new model cannot ship as a blank
+        row on the landing table. Copy is capped so this cannot become a
+        second investigations tree.
+        """
+        lab_max = 400
+        seen: set[str] = set()
+        seq = 0
+        for path, doc, _ in collect("lab.yaml"):
+            for row in doc.get("landing") or []:
+                ctx = f"{path.name}:landing:{row.get('slug', '?')}"
+                for key in ("slug", "kind", "label", "href", "validated", "measured", "still_needs"):
+                    if not str(row.get(key) or "").strip():
+                        raise BuildError(f"{ctx}: missing {key}")
+                measured = str(row["measured"]).strip()
+                still = str(row["still_needs"]).strip()
+                if len(measured) > lab_max or len(still) > lab_max:
+                    raise BuildError(
+                        f"{ctx}: measured/still_needs over {lab_max} chars"
+                    )
+                self.ins(
+                    "lab_landing",
+                    sequence=int(row.get("sequence") or seq),
+                    slug=row["slug"],
+                    kind=row["kind"],
+                    label=row["label"].strip(),
+                    blurb=(row.get("blurb") or "").strip() or None,
+                    href=row["href"].strip(),
+                    validated=str(row["validated"]).strip(),
+                    measured=measured,
+                    still_needs=still,
+                )
+                seq += 1
+            for row in doc.get("models") or []:
+                ctx = f"{path.name}:{row.get('model', '?')}"
+                slug = row.get("model")
+                if not slug:
+                    raise BuildError(f"{ctx}: lab row needs model")
+                if slug in seen:
+                    raise BuildError(f"{ctx}: duplicate lab row")
+                if slug not in self.model:
+                    raise BuildError(f"{ctx}: unknown model")
+                measured = str(row.get("measured") or "").strip()
+                still = str(row.get("still_needs") or "").strip()
+                label = str(row.get("label") or "").strip()
+                if not measured or not still or not label:
+                    raise BuildError(
+                        f"{ctx}: label, measured, and still_needs are required"
+                    )
+                if len(measured) > lab_max or len(still) > lab_max:
+                    raise BuildError(
+                        f"{ctx}: measured/still_needs over {lab_max} chars "
+                        "(lab copy is a summary, not FINDINGS)"
+                    )
+                seen.add(slug)
+                self.ins(
+                    "lab",
+                    model_id=self.model[slug],
+                    sequence=seq,
+                    label=label,
+                    measured=measured,
+                    still_needs=still,
+                )
+                seq += 1
+        missing = sorted(set(self.model) - seen)
+        if missing:
+            raise BuildError(
+                "lab.yaml is missing models: " + ", ".join(missing)
+            )
+
     def observations(self):
         for path, doc, origin in collect("observations"):
             for row in doc.get("observations", []):
@@ -527,6 +599,7 @@ class Builder:
         self.parameters()
         self.coefficients()
         self.models()
+        self.lab()
         self.observations()
         self.guides()
         self.validations()
