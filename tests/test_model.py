@@ -163,9 +163,9 @@ class TestHeadroom:
 
 class TestValidation:
     def test_unvalidated_models_say_so(self, conn):
-        """ebs.iops-to-provision has no observation checked against it yet
+        """celery.worker-prefetch has no observation checked against it yet
         and must keep saying so until one lands."""
-        status = validation_status(conn, "ebs.iops-to-provision")
+        status = validation_status(conn, "celery.worker-prefetch")
         assert status["validated"] is False
         assert "unvalidated" in status["text"]
         assert "n=0" in status["text"]
@@ -474,6 +474,52 @@ class TestDocFamiliesStorageModel:
                     "baseline_storage_size": "500GB",
                     "target_vuln_count": 100_000,
                     "device_count": 10_000,
+                }
+            )
+
+    def test_history_copies_add_after_vuln_growth(self, model):
+        r = model.evaluate(
+            {
+                "baseline_vuln_count": 100_000,
+                "baseline_storage_size": "500GB",
+                "target_vuln_count": 100_000,
+                "history_copy_count": 3,
+                "history_avg_storage_bytes": "80GB",
+            }
+        )
+        assert r.mode == pytest.approx(parse_bytes("500GB") + 3 * parse_bytes("80GB"))
+
+    def test_history_does_not_inherit_nvd_compound_growth(self, model):
+        r = model.evaluate(
+            {
+                "baseline_vuln_count": 100_000,
+                "baseline_storage_size": "500GB",
+                "history_copy_count": 2,
+                "history_avg_storage_bytes": "10GB",
+            }
+        )
+        # vuln mode 2.0 × 500GB + 20GB history
+        assert r.mode == pytest.approx(1000 * 1000**3 + 20 * 1000**3)
+
+    def test_history_measured_total_skips_copy_product(self, model):
+        r = model.evaluate(
+            {
+                "baseline_vuln_count": 100_000,
+                "baseline_storage_size": "500GB",
+                "target_vuln_count": 100_000,
+                "history_storage_size": "240GB",
+            }
+        )
+        assert r.mode == pytest.approx(parse_bytes("740GB"))
+
+    def test_history_copy_count_without_avg_is_an_error(self, model):
+        with pytest.raises(ModelError, match="together"):
+            model.evaluate(
+                {
+                    "baseline_vuln_count": 100_000,
+                    "baseline_storage_size": "500GB",
+                    "target_vuln_count": 100_000,
+                    "history_copy_count": 3,
                 }
             )
 

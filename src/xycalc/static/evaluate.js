@@ -619,6 +619,39 @@ const XY = (() => {
     return summary;
   }
 
+  function inFlightScans(concurrency, scanFanout) {
+    if (concurrency === undefined || concurrency === null) return null;
+    const fan = scanFanout === undefined || scanFanout === null ? 1.0 : parseNumber(scanFanout);
+    return parseNumber(concurrency) * fan;
+  }
+
+  function scenarioInputPresent(key, step, supplied) {
+    const raw = supplied[key];
+    if (raw !== undefined && raw !== null && raw !== "") return true;
+    const defaults = step.defaults || {};
+    if (key in defaults) return true;
+    const fromCoeff = step.defaults_from_coefficient || {};
+    if (key in fromCoeff) return true;
+    return false;
+  }
+
+  function scenarioStepSkipped(step, supplied, bytesScan) {
+    const when = step.when_input;
+    if (when) {
+      if (bytesScan) {
+        if (!scenarioInputPresent(when, step, supplied)) return true;
+      } else if (!supplied[when]) return true;
+    }
+    const whenAll = step.when_all_inputs || [];
+    for (let i = 0; i < whenAll.length; i++) {
+      const key = whenAll[i];
+      if (bytesScan) {
+        if (!scenarioInputPresent(key, step, supplied)) return true;
+      } else if (!supplied[key]) return true;
+    }
+    return false;
+  }
+
   // Mirrors model.py::chain_evaluate. Lookups (instance catalog, gp3 catalog
   // numbers) are data in the export blob, not a third implementation of the
   // arithmetic — the golden scenario vector still pins the composed bands.
@@ -661,18 +694,14 @@ const XY = (() => {
     let lastBytesStep = null;
     for (const s of scenario.steps) {
       if ((s.kind || "model") !== "model") continue;
-      const when = s.when_input;
-      if (when && !supplied[when] && !(s.defaults && when in s.defaults) && !(s.defaults_from_coefficient && when in s.defaults_from_coefficient)) {
-        continue;
-      }
+      if (scenarioStepSkipped(s, supplied, true)) continue;
       const model = bySlug[s.model];
       if (model && model.output_unit === "bytes") lastBytesStep = s;
     }
 
     for (const step of scenario.steps) {
       const kind = step.kind || "model";
-      const when = step.when_input;
-      if (when && !supplied[when]) continue;
+      if (scenarioStepSkipped(step, supplied)) continue;
 
       if (kind === "model") {
         const assumed = fillDefaults(step);
@@ -805,6 +834,7 @@ const XY = (() => {
     headroom: headroom,
     checkGolden: checkGolden,
     chainEvaluate: chainEvaluate,
+    inFlightScans: inFlightScans,
     selectInstance: selectInstance,
   };
 })();

@@ -42,6 +42,9 @@ scenarios:
         keys:
           - index_size
           - foreign_collections_size
+          - history_copy_count
+          - history_avg_storage_bytes
+          - history_storage_size
       - title: Current node (optional)
         keys:
           - current_ram
@@ -49,6 +52,14 @@ scenarios:
           - average_iops
           - current_disk_throughput
           - current_disk_iops
+      - title: Query regime
+        keys: [query_regime, fallback_reason, scan_fanout]
+      - title: Concurrency and Celery
+        keys:
+          - concurrency
+          - worker_processes
+          - tickets
+          - storage_latency_seconds
     extra_inputs:
       - key: current_ram
         label: Current node RAM
@@ -81,6 +92,57 @@ scenarios:
           (×1.5–10) to keep a burst from stalling MongoDB storage tickets.
           If omitted, gp3's included 3,000 IOPS is used as the assumed mean
           — paste a measurement to replace the guess.
+      - key: query_regime
+        label: Query regime
+        unit: text
+        required: false
+        help: >-
+          aggregation | fallback (planning default: fallback). Not consumed by a
+          model.
+      - key: fallback_reason
+        label: Fallback reason
+        unit: text
+        required: false
+        help: >-
+          limit | allowlist | mixed. allowlist = query type not on the v1/v2
+          aggregation allow list. Not consumed by a model.
+      - key: scan_fanout
+        label: Queries per task (fan-out)
+        unit: count
+        required: false
+        help: >-
+          Optional. Omit = 1 query per task; type your measured
+          queries-per-task if fan-out is known. Submit an observation rather
+          than treating this as a cited amplifier or a COLSCAN coefficient.
+      - key: concurrency
+        label: Celery worker concurrency (prefork slots)
+        unit: count
+        required: false
+        help: >-
+          worker_concurrency / celery -c. Optional. Type the slots you actually
+          run; blank leaves the Celery demand steps out.
+      - key: worker_processes
+        label: Worker processes
+        unit: count
+        required: false
+        help: >-
+          Optional note for how many worker processes or pods share that
+          concurrency. Not consumed by a model yet.
+      - key: tickets
+        label: Concurrent transactions permitted
+        unit: tickets
+        required: false
+        help: >-
+          On 7.0.x: serverStatus().wiredTiger.concurrentTransactions.read.totalTickets.
+          On 8.0+: serverStatus().queues.execution.read.totalTickets. Supply this
+          only when you actually read it for the instance you are sizing.
+      - key: storage_latency_seconds
+        label: Storage latency per operation, in seconds
+        unit: seconds
+        required: false
+        help: >-
+          The time an operation holds its ticket, not client round-trip latency.
+          Supply both this and tickets together, or neither.
     steps:
       - kind: model
         model: mongodb.storage-from-doc-families
@@ -120,6 +182,17 @@ scenarios:
         assumed_note: >-
           not measured — peak-second IOPS still applied so a
           microburst cannot stall storage tickets
+      - kind: model
+        model: celery.worker-prefetch
+        when_input: concurrency
+      - kind: model
+        model: mongodb.ticket-throughput-ceiling
+        when_all_inputs:
+          - tickets
+          - storage_latency_seconds
+      - kind: model
+        model: celery.queue-amplification
+        when_input: concurrency
     see_also:
       - url: https://repost.aws/knowledge-center/ebs-troubleshoot-performance-issues-ec2
         label: AWS — raise IOPS or throughput until exceeded checks stay at 0
@@ -133,6 +206,98 @@ scenarios:
           The minute mean (measured or the included 3,000) is not the number
           EBS throttles on. Peak-second IOPS is, and a throttle contends for
           MongoDB tickets. iostat -x 1 under load replaces the ×1.5–10 guess.
+      - scenario: mongodb.nvd-query-concurrency
+        reason: >-
+          Celery demand, ticket ceilings, and the 004 drain tail are a separate
+          scenario because more workers are demand, not mongod capacity.
+      - scenario: celery.queue-amplification
+        reason: >-
+          The measured drain tail under a storage stall is a constraint model,
+          not a RAM or SKU coefficient.
+      - scenario: redis.celery-broker
+        reason: >-
+          If the backlog lives in Redis, maxmemory policy failure modes matter
+          before more workers do.
+
+  - slug: mongodb.nvd-query-concurrency
+    label: NVD / relationship query concurrency
+    summary: >-
+      Celery in-flight demand vs MongoDB tickets and the 004 stall ceiling.
+      More workers are demand, not mongod capacity. scan_fanout is a typed
+      count (invite a measured L); it is not a COLSCAN coefficient.
+    input_sections:
+      - title: Query regime
+        keys: [query_regime, fallback_reason, scan_fanout]
+      - title: Celery demand
+        keys: [concurrency, worker_processes]
+      - title: Tickets (optional, both or neither)
+        keys: [tickets, storage_latency_seconds]
+    extra_inputs:
+      - key: query_regime
+        label: Query regime
+        unit: text
+        required: false
+        help: >-
+          aggregation | fallback (planning default: fallback). Not consumed by a
+          model.
+      - key: fallback_reason
+        label: Fallback reason
+        unit: text
+        required: false
+        help: >-
+          limit | allowlist | mixed. allowlist = query type not on the v1/v2
+          aggregation allow list. Not consumed by a model.
+      - key: scan_fanout
+        label: Queries per task (fan-out)
+        unit: count
+        required: false
+        help: >-
+          Optional. Omit = 1 query per task; type your measured
+          queries-per-task if fan-out is known. Submit an observation rather
+          than treating this as a cited amplifier or a COLSCAN coefficient.
+      - key: concurrency
+        label: Celery worker concurrency (prefork slots)
+        unit: count
+        required: false
+        help: >-
+          worker_concurrency / celery -c. Optional. Type the slots you actually
+          run; blank leaves the Celery demand steps out.
+      - key: worker_processes
+        label: Worker processes
+        unit: count
+        required: false
+        help: >-
+          Optional note for how many worker processes or pods share that
+          concurrency. Not consumed by a model yet.
+      - key: tickets
+        label: Concurrent transactions permitted
+        unit: tickets
+        required: false
+        help: >-
+          On 7.0.x: serverStatus().wiredTiger.concurrentTransactions.read.totalTickets.
+          On 8.0+: serverStatus().queues.execution.read.totalTickets. Supply this
+          only when you actually read it for the instance you are sizing.
+      - key: storage_latency_seconds
+        label: Storage latency per operation, in seconds
+        unit: seconds
+        required: false
+        help: >-
+          The time an operation holds its ticket, not client round-trip latency.
+          Supply both this and tickets together, or neither.
+    steps:
+      - kind: model
+        model: celery.worker-prefetch
+        when_input: concurrency
+      - kind: model
+        model: mongodb.ticket-throughput-ceiling
+        when_all_inputs: [tickets, storage_latency_seconds]
+      - kind: model
+        model: celery.queue-amplification
+        when_input: concurrency
+    see_also:
+      - scenario: mongodb.size-to-instance
+      - scenario: celery.queue-amplification
+      - scenario: redis.celery-broker
 
   - slug: ebs.microburst
     label: My EBS volume's average IOPS

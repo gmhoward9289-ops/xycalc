@@ -567,6 +567,15 @@ def test_rendered_page_embeds_git_identity(monkeypatch, conn):
     assert f'"xycalc_version":"{pyproject_version()}"' in compact
 
 
+def test_template_keeps_simple_claim_and_reserved_advanced_subnav():
+    text = TEMPLATE.read_text(encoding="utf-8")
+    assert ".view-subnav {" in text
+    assert "min-height: 2.35rem;" in text
+    assert "body.mode-simple .view-subnav .tabs" in text
+    assert "body.mode-simple .claim" not in text
+    assert "body.mode-scientific .claim" not in text
+
+
 def test_calculator_template_prints_git_in_provenance():
     text = APP_JS.read_text(encoding="utf-8")
     assert "CORPUS.xycalc_git" in text
