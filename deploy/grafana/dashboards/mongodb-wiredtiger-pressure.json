@@ -4,18 +4,35 @@
   "fiscalYearStartMonth": 0,
   "graphTooltip": 1,
   "id": null,
-  "links": [],
+  "links": [
+    {
+      "title": "EBS throttle truth",
+      "url": "/d/xycalc-ebs-throttle",
+      "type": "link"
+    },
+    {
+      "title": "Sizing vs live",
+      "url": "/d/xycalc-sizing-live",
+      "type": "link"
+    }
+  ],
   "panels": [
     {
-      "title": "Is app-thread eviction sustained?",
+      "title": "Is app-thread eviction sustained? (rate over 1m)",
+      "description": "Money metric. Sustained non-zero means application threads are doing eviction. Prefer 10–15s scrape in incidents.",
       "type": "timeseries",
       "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
       "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
       "targets": [
         {
-          "expr": "rate(pages_evicted_by_application_threads[1m])",
+          "expr": "rate(pages_evicted_by_application_threads{instance=~\"$instance\"}[1m])",
           "legendFormat": "app-thread eviction/s",
           "refId": "A"
+        },
+        {
+          "expr": "rate(mongodb_ss_wt_cache_pages_evicted_by_application_threads{instance=~\"$instance\"}[1m])",
+          "legendFormat": "percona raw eviction/s",
+          "refId": "B"
         }
       ],
       "fieldConfig": {
@@ -28,53 +45,111 @@
     },
     {
       "title": "Occupancy % vs dirty % (lines at 80/90/95 and 20)",
+      "description": "Occupancy = bytes in cache / maximum configured. Dirty = dirty bytes / maximum configured (not / resident).",
       "type": "timeseries",
       "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
       "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
       "targets": [
         {
-          "expr": "mongodb_wiredtiger_cache_pages_currently_held_in_the_cache / clamp_min(mongodb_wiredtiger_cache_maximum_pages, 1) * 100",
-          "legendFormat": "occupancy % (tune to your exporter)",
+          "expr": "mongodb_wiredtiger_cache_occupancy_ratio{instance=~\"$instance\"} * 100",
+          "legendFormat": "occupancy %",
           "refId": "A"
         },
         {
-          "expr": "mongodb_wiredtiger_cache_tracked_dirty_bytes_in_the_cache / clamp_min(mongodb_wiredtiger_cache_bytes_currently_in_the_cache, 1) * 100",
+          "expr": "mongodb_wiredtiger_cache_dirty_ratio{instance=~\"$instance\"} * 100",
           "legendFormat": "dirty %",
           "refId": "B"
+        },
+        {
+          "expr": "(mongodb_wiredtiger_cache_bytes_currently_in_the_cache{instance=~\"$instance\"} / clamp_min(mongodb_wiredtiger_cache_maximum_bytes_configured{instance=~\"$instance\"}, 1)) * 100",
+          "legendFormat": "occupancy % (direct)",
+          "refId": "C"
         }
-      ]
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "custom": {
+            "thresholdsStyle": { "mode": "line" }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 80 },
+              { "color": "orange", "value": 90 },
+              { "color": "red", "value": 95 }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byRegexp", "options": "dirty.*" },
+            "properties": [
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    { "color": "green", "value": null },
+                    { "color": "orange", "value": 15 },
+                    { "color": "red", "value": 20 }
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      }
     },
     {
-      "title": "Pages / bytes into cache (demand â†’ EBS)",
+      "title": "Pages into cache (demand → EBS)",
       "type": "timeseries",
       "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
       "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
       "targets": [
         {
-          "expr": "rate(pages_read_into_cache[1m])",
+          "expr": "rate(pages_read_into_cache{instance=~\"$instance\"}[1m])",
           "legendFormat": "pages into cache/s",
           "refId": "A"
         }
       ]
     },
     {
-      "title": "Ticket pool â€” out vs total + queueLength",
+      "title": "Ticket pool — out vs total + available",
+      "description": "Idle totalTickets often sits at 4 on MongoDB 7+/8.x — not 128. Path differs: 7.x concurrentTransactions; 8.x queues.execution.",
       "type": "timeseries",
       "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
       "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
       "targets": [
-        { "expr": "mongodb_tickets_out", "legendFormat": "out", "refId": "A" },
-        { "expr": "mongodb_tickets_total", "legendFormat": "totalTickets", "refId": "B" },
-        { "expr": "mongodb_tickets_queue_length", "legendFormat": "queueLength", "refId": "C" }
+        { "expr": "mongodb_tickets_out{instance=~\"$instance\"}", "legendFormat": "out", "refId": "A" },
+        { "expr": "mongodb_tickets_total{instance=~\"$instance\"}", "legendFormat": "totalTickets", "refId": "B" },
+        { "expr": "mongodb_tickets_available{instance=~\"$instance\"}", "legendFormat": "available", "refId": "C" }
       ]
     }
   ],
   "schemaVersion": 39,
   "tags": ["xycalc", "mongodb"],
-  "templating": { "list": [] },
+  "templating": {
+    "list": [
+      {
+        "name": "instance",
+        "type": "query",
+        "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+        "query": "label_values(pages_evicted_by_application_threads, instance)",
+        "current": { "text": "All", "value": ".*" },
+        "includeAll": true,
+        "allValue": ".*",
+        "multi": false,
+        "refresh": 2
+      }
+    ]
+  },
   "time": { "from": "now-6h", "to": "now" },
   "timezone": "browser",
   "title": "xycalc - MongoDB WiredTiger pressure",
   "uid": "xycalc-mongodb-wt",
-  "version": 1
+  "version": 2
 }

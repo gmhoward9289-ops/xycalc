@@ -125,6 +125,18 @@ python tools/import_metrics_export.py explore.csv \
 Accepts Grafana Explore CSV, Prometheus `query`/`query_range` JSON or
 OpenMetrics text, and Coralogix metrics JSON → `local/` by default.
 
+Live scrape → predicted band (optional sidecar):
+
+```bash
+.venv/Scripts/python.exe tools/xycalc_exporter.py --once --storage-size 500GB --index-size 40GB
+.venv/Scripts/python.exe tools/xycalc_exporter.py --listen 127.0.0.1:9199 --prom-url http://127.0.0.1:9090
+```
+
+Grafana boards (source JSON in `deploy/grafana/dashboards/`): WiredTiger
+pressure, EBS ExceededCheck, Redis/Celery, and **sizing vs live**
+(`/d/xycalc-sizing-live`). Recording-rule aliases for Percona exporters:
+`deploy/grafana/recording_rules.yml`.
+
 ## The calculator
 
 `xycalc gui` serves it from FastAPI; `xycalc export` writes the same page as a

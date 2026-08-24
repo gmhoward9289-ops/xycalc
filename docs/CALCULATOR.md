@@ -81,4 +81,9 @@ so the form and results stay above the fold.
 | `available` | “what you already have”, e.g. `256GB` |
 | other keys | model/scenario inputs (`storage_size=500GB`, …) |
 
+Basic also accepts a **paste** of `db.stats()` / metrics JSON (offline — no
+Grafana fetch). That fills `storage` from `storageSize` and, when Advanced
+is open, `index_size` from `indexSize`. Same fields via `POST /api/ingest`
+when running `xycalc gui`.
+
 Cache-cliff’s public tab slug is `cache-cliff` (`#tab=cache-cliff`), not `cliff`.

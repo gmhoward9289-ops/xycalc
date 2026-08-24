@@ -3,65 +3,129 @@
   "editable": true,
   "graphTooltip": 1,
   "id": null,
+  "links": [
+    {
+      "title": "WiredTiger pressure",
+      "url": "/d/xycalc-mongodb-wt",
+      "type": "link"
+    },
+    {
+      "title": "Sizing vs live",
+      "url": "/d/xycalc-sizing-live",
+      "type": "link"
+    }
+  ],
   "panels": [
     {
-      "title": "Volume exceeded? (max â€” never avg the 0/1)",
+      "title": "Volume exceeded? (max — never avg the 0/1)",
+      "description": "Any second in the minute over provisioned IOPS/throughput. Use max aggregation. Period 60s — finer Period does not create finer EBS data.",
       "type": "timeseries",
       "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
       "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
       "targets": [
         {
-          "expr": "aws_ebs_volume_iops_exceeded_check_maximum",
+          "expr": "max_over_time(aws_ebs_volume_iops_exceeded_check_maximum{volume_id=~\"$volume_id\"}[2m])",
           "legendFormat": "VolumeIOPSExceededCheck",
           "refId": "A"
         },
         {
-          "expr": "aws_ebs_volume_throughput_exceeded_check_maximum",
+          "expr": "max_over_time(aws_ebs_volume_throughput_exceeded_check_maximum{volume_id=~\"$volume_id\"}[2m])",
           "legendFormat": "VolumeThroughputExceededCheck",
           "refId": "B"
         }
-      ]
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "min": 0,
+          "max": 1,
+          "unit": "short",
+          "custom": { "drawStyle": "line", "fillOpacity": 20 }
+        },
+        "overrides": []
+      }
     },
     {
       "title": "Instance EBS exceeded? (dual ceiling)",
+      "description": "Instance ceiling ≠ volume ceiling. Side-by-side with volume checks.",
       "type": "timeseries",
       "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
       "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
       "targets": [
         {
-          "expr": "aws_ebs_instance_ebs_iops_exceeded_check_maximum",
-          "legendFormat": "InstanceEBS*ExceededCheck",
+          "expr": "max_over_time(aws_ebs_instance_ebs_iops_exceeded_check_maximum{instance_id=~\"$instance_id\"}[2m])",
+          "legendFormat": "InstanceEBSIOPSExceededCheck",
           "refId": "A"
+        },
+        {
+          "expr": "max_over_time(aws_ebs_instance_ebs_throughput_exceeded_check_maximum{instance_id=~\"$instance_id\"}[2m])",
+          "legendFormat": "InstanceEBSThroughputExceededCheck",
+          "refId": "B"
         }
       ]
     },
     {
-      "title": "Queue + latency",
+      "title": "Queue + latency (saturation as latency)",
       "type": "timeseries",
       "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
       "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
       "targets": [
         {
-          "expr": "aws_ebs_volume_queue_length_average",
+          "expr": "aws_ebs_volume_queue_length_average{volume_id=~\"$volume_id\"}",
           "legendFormat": "VolumeQueueLength",
           "refId": "A"
         },
         {
-          "expr": "aws_ebs_volume_total_read_time_average",
-          "legendFormat": "read latency",
+          "expr": "aws_ebs_volume_total_read_time_average{volume_id=~\"$volume_id\"}",
+          "legendFormat": "read time",
           "refId": "B"
+        },
+        {
+          "expr": "aws_ebs_volume_total_write_time_average{volume_id=~\"$volume_id\"}",
+          "legendFormat": "write time",
+          "refId": "C"
         }
       ]
     },
     {
       "title": "Stalled IO",
       "type": "stat",
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 8 },
       "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
       "targets": [
         {
-          "expr": "aws_ebs_volume_stalled_io_check_maximum",
+          "expr": "max(aws_ebs_volume_stalled_io_check_maximum{volume_id=~\"$volume_id\"})",
           "legendFormat": "VolumeStalledIOCheck",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "colorMode": "background",
+        "graphMode": "none"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "red", "value": 1 }
+            ]
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "title": "Capacity only (do not hero) — VolumeAvgIOPS",
+      "description": "Minute averages hide bursts. Useful for capacity planning; useless for throttle truth.",
+      "type": "timeseries",
+      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 8 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "targets": [
+        {
+          "expr": "aws_ebs_volume_avg_iops_average{volume_id=~\"$volume_id\"}",
+          "legendFormat": "VolumeAvgIOPS (capacity)",
           "refId": "A"
         }
       ]
@@ -69,9 +133,35 @@
   ],
   "schemaVersion": 39,
   "tags": ["xycalc", "ebs"],
+  "templating": {
+    "list": [
+      {
+        "name": "volume_id",
+        "type": "query",
+        "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+        "query": "label_values(aws_ebs_volume_iops_exceeded_check_maximum, volume_id)",
+        "current": { "text": "All", "value": ".*" },
+        "includeAll": true,
+        "allValue": ".*",
+        "multi": false,
+        "refresh": 2
+      },
+      {
+        "name": "instance_id",
+        "type": "query",
+        "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+        "query": "label_values(aws_ebs_instance_ebs_iops_exceeded_check_maximum, instance_id)",
+        "current": { "text": "All", "value": ".*" },
+        "includeAll": true,
+        "allValue": ".*",
+        "multi": false,
+        "refresh": 2
+      }
+    ]
+  },
   "time": { "from": "now-6h", "to": "now" },
   "timezone": "browser",
   "title": "xycalc - EBS throttle truth",
   "uid": "xycalc-ebs-throttle",
-  "version": 1
+  "version": 2
 }

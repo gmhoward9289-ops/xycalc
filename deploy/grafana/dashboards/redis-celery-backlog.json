@@ -3,15 +3,23 @@
   "editable": true,
   "graphTooltip": 1,
   "id": null,
+  "links": [
+    {
+      "title": "Sizing vs live",
+      "url": "/d/xycalc-sizing-live",
+      "type": "link"
+    }
+  ],
   "panels": [
     {
       "title": "used_memory / maxmemory (lines 0.70 / 0.85 / 0.95)",
+      "description": "Alert before either policy's failure mode. Page at ≥0.95.",
       "type": "timeseries",
       "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
       "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
       "targets": [
         {
-          "expr": "redis_memory_used_bytes / clamp_min(redis_memory_max_bytes, 1)",
+          "expr": "redis_memory_used_bytes{instance=~\"$instance\"} / clamp_min(redis_memory_max_bytes{instance=~\"$instance\"}, 1)",
           "legendFormat": "memory ratio",
           "refId": "A"
         }
@@ -44,20 +52,21 @@
       "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
       "targets": [
         {
-          "expr": "rate(redis_evicted_keys_total[1m])",
+          "expr": "rate(redis_evicted_keys_total{instance=~\"$instance\"}[1m])",
           "legendFormat": "evicted_keys/s",
           "refId": "A"
         }
       ]
     },
     {
-      "title": "Broker depth LLEN (visible only â€” understates)",
+      "title": "Broker depth LLEN (visible only — understates)",
+      "description": "Prefetch × concurrency hides outstanding work. Do not page on LLEN alone.",
       "type": "timeseries",
       "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
       "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
       "targets": [
         {
-          "expr": "redis_list_length",
+          "expr": "redis_list_length{instance=~\"$instance\"}",
           "legendFormat": "LLEN (visible)",
           "refId": "A"
         }
@@ -65,23 +74,73 @@
     },
     {
       "title": "Outstanding estimate (alert on this)",
+      "description": "Wire celery_outstanding_tasks from app bookkeeping (enqueued − completed or active+reserved). Redis cannot see prefetch.",
       "type": "timeseries",
       "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
       "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
       "targets": [
         {
-          "expr": "celery_outstanding_tasks",
-          "legendFormat": "outstanding (wire your bookkeeping metric)",
+          "expr": "celery_outstanding_tasks{instance=~\"$instance\"}",
+          "legendFormat": "outstanding",
           "refId": "A"
         }
       ]
+    },
+    {
+      "title": "Host free RAM vs ~20% beyond maxmemory",
+      "description": "Redis FAQ: keep ~20% host RAM free beyond maxmemory.",
+      "type": "timeseries",
+      "gridPos": { "h": 6, "w": 24, "x": 0, "y": 16 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "targets": [
+        {
+          "expr": "node_memory_MemAvailable_bytes{instance=~\"$node\"}",
+          "legendFormat": "MemAvailable",
+          "refId": "A"
+        },
+        {
+          "expr": "0.20 * redis_memory_max_bytes{instance=~\"$instance\"}",
+          "legendFormat": "20% of maxmemory",
+          "refId": "B"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": { "unit": "bytes" },
+        "overrides": []
+      }
     }
   ],
   "schemaVersion": 39,
   "tags": ["xycalc", "redis", "celery"],
+  "templating": {
+    "list": [
+      {
+        "name": "instance",
+        "type": "query",
+        "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+        "query": "label_values(redis_memory_used_bytes, instance)",
+        "current": { "text": "All", "value": ".*" },
+        "includeAll": true,
+        "allValue": ".*",
+        "multi": false,
+        "refresh": 2
+      },
+      {
+        "name": "node",
+        "type": "query",
+        "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+        "query": "label_values(node_memory_MemAvailable_bytes, instance)",
+        "current": { "text": "All", "value": ".*" },
+        "includeAll": true,
+        "allValue": ".*",
+        "multi": false,
+        "refresh": 2
+      }
+    ]
+  },
   "time": { "from": "now-6h", "to": "now" },
   "timezone": "browser",
   "title": "xycalc - Redis broker + Celery backlog",
   "uid": "xycalc-redis-celery",
-  "version": 1
+  "version": 2
 }

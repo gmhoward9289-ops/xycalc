@@ -160,6 +160,7 @@ work; keep production identifiers in `local/`.
 | Layer | Demand (app) | Supply (infra) | Bridge |
 |---|---|---|---|
 | Cache → disk | MongoDB `pages read into cache` | EBS `Volume*ExceededCheck` + queue/latency | Miss bandwidth → volume IOPS |
+| Anon → file | Per-container `memory.stat` `anon` | Same cgroup `file` + parent/host `MemAvailable` | Page cache reclaim before OOM; see [`cgroup.md`](cgroup.md) |
 | Queue → broker | Celery outstanding work | Redis `used_memory/maxmemory` | Prefetch hides `LLEN` |
 | Stall → collapse | Ticket queue / app-thread eviction | Volume stalled / exceeded | Same incident, two layers |
 
@@ -359,6 +360,7 @@ follow from rows here.
 | U16 | Instance pick must be per band-end (lo/mode/hi), never collapsed mode | `settled` | `select_instance` / scenario-chaining design | Three names for one input is correct |
 | U17 | AWS r8i and Azure Esv5/Esv6 catalogs + gp3 steps ship today; bare-metal catalog is the remaining required peer, not a nice-to-have | `provisional` | systems.yaml aws-ec2 + azure-vm; bare-metal via observations | Bare-metal class catalog |
 | U18 | Org policy ceiling (1536 GiB) may sit below vendor family max; above → custom / next family, not a guessed SKU | `settled` | `DEFAULT_INSTANCE_CEILING` 2026-08-16 | Keep ceiling as policy, not a fake coefficient |
+| U19 | Isolated child cgroups vs one shared `memory.max` are different problems. 009 measured isolated children on a host with spare RAM (neighbor RSS flat). Parent/host reclaim of Mongo **file** pages is unmeasured | `settled` (009 scope) / `open` (file reclaim) | Inv 009 FINDINGS (limits sum ≪ host RAM) | Collect `anon`/`file`/refaults + WT + iostat when the parent or host is actually tight; do not treat 009 as a shared-cgroup or host-ceiling case |
 
 ### Overturned (keep visible)
 
@@ -386,6 +388,7 @@ follow from rows here.
 | T6 prefetch backlog magnitudes | U11 → settled; Simple Celery row numbers |
 | T1 cache cliff A2 transfer | **done** — U13 measured; still no sizing coefficient |
 | T11 colocation share | **done** — inv 009; neighbor RSS flat 50→80%; no share-pct coefficient |
+| Cgroup `file` vs `anon` under parent/host pressure | U19; recipe in `cgroup.md`; 009 did not collect this |
 | T3 write-rate / dirty onset | Dirty ticket timing |
 | Production observation imports | Tune Redis 0.70/0.85; scrape intervals |
 | Azure VM SKU catalog + scenario provider switch | **done** for Esv5/Esv6 catalog rows; remaining: isolated SKUs / other E-family |
@@ -396,6 +399,7 @@ follow from rows here.
 
 | Date | Change |
 |---|---|
+| 2026-08-23 | U19: 009 did not contest page cache; `cgroup.md` names generic layouts for a later sample |
 | 2026-08-21 | Azure Esv5/Esv6 catalog shipped (`azure-vm`); U17 / product-core table: only bare-metal remains the catalog gap |
 | 2026-08-21 | Docs pass: U13 → provisional (006 A1 shape); README Status/open/next + ROADMAP landed markers for 004–007 |
 | 2026-08-21 | Azure VM Esv5/Esv6 catalog is shipped (PR #98); Product core Gap row was stale. Bare-metal still a gap. Simple picker still r8i. |
@@ -408,7 +412,7 @@ follow from rows here.
 
 ## Related
 
-- Series contracts: [`mongodb.md`](mongodb.md), [`ebs.md`](ebs.md), [`redis.md`](redis.md)
+- Series contracts: [`mongodb.md`](mongodb.md), [`ebs.md`](ebs.md), [`redis.md`](redis.md), [`cgroup.md`](cgroup.md)
 - Scenario design: [`../design/scenario-chaining-proposal.md`](../design/scenario-chaining-proposal.md)
 - Import shapes: [`README.md`](README.md) (repo root telemetry README is this folder's)
 - Investigations: 001 cache · 002 EBS · 003 stall→tickets · 004 Celery amplification · 005 maxmemory · 006 cache cliff (measured) · 007 80 vs 90 · 008 foreign collections rename · 009 colocation share
