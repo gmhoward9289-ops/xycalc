@@ -106,9 +106,11 @@ assert.ok(noGrade.html.includes(APP.SIMPLE_HONESTY_LINE));
 
 const homepage = paint("500GB");
 assertHonesty(homepage.panel, "500GB homepage");
-assert.ok(!homepage.panel.picksHtml.includes("custom sizing"), homepage.panel.picksHtml);
 assert.ok(homepage.panel.picksHtml.includes("r8i.96xlarge"), homepage.panel.picksHtml);
 assert.ok(homepage.panel.picksHtml.includes("u7i-12tb.224xlarge"), homepage.panel.picksHtml);
+assert.ok(homepage.panel.picksHtml.includes("Typical"), homepage.panel.picksHtml);
+assert.ok(homepage.panel.picksHtml.includes("AWS"), homepage.panel.picksHtml);
+assert.ok(homepage.panel.picksHtml.includes("Azure"), homepage.panel.picksHtml);
 assert.ok(homepage.panel.r6iHtml.includes("r6i"), homepage.panel.r6iHtml);
 assert.ok(homepage.panel.r6iHtml.includes("custom sizing"), homepage.panel.r6iHtml);
 assert.ok(homepage.panel.r6iHtml.includes("1,024 GiB"), homepage.panel.r6iHtml);

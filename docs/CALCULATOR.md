@@ -72,7 +72,7 @@ Optional extras the page already understands (same hash, not a new scheme):
 
 | Param | Meaning |
 | --- | --- |
-| `mode` | `simple` or `advanced` (a model/scenario/tab forces advanced) |
+| `mode` | `basic` (alias `simple`), `advanced`, `scientific`, or `data`. A `tab` / `model` / `scenario` key opens that surface (scenario → Advanced, single/flow/math → Scientific, occupancy/cliff → Data). |
 | `available` | “what you already have”, e.g. `256GB` |
 | other keys | model/scenario inputs (`storage_size=500GB`, …) |
 
