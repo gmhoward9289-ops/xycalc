@@ -653,7 +653,12 @@ const XYCALC_APP = (() => {
       infoCardHtml(
         "What to type",
         "storageSize, not dataSize",
-        "Compressed on-disk collection bytes (db.stats / collStats). dataSize is already uncompressed; totalSize includes indexes — those are a separate input.",
+        "Compressed on-disk collection bytes (db.stats / collStats). dataSize is already uncompressed; totalSize includes indexes — those are a separate input. Documents path is count × avg as a starting guess until you measure.",
+      ),
+      infoCardHtml(
+        "Document defaults",
+        "4 MB · vulns 14 MB",
+        "Starting guesses only — not a cited coefficient. 4 MB is a typical BSON-sized document; 14 MB is near MongoDB's 16 MB document cap for fat vuln records. Override with storageSize ÷ count from collStats when you have it.",
       ),
     ];
     const occ = SIZE_PATH_FOOTNOTES["mongodb.wt-cache"];
@@ -988,12 +993,46 @@ const XYCALC_APP = (() => {
     return t;
   }
 
+  // Documents-path avg: people mean megabytes. Bare number = MB.
+  const SIMPLE_DOC_AVG_DEFAULT = "4 MB";
+  const SIMPLE_VULN_DOC_AVG_DEFAULT = "14 MB";
+
+  function normalizeSimpleDocAvg(raw) {
+    const t = String(raw || "").trim();
+    if (!t) return t;
+    if (/^[0-9.]+$/.test(t)) return t + "MB";
+    return t;
+  }
+
+  function canonicalSimpleDocAvg(raw) {
+    return normalizeSimpleDocAvg(raw).replace(/\s+/g, "").toUpperCase();
+  }
+
+  function simpleDocAvgIsDefault(raw, vulnDocs) {
+    const want = vulnDocs ? SIMPLE_VULN_DOC_AVG_DEFAULT : SIMPLE_DOC_AVG_DEFAULT;
+    return canonicalSimpleDocAvg(raw) === canonicalSimpleDocAvg(want);
+  }
+
+  function simpleDocProductStorage(countRaw, avgRaw) {
+    const n = Number(String(countRaw || "").replace(/,/g, "").trim());
+    const avg = normalizeSimpleDocAvg(avgRaw);
+    if (!n || n < 0 || !isFinite(n) || !avg) return null;
+    if (typeof XY === "undefined" || !XY.parseBytes || !XY.formatQuantity) return null;
+    const bytes = n * XY.parseBytes(avg);
+    if (!isFinite(bytes) || bytes <= 0) return null;
+    return XY.formatQuantity(bytes, "bytes").replace(/\s+/g, "");
+  }
+
   // IDs calculator.html must ship exactly once. bootSimple() throws if any
   // are missing; a duplicate id is an HTML uniqueness failure the export
   // tests catch before the page can boot against the wrong node.
   const SIMPLE_FORM_FIELD_IDS = [
     "simple-vulns",
+    "simple-size-path",
     "simple-db-size",
+    "simple-doc-count",
+    "simple-doc-avg",
+    "simple-doc-vulns",
     "simple-devices",
     "simple-device-avg",
     "simple-residual",
@@ -1054,8 +1093,15 @@ const XYCALC_APP = (() => {
   // box stays 500 GB instead of picking up three-year NVD growth.
   function simpleChainInputs(fields) {
     const src = fields || {};
-    const storageRaw = String(src.storage || src.size || "").trim();
-    if (!storageRaw) return null;
+    const path = String(src.path || "db").trim() || "db";
+    let storageRaw = "";
+    if (path === "docs") {
+      storageRaw = simpleDocProductStorage(src.docs || src.docCount, src.docAvg);
+      if (!storageRaw) return null;
+    } else {
+      storageRaw = String(src.storage || src.size || "").trim();
+      if (!storageRaw) return null;
+    }
     const vulns = String(src.vulns || BASIC_DEFAULT_VULN_COUNT).replace(/,/g, "").trim()
       || BASIC_DEFAULT_VULN_COUNT;
     const devices = String(src.devices || "").replace(/,/g, "").trim();
@@ -1220,13 +1266,21 @@ const XYCALC_APP = (() => {
       const mode = currentMode();
       const state = { mode: mode, inputs: {} };
       if (mode === "basic") {
+        const path = $("simple-size-path") && $("simple-size-path").value.trim();
         const vulns = $("simple-vulns") && $("simple-vulns").value.trim();
         const storage = $("simple-db-size") && $("simple-db-size").value.trim();
+        const docs = $("simple-doc-count") && $("simple-doc-count").value.trim();
+        const docAvg = $("simple-doc-avg") && $("simple-doc-avg").value.trim();
+        const docVulns = $("simple-doc-vulns") && $("simple-doc-vulns").checked;
         const devices = $("simple-devices") && $("simple-devices").value.trim();
         const deviceAvg = $("simple-device-avg") && $("simple-device-avg").value.trim();
         const residual = $("simple-residual") && $("simple-residual").value.trim();
         if (vulns && vulns !== BASIC_DEFAULT_VULN_COUNT) state.inputs.vulns = vulns;
+        if (path === "docs") state.inputs.path = "docs";
         if (storage) state.inputs.storage = storage;
+        if (docs) state.inputs.docs = docs;
+        if (docAvg && !simpleDocAvgIsDefault(docAvg, docVulns)) state.inputs.docAvg = docAvg;
+        if (docVulns) state.inputs.docVulns = "1";
         if (devices) state.inputs.devices = devices;
         if (deviceAvg) state.inputs.deviceAvg = deviceAvg;
         if (residual) state.inputs.residual = residual;
@@ -1277,9 +1331,21 @@ const XYCALC_APP = (() => {
           const storageVal = parsed.inputs.storage || parsed.inputs.size;
           if (parsed.inputs.vulns && $("simple-vulns")) $("simple-vulns").value = parsed.inputs.vulns;
           if (storageVal && $("simple-db-size")) $("simple-db-size").value = storageVal;
+          if (parsed.inputs.docs && $("simple-doc-count")) $("simple-doc-count").value = parsed.inputs.docs;
+          const wantVulnDocs = parsed.inputs.docVulns === "1" || parsed.inputs.docVulns === "true";
+          if ($("simple-doc-vulns")) $("simple-doc-vulns").checked = wantVulnDocs;
+          if (parsed.inputs.docAvg && $("simple-doc-avg")) {
+            $("simple-doc-avg").value = parsed.inputs.docAvg;
+          } else if ($("simple-doc-avg")) {
+            $("simple-doc-avg").value = wantVulnDocs
+              ? SIMPLE_VULN_DOC_AVG_DEFAULT
+              : SIMPLE_DOC_AVG_DEFAULT;
+          }
           if (parsed.inputs.devices && $("simple-devices")) $("simple-devices").value = parsed.inputs.devices;
           if (parsed.inputs.deviceAvg && $("simple-device-avg")) $("simple-device-avg").value = parsed.inputs.deviceAvg;
           if (parsed.inputs.residual && $("simple-residual")) $("simple-residual").value = parsed.inputs.residual;
+          setSimplePath(parsed.inputs.path === "docs" ? "docs" : "db", { calc: false });
+          syncSimpleSizeSlider();
           calculateSimple();
           return true;
         }
@@ -1450,6 +1516,23 @@ const XYCALC_APP = (() => {
       slider.value = String(simpleSizeSliderIndex(gb));
     }
 
+    let simpleDocAvgEdited = false;
+
+    function setSimplePath(path, opts) {
+      const docs = path === "docs";
+      const field = $("simple-size-path");
+      if (field) field.value = docs ? "docs" : "db";
+      const dbBtn = $("simple-path-db");
+      const docsBtn = $("simple-path-docs");
+      if (dbBtn) dbBtn.setAttribute("aria-pressed", docs ? "false" : "true");
+      if (docsBtn) docsBtn.setAttribute("aria-pressed", docs ? "true" : "false");
+      const slotDb = $("simple-slot-db");
+      const slotDocs = $("simple-slot-docs");
+      if (slotDb) slotDb.hidden = docs;
+      if (slotDocs) slotDocs.hidden = !docs;
+      if (!opts || opts.calc !== false) scheduleSimpleCalc();
+    }
+
     function bootSimple() {
       for (const id of SIMPLE_FORM_FIELD_IDS) {
         const el = $(id);
@@ -1466,6 +1549,17 @@ const XYCALC_APP = (() => {
         scheduleSimpleCalc();
       });
       syncSimpleSizeSlider();
+      $("simple-path-db").addEventListener("click", () => setSimplePath("db"));
+      $("simple-path-docs").addEventListener("click", () => setSimplePath("docs"));
+      $("simple-doc-avg").addEventListener("input", () => { simpleDocAvgEdited = true; });
+      $("simple-doc-vulns").addEventListener("change", () => {
+        if (!simpleDocAvgEdited) {
+          $("simple-doc-avg").value = $("simple-doc-vulns").checked
+            ? SIMPLE_VULN_DOC_AVG_DEFAULT
+            : SIMPLE_DOC_AVG_DEFAULT;
+        }
+        scheduleSimpleCalc();
+      });
       $("simple-rail").addEventListener("click", (ev) => {
         if (ev.target && ev.target.id === "simple-open-scientific") {
           ev.preventDefault();
@@ -1492,17 +1586,33 @@ const XYCALC_APP = (() => {
 
     function openAdvancedFromSimple() {
       const vulns = ($("simple-vulns").value || "").trim();
+      const path = ($("simple-size-path").value || "db").trim();
       const storageRaw = ($("simple-db-size").value || "").trim();
+      const docs = ($("simple-doc-count").value || "").trim();
+      const docAvg = ($("simple-doc-avg").value || "").trim();
       const devices = ($("simple-devices").value || "").trim();
       const deviceAvgRaw = ($("simple-device-avg").value || "").trim();
       const residualRaw = ($("simple-residual").value || "").trim();
+      const derived = simpleChainInputs({
+        path: path,
+        vulns: vulns,
+        storage: storageRaw,
+        docs: docs,
+        docAvg: docAvg,
+        devices: devices,
+        deviceAvg: deviceAvgRaw,
+        residual: residualRaw,
+      });
       pendingExpandMathUntil = Date.now() + 600;
       setMode("advanced");
       setTab("scenario");
       pickScenario("mongodb.size-to-instance");
-      if (storageRaw) {
+      const storageForAdv = derived
+        ? derived.baseline_storage_size
+        : (storageRaw ? normalizeSimpleSize(storageRaw) : "");
+      if (storageForAdv) {
         const el = $("scn-in-baseline_storage_size");
-        if (el) el.value = normalizeSimpleSize(storageRaw);
+        if (el) el.value = storageForAdv;
       }
       if (vulns) {
         const b = $("scn-in-baseline_vuln_count");
@@ -1541,13 +1651,23 @@ const XYCALC_APP = (() => {
 
     function calculateSimple() {
       const vulns = ($("simple-vulns").value || "").trim();
+      const path = ($("simple-size-path").value || "db").trim();
       const storageRaw = ($("simple-db-size").value || "").trim();
+      const docs = ($("simple-doc-count").value || "").trim();
+      const docAvg = ($("simple-doc-avg").value || "").trim();
       const devices = ($("simple-devices").value || "").trim();
       const deviceAvgRaw = ($("simple-device-avg").value || "").trim();
       const residualRaw = ($("simple-residual").value || "").trim();
       const err = $("simple-error");
       const status = $("simple-status");
-      if (!storageRaw) {
+      if (path === "docs") {
+        if (!docs || !docAvg) {
+          $("simple-result").hidden = true;
+          err.hidden = true;
+          status.textContent = "Enter a document count — sizing updates as you type.";
+          return;
+        }
+      } else if (!storageRaw) {
         $("simple-result").hidden = true;
         err.hidden = true;
         status.textContent = "Enter DB size — sizing updates as you type.";
@@ -1555,12 +1675,23 @@ const XYCALC_APP = (() => {
       }
       try {
         const inputs = simpleChainInputs({
+          path: path,
           vulns: vulns,
           storage: storageRaw,
+          docs: docs,
+          docAvg: docAvg,
           devices: devices,
           deviceAvg: deviceAvgRaw,
           residual: residualRaw,
         });
+        if (!inputs) {
+          $("simple-result").hidden = true;
+          err.hidden = true;
+          status.textContent = path === "docs"
+            ? "Enter a document count — sizing updates as you type."
+            : "Enter DB size — sizing updates as you type.";
+          return;
+        }
         const data = applySimpleHostFloor(
           XY.chainEvaluate(CORPUS, "mongodb.size-to-instance", inputs));
         err.hidden = true;
@@ -1568,7 +1699,8 @@ const XYCALC_APP = (() => {
         const storage = inputs.baseline_storage_size;
         const residual = inputs.residual_storage_size;
         const notes = [];
-        if (storage !== storageRaw) notes.push(`storage as ${storage}`);
+        if (path === "docs") notes.push(`${docs} × ${docAvg} → ${storage}`);
+        else if (storage !== storageRaw) notes.push(`storage as ${storage}`);
         if (residual && residual !== residualRaw) notes.push(`residual as ${residual}`);
         const as = notes.length ? ` (${notes.join("; ")})` : "";
         status.textContent = "Up to date" + as + " — change a field to recalculate.";
@@ -3264,6 +3396,10 @@ const XYCALC_APP = (() => {
     chartLayout: chartLayout,
     normalizeSimpleSize: normalizeSimpleSize,
     normalizeSimpleAvgBytes: normalizeSimpleAvgBytes,
+    normalizeSimpleDocAvg: normalizeSimpleDocAvg,
+    SIMPLE_DOC_AVG_DEFAULT: SIMPLE_DOC_AVG_DEFAULT,
+    SIMPLE_VULN_DOC_AVG_DEFAULT: SIMPLE_VULN_DOC_AVG_DEFAULT,
+    simpleDocProductStorage: simpleDocProductStorage,
     SIMPLE_FORM_FIELD_IDS: SIMPLE_FORM_FIELD_IDS,
     BASIC_DEFAULT_VULN_COUNT: BASIC_DEFAULT_VULN_COUNT,
     simpleSizeSliderGb: simpleSizeSliderGb,

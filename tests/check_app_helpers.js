@@ -3,7 +3,10 @@
 // of the JS suite rather than reporting a silent pass.
 
 const assert = require("assert");
-const APP = require(process.argv[2]);
+const path = require("path");
+const appPath = process.argv[2];
+global.XY = require(path.join(path.dirname(appPath), "evaluate.js"));
+const APP = require(appPath);
 
 assert.deepStrictEqual(
   APP.TABS,
@@ -108,11 +111,27 @@ assert.strictEqual(APP.normalizeSimpleAvgBytes("2KB"), "2KB");
 
 assert.deepStrictEqual(APP.SIMPLE_FORM_FIELD_IDS, [
   "simple-vulns",
+  "simple-size-path",
   "simple-db-size",
+  "simple-doc-count",
+  "simple-doc-avg",
+  "simple-doc-vulns",
   "simple-devices",
   "simple-device-avg",
   "simple-residual",
 ]);
+assert.strictEqual(APP.normalizeSimpleDocAvg("4"), "4MB");
+assert.strictEqual(APP.normalizeSimpleDocAvg("4 MB"), "4 MB");
+assert.strictEqual(APP.simpleDocProductStorage("10000", "4 MB"), "40.0GB");
+assert.strictEqual(APP.simpleDocProductStorage("10000", "14 MB"), "140.0GB");
+assert.deepStrictEqual(
+  APP.simpleChainInputs({ path: "docs", docs: "10,000", docAvg: "4" }),
+  {
+    baseline_vuln_count: APP.BASIC_DEFAULT_VULN_COUNT,
+    baseline_storage_size: "40.0GB",
+    target_vuln_count: APP.BASIC_DEFAULT_VULN_COUNT,
+  },
+);
 assert.deepStrictEqual(
   APP.simpleChainInputs({ vulns: "", storage: "500" }),
   {
@@ -452,6 +471,7 @@ assert.ok(!xssAside.includes("<img src=x"), xssAside);
 
 const basicAside = APP.basicAsideHtml();
 assert.ok(basicAside.includes("storageSize, not dataSize"), basicAside);
+assert.ok(basicAside.includes("4 MB · vulns 14 MB"), basicAside);
 assert.ok(basicAside.includes("Occupancy / cache-cliff"), basicAside);
 
 assert.strictEqual(APP.systemLabel("mongodb"), "MongoDB");

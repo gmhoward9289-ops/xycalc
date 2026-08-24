@@ -364,7 +364,11 @@ def test_simple_form_ids_unique_and_match_app_js():
     field_ids = re.findall(r'"([^"]+)"', listed.group(1))
     assert field_ids == [
         "simple-vulns",
+        "simple-size-path",
         "simple-db-size",
+        "simple-doc-count",
+        "simple-doc-avg",
+        "simple-doc-vulns",
         "simple-devices",
         "simple-device-avg",
         "simple-residual",
@@ -390,7 +394,11 @@ def test_exported_page_simple_ids_stay_unique(blob):
     counts = html_id_counts(html)
     for fid in (
         "simple-vulns",
+        "simple-size-path",
         "simple-db-size",
+        "simple-doc-count",
+        "simple-doc-avg",
+        "simple-doc-vulns",
         "simple-devices",
         "simple-device-avg",
         "simple-residual",
@@ -398,6 +406,8 @@ def test_exported_page_simple_ids_stay_unique(blob):
         "simple-result",
         "simple-size-slider",
         "simple-nvd-chart",
+        "simple-path-db",
+        "simple-path-docs",
     ):
         assert counts[fid] == 1, fid
     assert "How big is the DB" in html

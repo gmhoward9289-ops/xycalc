@@ -356,15 +356,47 @@ footer .family > span:first-child { white-space: nowrap; }
 .stub-notice h3 { margin: 0 0 .45rem; font-size: .95rem; }
 .stub-notice p { margin: 0; color: var(--muted); font-size: .85rem; line-height: 1.5; }
 .scenario-opt.selected { border-color: var(--accent); }
-.input-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .55rem .75rem; align-items: stretch; }
+.input-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: .55rem .75rem;
+  align-items: start;
+}
 .input-grid .field {
-  display: flex; flex-direction: column; margin-bottom: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(6.75rem, 8.25rem);
+  grid-template-rows: auto auto;
+  column-gap: .45rem;
+  row-gap: .2rem;
+  align-items: center;
+  margin-bottom: 0;
 }
 .input-grid .field label {
-  flex: 1 1 auto; min-height: 2.5em; line-height: 1.25;
+  grid-column: 1;
+  grid-row: 1;
+  min-height: 0;
+  line-height: 1.25;
+  align-self: center;
 }
-.input-grid .field input { margin-top: auto; }
-.input-grid .field select { margin-top: auto; }
+.input-grid .field input,
+.input-grid .field select,
+.input-grid .field .scenario-segmented {
+  grid-column: 2;
+  grid-row: 1;
+  margin-top: 0;
+  width: 100%;
+  align-self: center;
+}
+.input-grid .field .help {
+  grid-column: 1 / -1;
+  grid-row: 2;
+}
+@supports (grid-template-rows: subgrid) {
+  .input-grid .field {
+    grid-template-rows: subgrid;
+    grid-row: span 2;
+  }
+}
 .input-section h3 { font-size: .72rem; letter-spacing: .04em; color: var(--muted); margin: 0 0 .45rem; }
 .section-copy {
   margin: 0 0 .75rem;
@@ -408,6 +440,12 @@ footer .family > span:first-child { white-space: nowrap; }
 .summary-metric .kicker { font-size: .68rem; text-transform: uppercase; letter-spacing: .07em; color: var(--accent); font-weight: 700; }
 .summary-metric .primary { font-family: var(--mono); font-size: 1.35rem; font-weight: 600; }
 .info-stack { display: flex; flex-direction: column; gap: .75rem; }
+#simple-view .info-stack {
+  display: grid; gap: .75rem; grid-template-columns: 1fr;
+}
+@media (min-width: 40rem) {
+  #simple-view .info-stack { grid-template-columns: 1fr 1fr; }
+}
 .info-card {
   background: var(--panel); border: 1px solid var(--line); border-radius: 8px;
   padding: .85rem .9rem;
@@ -652,6 +690,7 @@ body.mode-data #simple-view { display: none !important; }
     grid-template-columns: minmax(14rem, 0.36fr) minmax(0, 1fr);
   }
 }
+.simple-in { min-height: 18.5rem; }
 .simple-in .field { margin-bottom: .75rem; }
 .simple-size-slider { margin: .15rem 0 .85rem; }
 .simple-size-slider input[type="range"] {
@@ -659,6 +698,14 @@ body.mode-data #simple-view { display: none !important; }
   height: 1.35rem; padding: 0; border: 0; background: transparent;
   font-family: inherit;
 }
+.simple-path-seg { margin-bottom: .75rem; }
+.simple-path-slot { min-height: 12.5rem; }
+.simple-doc-vuln {
+  display: flex; gap: .5rem; align-items: flex-start;
+  font-size: .82rem; color: var(--muted); font-weight: 400;
+  margin: .15rem 0 .65rem;
+}
+.simple-doc-vuln input { width: auto; margin-top: .2rem; }
 .simple-size-slider-scale {
   display: flex; justify-content: space-between;
   font-family: var(--mono); font-size: .68rem; color: var(--muted);
@@ -776,12 +823,7 @@ button.calc-tag:hover { border-color: var(--accent); color: var(--accent); }
 .simple-family .spec, .simple-family .miss {
   font-size: .78rem; color: var(--muted); margin-top: .25rem;
 }
-.simple-basics {
-  display: grid; gap: 1rem; align-items: start;
-}
-@media (min-width: 52rem) {
-  .simple-basics { grid-template-columns: minmax(0, 1.15fr) minmax(16rem, .85fr); }
-}
+.simple-basics { display: block; }
 .simple-pick.mode-pick { border-color: var(--accent); }
 .simple-pick .miss {
   font-size: .72rem; color: var(--warn-ink); margin-top: .4rem; line-height: 1.35;
@@ -843,6 +885,13 @@ button.calc-tag:hover { border-color: var(--accent); color: var(--accent); }
     <div class="simple-instrument-grid">
       <div class="simple-in">
         <input type="hidden" id="simple-vulns" value="250000" autocomplete="off">
+        <input type="hidden" id="simple-size-path" value="db" autocomplete="off">
+        <div class="scenario-segmented simple-path-seg" role="group" aria-label="How you know the size">
+          <button type="button" class="scenario-seg-btn" id="simple-path-db" aria-pressed="true">DB size</button>
+          <button type="button" class="scenario-seg-btn" id="simple-path-docs" aria-pressed="false">Documents</button>
+        </div>
+        <div class="simple-path-slot">
+        <div id="simple-slot-db">
         <div class="field">
           <label for="simple-db-size">How big is the DB</label>
           <input id="simple-db-size" placeholder="e.g. 500 or 500GB" value="500" autocomplete="off">
@@ -851,6 +900,23 @@ button.calc-tag:hover { border-color: var(--accent); color: var(--accent); }
         <div class="simple-size-slider">
           <input type="range" id="simple-size-slider" min="0" max="80" step="1" value="39" aria-label="Dataset size">
           <div class="simple-size-slider-scale"><span>10 GB</span><span>32 TB</span></div>
+        </div>
+        </div>
+        <div id="simple-slot-docs" hidden>
+        <div class="field">
+          <label for="simple-doc-count">How many documents</label>
+          <input id="simple-doc-count" placeholder="e.g. 10000" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="simple-doc-avg">Avg size each</label>
+          <input id="simple-doc-avg" value="4 MB" placeholder="e.g. 4 MB" autocomplete="off">
+          <div class="help">Starting guess, not collStats. Bare number = MB.</div>
+        </div>
+        <label class="simple-doc-vuln">
+          <input type="checkbox" id="simple-doc-vulns" autocomplete="off">
+          <span>These are vuln documents — starting guess becomes 14 MB</span>
+        </label>
+        </div>
         </div>
         <details class="simple-refine">
           <summary>Refine estimate</summary>
