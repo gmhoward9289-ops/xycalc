@@ -26,7 +26,7 @@
   "panels": [
     {
       "title": "Inside memory.max: WT cache, other anon, file page cache",
-      "description": "Breakdown of the mongo container's memory charge. The stacked bands are WiredTiger's cache, the rest of mongod's anonymous memory (heap, connections, in-flight sorts), and file-backed page cache charged to this cgroup. Dashed lines: the container limit (memory.max) and the configured WT cache maximum. WiredTiger sizes its cache assuming compressed collection files are served from the file cache next to it; when anon grows and the file band shrinks against the limit, that assumption stops holding. The 'anon beyond WT' series subtracts a single WT series via scalar(), so select one mongo at a time.",
+      "description": "Breakdown of the mongo container's memory charge. The stacked bands are WiredTiger's cache, the rest of mongod's anonymous memory (heap, connections, in-flight sorts), and file-backed page cache charged to this cgroup. Dashed lines: the container limit (memory.max) and the configured WT cache maximum. WiredTiger sizes its cache assuming compressed collection files are served from the file cache next to it; when anon grows and the file band shrinks against the limit, that assumption stops holding. The 'anon beyond WT' series subtracts a single WT series via scalar(), so select one mongo at a time. When the container has no memory limit, the memory.max line disappears and a host-MemTotal line takes its place: with no cgroup ceiling, host RAM is the real one.",
       "type": "timeseries",
       "gridPos": {
         "h": 9,
@@ -55,7 +55,7 @@
           "refId": "C"
         },
         {
-          "expr": "container_spec_memory_limit_bytes{name=~\"$container\"}",
+          "expr": "(container_spec_memory_limit_bytes{name=~\"$container\"} > 0)",
           "legendFormat": "memory.max",
           "refId": "D"
         },
@@ -63,6 +63,11 @@
           "expr": "mongodb_wiredtiger_cache_maximum_bytes_configured{instance=~\"$instance\"}",
           "legendFormat": "WT max configured",
           "refId": "E"
+        },
+        {
+          "expr": "node_memory_MemTotal_bytes{machine=~\"$machine\"} unless on() (container_spec_memory_limit_bytes{name=~\"$container\"} > 0)",
+          "legendFormat": "host MemTotal (no memory.max set)",
+          "refId": "F"
         }
       ],
       "fieldConfig": {
@@ -148,6 +153,41 @@
                 }
               }
             ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "host MemTotal (no memory.max set)"
+            },
+            "properties": [
+              {
+                "id": "custom.stacking",
+                "value": {
+                  "mode": "none"
+                }
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              },
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "fill": "dash",
+                  "dash": [
+                    10,
+                    10
+                  ]
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "purple"
+                }
+              }
+            ]
           }
         ]
       }
@@ -183,9 +223,14 @@
           "refId": "C"
         },
         {
-          "expr": "container_spec_memory_limit_bytes{name=~\"$container\"}",
+          "expr": "(container_spec_memory_limit_bytes{name=~\"$container\"} > 0)",
           "legendFormat": "memory.max",
           "refId": "D"
+        },
+        {
+          "expr": "node_memory_MemTotal_bytes{machine=~\"$machine\"} unless on() (container_spec_memory_limit_bytes{name=~\"$container\"} > 0)",
+          "legendFormat": "host MemTotal (no memory.max set)",
+          "refId": "E"
         }
       ],
       "fieldConfig": {
@@ -251,6 +296,41 @@
                 "value": {
                   "mode": "fixed",
                   "fixedColor": "red"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "host MemTotal (no memory.max set)"
+            },
+            "properties": [
+              {
+                "id": "custom.stacking",
+                "value": {
+                  "mode": "none"
+                }
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              },
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "fill": "dash",
+                  "dash": [
+                    10,
+                    10
+                  ]
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "purple"
                 }
               }
             ]
@@ -403,7 +483,7 @@
     },
     {
       "title": "WT occupancy vs cgroup usage, same 0-100 axis",
-      "description": "Two utilization views of the same container. WT occupancy is measured against the WT cache maximum and can sit comfortably under 80% while the container's working set is pinned at memory.max. When the two lines diverge - occupancy moderate, working set near 100 - the shortage is in the cgroup's file cache, not inside WiredTiger, and WT-level metrics alone will not show it. The third line tracks how much of the limit is still file cache.",
+      "description": "Two utilization views of the same container. WT occupancy is measured against the WT cache maximum and can sit comfortably under 80% while the container's working set is pinned at memory.max. When the two lines diverge - occupancy moderate, working set near 100 - the shortage is in the cgroup's file cache, not inside WiredTiger, and WT-level metrics alone will not show it. The third line tracks how much of the limit is still file cache. With no container limit the two %-of-limit lines go empty rather than reporting against a meaningless number, and a %-of-host-RAM line appears instead.",
       "type": "timeseries",
       "gridPos": {
         "h": 9,
@@ -422,14 +502,19 @@
           "refId": "A"
         },
         {
-          "expr": "container_memory_working_set_bytes{name=~\"$container\"} / clamp_min(container_spec_memory_limit_bytes{name=~\"$container\"}, 1) * 100",
+          "expr": "container_memory_working_set_bytes{name=~\"$container\"} / (container_spec_memory_limit_bytes{name=~\"$container\"} > 0) * 100",
           "legendFormat": "working set % of memory.max",
           "refId": "B"
         },
         {
-          "expr": "container_memory_cache{name=~\"$container\"} / clamp_min(container_spec_memory_limit_bytes{name=~\"$container\"}, 1) * 100",
+          "expr": "container_memory_cache{name=~\"$container\"} / (container_spec_memory_limit_bytes{name=~\"$container\"} > 0) * 100",
           "legendFormat": "file cache % of memory.max",
           "refId": "C"
+        },
+        {
+          "expr": "container_memory_working_set_bytes{name=~\"$container\"} / on() group_left() node_memory_MemTotal_bytes{machine=~\"$machine\"} * 100 unless on() (container_spec_memory_limit_bytes{name=~\"$container\"} > 0)",
+          "legendFormat": "working set % of host RAM (no limit set)",
+          "refId": "D"
         }
       ],
       "fieldConfig": {
@@ -511,6 +596,274 @@
           }
         ]
       }
+    },
+    {
+      "title": "Host shape \u2014 no container, or no memory limit",
+      "type": "row",
+      "collapsed": true,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 27
+      },
+      "panels": [
+        {
+          "title": "Host: anon vs file page cache",
+          "description": "Same split as the container panel, measured for the whole host. Use this row when mongod runs outside a container or without a memory limit; everything here is host-wide, so on a shared box other processes are included. Anon growing while the file cache shrinks against MemTotal is the same failure shape; MemAvailable is what the kernel thinks it can still hand out.",
+          "type": "timeseries",
+          "gridPos": {
+            "h": 9,
+            "w": 12,
+            "x": 0,
+            "y": 28
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "targets": [
+            {
+              "expr": "node_memory_AnonPages_bytes{machine=~\"$machine\"}",
+              "legendFormat": "anon (all processes)",
+              "refId": "A"
+            },
+            {
+              "expr": "node_memory_Cached_bytes{machine=~\"$machine\"}",
+              "legendFormat": "file page cache",
+              "refId": "B"
+            },
+            {
+              "expr": "node_memory_MemTotal_bytes{machine=~\"$machine\"}",
+              "legendFormat": "MemTotal",
+              "refId": "C"
+            },
+            {
+              "expr": "node_memory_MemAvailable_bytes{machine=~\"$machine\"}",
+              "legendFormat": "MemAvailable",
+              "refId": "D"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "bytes",
+              "min": 0,
+              "custom": {
+                "drawStyle": "line",
+                "fillOpacity": 25,
+                "stacking": {
+                  "mode": "normal",
+                  "group": "A"
+                }
+              }
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "MemTotal"
+                },
+                "properties": [
+                  {
+                    "id": "custom.stacking",
+                    "value": {
+                      "mode": "none"
+                    }
+                  },
+                  {
+                    "id": "custom.fillOpacity",
+                    "value": 0
+                  },
+                  {
+                    "id": "custom.lineStyle",
+                    "value": {
+                      "fill": "dash",
+                      "dash": [
+                        10,
+                        10
+                      ]
+                    }
+                  },
+                  {
+                    "id": "color",
+                    "value": {
+                      "mode": "fixed",
+                      "fixedColor": "red"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "MemAvailable"
+                },
+                "properties": [
+                  {
+                    "id": "custom.stacking",
+                    "value": {
+                      "mode": "none"
+                    }
+                  },
+                  {
+                    "id": "custom.fillOpacity",
+                    "value": 0
+                  },
+                  {
+                    "id": "color",
+                    "value": {
+                      "mode": "fixed",
+                      "fixedColor": "green"
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "title": "Host: file pages active vs inactive",
+          "description": "Host-wide reclaim order, same reading as the container panel: inactive file drains first and is cheap; active file dropping means pages something still reads are being taken, and major faults follow.",
+          "type": "timeseries",
+          "gridPos": {
+            "h": 9,
+            "w": 12,
+            "x": 12,
+            "y": 28
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "targets": [
+            {
+              "expr": "node_memory_Active_file_bytes{machine=~\"$machine\"}",
+              "legendFormat": "active file",
+              "refId": "A"
+            },
+            {
+              "expr": "node_memory_Inactive_file_bytes{machine=~\"$machine\"}",
+              "legendFormat": "inactive file",
+              "refId": "B"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "bytes",
+              "min": 0,
+              "custom": {
+                "drawStyle": "line",
+                "fillOpacity": 25,
+                "stacking": {
+                  "mode": "normal",
+                  "group": "A"
+                }
+              }
+            },
+            "overrides": []
+          }
+        },
+        {
+          "title": "Host: major faults and disk reads",
+          "description": "node_vmstat counts faults for every process on the host, and disk reads are per device; pick mongod's volume from the legend. There is no per-process attribution at this level. If these move together with query latency, that is the correlation this panel exists to show.",
+          "type": "timeseries",
+          "gridPos": {
+            "h": 9,
+            "w": 12,
+            "x": 0,
+            "y": 37
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "targets": [
+            {
+              "expr": "rate(node_vmstat_pgmajfault{machine=~\"$machine\"}[1m])",
+              "legendFormat": "major faults/s (host)",
+              "refId": "A"
+            },
+            {
+              "expr": "rate(node_disk_read_bytes_total{machine=~\"$machine\"}[1m])",
+              "legendFormat": "reads B/s {{device}}",
+              "refId": "B"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "ops",
+              "min": 0,
+              "custom": {
+                "drawStyle": "line",
+                "fillOpacity": 15
+              }
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byRegexp",
+                  "options": "reads B/s.*"
+                },
+                "properties": [
+                  {
+                    "id": "unit",
+                    "value": "Bps"
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "title": "Host: PSI, fraction of time stalled",
+          "description": "Same reading as the container PSI panel, for the whole host: seconds stalled per second; 'some' means at least one task was blocked, 'full' means all of them. Also the fallback when the container runtime does not export PSI.",
+          "type": "timeseries",
+          "gridPos": {
+            "h": 9,
+            "w": 12,
+            "x": 12,
+            "y": 37
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "targets": [
+            {
+              "expr": "rate(node_pressure_memory_waiting_seconds_total{machine=~\"$machine\"}[1m])",
+              "legendFormat": "memory some",
+              "refId": "A"
+            },
+            {
+              "expr": "rate(node_pressure_memory_stalled_seconds_total{machine=~\"$machine\"}[1m])",
+              "legendFormat": "memory full",
+              "refId": "B"
+            },
+            {
+              "expr": "rate(node_pressure_io_waiting_seconds_total{machine=~\"$machine\"}[1m])",
+              "legendFormat": "io some",
+              "refId": "C"
+            },
+            {
+              "expr": "rate(node_pressure_io_stalled_seconds_total{machine=~\"$machine\"}[1m])",
+              "legendFormat": "io full",
+              "refId": "D"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percentunit",
+              "min": 0,
+              "custom": {
+                "drawStyle": "line",
+                "fillOpacity": 15
+              },
+              "max": 1
+            },
+            "overrides": []
+          }
+        }
+      ]
     }
   ],
   "schemaVersion": 39,
@@ -551,6 +904,22 @@
         },
         "includeAll": true,
         "allValue": ".*",
+        "multi": false,
+        "refresh": 2
+      },
+      {
+        "name": "machine",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "PBFA97CFB590B2093"
+        },
+        "query": "label_values(node_memory_MemTotal_bytes, machine)",
+        "current": {
+          "text": "swamplink",
+          "value": "swamplink"
+        },
+        "includeAll": false,
         "multi": false,
         "refresh": 2
       }

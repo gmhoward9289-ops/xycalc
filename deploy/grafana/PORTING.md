@@ -13,6 +13,23 @@ Prompt to use with it:
 > rewrite the dashboard queries for what we actually scrape. Show me the
 > mapping table you built before changing anything.
 
+## Built-in shape handling
+
+The board now covers two of the three deployment shapes on its own:
+
+- **No memory limit set**: the memory.max line and the %-of-limit series are
+  gated on `container_spec_memory_limit_bytes > 0`, so they go empty instead
+  of reporting against a meaningless number, and dashed host-MemTotal /
+  %-of-host-RAM lines take their place.
+- **No container at all**: expand the collapsed **Host shape** row - the same
+  four charts built from node_exporter series (`node_memory_*`,
+  `node_vmstat_pgmajfault`, `node_disk_read_bytes_total`, `node_pressure_*`),
+  selected by the `machine` variable. Host-wide, not per-process; read the
+  panel notes.
+
+Only the label remapping (Kubernetes) and the constants below still need
+hand-editing.
+
 ## Safety: importing this cannot break anything
 
 Every panel is a read-only Prometheus query. Importing the JSON into any
