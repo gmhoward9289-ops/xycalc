@@ -40,32 +40,32 @@
       },
       "targets": [
         {
-          "expr": "mongodb_wiredtiger_cache_bytes_currently_in_the_cache{instance=~\"$instance\"}",
+          "expr": "max(mongodb_wiredtiger_cache_bytes_currently_in_the_cache{instance=~\"$instance\"})",
           "legendFormat": "WT cache (anon)",
           "refId": "A"
         },
         {
-          "expr": "clamp_min(container_memory_rss{name=~\"$container\"} - scalar(mongodb_wiredtiger_cache_bytes_currently_in_the_cache{instance=~\"$instance\"}), 0)",
+          "expr": "clamp_min(max(container_memory_rss{name=~\"$container\"}) - max(mongodb_wiredtiger_cache_bytes_currently_in_the_cache{instance=~\"$instance\"}), 0)",
           "legendFormat": "anon beyond WT (heap, other)",
           "refId": "B"
         },
         {
-          "expr": "container_memory_cache{name=~\"$container\"}",
+          "expr": "max(container_memory_cache{name=~\"$container\"})",
           "legendFormat": "file page cache (this cgroup)",
           "refId": "C"
         },
         {
-          "expr": "(container_spec_memory_limit_bytes{name=~\"$container\"} > 0)",
+          "expr": "max(container_spec_memory_limit_bytes{name=~\"$container\"} > 0)",
           "legendFormat": "memory.max",
           "refId": "D"
         },
         {
-          "expr": "mongodb_wiredtiger_cache_maximum_bytes_configured{instance=~\"$instance\"}",
+          "expr": "max(mongodb_wiredtiger_cache_maximum_bytes_configured{instance=~\"$instance\"})",
           "legendFormat": "WT max configured",
           "refId": "E"
         },
         {
-          "expr": "node_memory_MemTotal_bytes{machine=~\"$machine\"} unless on() (container_spec_memory_limit_bytes{name=~\"$container\"} > 0)",
+          "expr": "max(node_memory_MemTotal_bytes{machine=~\"$machine\"}) unless on() (container_spec_memory_limit_bytes{name=~\"$container\"} > 0)",
           "legendFormat": "host MemTotal (no memory.max set)",
           "refId": "F"
         }
@@ -188,6 +188,51 @@
                 }
               }
             ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "WT cache (anon)"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "semi-dark-green"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "anon beyond WT (heap, other)"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "semi-dark-blue"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "file page cache (this cgroup)"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "semi-dark-yellow"
+                }
+              }
+            ]
           }
         ]
       }
@@ -208,27 +253,27 @@
       },
       "targets": [
         {
-          "expr": "container_memory_total_active_file_bytes{name=~\"$container\"}",
+          "expr": "max(container_memory_total_active_file_bytes{name=~\"$container\"})",
           "legendFormat": "active file (still hot)",
           "refId": "A"
         },
         {
-          "expr": "container_memory_total_inactive_file_bytes{name=~\"$container\"}",
+          "expr": "max(container_memory_total_inactive_file_bytes{name=~\"$container\"})",
           "legendFormat": "inactive file (reclaim fodder)",
           "refId": "B"
         },
         {
-          "expr": "container_memory_working_set_bytes{name=~\"$container\"}",
+          "expr": "max(container_memory_working_set_bytes{name=~\"$container\"})",
           "legendFormat": "working set",
           "refId": "C"
         },
         {
-          "expr": "(container_spec_memory_limit_bytes{name=~\"$container\"} > 0)",
+          "expr": "max(container_spec_memory_limit_bytes{name=~\"$container\"} > 0)",
           "legendFormat": "memory.max",
           "refId": "D"
         },
         {
-          "expr": "node_memory_MemTotal_bytes{machine=~\"$machine\"} unless on() (container_spec_memory_limit_bytes{name=~\"$container\"} > 0)",
+          "expr": "max(node_memory_MemTotal_bytes{machine=~\"$machine\"}) unless on() (container_spec_memory_limit_bytes{name=~\"$container\"} > 0)",
           "legendFormat": "host MemTotal (no memory.max set)",
           "refId": "E"
         }
@@ -334,6 +379,51 @@
                 }
               }
             ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "active file (still hot)"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "semi-dark-orange"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "inactive file (reclaim fodder)"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "semi-dark-blue"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "working set"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "text"
+                }
+              }
+            ]
           }
         ]
       }
@@ -354,17 +444,17 @@
       },
       "targets": [
         {
-          "expr": "rate(container_memory_failures_total{failure_type=\"pgmajfault\",scope=\"container\",name=~\"$container\"}[1m])",
+          "expr": "max(rate(container_memory_failures_total{failure_type=\"pgmajfault\",scope=\"container\",name=~\"$container\"}[1m]))",
           "legendFormat": "major faults/s",
           "refId": "A"
         },
         {
-          "expr": "rate(container_fs_reads_bytes_total{name=~\"$container\"}[1m])",
+          "expr": "max(rate(container_fs_reads_bytes_total{name=~\"$container\"}[1m]))",
           "legendFormat": "device reads B/s",
           "refId": "B"
         },
         {
-          "expr": "rate(pages_read_into_cache{instance=~\"$instance\"}[1m])",
+          "expr": "max(rate(pages_read_into_cache{instance=~\"$instance\"}[1m]))",
           "legendFormat": "WT pages into cache/s",
           "refId": "C"
         },
@@ -448,22 +538,22 @@
       },
       "targets": [
         {
-          "expr": "rate(container_pressure_memory_waiting_seconds_total{name=~\"$container\"}[1m])",
+          "expr": "max(rate(container_pressure_memory_waiting_seconds_total{name=~\"$container\"}[1m]))",
           "legendFormat": "memory some",
           "refId": "A"
         },
         {
-          "expr": "rate(container_pressure_memory_stalled_seconds_total{name=~\"$container\"}[1m])",
+          "expr": "max(rate(container_pressure_memory_stalled_seconds_total{name=~\"$container\"}[1m]))",
           "legendFormat": "memory full",
           "refId": "B"
         },
         {
-          "expr": "rate(container_pressure_io_waiting_seconds_total{name=~\"$container\"}[1m])",
+          "expr": "max(rate(container_pressure_io_waiting_seconds_total{name=~\"$container\"}[1m]))",
           "legendFormat": "io some",
           "refId": "C"
         },
         {
-          "expr": "rate(container_pressure_io_stalled_seconds_total{name=~\"$container\"}[1m])",
+          "expr": "max(rate(container_pressure_io_stalled_seconds_total{name=~\"$container\"}[1m]))",
           "legendFormat": "io full",
           "refId": "D"
         }
@@ -497,22 +587,22 @@
       },
       "targets": [
         {
-          "expr": "mongodb_wiredtiger_cache_occupancy_ratio{instance=~\"$instance\"} * 100",
+          "expr": "max(mongodb_wiredtiger_cache_occupancy_ratio{instance=~\"$instance\"}) * 100",
           "legendFormat": "WT occupancy % of WT max",
           "refId": "A"
         },
         {
-          "expr": "container_memory_working_set_bytes{name=~\"$container\"} / (container_spec_memory_limit_bytes{name=~\"$container\"} > 0) * 100",
+          "expr": "max(container_memory_working_set_bytes{name=~\"$container\"}) / max(container_spec_memory_limit_bytes{name=~\"$container\"} > 0) * 100",
           "legendFormat": "working set % of memory.max",
           "refId": "B"
         },
         {
-          "expr": "container_memory_cache{name=~\"$container\"} / (container_spec_memory_limit_bytes{name=~\"$container\"} > 0) * 100",
+          "expr": "max(container_memory_cache{name=~\"$container\"}) / max(container_spec_memory_limit_bytes{name=~\"$container\"} > 0) * 100",
           "legendFormat": "file cache % of memory.max",
           "refId": "C"
         },
         {
-          "expr": "container_memory_working_set_bytes{name=~\"$container\"} / on() group_left() node_memory_MemTotal_bytes{machine=~\"$machine\"} * 100 unless on() (container_spec_memory_limit_bytes{name=~\"$container\"} > 0)",
+          "expr": "max(container_memory_working_set_bytes{name=~\"$container\"}) / max(node_memory_MemTotal_bytes{machine=~\"$machine\"}) * 100 unless on() (container_spec_memory_limit_bytes{name=~\"$container\"} > 0)",
           "legendFormat": "working set % of host RAM (no limit set)",
           "refId": "D"
         }
@@ -562,12 +652,12 @@
       },
       "targets": [
         {
-          "expr": "rate(container_memory_failcnt{name=~\"$container\"}[1m])",
+          "expr": "max(rate(container_memory_failcnt{name=~\"$container\"}[1m]))",
           "legendFormat": "memory.max hits/s",
           "refId": "A"
         },
         {
-          "expr": "container_memory_swap{name=~\"$container\"}",
+          "expr": "max(container_memory_swap{name=~\"$container\"})",
           "legendFormat": "swap bytes",
           "refId": "B"
         }
