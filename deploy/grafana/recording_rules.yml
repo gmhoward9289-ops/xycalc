@@ -33,19 +33,24 @@ groups:
         expr: mongodb_ss_wt_cache_pages_evicted_by_application_threads
 
       # Tickets — Mongo 7 concurrentTransactions; empty on 8.x until queues.* scraped
+      # Names verified against Percona 0.47.1 /metrics on Mongo 7
+      # (celery_probe mongo, swamplink, 2026-08-24): the ticket pool has no
+      # read_/write_ prefix on out/available, and totalTickets is exported
+      # directly.
       - record: mongodb_tickets_out
-        expr: mongodb_ss_wt_concurrentTransactions_read_out
+        expr: mongodb_ss_wt_concurrentTransactions_out
       - record: mongodb_tickets_total
-        expr: >
-          mongodb_ss_wt_concurrentTransactions_read_out
-          + mongodb_ss_wt_concurrentTransactions_read_available
+        expr: mongodb_ss_wt_concurrentTransactions_totalTickets
       - record: mongodb_tickets_available
-        expr: mongodb_ss_wt_concurrentTransactions_read_available
+        expr: mongodb_ss_wt_concurrentTransactions_available
 
-      # db.stats sizing inputs (when exporter exposes dbstats)
+      # db.stats sizing inputs. Percona emits camelCase per-database series;
+      # the boards and xycalc_exporter want one snake_case total over app
+      # databases (system DBs excluded so admin/config/local noise never
+      # inflates a sizing input).
       - record: mongodb_dbstats_storage_size
-        expr: mongodb_dbstats_storage_size
+        expr: sum(mongodb_dbstats_storageSize{database!~"admin|config|local"})
       - record: mongodb_dbstats_index_size
-        expr: mongodb_dbstats_index_size
+        expr: sum(mongodb_dbstats_indexSize{database!~"admin|config|local"})
       - record: mongodb_dbstats_data_size
-        expr: mongodb_dbstats_data_size
+        expr: sum(mongodb_dbstats_dataSize{database!~"admin|config|local"})
