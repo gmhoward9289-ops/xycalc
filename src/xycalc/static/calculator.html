@@ -645,7 +645,7 @@ svg.nvd-chart { width: 100%; height: auto; display: block; }
 /* -- Basic / Advanced / Scientific / Data -- */
 .mode-bar {
   display: flex; gap: .35rem; align-items: center;
-  margin: 0 0 .5rem; flex-wrap: wrap;
+  margin: 0 0 .35rem; flex-wrap: wrap;
 }
 .mode-bar .mode-label {
   font-size: .75rem; text-transform: uppercase; letter-spacing: .06em;
@@ -661,12 +661,24 @@ svg.nvd-chart { width: 100%; height: auto; display: block; }
 .mode-btn[aria-pressed="true"] {
   color: var(--accent); border-color: var(--accent); background: transparent;
 }
+.calc-nav { margin-bottom: 1.25rem; }
 /* Reserve the tab-row height in every view so the panel below does not jump. */
 .view-subnav {
-  min-height: 2.35rem;
-  margin: 0 0 1.25rem;
+  min-height: 2.05rem;
+  margin: 0;
+  --subnav-indent: 5.2rem;
 }
-.view-subnav .tabs { margin-bottom: 0; }
+.view-subnav .tabs {
+  margin: 0 0 0 var(--subnav-indent);
+}
+/* Slightly smaller than VIEW so Scenario reads as a child of Basic, not a twin. */
+.view-subnav .tab {
+  padding: .28rem .7rem;
+  font-size: .78rem;
+  font-weight: 600;
+  line-height: 1.2;
+  border-radius: 6px;
+}
 body.mode-basic .view-subnav .tabs { display: none; }
 body.mode-advanced .tab:not([data-tab="scenario"]) { display: none; }
 body.mode-scientific .tab:not([data-tab="math"]):not([data-tab="single"]):not([data-tab="flow"]) { display: none; }
@@ -862,6 +874,7 @@ button.calc-tag:hover { border-color: var(--accent); color: var(--accent); }
 </div>
 
 <div id="app">
+<div class="calc-nav">
 <div class="mode-bar" role="group" aria-label="Calculator mode">
   <span class="mode-label">View</span>
   <button type="button" class="mode-btn" id="mode-basic" aria-pressed="true">Basic</button>
@@ -879,6 +892,7 @@ button.calc-tag:hover { border-color: var(--accent); color: var(--accent); }
     <button class="tab" id="tab-btn-cliff" data-tab="cliff">Cache cliff</button>
   </div>
 </div>
+</div>
 
 <div id="simple-view">
   <div class="panel simple-instrument" id="simple-rail">
@@ -888,7 +902,7 @@ button.calc-tag:hover { border-color: var(--accent); color: var(--accent); }
         <input type="hidden" id="simple-size-path" value="db" autocomplete="off">
         <div class="scenario-segmented simple-path-seg" role="group" aria-label="How you know the size">
           <button type="button" class="scenario-seg-btn" id="simple-path-db" aria-pressed="true">DB size</button>
-          <button type="button" class="scenario-seg-btn" id="simple-path-docs" aria-pressed="false">Documents</button>
+          <button type="button" class="scenario-seg-btn" id="simple-path-docs" aria-pressed="false">Records</button>
         </div>
         <div class="simple-path-slot">
         <div id="simple-slot-db">
@@ -904,7 +918,7 @@ button.calc-tag:hover { border-color: var(--accent); color: var(--accent); }
         </div>
         <div id="simple-slot-docs" hidden>
         <div class="field">
-          <label for="simple-doc-count">How many documents</label>
+          <label for="simple-doc-count">How many records</label>
           <input id="simple-doc-count" placeholder="e.g. 10000" autocomplete="off">
         </div>
         <div class="field">
@@ -914,7 +928,7 @@ button.calc-tag:hover { border-color: var(--accent); color: var(--accent); }
         </div>
         <label class="simple-doc-vuln">
           <input type="checkbox" id="simple-doc-vulns" autocomplete="off">
-          <span>These are vuln documents — starting guess becomes 14 MB</span>
+          <span>These are vuln records — starting guess becomes 14 MB</span>
         </label>
         </div>
         </div>

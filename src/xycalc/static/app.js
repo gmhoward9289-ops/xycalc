@@ -653,10 +653,10 @@ const XYCALC_APP = (() => {
       infoCardHtml(
         "What to type",
         "storageSize, not dataSize",
-        "Compressed on-disk collection bytes (db.stats / collStats). dataSize is already uncompressed; totalSize includes indexes — those are a separate input. Documents path is count × avg as a starting guess until you measure.",
+        "Compressed on-disk collection bytes (db.stats / collStats). dataSize is already uncompressed; totalSize includes indexes — those are a separate input. Records path is count × avg as a starting guess until you measure.",
       ),
       infoCardHtml(
-        "Document defaults",
+        "Record defaults",
         "4 MB · vulns 14 MB",
         "Starting guesses only — not a cited coefficient. 4 MB is a typical BSON-sized document; 14 MB is near MongoDB's 16 MB document cap for fat vuln records. Override with storageSize ÷ count from collStats when you have it.",
       ),
@@ -1468,6 +1468,22 @@ const XYCALC_APP = (() => {
       $("mode-advanced").addEventListener("click", () => setMode("advanced"));
       $("mode-scientific").addEventListener("click", () => setMode("scientific"));
       $("mode-data").addEventListener("click", () => setMode("data"));
+      alignViewSubnav();
+      window.addEventListener("resize", alignViewSubnav);
+      if (document.fonts && document.fonts.ready) {
+        document.fonts.ready.then(alignViewSubnav).catch(() => {});
+      }
+    }
+
+    function alignViewSubnav() {
+      const bar = document.querySelector(".mode-bar");
+      const basic = $("mode-basic");
+      const sub = document.querySelector(".view-subnav");
+      if (!bar || !basic || !sub) return;
+      const mid = basic.getBoundingClientRect().left + basic.getBoundingClientRect().width / 2;
+      const indent = mid - bar.getBoundingClientRect().left;
+      if (!(indent > 0)) return;
+      sub.style.setProperty("--subnav-indent", indent.toFixed(1) + "px");
     }
 
     function setMode(mode, opts) {
@@ -1664,7 +1680,7 @@ const XYCALC_APP = (() => {
         if (!docs || !docAvg) {
           $("simple-result").hidden = true;
           err.hidden = true;
-          status.textContent = "Enter a document count — sizing updates as you type.";
+          status.textContent = "Enter a record count — sizing updates as you type.";
           return;
         }
       } else if (!storageRaw) {
@@ -1688,7 +1704,7 @@ const XYCALC_APP = (() => {
           $("simple-result").hidden = true;
           err.hidden = true;
           status.textContent = path === "docs"
-            ? "Enter a document count — sizing updates as you type."
+            ? "Enter a record count — sizing updates as you type."
             : "Enter DB size — sizing updates as you type.";
           return;
         }
