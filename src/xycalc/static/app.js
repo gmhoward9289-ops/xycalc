@@ -9,7 +9,19 @@
 const XYCALC_APP = (() => {
   "use strict";
 
-  const TABS = ["scenario", "single", "flow", "occupancy", "cliff"];
+  const TABS = ["scenario", "math", "single", "flow", "occupancy", "cliff"];
+  const MODES = ["basic", "advanced", "scientific", "data"];
+  const MODE_TABS = {
+    basic: [],
+    advanced: ["scenario"],
+    scientific: ["math", "single", "flow"],
+    data: ["occupancy", "cliff"],
+  };
+  const MODE_DEFAULT_TAB = {
+    advanced: "scenario",
+    scientific: "math",
+    data: "occupancy",
+  };
   const SAMPLES = 96;
 
   function esc(s) {
@@ -185,6 +197,190 @@ const XYCALC_APP = (() => {
     return reveal;
   }
 
+  const SYSTEM_LABELS = {
+    mongodb: "MongoDB",
+    ebs: "AWS EBS",
+    "azure-disks": "Azure disks",
+    "nvme-ssd": "Local NVMe",
+    nvd: "NVD / CVE growth",
+    celery: "Celery / Redis",
+    clickhouse: "ClickHouse",
+  };
+  const SYSTEM_ORDER = [
+    "mongodb", "ebs", "azure-disks", "nvme-ssd", "nvd", "celery", "clickhouse",
+  ];
+
+  function systemLabel(system) {
+    const key = String(system || "");
+    return SYSTEM_LABELS[key] || (key ? key.replace(/-/g, " ") : "Other");
+  }
+
+  function shortModelTitle(model) {
+    if (model && model.lab && model.lab.label) return model.lab.label;
+    if (model && model.question) return model.question;
+    return (model && model.slug) || "";
+  }
+
+  function modelMatchesQuery(model, raw) {
+    const q = String(raw || "").trim().toLowerCase();
+    if (!q) return true;
+    if (!model) return false;
+    const hay = [
+      model.slug,
+      model.question,
+      model.system,
+      shortModelTitle(model),
+      systemLabel(model.system),
+    ].join(" ").toLowerCase();
+    return q.split(/\s+/).every((part) => hay.indexOf(part) >= 0);
+  }
+
+  function groupModelsBySystem(models) {
+    const groups = {};
+    for (const m of models || []) {
+      const key = m.system || "other";
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(m);
+    }
+    const keys = Object.keys(groups).sort((a, b) => {
+      const ia = SYSTEM_ORDER.indexOf(a);
+      const ib = SYSTEM_ORDER.indexOf(b);
+      if (ia < 0 && ib < 0) return a < b ? -1 : a > b ? 1 : 0;
+      if (ia < 0) return 1;
+      if (ib < 0) return -1;
+      return ia - ib;
+    });
+    return keys.map((key) => ({
+      system: key,
+      label: systemLabel(key),
+      models: groups[key],
+    }));
+  }
+
+  // Advanced scenario catalog: kind of question, not product. Empty groups
+  // are omitted at render time. "core" stays open; the rest start in a drawer.
+  const SCENARIO_KIND = {
+    "mongodb.size-to-instance": { band: "hardware", group: "instance" },
+    "mongodb.nvd-query-concurrency": { band: "runtime", group: "mongodb" },
+    "ebs.microburst": { band: "hardware", group: "storage" },
+    "storage.ebs-vs-nvme-at-io-size": { band: "hardware", group: "storage" },
+    "clickhouse.parts-insert-ceiling": { band: "hardware", group: "database", sub: "clickhouse" },
+    "redis.celery-broker": { band: "runtime", group: "redis" },
+    "celery.queue-amplification": { band: "runtime", group: "celery" },
+  };
+  const SCENARIO_TAXONOMY = [
+    {
+      id: "hardware",
+      label: "Hardware",
+      groups: [
+        { id: "instance", label: "Instance sizing", core: true },
+        {
+          id: "database",
+          label: "Database internals",
+          subs: [
+            { id: "mongodb", label: "MongoDB" },
+            { id: "clickhouse", label: "ClickHouse" },
+          ],
+        },
+        { id: "storage", label: "Storage performance" },
+        { id: "os", label: "OS performance" },
+      ],
+    },
+    {
+      id: "runtime",
+      label: "Runtime",
+      groups: [
+        { id: "services", label: "Services" },
+        { id: "celery", label: "Celery performance" },
+        { id: "mongodb", label: "MongoDB performance" },
+        { id: "redis", label: "Redis performance" },
+      ],
+    },
+  ];
+
+  function scenarioKind(s) {
+    const slug = s && s.slug;
+    const ui = s && s.ui;
+    if (ui && ui.band && ui.group) {
+      return { band: ui.band, group: ui.group, sub: ui.sub || null };
+    }
+    const mapped = (slug && SCENARIO_KIND[slug]) || { band: "runtime", group: "services" };
+    return { band: mapped.band, group: mapped.group, sub: mapped.sub || null };
+  }
+
+  function groupByTaxonomy(list, kindFn) {
+    const buckets = {};
+    for (const item of list || []) {
+      const k = kindFn(item);
+      const key = k.band + "|" + k.group + "|" + (k.sub || "");
+      if (!buckets[key]) buckets[key] = [];
+      buckets[key].push(item);
+    }
+    const bands = [];
+    for (const band of SCENARIO_TAXONOMY) {
+      const groups = [];
+      for (const g of band.groups) {
+        const bare = buckets[band.id + "|" + g.id + "|"] || [];
+        const subs = [];
+        for (const sub of g.subs || []) {
+          const items = buckets[band.id + "|" + g.id + "|" + sub.id] || [];
+          if (items.length) subs.push({ id: sub.id, label: sub.label, items: items });
+        }
+        if (!bare.length && !subs.length) continue;
+        groups.push({
+          id: g.id,
+          label: g.label,
+          core: !!g.core,
+          items: bare,
+          subs: subs,
+        });
+      }
+      if (groups.length) bands.push({ id: band.id, label: band.label, groups: groups });
+    }
+    return bands;
+  }
+
+  function groupScenarios(scenarios) {
+    return groupByTaxonomy(scenarios, scenarioKind);
+  }
+
+  const MODEL_KIND = {
+    "mongodb.wt-cache": { band: "hardware", group: "instance" },
+    "mongodb.host-ram": { band: "hardware", group: "instance" },
+    "mongodb.storage-from-doc-families": { band: "hardware", group: "instance" },
+    "nvd.storage-from-vuln-growth": { band: "hardware", group: "instance" },
+    "mongodb.ticket-throughput-ceiling": { band: "runtime", group: "mongodb" },
+    "ebs.iops-to-provision": { band: "hardware", group: "storage" },
+    "ebs.gp3-iops-at-io-size": { band: "hardware", group: "storage" },
+    "nvme-ssd.random-read-at-io-size": { band: "hardware", group: "storage" },
+    "azure.premium-v2-throughput-ceiling": { band: "hardware", group: "storage" },
+    "clickhouse.parts-insert-ceiling": { band: "hardware", group: "database", sub: "clickhouse" },
+    "celery.queue-amplification": { band: "runtime", group: "celery" },
+    "celery.worker-prefetch": { band: "runtime", group: "celery" },
+    "celery.redis-broker-maxmemory": { band: "runtime", group: "redis" },
+  };
+
+  function modelKind(m) {
+    const slug = m && m.slug;
+    const ui = m && m.ui;
+    if (ui && ui.band && ui.group) {
+      return { band: ui.band, group: ui.group, sub: ui.sub || null };
+    }
+    const mapped = (slug && MODEL_KIND[slug]) || { band: "runtime", group: "services" };
+    return { band: mapped.band, group: mapped.group, sub: mapped.sub || null };
+  }
+
+  function groupModelsByKind(models) {
+    return groupByTaxonomy(models, modelKind);
+  }
+
+  function scenarioSectionIsDrawer(sec) {
+    const title = String((sec && sec.title) || "");
+    if (/optional/i.test(title)) return true;
+    if (/concurrency|celery|query regime/i.test(title)) return true;
+    const inputs = (sec && sec.inputs) || [];
+    return inputs.length > 0 && inputs.every((i) => i.required === false);
+  }
   const GRADE_RANK = { none: 0, thin: 1, reasonable: 2 };
   const GRADE_LABEL = { none: "Unvalidated", thin: "Thinly validated", reasonable: "Validated" };
   const GRADE_PILL = { none: "unvalidated", thin: "thinly validated", reasonable: "validated" };
@@ -197,6 +393,9 @@ const XYCALC_APP = (() => {
     occupancy_bands: "occupancy",
     occupancy: "occupancy",
     scenario: "scenario",
+    math: "math",
+    "cited-math": "math",
+    cited_math: "math",
     single: "single",
     flow: "flow",
   };
@@ -216,23 +415,40 @@ const XYCALC_APP = (() => {
     return TAB_PUBLIC[c] || c;
   }
 
+  function canonicalMode(mode) {
+    if (mode === "simple" || mode === "basic") return "basic";
+    if (mode === "scientific" || mode === "advanced" || mode === "data") return mode;
+    return "basic";
+  }
+
+  function modeForTab(tab) {
+    const c = canonicalTab(tab);
+    if (!c) return null;
+    for (let i = 0; i < MODES.length; i++) {
+      const m = MODES[i];
+      if ((MODE_TABS[m] || []).indexOf(c) >= 0) return m;
+    }
+    return null;
+  }
+
   // Turn a parsed hash into the mode/tab the UI should show. Tab aliases
   // (cache-cliff → cliff) live here so boot cannot treat an inbound cliff
   // link as "no tab" and fall through to the Scenario default.
   function permalinkView(parsed) {
     if (!parsed) return null;
     const tab = canonicalTab(parsed.tab);
-    const forcedAdvanced = !!(tab || parsed.model || parsed.scenario);
-    if (parsed.mode === "simple" && !forcedAdvanced) {
-      return { mode: "simple", tab: null };
-    }
-    if (parsed.mode === "scientific" && !forcedAdvanced) {
-      return { mode: "scientific", tab: null };
-    }
+    let mode = parsed.mode ? canonicalMode(parsed.mode) : null;
+    const fromTab = tab ? modeForTab(tab) : null;
+    if (fromTab) mode = fromTab;
+    else if (parsed.model) mode = "scientific";
+    else if (parsed.scenario) mode = "advanced";
+    else if (!mode) mode = "basic";
     let nextTab = tab;
     if (!nextTab && parsed.model) nextTab = "single";
     else if (!nextTab && parsed.scenario) nextTab = "scenario";
-    return { mode: "advanced", tab: nextTab || null };
+    else if (!nextTab) nextTab = MODE_DEFAULT_TAB[mode] || null;
+    if (mode === "basic") return { mode: "basic", tab: null };
+    return { mode: mode, tab: nextTab || null };
   }
 
   function permalinkHref(hash, loc) {
@@ -271,8 +487,7 @@ const XYCALC_APP = (() => {
   // Simple first paint must not look like a cited buy-size. The full chain
   // lives in Advanced; this is the line that cannot be missed if we refuse
   // to mini-render every quote here.
-  const SIMPLE_HONESTY_LINE =
-    "Not a buy size / uncited path — open Scientific for sources.";
+  const SIMPLE_HONESTY_LINE = "What are we missing?";
 
   // Bench findings a planner must see on the default MongoDB size path.
   // Sentences are pinned; do not invent numbers. Occupancy/cliff and EBS
@@ -345,6 +560,101 @@ const XYCALC_APP = (() => {
       .join("");
   }
 
+  function infoCardHtml(kicker, title, paragraphs) {
+    const paras = (Array.isArray(paragraphs) ? paragraphs : [paragraphs])
+      .filter((p) => p != null && String(p).trim() !== "")
+      .map((p) => `<p>${esc(p)}</p>`)
+      .join("");
+    return `<div class="info-card">
+      <div class="kicker">${esc(kicker)}</div>
+      ${title ? `<div class="primary">${esc(title)}</div>` : ""}
+      ${paras}
+    </div>`;
+  }
+
+  function widestCitedTerm(model) {
+    let best = null;
+    let factor = 1;
+    for (const t of (model && model.terms) || []) {
+      if (!(t.coeff_lo > 0) || t.coeff_hi == null) continue;
+      const f = t.coeff_hi / t.coeff_lo;
+      if (f > factor) {
+        factor = f;
+        best = t;
+      }
+    }
+    return best ? { term: best, factor: factor } : null;
+  }
+
+  function answerRangeFactor(result) {
+    if (!result || !(result.lo > 0) || result.hi == null) return null;
+    return result.hi / result.lo;
+  }
+
+  function modelAsideHtml(model, result, fmt) {
+    if (!model) return "";
+    const cards = [];
+    const factor = answerRangeFactor(result);
+    if (factor != null) {
+      const band = fmt
+        ? fmt(result.lo, result.unit) + " – " + fmt(result.hi, result.unit)
+        : String(result.lo) + " – " + String(result.hi);
+      const rangeNote = factor <= 2
+        ? "Tight enough that lo and hi land in the same conversation."
+        : "Wide — read the whole band, not the mode, as the answer.";
+      const shown = factor >= 10 ? factor.toFixed(1) : factor.toFixed(2);
+      cards.push(infoCardHtml("This answer's range", band, shown + "× from lo to hi. " + rangeNote));
+    }
+    const v = displayValidation(model.validation);
+    if (v && v.grade) {
+      cards.push(infoCardHtml(
+        "Checked against reality",
+        GRADE_LABEL[v.grade] || v.grade,
+        validationClause(v),
+      ));
+    }
+    const lab = model.lab || {};
+    if (lab.measured) {
+      cards.push(infoCardHtml("What we measured", lab.label || "", [
+        lab.measured,
+        lab.still_needs ? "Still needs: " + lab.still_needs : "",
+      ]));
+    }
+    const wide = widestCitedTerm(model);
+    if (wide && wide.factor > 1.01) {
+      const t = wide.term;
+      const band = [t.coeff_lo, t.coeff_mode, t.coeff_hi].filter((x) => x != null).join("–");
+      const shown = wide.factor >= 10 ? wide.factor.toFixed(1) : wide.factor.toFixed(2);
+      cards.push(infoCardHtml(
+        "Widest cited coefficient",
+        t.label || t.key,
+        band + (t.unit ? " " + t.unit : "") + " · factor " + shown + "×. The sentence is under Show the math.",
+      ));
+    }
+    const fn = footnoteForModel(model.slug);
+    if (fn && fn.text) {
+      cards.push(infoCardHtml("Related finding", "", fn.text));
+    }
+    return cards.length ? `<div class="info-stack">${cards.join("")}</div>` : "";
+  }
+
+  function basicAsideHtml() {
+    const cards = [
+      infoCardHtml(
+        "What to type",
+        "storageSize, not dataSize",
+        "Compressed on-disk collection bytes (db.stats / collStats). dataSize is already uncompressed; totalSize includes indexes — those are a separate input.",
+      ),
+    ];
+    const occ = SIZE_PATH_FOOTNOTES["mongodb.wt-cache"];
+    if (occ) cards.push(infoCardHtml("Occupancy / cache-cliff", "", occ.text));
+    const tix = SIZE_PATH_FOOTNOTES["mongodb.ticket-throughput-ceiling"];
+    if (tix) cards.push(infoCardHtml("Tickets", "", tix.text));
+    const ebs = SIZE_PATH_FOOTNOTES["ebs.iops-to-provision"];
+    if (ebs) cards.push(infoCardHtml("EBS peak-to-mean", "", ebs.text));
+    return `<div class="info-stack">${cards.join("")}</div>`;
+  }
+
   function chainModelValidations(steps) {
     const out = [];
     for (const st of steps || []) {
@@ -377,13 +687,18 @@ const XYCALC_APP = (() => {
   }
 
   function simpleHonestyBlockHtml(kind) {
-    const body = kind === "scientific"
-      ? "<p>Cited math is expanded below — each term names its source sentence.</p>"
-      : `<p>${esc(SIMPLE_HONESTY_LINE)}</p>
-      <button type="button" class="ghost" id="simple-open-scientific">Open Scientific · show the math</button>`;
-    return `<div class="simple-honesty" id="simple-honesty" role="status">
-      ${body}
-    </div>`;
+    if (kind === "scientific") {
+      return `<span class="calc-tag" id="simple-honesty">Cited math below</span>`;
+    }
+    return `<button type="button" class="calc-tag calc-tag-miss" id="simple-open-scientific">${esc(SIMPLE_HONESTY_LINE)}</button>`;
+  }
+
+  function simpleGradeTagHtml(v) {
+    if (!v || v.grade == null || v.grade === "") return "";
+    const label = GRADE_LABEL[v.grade] || v.grade;
+    const clause = validationClause(v);
+    const cls = v.grade === "reasonable" ? " reasonable" : "";
+    return `<span class="calc-tag calc-tag-grade ${esc(v.grade)}${cls}" title="${esc(clause)}"><strong>${esc(label)}</strong><span class="sr-only"> — ${esc(clause)}</span></span>`;
   }
 
   function simpleCatalogMissReason(pick, fmt) {
@@ -413,6 +728,34 @@ const XYCALC_APP = (() => {
     </div>`;
   }
 
+  function skuOrCustom(name) {
+    return name || "custom sizing";
+  }
+
+  function simpleCloudPicksHtml(s, ram, awsPick, fmt) {
+    const aws = s && s.cpu;
+    const azure = s && s.azure;
+    if (!aws && !azure) return "";
+    const cell = (name) => `<td><div class="name">${esc(skuOrCustom(name))}</div></td>`;
+    const ends = [
+      { key: "lo", label: "Low", aws: aws && aws.instance_lo, azure: azure && azure.lo },
+      { key: "mode", label: "Typical", aws: aws && aws.instance_mode, azure: azure && azure.mode },
+      { key: "hi", label: "High", aws: aws && aws.instance_hi, azure: azure && azure.hi },
+    ];
+    const body = ends.map((row) => `<tr>
+      <th scope="row">${esc(row.label)}</th>
+      ${aws ? cell(row.aws) : ""}
+      ${azure ? cell(row.azure) : ""}
+    </tr>`).join("");
+    return `<table class="cloud-picks">
+        <thead><tr><th></th>
+          ${aws ? `<th>AWS <span class="note">r8i → U7i</span></th>` : ""}
+          ${azure ? `<th>Azure <span class="note">Esv5 / Esv6</span></th>` : ""}
+        </tr></thead>
+        <tbody>${body}</tbody>
+      </table>`;
+  }
+
   function simpleRamHonestyOk(ramText, bannerHtml, weakest) {
     if (!ramText) return true;
     if (!weakest || weakest.grade == null) return false;
@@ -432,7 +775,7 @@ const XYCALC_APP = (() => {
     const ram = s.ram;
     const pick = (data && data.simple_instance_pick) || null;
     const weakest = simpleWeakestValidation(data && data.steps);
-    const bannerHtml = validationBannerHtml(weakest);
+    const bannerHtml = simpleGradeTagHtml(weakest);
     const honestyHtml = simpleHonestyBlockHtml(kind);
     const footnotesHtml = sizePathFootnotesHtml(
       data && data.steps,
@@ -440,15 +783,10 @@ const XYCALC_APP = (() => {
     );
     let ramText = ram && fmt ? fmt(ram.mode, ram.unit) : "";
     if (ramText && !simpleRamHonestyOk(ramText, bannerHtml, weakest)) ramText = "";
-    const ends = [
-      { key: "lo", label: "Low", name: s.cpu && s.cpu.instance_lo, ram: ram && ram.lo },
-      { key: "mode", label: "Mode", name: s.cpu && s.cpu.instance_mode, ram: ram && ram.mode },
-      { key: "hi", label: "High", name: s.cpu && s.cpu.instance_hi, ram: ram && ram.hi },
-    ];
-    const picksHtml = ends.map((e) => simplePickCardHtml(e, ram, pick, fmt)).join("");
+    const picksHtml = simpleCloudPicksHtml(s, ram, pick, fmt);
     const r6 = s.r6i;
     const r6iHtml = r6
-      ? `<div class="simple-pick"><div class="which">r6i family</div>
+      ? `<div class="simple-family"><div class="which">r6i family</div>
          <div class="name">${esc(r6.mode || "custom sizing")}</div>
          <div class="spec">${r6.exceeds_pool
            ? "ceiling " + esc(r6.largest || "r6i.32xlarge") + " · 1,024 GiB"
@@ -465,7 +803,7 @@ const XYCALC_APP = (() => {
       picksHtml: picksHtml,
       r6iHtml: r6iHtml,
       footnotesHtml: footnotesHtml,
-      html: (ramText || "") + bannerHtml + honestyHtml + footnotesHtml + picksHtml + r6iHtml,
+      html: (ramText || "") + honestyHtml + bannerHtml + footnotesHtml + picksHtml + r6iHtml,
     };
   }
 
@@ -645,33 +983,82 @@ const XYCALC_APP = (() => {
   // tests catch before the page can boot against the wrong node.
   const SIMPLE_FORM_FIELD_IDS = [
     "simple-vulns",
-    "simple-vuln-storage",
+    "simple-db-size",
     "simple-devices",
     "simple-device-avg",
     "simple-residual",
   ];
+  const BASIC_DEFAULT_VULN_COUNT = "250000";
+  const SIMPLE_SIZE_SLIDER_MIN_GB = 10;
+  const SIMPLE_SIZE_SLIDER_MAX_GB = 32000;
+  const SIMPLE_SIZE_SLIDER_STEPS = 80;
 
-  // Simple → mongodb.size-to-instance. Vuln count + today's storageSize are
-  // the family measurement; target count equals today's count so a 500 GB
-  // footprint stays 500 GB (homepage / Rickey path) instead of picking up
-  // three-year NVD growth.
+  function simpleSizeSliderGb(index) {
+    const t = Math.max(0, Math.min(SIMPLE_SIZE_SLIDER_STEPS, Number(index))) / SIMPLE_SIZE_SLIDER_STEPS;
+    const gb = SIMPLE_SIZE_SLIDER_MIN_GB * Math.pow(
+      SIMPLE_SIZE_SLIDER_MAX_GB / SIMPLE_SIZE_SLIDER_MIN_GB,
+      t,
+    );
+    if (gb < 20) return Math.round(gb);
+    if (gb < 100) return Math.round(gb / 5) * 5;
+    if (gb < 1000) return Math.round(gb / 10) * 10;
+    if (gb < 10000) return Math.round(gb / 50) * 50;
+    return Math.round(gb / 100) * 100;
+  }
+
+  function formatSimpleSizeSliderGb(gb) {
+    if (gb >= 1000) {
+      const tb = gb / 1000;
+      const n = tb >= 10 ? Math.round(tb) : Math.round(tb * 10) / 10;
+      return n + "TB";
+    }
+    return gb + "GB";
+  }
+
+  function simpleSizeSliderIndex(gb) {
+    const g = Math.max(SIMPLE_SIZE_SLIDER_MIN_GB, Math.min(SIMPLE_SIZE_SLIDER_MAX_GB, Number(gb) || SIMPLE_SIZE_SLIDER_MIN_GB));
+    const t = Math.log(g / SIMPLE_SIZE_SLIDER_MIN_GB) /
+      Math.log(SIMPLE_SIZE_SLIDER_MAX_GB / SIMPLE_SIZE_SLIDER_MIN_GB);
+    return Math.round(t * SIMPLE_SIZE_SLIDER_STEPS);
+  }
+
+  // Next calendar year is the cited YoY band applied to the last observed
+  // annual count — not an NVD forecast. The coefficient notes say the band
+  // brackets recent publication rates for a one-year add_fraction.
+  function nvdNextYearProjection(chart) {
+    const years = chart && chart.annual;
+    const g = chart && chart.growth_pct;
+    if (!years || !years.length || !g || g.mode == null) return null;
+    const last = years[years.length - 1];
+    if (!last || !(last.count > 0) || last.year == null) return null;
+    const scale = (pct) => last.count * (1 + Number(pct) / 100);
+    return {
+      year: last.year + 1,
+      lo: scale(g.lo),
+      mode: scale(g.mode),
+      hi: scale(g.hi),
+    };
+  }
+
+  // Basic → mongodb.size-to-instance. DB size is today's footprint. Vuln
+  // count defaults to the homepage 250000 with target == baseline so a 500 GB
+  // box stays 500 GB instead of picking up three-year NVD growth.
   function simpleChainInputs(fields) {
     const src = fields || {};
-    const vulns = String(src.vulns || "").replace(/,/g, "").trim();
     const storageRaw = String(src.storage || src.size || "").trim();
-    if (!vulns || !storageRaw) return null;
+    if (!storageRaw) return null;
+    const vulns = String(src.vulns || BASIC_DEFAULT_VULN_COUNT).replace(/,/g, "").trim()
+      || BASIC_DEFAULT_VULN_COUNT;
     const devices = String(src.devices || "").replace(/,/g, "").trim();
     const deviceAvgRaw = String(src.deviceAvg || "").trim();
     const residualRaw = String(src.residual || "").trim();
-    if ((devices && !deviceAvgRaw) || (!devices && deviceAvgRaw)) {
-      throw new Error("Device count and avg on-disk bytes must be supplied together.");
-    }
+    const devicePairComplete = !!(devices && deviceAvgRaw);
     const inputs = {
       baseline_vuln_count: vulns,
       baseline_storage_size: normalizeSimpleSize(storageRaw),
       target_vuln_count: vulns,
     };
-    if (devices) {
+    if (devicePairComplete) {
       inputs.device_count = devices;
       inputs.device_avg_storage_bytes = normalizeSimpleAvgBytes(deviceAvgRaw);
     }
@@ -807,22 +1194,29 @@ const XYCALC_APP = (() => {
       }) || "scenario";
     }
 
+    let lastSimpleData = null;
     let writingHash = false;
     let hashTimer = null;
     let lastSingleCitation = "";
     let lastScenarioCitation = "";
 
+    function currentMode() {
+      for (let i = 0; i < MODES.length; i++) {
+        if (document.body.classList.contains("mode-" + MODES[i])) return MODES[i];
+      }
+      return "basic";
+    }
+
     function permalinkState() {
-      const scientific = document.body.classList.contains("mode-scientific");
-      const simpleSurface = document.body.classList.contains("mode-simple") || scientific;
-      const state = { mode: scientific ? "scientific" : (simpleSurface ? "simple" : "advanced"), inputs: {} };
-      if (simpleSurface) {
+      const mode = currentMode();
+      const state = { mode: mode, inputs: {} };
+      if (mode === "basic") {
         const vulns = $("simple-vulns") && $("simple-vulns").value.trim();
-        const storage = $("simple-vuln-storage") && $("simple-vuln-storage").value.trim();
+        const storage = $("simple-db-size") && $("simple-db-size").value.trim();
         const devices = $("simple-devices") && $("simple-devices").value.trim();
         const deviceAvg = $("simple-device-avg") && $("simple-device-avg").value.trim();
         const residual = $("simple-residual") && $("simple-residual").value.trim();
-        if (vulns) state.inputs.vulns = vulns;
+        if (vulns && vulns !== BASIC_DEFAULT_VULN_COUNT) state.inputs.vulns = vulns;
         if (storage) state.inputs.storage = storage;
         if (devices) state.inputs.devices = devices;
         if (deviceAvg) state.inputs.deviceAvg = deviceAvg;
@@ -869,18 +1263,18 @@ const XYCALC_APP = (() => {
       if (!view) return false;
       writingHash = true;
       try {
-        if (view.mode === "simple" || view.mode === "scientific") {
-          setMode(view.mode, { persist: false, hash: false });
+        if (view.mode === "basic") {
+          setMode("basic", { persist: false, hash: false });
           const storageVal = parsed.inputs.storage || parsed.inputs.size;
           if (parsed.inputs.vulns && $("simple-vulns")) $("simple-vulns").value = parsed.inputs.vulns;
-          if (storageVal && $("simple-vuln-storage")) $("simple-vuln-storage").value = storageVal;
+          if (storageVal && $("simple-db-size")) $("simple-db-size").value = storageVal;
           if (parsed.inputs.devices && $("simple-devices")) $("simple-devices").value = parsed.inputs.devices;
           if (parsed.inputs.deviceAvg && $("simple-device-avg")) $("simple-device-avg").value = parsed.inputs.deviceAvg;
           if (parsed.inputs.residual && $("simple-residual")) $("simple-residual").value = parsed.inputs.residual;
           calculateSimple();
           return true;
         }
-        setMode("advanced", { persist: false, hash: false });
+        setMode(view.mode, { persist: false, hash: false });
         if (view.tab) setTab(view.tab, { hash: false });
         if (parsed.scenario) {
           pickScenario(parsed.scenario);
@@ -896,8 +1290,7 @@ const XYCALC_APP = (() => {
           if (def) pickScenario(def.slug);
         }
         if (parsed.model) {
-          $("model").value = parsed.model;
-          renderInputs();
+          pickQuestion(parsed.model, { hash: false, collapse: true });
           for (const key of Object.keys(parsed.inputs)) {
             const el = $("in-" + key);
             if (el) el.value = parsed.inputs[key];
@@ -936,8 +1329,10 @@ const XYCALC_APP = (() => {
       $("model").innerHTML = MODELS.map((m) =>
         `<option value="${esc(m.slug)}">${esc(m.question)}${esc(gradeSuffix(m.validation && m.validation.grade))}</option>`
       ).join("");
+      bootQuestionPicker();
       renderInputs();
       $("model").addEventListener("change", () => {
+        syncQuestionPicker($("model").value);
         renderInputs();
         scheduleSingleCalc();
         scheduleHash();
@@ -952,8 +1347,7 @@ const XYCALC_APP = (() => {
         btn.addEventListener("click", () => setTab(btn.dataset.tab)));
       document.addEventListener("keydown", (e) => {
         if (e.key === "Enter" && e.target.tagName === "INPUT") {
-          if (document.body.classList.contains("mode-simple")
-              || document.body.classList.contains("mode-scientific")) calculateSimple();
+          if (currentMode() === "basic") calculateSimple();
           else if (!$("tab-single").hidden) calculate();
           else if (!$("tab-scenario").hidden) calculateScenario(false);
         }
@@ -990,33 +1384,62 @@ const XYCALC_APP = (() => {
     let simpleCalcTimer = null;
 
     function bootMode() {
-      let mode = "simple";
+      let mode = "basic";
       try {
         const saved = localStorage.getItem(MODE_KEY);
-        if (saved === "simple" || saved === "scientific" || saved === "advanced") mode = saved;
+        if (saved) mode = canonicalMode(saved);
       } catch (_) { /* private mode / blocked storage */ }
       setMode(mode, { persist: false, hash: false });
-      $("mode-simple").addEventListener("click", () => setMode("simple"));
-      $("mode-scientific").addEventListener("click", () => setMode("scientific"));
+      $("mode-basic").addEventListener("click", () => setMode("basic"));
       $("mode-advanced").addEventListener("click", () => setMode("advanced"));
+      $("mode-scientific").addEventListener("click", () => setMode("scientific"));
+      $("mode-data").addEventListener("click", () => setMode("data"));
     }
 
     function setMode(mode, opts) {
       const persist = !opts || opts.persist !== false;
-      const next = (mode === "scientific" || mode === "advanced") ? mode : "simple";
-      document.body.classList.remove("mode-simple", "mode-scientific", "mode-advanced");
+      const next = canonicalMode(mode);
+      document.body.classList.remove("mode-basic", "mode-simple", "mode-scientific", "mode-advanced", "mode-data");
       document.body.classList.add("mode-" + next);
-      $("mode-simple").setAttribute("aria-pressed", next === "simple" ? "true" : "false");
-      $("mode-scientific").setAttribute("aria-pressed", next === "scientific" ? "true" : "false");
+      $("mode-basic").setAttribute("aria-pressed", next === "basic" ? "true" : "false");
       $("mode-advanced").setAttribute("aria-pressed", next === "advanced" ? "true" : "false");
+      $("mode-scientific").setAttribute("aria-pressed", next === "scientific" ? "true" : "false");
+      $("mode-data").setAttribute("aria-pressed", next === "data" ? "true" : "false");
       const subnav = document.querySelector(".view-subnav");
-      if (subnav) subnav.setAttribute("aria-hidden", next === "advanced" ? "false" : "true");
+      if (subnav) subnav.setAttribute("aria-hidden", next === "basic" ? "true" : "false");
+      const allowed = MODE_TABS[next] || [];
+      if (allowed.length) {
+        const cur = currentTab();
+        if (allowed.indexOf(cur) < 0) setTab(allowed[0], { hash: false });
+      }
       if (persist) {
         try { localStorage.setItem(MODE_KEY, next); }
         catch (_) { /* ignore */ }
       }
-      if (next === "simple" || next === "scientific") scheduleSimpleCalc();
+      if (next === "basic" || next === "scientific") scheduleSimpleCalc();
+      if (next === "scientific") maybeRenderScientificMath();
       if (!opts || opts.hash !== false) scheduleHash();
+    }
+
+    function gbFromSimpleSizeText(raw) {
+      const t = String(raw || "").trim();
+      if (!t) return null;
+      try {
+        const bytes = XY.parseBytes(normalizeSimpleSize(t));
+        if (!(bytes > 0)) return null;
+        return bytes / 1e9;
+      } catch (e) {
+        return null;
+      }
+    }
+
+    function syncSimpleSizeSlider() {
+      const slider = $("simple-size-slider");
+      const field = $("simple-db-size");
+      if (!slider || !field) return;
+      const gb = gbFromSimpleSizeText(field.value);
+      if (gb == null) return;
+      slider.value = String(simpleSizeSliderIndex(gb));
     }
 
     function bootSimple() {
@@ -1025,7 +1448,17 @@ const XYCALC_APP = (() => {
         if (!el) throw new Error("Simple form missing #" + id);
         el.addEventListener("input", scheduleSimpleCalc);
       }
-      $("simple-result").addEventListener("click", (ev) => {
+      const sizeField = $("simple-db-size");
+      if (sizeField) sizeField.addEventListener("input", syncSimpleSizeSlider);
+      const slider = $("simple-size-slider");
+      if (!slider) throw new Error("Simple form missing #simple-size-slider");
+      slider.addEventListener("input", () => {
+        const gb = simpleSizeSliderGb(slider.value);
+        $("simple-db-size").value = formatSimpleSizeSliderGb(gb);
+        scheduleSimpleCalc();
+      });
+      syncSimpleSizeSlider();
+      $("simple-rail").addEventListener("click", (ev) => {
         if (ev.target && ev.target.id === "simple-open-scientific") {
           ev.preventDefault();
           setMode("scientific");
@@ -1033,7 +1466,10 @@ const XYCALC_APP = (() => {
           if (math) math.scrollIntoView({ behavior: "smooth", block: "start" });
         }
       });
+      paintSimpleNvdChart();
       scheduleSimpleCalc();
+      const aside = $("simple-aside");
+      if (aside) aside.innerHTML = basicAsideHtml();
     }
 
     let pendingExpandMathUntil = 0;
@@ -1048,7 +1484,7 @@ const XYCALC_APP = (() => {
 
     function openAdvancedFromSimple() {
       const vulns = ($("simple-vulns").value || "").trim();
-      const storageRaw = ($("simple-vuln-storage").value || "").trim();
+      const storageRaw = ($("simple-db-size").value || "").trim();
       const devices = ($("simple-devices").value || "").trim();
       const deviceAvgRaw = ($("simple-device-avg").value || "").trim();
       const residualRaw = ($("simple-residual").value || "").trim();
@@ -1086,24 +1522,28 @@ const XYCALC_APP = (() => {
       $("scenario-cascade").scrollIntoView({ behavior: "smooth", block: "start" });
     }
 
+    let simpleCalcRaf = null;
     function scheduleSimpleCalc() {
       clearTimeout(simpleCalcTimer);
-      simpleCalcTimer = setTimeout(calculateSimple, 180);
+      if (simpleCalcRaf != null) return;
+      simpleCalcRaf = requestAnimationFrame(() => {
+        simpleCalcRaf = null;
+        calculateSimple();
+      });
     }
 
     function calculateSimple() {
       const vulns = ($("simple-vulns").value || "").trim();
-      const storageRaw = ($("simple-vuln-storage").value || "").trim();
+      const storageRaw = ($("simple-db-size").value || "").trim();
       const devices = ($("simple-devices").value || "").trim();
       const deviceAvgRaw = ($("simple-device-avg").value || "").trim();
       const residualRaw = ($("simple-residual").value || "").trim();
       const err = $("simple-error");
       const status = $("simple-status");
-      if (!vulns || !storageRaw) {
+      if (!storageRaw) {
         $("simple-result").hidden = true;
         err.hidden = true;
-        status.textContent =
-          "Enter vuln count and storageSize — sizing updates as you type.";
+        status.textContent = "Enter DB size — sizing updates as you type.";
         return;
       }
       try {
@@ -1125,14 +1565,13 @@ const XYCALC_APP = (() => {
         if (residual && residual !== residualRaw) notes.push(`residual as ${residual}`);
         const as = notes.length ? ` (${notes.join("; ")})` : "";
         status.textContent = "Up to date" + as + " — change a field to recalculate.";
+        syncSimpleSizeSlider();
         const note = document.getElementById("simple-vuln-note");
         if (note) {
-          const n = Number(inputs.baseline_vuln_count);
           note.hidden = false;
-          note.textContent = "Sizing today's footprint for " + n.toLocaleString() + " vuln records.";
+          note.textContent = "Sizing today's footprint — no NVD growth (target count equals today).";
         }
-        if (document.body.classList.contains("mode-simple")
-            || document.body.classList.contains("mode-scientific")) scheduleHash();
+        if (currentMode() === "basic" || currentMode() === "scientific") scheduleHash();
       } catch (e) {
         $("simple-result").hidden = true;
         err.hidden = false;
@@ -1159,7 +1598,9 @@ const XYCALC_APP = (() => {
       // Re-pick against the floored band from the whole aws-ec2 catalog
       // (r8i, then cited U7i). An r8i-only filter made the homepage 500 GB
       // example report custom sizing on every card.
-      const catalog = CORPUS.instance_catalog || [];
+      const catalogs = CORPUS.instance_catalogs || {};
+      const catalog = catalogs["aws-ec2"] || CORPUS.instance_catalog || [];
+      const azureCatalog = catalogs["azure-vm"] || [];
       const ceiling = CORPUS.default_instance_ceiling_bytes;
       const band = { lo: s.ram.lo, mode: s.ram.mode, hi: s.ram.hi };
       const pick = XY.selectInstance
@@ -1190,6 +1631,17 @@ const XYCALC_APP = (() => {
           largest: r6iPick.largest_in_pool && r6iPick.largest_in_pool.name,
         };
       }
+      const azurePick = XY.selectInstance && azureCatalog.length
+        ? XY.selectInstance(band, azureCatalog, null, ceiling === 0 ? null : ceiling)
+        : null;
+      if (azurePick) {
+        s.azure = {
+          lo: azurePick.pick_lo && azurePick.pick_lo.name,
+          mode: azurePick.pick_mode && azurePick.pick_mode.name,
+          hi: azurePick.pick_hi && azurePick.pick_hi.name,
+          exceeds_pool: azurePick.exceeds_pool,
+        };
+      }
       data.sizing_summary = s;
       data.simple_instance_pick = pick || null;
       return data;
@@ -1201,7 +1653,7 @@ const XYCALC_APP = (() => {
       const paint = simpleFirstPaintHtml(
         data,
         fmt,
-        document.body.classList.contains("mode-scientific") ? "scientific" : "simple",
+        document.body.classList.contains("mode-scientific") ? "scientific" : "basic",
       );
       $("simple-result").hidden = false;
       if (ram && paint.ramText) {
@@ -1229,19 +1681,38 @@ const XYCALC_APP = (() => {
         $("simple-bandends").hidden = true;
       }
 
-      $("simple-picks").innerHTML = paint.picksHtml + (paint.r6iHtml || "");
+      $("simple-picks").innerHTML = paint.picksHtml;
+      const family = $("simple-family");
+      if (family) family.innerHTML = paint.r6iHtml || "";
       const slot = $("simple-honesty-slot");
-      if (slot) slot.innerHTML = paint.bannerHtml + paint.honestyHtml + (paint.footnotesHtml || "");
+      if (slot) slot.innerHTML = paint.honestyHtml + paint.bannerHtml;
       const val = $("simple-validation");
       if (val) val.hidden = true;
-      renderScientificMath(data);
+      paintSimpleNvdChart();
+      lastSimpleData = data;
+      maybeRenderScientificMath();
+    }
+
+    function scientificMathIsVisible() {
+      if (currentMode() !== "scientific") return false;
+      const panel = $("tab-math");
+      return !!(panel && !panel.hidden);
+    }
+
+    function maybeRenderScientificMath() {
+      if (!scientificMathIsVisible()) return;
+      renderScientificMath(lastSimpleData);
     }
 
     function setTab(name, opts) {
       TABS.forEach((tab) => {
-        $("tab-" + tab).hidden = name !== tab;
-        $("tab-btn-" + tab).classList.toggle("active", name === tab);
+        const panel = $("tab-" + tab);
+        const btn = $("tab-btn-" + tab);
+        if (panel) panel.hidden = name !== tab;
+        if (btn) btn.classList.toggle("active", name === tab);
       });
+      if (name === "math") maybeRenderScientificMath();
+      if (name === "single" && STATE) drawChart();
       if (!opts || opts.hash !== false) scheduleHash();
     }
 
@@ -1349,9 +1820,35 @@ const XYCALC_APP = (() => {
       });
     }
 
+    function renderScenarioGroup(g) {
+      const cards = (g.items || []).map(renderScenarioOption).join("");
+      const nested = (g.subs || []).map((sub) => `
+        <h4 class="scenario-sub-title">${esc(sub.label)}</h4>
+        <div class="scenario-list">${sub.items.map(renderScenarioOption).join("")}</div>`).join("");
+      const body = `${cards ? `<div class="scenario-list">${cards}</div>` : ""}${nested}`;
+      if (g.core) {
+        return `<section class="scenario-kind" data-kind="${esc(g.id)}">
+          <h3 class="scenario-kind-title">${esc(g.label)}</h3>
+          ${body}
+        </section>`;
+      }
+      return `<details class="scenario-kind-drawer" data-kind="${esc(g.id)}">
+        <summary class="scenario-kind-title">${esc(g.label)}</summary>
+        ${body}
+      </details>`;
+    }
+
+    function renderScenarioCatalog(scenarios) {
+      return groupScenarios(scenarios).map((band) => `
+        <section class="scenario-band" data-band="${esc(band.id)}">
+          <h2 class="scenario-band-title">${esc(band.label)}</h2>
+          ${band.groups.map(renderScenarioGroup).join("")}
+        </section>`).join("");
+    }
+
     function bootScenario() {
       const scenarios = CORPUS.scenarios || [];
-      $("scenario-picker").innerHTML = scenarios.map(renderScenarioOption).join("");
+      $("scenario-picker").innerHTML = renderScenarioCatalog(scenarios);
       wireScenarioPicker();
       $("scn-recalc").addEventListener("click", () => calculateScenario(false));
       const change = $("scenario-change");
@@ -1369,32 +1866,64 @@ const XYCALC_APP = (() => {
       selectScenario(slug);
     }
 
-    function renderNvdChart(chart) {
-      if (!chart?.annual?.length) return "";
-      const years = chart.annual;
-      const W = 420, H = 168, L = 52, R = 10, T = 18, B = 40;
+    function paintSimpleNvdChart() {
+      const slot = $("simple-nvd-chart");
+      if (!slot || slot.dataset.ready === "1") return;
+      slot.innerHTML = renderNvdChart(corpusNvdChart(), { fold: false, projectNext: true });
+      slot.dataset.ready = "1";
+    }
+
+    function corpusNvdChart() {
+      const scenarios = CORPUS.scenarios || [];
+      const inst = scenarios.find((s) => s.slug === "mongodb.size-to-instance");
+      return inst && inst.nvd_chart;
+    }
+
+    function renderNvdChart(chart, opts) {
+      if (!chart) return "";
+      const years = chart.annual || chart.years;
+      if (!years || !years.length) return "";
+      const fold = !opts || opts.fold !== false;
+      const proj = opts && opts.projectNext ? nvdNextYearProjection({ annual: years, growth_pct: chart.growth_pct }) : null;
+      const ticks = proj ? years.concat([{ year: proj.year }]) : years;
+      const W = 420, H = 168, L = 52, R = 14, T = 18, B = 40;
       const iw = W - L - R, ih = H - T - B;
-      const nvdMax = Math.max(...years.map((a) => a.count));
-      const yMax = nvdMax * 1.15;
-      const xAt = (i) => L + (years.length === 1 ? iw / 2 : (i / (years.length - 1)) * iw);
+      const nvdMax = Math.max(...years.map((a) => a.count), proj ? proj.hi : 0);
+      const yMax = nvdMax * 1.12;
+      const xAt = (i) => L + (ticks.length === 1 ? iw / 2 : (i / (ticks.length - 1)) * iw);
       const yAt = (v) => T + ih * (1 - v / yMax);
       const nvdPath = years.map((a, i) => `${i ? "L" : "M"}${esc(xAt(i).toFixed(1))} ${esc(yAt(a.count).toFixed(1))}`).join(" ");
       const dots = years.map((a, i) => `<circle class="nvd-dot" cx="${esc(xAt(i).toFixed(1))}" cy="${esc(yAt(a.count).toFixed(1))}" r="3.5"></circle>`).join("");
       const ms = years.map((a, i) => a.microsoft != null ? `<circle class="ms-dot" cx="${esc(xAt(i).toFixed(1))}" cy="${esc(yAt(a.microsoft).toFixed(1))}" r="4"></circle>` : "").join("");
-      const xLabels = years.map((a, i) => `<text x="${esc(xAt(i).toFixed(1))}" y="${H - 18}" text-anchor="middle">${esc(a.year)}</text>`).join("");
+      const xLabels = ticks.map((a, i) => `<text x="${esc(xAt(i).toFixed(1))}" y="${H - 18}" text-anchor="middle">${esc(a.year)}</text>`).join("");
       const g = chart.growth_pct;
       const src = chart.source_url ? `<a href="${esc(chart.source_url)}" target="_blank" rel="noopener">${esc(chart.source)}</a>` : esc(chart.source);
+      let projSvg = "";
+      let projNote = "";
+      if (proj && g) {
+        const i0 = years.length - 1;
+        const i1 = ticks.length - 1;
+        const fmtN = (n) => Math.round(n).toLocaleString("en-US");
+        projSvg =
+          `<line class="nvd-proj-band" x1="${esc(xAt(i1).toFixed(1))}" x2="${esc(xAt(i1).toFixed(1))}" y1="${esc(yAt(proj.hi).toFixed(1))}" y2="${esc(yAt(proj.lo).toFixed(1))}"></line>` +
+          `<path class="nvd-proj" d="M${esc(xAt(i0).toFixed(1))} ${esc(yAt(years[i0].count).toFixed(1))} L${esc(xAt(i1).toFixed(1))} ${esc(yAt(proj.mode).toFixed(1))}"></path>` +
+          `<circle class="nvd-proj-dot" cx="${esc(xAt(i1).toFixed(1))}" cy="${esc(yAt(proj.mode).toFixed(1))}" r="3.5"></circle>`;
+        projNote = ` ${proj.year} dashed = cited YoY band ${esc(g.lo)}–${esc(g.mode)}–${esc(g.hi)}% on ${esc(years[i0].year)}'s count (${fmtN(proj.lo)}–${fmtN(proj.mode)}–${fmtN(proj.hi)}) — not an NVD forecast. This page still sizes today's record count.`;
+      }
+      const svg = `<svg class="nvd-chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="CVEs published per year">
+            <g class="axis">${xLabels}<text class="axis-title" x="12" y="${T + ih / 2}" text-anchor="middle" transform="rotate(-90 12 ${T + ih / 2})">CVEs published per year</text></g>
+            <path class="nvd-line" d="${nvdPath}"></path>${dots}${ms}${projSvg}
+          </svg>`;
+      const meta = `<p class="nvd-meta">Cumulative through 2025: <strong>${esc((chart.cumulative_2025 || chart.cumulative_2025 || 0).toLocaleString())}</strong>.
+            YoY band: <strong>${esc(g.lo)}–${esc(g.mode)}–${esc(g.hi)}%</strong>. Source: ${src}.
+            ${chart.microsoft_note ? esc(chart.microsoft_note) : ""}${projNote}</p>`;
+      const body = `<div class="nvd-layout">${svg}${meta}</div>`;
+      if (!fold) {
+        return `<div class="nvd-fold"><div class="nvd-title">CVE publication (cited)</div>${body}</div>`;
+      }
       return `<details class="nvd-fold">
         <summary>CVE publication growth</summary>
-        <div class="nvd-layout">
-          <svg class="nvd-chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="CVEs published per year">
-            <g class="axis">${xLabels}<text class="axis-title" x="12" y="${T + ih / 2}" text-anchor="middle" transform="rotate(-90 12 ${T + ih / 2})">CVEs published per year</text></g>
-            <path class="nvd-line" d="${nvdPath}"></path>${dots}${ms}
-          </svg>
-          <p class="nvd-meta">Cumulative through 2025: <strong>${esc(chart.cumulative_2025.toLocaleString())}</strong>.
-            YoY band: <strong>${esc(g.lo)}–${esc(g.mode)}–${esc(g.hi)}%</strong>. Source: ${src}.
-            ${chart.microsoft_note ? esc(chart.microsoft_note) : ""}</p>
-        </div>
+        ${body}
       </details>`;
     }
 
@@ -1496,20 +2025,26 @@ const XYCALC_APP = (() => {
       try {
         const hasInputs = scenarioInputCount(currentScenario) > 0;
         $("scenario-form-panel").hidden = !hasInputs;
-        $("scenario-nvd-chart").innerHTML = hasInputs ? renderNvdChart(currentScenario.nvd_chart) : "";
+        $("scenario-nvd-chart").innerHTML = hasInputs ? renderNvdChart(currentScenario.nvd_chart, { projectNext: true }) : "";
         if (!hasInputs) {
           $("scenario-inputs").innerHTML = "";
           maybeAuto();
           return;
         }
         const defaults = SCENARIO_DEFAULTS[slug] || {};
-        const fields = (currentScenario.input_sections || []).map((sec) => `
-          <div class="input-section"><h3>${esc(sec.title)}</h3>
-          ${scenarioSectionCopyHtml(sec.title)}
+        const fields = (currentScenario.input_sections || []).map((sec) => {
+          const inner = `${scenarioSectionCopyHtml(sec.title)}
           <div class="input-grid">${(sec.inputs || []).map((i) =>
             scenarioInputControlHtml(i, defaults[i.key])
           ).join("")}
-          </div></div>`).join("")
+          </div>`;
+          if (scenarioSectionIsDrawer(sec)) {
+            return `<details class="input-section-drawer"><summary>${esc(sec.title)}</summary>
+          ${inner}</details>`;
+          }
+          return `<div class="input-section"><h3>${esc(sec.title)}</h3>
+          ${inner}</div>`;
+        }).join("")
           || `<div class="input-grid">${(currentScenario.inputs || []).map((i) =>
             scenarioInputControlHtml(i, defaults[i.key])
           ).join("")}</div>`;
@@ -1725,7 +2260,7 @@ const XYCALC_APP = (() => {
       const el = $("scientific-math");
       if (!el) return;
       if (!data || !data.steps || !data.steps.length) {
-        el.innerHTML = "";
+        el.innerHTML = "<p class=\"help\">Enter a DB size in Basic, or run a scenario in Advanced — cited steps appear here.</p>";
         return;
       }
       el.innerHTML = renderCascadeDetailsHtml(data, true);
@@ -1802,6 +2337,8 @@ const XYCALC_APP = (() => {
           || (existing ? existing.open : false);
         $("scenario-cascade").innerHTML = renderCascadeDetailsHtml(data, open);
         if (opts && opts.expandMath) expandScenarioMath();
+        lastSimpleData = data;
+        maybeRenderScientificMath();
         $("scn-recalc-status").textContent = citationOnly
           ? "Citation scenario — no fields to edit yet."
           : "Up to date — change any field to recalculate.";
@@ -1814,19 +2351,145 @@ const XYCALC_APP = (() => {
 
     function current() { return MODELS.find((m) => m.slug === $("model").value); }
 
+    function setQuestionChooserCollapsed(collapsed) {
+      const chooser = $("question-chooser");
+      const btn = $("question-change");
+      if (chooser) chooser.classList.toggle("collapsed", !!collapsed);
+      if (btn) btn.textContent = collapsed ? "Change question" : "Hide list";
+    }
+
+    function fillQuestionCompact(m) {
+      const title = $("question-compact-title");
+      const sub = $("question-compact-sub");
+      const compact = $("question-compact");
+      if (!title || !sub || !compact || !m) return;
+      const grade = m.validation && m.validation.grade;
+      const pill = grade
+        ? ` <span class="grade-pill">${esc(GRADE_PILL[grade] || grade)}</span>`
+        : "";
+      title.innerHTML = esc(shortModelTitle(m)) + pill;
+      sub.textContent = m.question || "";
+      compact.hidden = false;
+    }
+
+    function renderQuestionPicker(filter) {
+      const el = $("question-picker");
+      if (!el) return;
+      const selected = $("model") && $("model").value;
+      const card = (m) => {
+        const grade = m.validation && m.validation.grade;
+        const pill = grade
+          ? `<span class="grade-pill">${esc(GRADE_PILL[grade] || grade)}</span>`
+          : "";
+        const on = m.slug === selected;
+        return `<label class="scenario-opt question-opt${on ? " selected" : ""}" data-slug="${esc(m.slug)}">
+            <input type="radio" name="question" value="${esc(m.slug)}"${on ? " checked" : ""}>
+            <span>
+              <div class="label">${esc(shortModelTitle(m))} ${pill}</div>
+              <div class="sub">${esc(m.question || "")}</div>
+              <div class="slug">${esc(m.slug)}</div>
+            </span>
+          </label>`;
+      };
+      const kindBlock = (g) => {
+        const models = (g.items || []).filter((m) => modelMatchesQuery(m, filter));
+        const nested = (g.subs || []).map((sub) => {
+          const items = (sub.items || []).filter((m) => modelMatchesQuery(m, filter));
+          if (!items.length) return "";
+          return `<h4 class="scenario-sub-title">${esc(sub.label)}</h4>
+            <div class="scenario-list">${items.map(card).join("")}</div>`;
+        }).join("");
+        if (!models.length && !nested) return "";
+        const body = `${models.length ? `<div class="scenario-list">${models.map(card).join("")}</div>` : ""}${nested}`;
+        if (g.core) {
+          return `<section class="scenario-kind" data-kind="${esc(g.id)}">
+            <h3 class="scenario-kind-title">${esc(g.label)}</h3>
+            ${body}
+          </section>`;
+        }
+        return `<details class="scenario-kind-drawer" data-kind="${esc(g.id)}">
+          <summary class="scenario-kind-title">${esc(g.label)}</summary>
+          ${body}
+        </details>`;
+      };
+      const html = groupModelsByKind(MODELS).map((band) => {
+        const groups = band.groups.map(kindBlock).join("");
+        if (!groups) return "";
+        return `<section class="scenario-band" data-band="${esc(band.id)}">
+          <h2 class="scenario-band-title">${esc(band.label)}</h2>
+          ${groups}
+        </section>`;
+      }).join("");
+      el.innerHTML = html || "<p class='help'>No questions match that filter.</p>";
+      el.querySelectorAll("[data-slug]").forEach((c) => {
+        c.addEventListener("click", () => pickQuestion(c.dataset.slug));
+      });
+    }
+
+    function syncQuestionPicker(slug) {
+      fillQuestionCompact(MODELS.find((m) => m.slug === slug));
+      document.querySelectorAll("#question-picker [data-slug]").forEach((el) => {
+        const on = el.dataset.slug === slug;
+        el.classList.toggle("selected", on);
+        const radio = el.querySelector("input[type=radio]");
+        if (radio) radio.checked = on;
+      });
+    }
+
+    function pickQuestion(slug, opts) {
+      if (!slug || !MODELS.some((m) => m.slug === slug)) return;
+      const sel = $("model");
+      if (sel) sel.value = slug;
+      syncQuestionPicker(slug);
+      if (!opts || opts.collapse !== false) setQuestionChooserCollapsed(true);
+      renderInputs();
+      scheduleSingleCalc();
+      if (!opts || opts.hash !== false) scheduleHash();
+    }
+
+    function bootQuestionPicker() {
+      renderQuestionPicker("");
+      const filter = $("question-filter");
+      if (filter) {
+        filter.addEventListener("input", () => renderQuestionPicker(filter.value));
+      }
+      const change = $("question-change");
+      if (change) {
+        change.addEventListener("click", () => {
+          const chooser = $("question-chooser");
+          const collapsed = chooser && chooser.classList.contains("collapsed");
+          setQuestionChooserCollapsed(!collapsed);
+          if (collapsed && filter) filter.focus();
+        });
+      }
+      const initial = $("model") && $("model").value;
+      if (initial) {
+        fillQuestionCompact(MODELS.find((m) => m.slug === initial));
+        setQuestionChooserCollapsed(true);
+      }
+    }
+
     function renderInputs() {
       const m = current();
-      $("inputs").innerHTML = m.inputs.map((i) => `
+      const fieldHtml = (i) => `
         <div class="field">
           <label for="in-${esc(i.key)}">${esc(i.label)}${i.required ? "" : " <span class='help' style='display:inline'>optional</span>"}</label>
           <input id="in-${esc(i.key)}" data-key="${esc(i.key)}" autocomplete="off"
                  value="${esc(i.default_value == null ? "" : i.default_value)}"
                  placeholder="${i.unit === "bytes" ? "e.g. 500GB" : esc(i.unit)}">
           ${i.help ? `<div class="help">${esc(i.help)}</div>` : ""}
-        </div>`).join("");
+        </div>`;
+      const required = (m.inputs || []).filter((i) => i.required);
+      const optional = (m.inputs || []).filter((i) => !i.required);
+      $("inputs").innerHTML = required.map(fieldHtml).join("")
+        + (optional.length
+          ? `<details class="input-section-drawer"><summary>Optional inputs</summary>${optional.map(fieldHtml).join("")}</details>`
+          : "");
       $("sweep").innerHTML = m.inputs
         .map((i) => `<option value="${esc(i.key)}">${esc(i.label)}</option>`).join("");
       $("result").hidden = true;
+      const aside = $("single-aside");
+      if (aside) aside.innerHTML = modelAsideHtml(m);
       const st = $("single-recalc-status");
       if (st) st.textContent = "Sizing and the curve update as you type.";
     }
@@ -1881,6 +2544,8 @@ const XYCALC_APP = (() => {
       $("error").hidden = true;
       STATE = { model: m, inputs, result, available };
       render();
+      const aside = $("single-aside");
+      if (aside) aside.innerHTML = modelAsideHtml(m, result, fmt);
       const st = $("single-recalc-status");
       if (st) st.textContent = "Up to date — change a field or scrub the curve.";
     }
@@ -1999,6 +2664,9 @@ const XYCALC_APP = (() => {
 
     function drawChart() {
       if (!STATE) return;
+      if (currentMode() !== "scientific") return;
+      const panel = $("tab-single");
+      if (panel && panel.hidden) return;
       const s = computeSweep();
       const u = STATE.result.unit;
       const svg = $("chart");
@@ -2322,9 +2990,9 @@ const XYCALC_APP = (() => {
     }
 
     function openModelFromOcc(slug) {
+      setMode("scientific", { hash: false });
       setTab("single");
-      $("model").value = slug;
-      renderInputs();
+      pickQuestion(slug);
       if (slug === "mongodb.wt-cache") {
         const storage = $("in-storage_size");
         const index = $("in-index_size");
@@ -2445,16 +3113,8 @@ const XYCALC_APP = (() => {
         </tr>`;
       }).join("");
       drawCliffChart(g);
-      $("cliff-open-wt").addEventListener("click", () => {
-        setTab("single");
-        $("model").value = g.model || "mongodb.wt-cache";
-        renderInputs();
-        const storage = $("in-storage_size");
-        const index = $("in-index_size");
-        if (storage && !storage.value) storage.value = "500GB";
-        if (index && !index.value) index.value = "40GB";
-        calculate();
-      });
+      $("cliff-open-wt").addEventListener("click", () =>
+        openModelFromOcc(g.model || "mongodb.wt-cache"));
     }
 
     function drawCliffChart(g) {
@@ -2581,6 +3241,8 @@ const XYCALC_APP = (() => {
 
   return {
     TABS: TABS,
+    MODES: MODES,
+    MODE_TABS: MODE_TABS,
     SAMPLES: SAMPLES,
     esc: esc,
     ticks: ticks,
@@ -2595,6 +3257,11 @@ const XYCALC_APP = (() => {
     normalizeSimpleSize: normalizeSimpleSize,
     normalizeSimpleAvgBytes: normalizeSimpleAvgBytes,
     SIMPLE_FORM_FIELD_IDS: SIMPLE_FORM_FIELD_IDS,
+    BASIC_DEFAULT_VULN_COUNT: BASIC_DEFAULT_VULN_COUNT,
+    simpleSizeSliderGb: simpleSizeSliderGb,
+    formatSimpleSizeSliderGb: formatSimpleSizeSliderGb,
+    simpleSizeSliderIndex: simpleSizeSliderIndex,
+    nvdNextYearProjection: nvdNextYearProjection,
     simpleChainInputs: simpleChainInputs,
     gradeSuffix: gradeSuffix,
     weakestValidation: weakestValidation,
@@ -2605,6 +3272,8 @@ const XYCALC_APP = (() => {
     serializePermalink: serializePermalink,
     parsePermalink: parsePermalink,
     canonicalTab: canonicalTab,
+    canonicalMode: canonicalMode,
+    modeForTab: modeForTab,
     publicTab: publicTab,
     permalinkView: permalinkView,
     permalinkHref: permalinkHref,
@@ -2614,6 +3283,19 @@ const XYCALC_APP = (() => {
     validationBannerHtml: validationBannerHtml,
     formatCitation: formatCitation,
     GRADE_LABEL: GRADE_LABEL,
+    SYSTEM_ORDER: SYSTEM_ORDER,
+    systemLabel: systemLabel,
+    shortModelTitle: shortModelTitle,
+    modelMatchesQuery: modelMatchesQuery,
+    groupModelsBySystem: groupModelsBySystem,
+    MODEL_KIND: MODEL_KIND,
+    modelKind: modelKind,
+    groupModelsByKind: groupModelsByKind,
+    scenarioSectionIsDrawer: scenarioSectionIsDrawer,
+    SCENARIO_KIND: SCENARIO_KIND,
+    SCENARIO_TAXONOMY: SCENARIO_TAXONOMY,
+    scenarioKind: scenarioKind,
+    groupScenarios: groupScenarios,
     SIMPLE_HONESTY_LINE: SIMPLE_HONESTY_LINE,
     SIZE_PATH_FOOTNOTES: SIZE_PATH_FOOTNOTES,
     SIZE_PATH_RELATED_FOOTNOTES: SIZE_PATH_RELATED_FOOTNOTES,
@@ -2629,9 +3311,17 @@ const XYCALC_APP = (() => {
     displayValidation: displayValidation,
     simpleWeakestValidation: simpleWeakestValidation,
     simpleHonestyBlockHtml: simpleHonestyBlockHtml,
+    simpleGradeTagHtml: simpleGradeTagHtml,
     simpleCatalogMissReason: simpleCatalogMissReason,
     simpleRamHonestyOk: simpleRamHonestyOk,
+    simplePickCardHtml: simplePickCardHtml,
+    simpleCloudPicksHtml: simpleCloudPicksHtml,
     simpleFirstPaintHtml: simpleFirstPaintHtml,
+    infoCardHtml: infoCardHtml,
+    widestCitedTerm: widestCitedTerm,
+    answerRangeFactor: answerRangeFactor,
+    modelAsideHtml: modelAsideHtml,
+    basicAsideHtml: basicAsideHtml,
     scenarioInputControlHtml: scenarioInputControlHtml,
     scenarioSectionCopyHtml: scenarioSectionCopyHtml,
     queryRegimeSizingNote: queryRegimeSizingNote,

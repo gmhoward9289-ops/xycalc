@@ -70,9 +70,14 @@ https://swamplink.com/tools/xycalc/calculator/#tab=scenario&scenario=mongodb.siz
 
 Optional extras the page already understands (same hash, not a new scheme):
 
+Advanced Scenario groups questions by **Hardware** (instance sizing open by
+default; database internals, storage, OS in drawers) and **Runtime**
+(Services, Celery, MongoDB, Redis). Picking a scenario collapses the catalog
+so the form and results stay above the fold.
+
 | Param | Meaning |
 | --- | --- |
-| `mode` | `simple` or `advanced` (a model/scenario/tab forces advanced) |
+| `mode` | `basic` (alias `simple`), `advanced`, `scientific`, or `data`. A `tab` / `model` / `scenario` key opens that surface (scenario → Advanced, single/flow/math → Scientific, occupancy/cliff → Data). |
 | `available` | “what you already have”, e.g. `256GB` |
 | other keys | model/scenario inputs (`storage_size=500GB`, …) |
 

@@ -301,10 +301,21 @@ def test_render_substitutes_every_placeholder(blob):
     assert "size-path-footnote" in html
     assert 'id="simple-view"' in html
     assert 'id="single-model-footnotes"' in html
+    assert 'id="question-picker"' in html
+    assert 'id="question-filter"' in html
+    assert 'id="simple-rail"' in html
+    assert 'id="simple-family"' in html
     assert 'id="simple-honesty-slot"' in html
-    assert 'id="mode-simple"' in html
+    assert "cloud-picks" in html
+    assert "calc-tags" in html
+    assert "simple-instrument" in html
+    assert 'id="simple-aside"' in html
+    assert 'id="mode-basic"' in html
     assert 'id="mode-scientific"' in html
+    assert 'id="mode-data"' in html
     assert 'id="scientific-math"' in html
+    assert 'id="tab-math"' in html
+    assert 'id="work-chrome"' in html
     assert "--btn-ink" in html
     assert "--error" in html
     assert "Copy as citation" in html
@@ -320,8 +331,8 @@ def test_render_substitutes_every_placeholder(blob):
     assert "weakestValidation" in html
     assert "the sentence it was read from" in html
     assert 'id="simple-vulns"' in html
-    assert 'id="simple-vuln-storage"' in html
-    assert "simple-db-size" not in html
+    assert 'id="simple-db-size"' in html
+    assert "How big is the DB" in html
 
 
 def test_duplicate_id_helper_catches_the_issue_137_shape():
@@ -353,7 +364,7 @@ def test_simple_form_ids_unique_and_match_app_js():
     field_ids = re.findall(r'"([^"]+)"', listed.group(1))
     assert field_ids == [
         "simple-vulns",
-        "simple-vuln-storage",
+        "simple-db-size",
         "simple-devices",
         "simple-device-avg",
         "simple-residual",
@@ -369,8 +380,8 @@ def test_simple_form_ids_unique_and_match_app_js():
         if counts[rid] != 1:
             missing.append((rid, counts[rid]))
     assert missing == [], f"app.js simple ids missing or duplicated in HTML: {missing}"
-    assert "simple-db-size" not in html
-    assert "simple-db-size" not in app
+    assert "simple-db-size" in html
+    assert "simple-db-size" in app
 
 
 def test_exported_page_simple_ids_stay_unique(blob):
@@ -379,21 +390,26 @@ def test_exported_page_simple_ids_stay_unique(blob):
     counts = html_id_counts(html)
     for fid in (
         "simple-vulns",
-        "simple-vuln-storage",
+        "simple-db-size",
         "simple-devices",
         "simple-device-avg",
         "simple-residual",
         "simple-status",
         "simple-result",
+        "simple-size-slider",
+        "simple-nvd-chart",
     ):
         assert counts[fid] == 1, fid
-    assert "Enter vuln count and storageSize" in html
+    assert "How big is the DB" in html
+    assert "Refine estimate" in html
 
 
 def test_export_blob_carries_scenario_chain(blob):
     slugs = {s["slug"] for s in blob["scenarios"]}
     assert "mongodb.size-to-instance" in slugs
     inst = next(s for s in blob["scenarios"] if s["slug"] == "mongodb.size-to-instance")
+    assert inst["ui"]["band"] == "hardware"
+    assert inst["ui"]["group"] == "instance"
     assert inst["nvd_chart"]["annual"][0]["count"] == 28818
     assert inst["nvd_chart"]["annual"][2]["microsoft"] == 1255
     assert blob["instance_catalog"]
@@ -571,9 +587,10 @@ def test_template_keeps_simple_claim_and_reserved_advanced_subnav():
     text = TEMPLATE.read_text(encoding="utf-8")
     assert ".view-subnav {" in text
     assert "min-height: 2.35rem;" in text
-    assert "body.mode-simple .view-subnav .tabs" in text
-    assert "body.mode-simple .claim" not in text
+    assert "body.mode-basic .view-subnav .tabs" in text
+    assert "body.mode-basic .claim" not in text
     assert "body.mode-scientific .claim" not in text
+    assert "body.mode-data .claim" not in text
 
 
 def test_calculator_template_prints_git_in_provenance():

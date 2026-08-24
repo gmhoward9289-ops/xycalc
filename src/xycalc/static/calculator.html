@@ -66,12 +66,12 @@ body {
   font-family: var(--sans); line-height: 1.55;
   -webkit-font-smoothing: antialiased;
 }
-.wrap { max-width: 60rem; margin: 0 auto; padding: 2rem 1.25rem 5rem; }
+.wrap { max-width: 60rem; margin: 0 auto; padding: 1.5rem 1.25rem 4.5rem; }
 
-.crumb { font-size: .78rem; color: var(--muted); margin-bottom: 1.25rem; }
+.crumb { font-size: .78rem; color: var(--muted); margin-bottom: 1rem; }
 .crumb a { color: var(--muted); }
 
-header { border-bottom: 1px solid var(--line); padding-bottom: 1.25rem; margin-bottom: 2rem; }
+header { border-bottom: 1px solid var(--line); padding-bottom: 1rem; margin-bottom: 1.35rem; }
 h1 { font-size: 1.5rem; margin: 0 0 .25rem; letter-spacing: -.01em; }
 h1 span { color: var(--accent); font-family: var(--mono); }
 .tagline { color: var(--muted); margin: 0; font-size: .95rem; }
@@ -115,7 +115,7 @@ button.ghost[aria-pressed="true"] { color: var(--accent); border-color: var(--ac
   font-weight: 600; letter-spacing: -.02em; line-height: 1;
 }
 .answer .band { color: var(--muted); font-family: var(--mono); font-size: .95rem; margin-top: .5rem; }
-.answer .label { font-size: .75rem; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+.answer .label { font-size: .75rem; text-transform: uppercase; letter-spacing: .08em; color: var(--accent); font-weight: 700; }
 
 .bandbar { height: 6px; background: var(--line); border-radius: 3px; position: relative; margin: 1.25rem 0 .35rem; }
 .bandbar .fill { position: absolute; top: 0; bottom: 0; background: var(--accent); opacity: .35; border-radius: 3px; }
@@ -260,13 +260,72 @@ footer .family > span:first-child { white-space: nowrap; }
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
   overflow: hidden;
 }
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+}
+#question-chooser.collapsed #question-catalog { display: none; }
+.question-groups { display: flex; flex-direction: column; gap: 1rem; margin-top: .65rem; }
+.question-group-title {
+  font-size: .72rem; letter-spacing: .06em; text-transform: uppercase;
+  color: var(--muted); font-weight: 700; margin: 0 0 .35rem;
+}
 #scenario-chooser.collapsed #scenario-catalog { display: none; }
+.scenario-catalog-lead {
+  font-size: .8rem; color: var(--muted); margin: .15rem 0 .65rem;
+}
+.scenario-band {
+  margin-top: .85rem;
+  padding: .75rem .85rem .85rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--bg);
+}
+.scenario-band + .scenario-band { margin-top: .65rem; }
+.scenario-band[data-band="hardware"] {
+  border-left: 3px solid var(--floor);
+}
+.scenario-band[data-band="runtime"] {
+  border-left: 3px solid var(--amplifier);
+}
+.scenario-band-title {
+  font-size: .78rem; letter-spacing: .08em; text-transform: uppercase;
+  font-weight: 700; margin: 0 0 .55rem; color: var(--ink);
+}
+.scenario-kind { margin: 0 0 .55rem; }
+.scenario-kind-title {
+  font-size: .72rem; letter-spacing: .06em; text-transform: uppercase;
+  color: var(--accent); font-weight: 700; margin: 0 0 .35rem;
+}
+.scenario-kind-drawer {
+  margin: 0 0 .45rem;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: .35rem .6rem .45rem;
+  background: var(--panel);
+}
+.scenario-kind-drawer > summary.scenario-kind-title {
+  cursor: pointer;
+  list-style: none;
+  margin: 0;
+  padding: .25rem 0;
+}
+.scenario-kind-drawer > summary.scenario-kind-title::-webkit-details-marker { display: none; }
+.scenario-kind-drawer[open] > summary.scenario-kind-title { margin-bottom: .35rem; }
+.scenario-sub-title {
+  font-size: .68rem; letter-spacing: .05em; text-transform: uppercase;
+  color: var(--muted); font-weight: 700; margin: .45rem 0 .3rem;
+}
+.scenario-list { display: flex; flex-direction: column; gap: .5rem; }
+.question-opt .slug {
+  font-family: var(--mono); font-size: .72rem; color: var(--muted); margin-top: .2rem;
+}
 .scenario-workbench {
   display: grid; gap: 1rem; margin-bottom: 1rem; align-items: start;
 }
 @media (min-width: 52rem) {
   .scenario-workbench {
-    grid-template-columns: minmax(0, 1.15fr) minmax(17rem, .9fr);
+    grid-template-columns: minmax(0, 1fr) minmax(22rem, 1.05fr);
   }
   .scenario-workbench:has(#scenario-form-panel[hidden]) {
     grid-template-columns: 1fr;
@@ -346,8 +405,22 @@ footer .family > span:first-child { white-space: nowrap; }
 .sizing-summary { border-color: var(--accent); }
 .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr)); gap: 1rem; margin-top: .75rem; }
 .summary-metric { border: 1px solid var(--line); border-radius: 6px; padding: .75rem; }
-.summary-metric .kicker { font-size: .68rem; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); font-weight: 700; }
-.summary-metric .primary { font-family: var(--mono); font-size: 1.25rem; font-weight: 600; }
+.summary-metric .kicker { font-size: .68rem; text-transform: uppercase; letter-spacing: .07em; color: var(--accent); font-weight: 700; }
+.summary-metric .primary { font-family: var(--mono); font-size: 1.35rem; font-weight: 600; }
+.info-stack { display: flex; flex-direction: column; gap: .75rem; }
+.info-card {
+  background: var(--panel); border: 1px solid var(--line); border-radius: 8px;
+  padding: .85rem .9rem;
+}
+.info-card .kicker {
+  font-size: .68rem; text-transform: uppercase; letter-spacing: .07em;
+  color: var(--muted); font-weight: 700; margin: 0 0 .35rem;
+}
+.info-card .primary {
+  font-family: var(--mono); font-size: 1.05rem; font-weight: 600; margin: 0 0 .35rem;
+}
+.info-card p { margin: 0; font-size: .82rem; color: var(--muted); line-height: 1.45; }
+.info-card p + p { margin-top: .45rem; }
 .nvd-layout { display: grid; grid-template-columns: minmax(14rem, 1.3fr) minmax(12rem, 1fr); gap: .75rem; }
 svg.nvd-chart { width: 100%; height: auto; display: block; }
 .nvd-chart .axis line { stroke: var(--line); }
@@ -355,12 +428,41 @@ svg.nvd-chart { width: 100%; height: auto; display: block; }
 .nvd-chart .nvd-line { fill: none; stroke: var(--accent); stroke-width: 2; }
 .nvd-chart .nvd-dot { fill: var(--accent); }
 .nvd-chart .ms-dot { fill: var(--amplifier); }
+.nvd-chart .nvd-proj { fill: none; stroke: var(--accent); stroke-width: 2; stroke-dasharray: 4 3; opacity: .75; }
+.nvd-chart .nvd-proj-band { stroke: var(--accent); stroke-width: 5; opacity: .28; stroke-linecap: round; }
+.nvd-chart .nvd-proj-dot { fill: var(--bg); stroke: var(--accent); stroke-width: 2; }
+#simple-nvd-chart { margin-top: .75rem; }
+#simple-nvd-chart .nvd-fold { margin: 0; }
+#simple-nvd-chart .nvd-fold > .nvd-title {
+  font-size: .72rem; letter-spacing: .06em; text-transform: uppercase;
+  color: var(--accent); font-weight: 700; margin: 0 0 .45rem;
+}
 .nvd-meta { font-size: .72rem; color: var(--muted); }
 .funnel-row { display: grid; grid-template-columns: 8.5rem 1fr auto; gap: .45rem; align-items: center; margin-top: .35rem; }
 .funnel-track { height: 8px; background: var(--line); border-radius: 4px; overflow: hidden; }
 .funnel-track span { display: block; height: 100%; background: var(--accent); opacity: .5; }
 .cascade-wrap { margin-top: .85rem; }
-.form-heading { font-size: .72rem; letter-spacing: .04em; color: var(--muted); margin: 0 0 .65rem; font-weight: 700; }
+.input-section-drawer {
+  margin: 0 0 .75rem;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: .4rem .7rem .55rem;
+  background: var(--bg);
+}
+.input-section-drawer > summary {
+  cursor: pointer;
+  font-size: .78rem;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding: .2rem 0;
+}
+.input-section-drawer[open] > summary { margin-bottom: .45rem; }
+.sizing-summary h2, .form-heading {
+  font-size: .72rem; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--accent); font-weight: 700;
+}
 @media (max-width: 42rem) {
   .input-grid, .nvd-layout { grid-template-columns: 1fr; }
   .ladder .mark { font-size: .62rem; }
@@ -502,7 +604,7 @@ svg.nvd-chart { width: 100%; height: auto; display: block; }
 }
 [hidden] { display: none !important; }
 
-/* -- Simple / Advanced (#54) -- */
+/* -- Basic / Advanced / Scientific / Data -- */
 .mode-bar {
   display: flex; gap: .35rem; align-items: center;
   margin: 0 0 .5rem; flex-wrap: wrap;
@@ -521,56 +623,168 @@ svg.nvd-chart { width: 100%; height: auto; display: block; }
 .mode-btn[aria-pressed="true"] {
   color: var(--accent); border-color: var(--accent); background: transparent;
 }
-/* Reserve Advanced tab-row height in both modes so the panel below does not jump. */
+/* Reserve the tab-row height in every view so the panel below does not jump. */
 .view-subnav {
   min-height: 2.35rem;
   margin: 0 0 1.25rem;
 }
 .view-subnav .tabs { margin-bottom: 0; }
-body.mode-simple .view-subnav .tabs,
-body.mode-scientific .view-subnav .tabs { display: none; }
-body.mode-simple #advanced-chrome,
-body.mode-scientific #advanced-chrome { display: none !important; }
-body.mode-advanced #simple-view { display: none !important; }
-body.mode-simple #scientific-math { display: none !important; }
+body.mode-basic .view-subnav .tabs { display: none; }
+body.mode-advanced .tab:not([data-tab="scenario"]) { display: none; }
+body.mode-scientific .tab:not([data-tab="math"]):not([data-tab="single"]):not([data-tab="flow"]) { display: none; }
+body.mode-data .tab:not([data-tab="occupancy"]):not([data-tab="cliff"]) { display: none; }
+body.mode-basic #work-chrome { display: none !important; }
+body.mode-advanced #simple-view,
+body.mode-scientific #simple-view,
+body.mode-data #simple-view { display: none !important; }
 .simple-answer .band-row {
   display: flex; justify-content: space-between; gap: 1rem;
   font-family: var(--mono); font-size: .85rem; color: var(--muted);
   margin-top: .35rem;
 }
-.simple-picks {
-  display: grid; grid-template-columns: repeat(3, 1fr); gap: .75rem;
-  margin-top: 1.25rem;
+#simple-rail { margin-bottom: 1rem; }
+.simple-instrument { padding: 1rem 1.1rem 1.1rem; margin-bottom: 1rem; }
+.simple-instrument-grid {
+  display: grid; gap: 1.25rem 1.5rem; align-items: start;
 }
-@media (max-width: 40rem) {
-  .simple-picks { grid-template-columns: 1fr; }
+@media (min-width: 52rem) {
+  .simple-instrument-grid {
+    grid-template-columns: minmax(14rem, 0.36fr) minmax(0, 1fr);
+  }
+}
+.simple-in .field { margin-bottom: .75rem; }
+.simple-size-slider { margin: .15rem 0 .85rem; }
+.simple-size-slider input[type="range"] {
+  width: 100%; margin: .15rem 0 .2rem; accent-color: var(--accent);
+  height: 1.35rem; padding: 0; border: 0; background: transparent;
+  font-family: inherit;
+}
+.simple-size-slider-scale {
+  display: flex; justify-content: space-between;
+  font-family: var(--mono); font-size: .68rem; color: var(--muted);
+}
+.simple-refine {
+  margin: .45rem 0 .65rem;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--bg);
+}
+.simple-refine > summary {
+  list-style: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  font-size: .8rem;
+  font-weight: 700;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  color: var(--ink);
+  padding: .55rem .75rem;
+}
+.simple-refine > summary::-webkit-details-marker { display: none; }
+.simple-refine > summary::before {
+  content: "";
+  width: 0; height: 0;
+  border-style: solid;
+  border-width: .28rem 0 .28rem .42rem;
+  border-color: transparent transparent transparent var(--accent);
+  flex-shrink: 0;
+}
+.simple-refine[open] > summary::before {
+  border-width: .42rem .28rem 0 .28rem;
+  border-color: var(--accent) transparent transparent transparent;
+}
+.simple-refine > summary:hover { color: var(--accent); }
+.simple-refine[open] > summary {
+  border-bottom: 1px solid var(--line);
+  margin-bottom: .15rem;
+}
+.simple-refine .field { margin: .75rem .75rem 0; }
+.simple-refine .field:last-child { margin-bottom: .75rem; }
+#simple-result .answer { padding: .15rem 0 .1rem; text-align: left; }
+#simple-result .bandbar { margin: .55rem 0 .2rem; }
+.calc-tags {
+  display: flex; flex-wrap: wrap; gap: .35rem; align-items: center;
+  margin: .45rem 0 .15rem;
+}
+.calc-tag {
+  display: inline-flex; align-items: center; gap: .25rem;
+  font-size: .68rem; font-weight: 500; line-height: 1.25;
+  color: var(--muted);
+  border: 1px solid var(--line); background: transparent;
+  border-radius: 999px; padding: .12rem .55rem;
+  font-family: inherit;
+}
+button.calc-tag { cursor: pointer; }
+button.calc-tag:hover { border-color: var(--accent); color: var(--accent); }
+.calc-tag-grade.none::before,
+.calc-tag-grade.thin::before {
+  content: ""; width: 6px; height: 6px; border-radius: 50%;
+  background: var(--warn-line); flex-shrink: 0;
+}
+.simple-picks { margin-top: .55rem; }
+.cloud-picks {
+  width: 100%; border-collapse: collapse; font-size: .78rem;
+}
+.cloud-picks th, .cloud-picks td {
+  padding: .4rem .35rem; border-bottom: 1px solid var(--line);
+  vertical-align: top; text-align: left;
+}
+.cloud-picks thead th {
+  font-size: .65rem; text-transform: uppercase; letter-spacing: .05em;
+  color: var(--muted); font-weight: 600;
+}
+.cloud-picks thead .note {
+  display: block; font-size: .62rem; font-weight: 400;
+  text-transform: none; letter-spacing: 0; margin-top: .1rem;
+}
+.cloud-picks tbody th { font-weight: 600; width: 5.5rem; color: var(--muted); }
+.cloud-picks .name {
+  font-family: var(--mono); font-size: .72rem; font-weight: 600;
+  overflow-wrap: anywhere; line-height: 1.25;
 }
 .simple-pick {
   border: 1px solid var(--line); border-radius: 8px;
-  padding: .85rem .9rem; background: var(--bg); text-align: center;
+  padding: .7rem .55rem; background: var(--bg); text-align: center;
+  min-width: 0;
 }
 .simple-pick .which {
   font-size: .7rem; text-transform: uppercase; letter-spacing: .06em;
   color: var(--muted); margin: 0 0 .35rem;
 }
 .simple-pick .name {
-  font-family: var(--mono); font-size: 1.05rem; font-weight: 600;
+  font-family: var(--mono); font-size: clamp(.72rem, 1.6vw, .95rem);
+  font-weight: 600; overflow-wrap: anywhere; line-height: 1.25;
 }
 .simple-pick .spec {
   font-size: .78rem; color: var(--muted); margin-top: .35rem;
 }
+.simple-family {
+  margin-top: .5rem;
+  border: 1px solid var(--line); border-radius: 6px;
+  padding: .4rem .65rem; background: var(--bg);
+  font-size: .78rem;
+}
+.simple-family .which {
+  font-size: .7rem; text-transform: uppercase; letter-spacing: .06em;
+  color: var(--muted); margin: 0 0 .2rem;
+}
+.simple-family .name {
+  font-family: var(--mono); font-size: .9rem; font-weight: 600;
+}
+.simple-family .spec, .simple-family .miss {
+  font-size: .78rem; color: var(--muted); margin-top: .25rem;
+}
+.simple-basics {
+  display: grid; gap: 1rem; align-items: start;
+}
+@media (min-width: 52rem) {
+  .simple-basics { grid-template-columns: minmax(0, 1.15fr) minmax(16rem, .85fr); }
+}
 .simple-pick.mode-pick { border-color: var(--accent); }
 .simple-pick .miss {
   font-size: .72rem; color: var(--warn-ink); margin-top: .4rem; line-height: 1.35;
-}
-.simple-honesty {
-  border: 2px solid var(--stop-line); background: var(--stop-bg); color: var(--stop-ink);
-  border-radius: 8px; padding: .85rem .95rem; margin-top: .85rem; font-size: .9rem;
-}
-.simple-honesty p { margin: 0 0 .65rem; }
-.simple-honesty #simple-open-scientific {
-  color: var(--stop-ink); border-color: var(--stop-line); font-weight: 600;
-  padding: .4rem .75rem; font-size: .82rem;
 }
 .size-path-footnote {
   font-size: .82rem; color: var(--muted); line-height: 1.45;
@@ -580,7 +794,7 @@ body.mode-simple #scientific-math { display: none !important; }
 .sizing-summary .size-path-footnote:first-of-type { margin-top: 1rem; }
 </style>
 </head>
-<body class="mode-simple">
+<body class="mode-basic">
 <div class="wrap">
 
 <!--__XYCALC_CRUMB__-->
@@ -608,13 +822,15 @@ body.mode-simple #scientific-math { display: none !important; }
 <div id="app">
 <div class="mode-bar" role="group" aria-label="Calculator mode">
   <span class="mode-label">View</span>
-  <button type="button" class="mode-btn" id="mode-simple" aria-pressed="true">Simple</button>
-  <button type="button" class="mode-btn" id="mode-scientific" aria-pressed="false">Scientific</button>
+  <button type="button" class="mode-btn" id="mode-basic" aria-pressed="true">Basic</button>
   <button type="button" class="mode-btn" id="mode-advanced" aria-pressed="false">Advanced</button>
+  <button type="button" class="mode-btn" id="mode-scientific" aria-pressed="false">Scientific</button>
+  <button type="button" class="mode-btn" id="mode-data" aria-pressed="false">Data</button>
 </div>
-<div class="view-subnav" aria-label="Advanced sections">
+<div class="view-subnav" aria-label="View sections">
   <div class="tabs">
     <button class="tab active" id="tab-btn-scenario" data-tab="scenario">Scenario</button>
+    <button class="tab" id="tab-btn-math" data-tab="math">Cited math</button>
     <button class="tab" id="tab-btn-single" data-tab="single">Single question</button>
     <button class="tab" id="tab-btn-flow" data-tab="flow">How it flows</button>
     <button class="tab" id="tab-btn-occupancy" data-tab="occupancy">Occupancy bands</button>
@@ -623,57 +839,76 @@ body.mode-simple #scientific-math { display: none !important; }
 </div>
 
 <div id="simple-view">
-  <div class="panel">
-    <div class="field">
-      <label for="simple-vulns">Vulnerability records</label>
-      <input id="simple-vulns" placeholder="e.g. 250000" autocomplete="off">
-      <div class="help">Document count in your vuln collections today.</div>
+  <div class="panel simple-instrument" id="simple-rail">
+    <div class="simple-instrument-grid">
+      <div class="simple-in">
+        <input type="hidden" id="simple-vulns" value="250000" autocomplete="off">
+        <div class="field">
+          <label for="simple-db-size">How big is the DB</label>
+          <input id="simple-db-size" placeholder="e.g. 500 or 500GB" value="500" autocomplete="off">
+          <div class="help">On-disk size (collStats / db.stats). Bare number = GB.</div>
+        </div>
+        <div class="simple-size-slider">
+          <input type="range" id="simple-size-slider" min="0" max="80" step="1" value="39" aria-label="Dataset size">
+          <div class="simple-size-slider-scale"><span>10 GB</span><span>32 TB</span></div>
+        </div>
+        <details class="simple-refine">
+          <summary>Refine estimate</summary>
+          <div class="field">
+            <label for="simple-devices">Device documents total <span class="help" style="display:inline">optional</span></label>
+            <input id="simple-devices" placeholder="e.g. 10000" autocomplete="off">
+            <div class="help">Pair with avg space or this field is ignored.</div>
+          </div>
+          <div class="field">
+            <label for="simple-device-avg">Avg space per device <span class="help" style="display:inline">optional</span></label>
+            <input id="simple-device-avg" placeholder="e.g. 2048 or 2KB" autocomplete="off">
+            <div class="help">storageSize ÷ count. Bare number = bytes.</div>
+          </div>
+          <div class="field">
+            <label for="simple-residual">Other collections <span class="help" style="display:inline">optional</span></label>
+            <input id="simple-residual" placeholder="e.g. 50 or 50GB" autocomplete="off">
+            <div class="help">Optional residual floor. Bare number = GB.</div>
+          </div>
+        </details>
+        <p class="recalc-live" id="simple-status">Enter DB size — sizing updates as you type.</p>
+        <p id="simple-error" class="error" hidden></p>
+      </div>
+      <div id="simple-result" hidden>
+        <div class="answer">
+          <div class="label">Host RAM</div>
+          <div class="value" id="simple-ram"></div>
+          <div class="band" id="simple-ram-band"></div>
+        </div>
+        <div class="calc-tags" id="simple-honesty-slot"></div>
+        <div class="bandbar" id="simple-bandbar" hidden>
+          <div class="fill" id="simple-bandfill"></div>
+          <div class="mark" id="simple-bandmode"></div>
+        </div>
+        <div class="bandends" id="simple-bandends" hidden></div>
+        <div class="simple-picks" id="simple-picks"></div>
+        <div id="simple-family"></div>
+        <div class="band" id="simple-vuln-note" hidden></div>
+        <div id="simple-nvd-chart"></div>
+        <div class="validation" id="simple-validation" hidden></div>
+      </div>
     </div>
-    <div class="field">
-      <label for="simple-vuln-storage">Vuln-family storageSize today</label>
-      <input id="simple-vuln-storage" placeholder="e.g. 500 or 500GB" autocomplete="off">
-      <div class="help">On-disk storageSize for that family (collStats / db.stats). Bare number = GB. Host floor is 64&nbsp;GB (r8i.2xlarge).</div>
-    </div>
-    <div class="field">
-      <label for="simple-devices">Device documents <span class="help" style="display:inline">optional</span></label>
-      <input id="simple-devices" placeholder="e.g. 10000" autocomplete="off">
-      <div class="help">Optional. Supply with avg on-disk bytes. Added after the vuln family; not scaled by CVE growth.</div>
-    </div>
-    <div class="field">
-      <label for="simple-device-avg">Avg on-disk bytes per device <span class="help" style="display:inline">optional</span></label>
-      <input id="simple-device-avg" placeholder="e.g. 2048 or 2KB" autocomplete="off">
-      <div class="help">Optional. storageSize ÷ count for the device family. Bare number = bytes.</div>
-    </div>
-    <div class="field">
-      <label for="simple-residual">Other collection data <span class="help" style="display:inline">optional</span></label>
-      <input id="simple-residual" placeholder="e.g. 50 or 50GB" autocomplete="off">
-      <div class="help">Optional residual floor. Bare number = GB. Does not inherit NVD growth.</div>
-    </div>
-    <p class="recalc-live" id="simple-status">Enter vuln count and storageSize — sizing updates as you type.</p>
-    <p id="simple-error" class="error" hidden></p>
   </div>
-  <div id="simple-result" hidden>
-    <div class="panel simple-answer">
-      <div class="answer">
-        <div class="label">Host RAM</div>
-        <div class="value" id="simple-ram"></div>
-        <div class="band" id="simple-ram-band"></div>
-      </div>
-      <div class="bandbar" id="simple-bandbar" hidden>
-        <div class="fill" id="simple-bandfill"></div>
-        <div class="mark" id="simple-bandmode"></div>
-      </div>
-      <div class="bandends" id="simple-bandends" hidden></div>
-      <div class="simple-picks" id="simple-picks"></div>
-      <div class="band" id="simple-vuln-note" hidden></div>
-      <div class="validation" id="simple-validation" hidden></div>
-      <div id="simple-honesty-slot"></div>
-    </div>
-    <div id="scientific-math"></div>
+  <div class="simple-basics">
+    <div id="simple-aside"></div>
   </div>
 </div>
 
-<div id="advanced-chrome">
+<div id="work-chrome">
+<div id="tab-math" hidden>
+  <div class="panel">
+    <h2 style="margin-top:0">Cited math</h2>
+    <p style="margin:0 0 .75rem;font-size:.92rem;color:var(--muted)">
+      Term-by-term chain from the Basic footprint (or the last Advanced scenario run).
+      Each step names the sentence it was read from.
+    </p>
+    <div id="scientific-math"></div>
+  </div>
+</div>
 
 <div id="tab-scenario">
   <div class="panel" id="scenario-chooser">
@@ -686,6 +921,7 @@ body.mode-simple #scientific-math { display: none !important; }
     </div>
     <div id="scenario-catalog">
       <label>What do you know?</label>
+      <p class="scenario-catalog-lead">Hardware first. Runtime questions sit in the drawers.</p>
       <div class="scenario-list" id="scenario-picker"></div>
     </div>
   </div>
@@ -709,19 +945,39 @@ body.mode-simple #scientific-math { display: none !important; }
 </div>
 
 <div id="tab-single" hidden>
-<div class="panel">
-  <div class="field">
-    <label for="model">Question</label>
-    <select id="model"></select>
+<div class="scenario-workbench" id="single-workbench">
+<div>
+<div class="panel" id="question-chooser">
+  <div class="scenario-compact" id="question-compact" hidden>
+    <div>
+      <div class="label" id="question-compact-title"></div>
+      <div class="sub" id="question-compact-sub"></div>
+    </div>
+    <button type="button" class="ghost" id="question-change">Change question</button>
   </div>
+  <div id="question-catalog">
+    <label for="question-filter">What do you want to size?</label>
+    <input id="question-filter" placeholder="Filter — cache, IOPS, Celery, Azure…" autocomplete="off">
+    <p class="help">Hardware first. Runtime questions sit in the drawers — same grouping as Advanced.</p>
+    <div class="question-groups" id="question-picker"></div>
+  </div>
+  <select id="model" class="sr-only" tabindex="-1" aria-hidden="true"></select>
+</div>
+<div class="panel">
   <div id="inputs"></div>
   <div class="field">
-    <label for="available">What you already have <span class="help" style="display:inline">optional — turns this into a headroom check, and draws a line across the chart</span></label>
-    <input id="available" placeholder="e.g. 256GB" autocomplete="off">
+    <details class="input-section-drawer">
+      <summary>What you already have <span class="help" style="display:inline">optional</span></summary>
+      <label for="available">Turns this into a headroom check, and draws a line across the chart</label>
+      <input id="available" placeholder="e.g. 256GB" autocomplete="off">
+    </details>
   </div>
   <button id="go">Calculate</button>
   <p class="recalc-live" id="single-recalc-status">Sizing and the curve update as you type.</p>
   <p id="error" class="error" hidden></p>
+</div>
+</div>
+<div id="single-aside"></div>
 </div>
 
 <div id="result" hidden>
@@ -972,7 +1228,7 @@ body.mode-simple #scientific-math { display: none !important; }
     <button type="button" class="ghost" id="cliff-open-wt" style="margin-top:.75rem">Open wt-cache sizing →</button>
   </div>
 </div>
-</div><!-- /advanced-chrome -->
+</div><!-- /work-chrome -->
 
 </div><!-- /app -->
 

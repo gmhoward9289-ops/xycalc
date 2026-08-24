@@ -996,6 +996,7 @@ def describe_scenarios(conn: sqlite3.Connection) -> list[dict]:
             "note": s.get("note"),
             "see_also": s.get("see_also", []),
             "extra_inputs": s.get("extra_inputs", []),
+            "ui": s.get("ui") or {},
             "steps": s.get("steps", []),
             "input_sections": s.get("input_sections", []),
         }
