@@ -25,6 +25,9 @@ scenarios:
   - slug: mongodb.size-to-instance
     label: MongoDB instance sizing
     default: true
+    ui:
+      band: hardware
+      group: instance
     summary: >-
       Project collection size from vuln and optional device document counts
       (plus a residual floor), add indexes and foreign collections, compare to
@@ -221,6 +224,9 @@ scenarios:
 
   - slug: mongodb.nvd-query-concurrency
     label: NVD / relationship query concurrency
+    ui:
+      band: runtime
+      group: mongodb
     summary: >-
       Celery in-flight demand vs MongoDB tickets and the 004 stall ceiling.
       More workers are demand, not mongod capacity. scan_fanout is a typed
@@ -301,6 +307,9 @@ scenarios:
 
   - slug: ebs.microburst
     label: My EBS volume's average IOPS
+    ui:
+      band: hardware
+      group: storage
     summary: >-
       Raise the average IOPS your monitoring shows to what the peak second
       actually demands, which is what EBS throttles on and your dashboard has
@@ -319,6 +328,9 @@ scenarios:
 
   - slug: storage.ebs-vs-nvme-at-io-size
     label: EBS gp3 vs local NVMe at my I/O size
+    ui:
+      band: hardware
+      group: storage
     summary: >-
       Compare effective random-read IOPS at your block size between gp3's
       provisioned ceilings and a direct-attached NVMe baseline — the comparison
@@ -343,6 +355,10 @@ scenarios:
 
   - slug: clickhouse.parts-insert-ceiling
     label: ClickHouse insert part-count ceiling
+    ui:
+      band: hardware
+      group: database
+      sub: clickhouse
     summary: >-
       At how many active parts per partition ClickHouse rejects inserts — and
       the 10× default jump at 23.6 that makes an unversioned answer wrong.
@@ -352,6 +368,9 @@ scenarios:
 
   - slug: redis.celery-broker
     label: Redis as a Celery broker
+    ui:
+      band: runtime
+      group: redis
     summary: >-
       How much Redis maxmemory, and how many workers, before Celery loses tasks
       or cannot drain. Investigation 005 measured both policies Celery documents:
@@ -384,6 +403,9 @@ scenarios:
           step is the measured conflict with that wording, not a policy pick.
   - slug: celery.queue-amplification
     label: Celery queue under a storage stall
+    ui:
+      band: runtime
+      group: celery
     summary: >-
       How much worse recovery gets when MongoDB is I/O-starved and Celery keeps
       accepting work — measured backlog, completion ceiling, and drain time from

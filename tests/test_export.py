@@ -396,15 +396,20 @@ def test_exported_page_simple_ids_stay_unique(blob):
         "simple-residual",
         "simple-status",
         "simple-result",
+        "simple-size-slider",
+        "simple-nvd-chart",
     ):
         assert counts[fid] == 1, fid
-    assert "Enter DB size" in html
+    assert "How big is the DB" in html
+    assert "Refine estimate" in html
 
 
 def test_export_blob_carries_scenario_chain(blob):
     slugs = {s["slug"] for s in blob["scenarios"]}
     assert "mongodb.size-to-instance" in slugs
     inst = next(s for s in blob["scenarios"] if s["slug"] == "mongodb.size-to-instance")
+    assert inst["ui"]["band"] == "hardware"
+    assert inst["ui"]["group"] == "instance"
     assert inst["nvd_chart"]["annual"][0]["count"] == 28818
     assert inst["nvd_chart"]["annual"][2]["microsoft"] == 1255
     assert blob["instance_catalog"]
@@ -810,5 +815,4 @@ def test_docs_name_the_shipped_permalink_shape():
     assert "stamp.html" in docs
     assert "?model=" in docs
     assert "substitute" in docs
-
 
