@@ -816,4 +816,3 @@ def test_docs_name_the_shipped_permalink_shape():
     assert "?model=" in docs
     assert "substitute" in docs
 
-

@@ -512,5 +512,4 @@ assert.ok(Math.abs(nvdProj.mode - 48185 * 1.21) < 1e-6);
 assert.ok(Math.abs(nvdProj.lo - 48185 * 1.15) < 1e-6);
 assert.ok(Math.abs(nvdProj.hi - 48185 * 1.39) < 1e-6);
 assert.strictEqual(APP.nvdNextYearProjection({ annual: [] }), null);
-
 console.log("app helpers ok");

@@ -256,7 +256,6 @@ const XYCALC_APP = (() => {
       models: groups[key],
     }));
   }
-
   // Advanced scenario catalog: kind of question, not product. Empty groups
   // are omitted at render time. "core" stays open; the rest start in a drawer.
   const SCENARIO_KIND = {
@@ -1039,7 +1038,6 @@ const XYCALC_APP = (() => {
       hi: scale(g.hi),
     };
   }
-
   // Basic → mongodb.size-to-instance. DB size is today's footprint. Vuln
   // count defaults to the homepage 250000 with target == baseline so a 500 GB
   // box stays 500 GB instead of picking up three-year NVD growth.
