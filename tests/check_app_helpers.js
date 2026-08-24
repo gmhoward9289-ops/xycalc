@@ -470,4 +470,46 @@ const grouped = APP.groupModelsBySystem([
 ]);
 assert.deepStrictEqual(grouped.map((g) => g.system), ["mongodb", "ebs", "azure-disks"]);
 
+const scenarioBands = APP.groupScenarios([
+  { slug: "clickhouse.parts-insert-ceiling", ui: { band: "hardware", group: "database", sub: "clickhouse" } },
+  { slug: "mongodb.size-to-instance", ui: { band: "hardware", group: "instance" } },
+  { slug: "redis.celery-broker", ui: { band: "runtime", group: "redis" } },
+  { slug: "future.unmapped" },
+]);
+assert.deepStrictEqual(scenarioBands.map((b) => b.id), ["hardware", "runtime"]);
+assert.strictEqual(scenarioBands[0].groups[0].id, "instance");
+assert.strictEqual(scenarioBands[0].groups[0].core, true);
+assert.strictEqual(scenarioBands[0].groups[1].id, "database");
+assert.strictEqual(scenarioBands[0].groups[1].subs[0].id, "clickhouse");
+assert.deepStrictEqual(scenarioBands[1].groups.map((g) => g.id), ["services", "redis"]);
+assert.strictEqual(APP.scenarioKind({ slug: "ebs.microburst" }).group, "storage");
+assert.ok(APP.scenarioSectionIsDrawer({ title: "Current node (optional)", inputs: [{ required: true }] }));
+assert.ok(APP.scenarioSectionIsDrawer({ title: "Concurrency and Celery", inputs: [{ required: true }] }));
+assert.ok(!APP.scenarioSectionIsDrawer({ title: "Project database size", inputs: [{ required: true }] }));
+
+const modelBands = APP.groupModelsByKind([
+  { slug: "mongodb.wt-cache" },
+  { slug: "clickhouse.parts-insert-ceiling" },
+  { slug: "celery.redis-broker-maxmemory" },
+]);
+assert.deepStrictEqual(modelBands.map((b) => b.id), ["hardware", "runtime"]);
+assert.strictEqual(APP.modelKind({ slug: "ebs.iops-to-provision" }).group, "storage");
+
+assert.strictEqual(APP.formatSimpleSizeSliderGb(500), "500GB");
+assert.strictEqual(APP.formatSimpleSizeSliderGb(2000), "2TB");
+assert.strictEqual(APP.simpleSizeSliderIndex(10), 0);
+assert.strictEqual(APP.simpleSizeSliderIndex(32000), 80);
+assert.strictEqual(APP.simpleSizeSliderGb(0), 10);
+assert.strictEqual(APP.simpleSizeSliderGb(80), 32000);
+assert.ok(Math.abs(APP.simpleSizeSliderGb(APP.simpleSizeSliderIndex(500)) - 500) <= 20);
+
+const nvdProj = APP.nvdNextYearProjection({
+  annual: [{ year: 2023, count: 28818 }, { year: 2024, count: 40009 }, { year: 2025, count: 48185 }],
+  growth_pct: { lo: 15, mode: 21, hi: 39 },
+});
+assert.strictEqual(nvdProj.year, 2026);
+assert.ok(Math.abs(nvdProj.mode - 48185 * 1.21) < 1e-6);
+assert.ok(Math.abs(nvdProj.lo - 48185 * 1.15) < 1e-6);
+assert.ok(Math.abs(nvdProj.hi - 48185 * 1.39) < 1e-6);
+assert.strictEqual(APP.nvdNextYearProjection({ annual: [] }), null);
 console.log("app helpers ok");

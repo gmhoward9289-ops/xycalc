@@ -9,9 +9,16 @@ Corpus identity is `corpus_digest` on the exported page. See `docs/VERSIONING.md
   footprint only (DB size, device count, avg space, other collections).
   Scientific holds cited math, a single model, and how it flows; Data holds
   occupancy and cache-cliff. `#mode=simple` still opens Basic.
-- Basic is one instrument: DB size in on the left, Host RAM and AWS/Azure
-  SKUs (Low / Typical / High) on the right. Caveats are quiet tags under
-  the number, not filled banners.
+- Basic is one instrument: DB size in on the left (type or scrub the
+  log slider), Host RAM and AWS/Azure SKUs (Low / Typical / High) on the
+  right. Refine estimate is a full-width drawer for optional device
+  counts. Caveats are quiet tags under the number, not filled banners.
+  Under the SKUs, a cited NVD CVE-publication chart (Jerry Gamblin 2023–2025)
+  shows next year as the corpus YoY band applied to 2025's count — not an
+  NVD forecast; Basic still sizes today's record count.
+  Scrubbing DB size no longer rebuilds hidden Scientific cited-math HTML;
+  that cascade paints when you open Cited math. The Single-question sweep
+  chart is skipped while that tab is hidden.
 - `xycalc export` copies Bill's approved still from
   `src/xycalc/static/landing-still.png` to `og.png` (no generated substitute).
   `stamp.html` is the same digest / version / git as the calculator footer.
@@ -19,6 +26,11 @@ Corpus identity is `corpus_digest` on the exported page. See `docs/VERSIONING.md
 - Calculator first paint accepts `?model=` / `?scenario=` as an alias for
   the hash permalink (`#tab=single&model=…` remains the form landing
   tables should emit).
+- Advanced scenario list is two bands (Hardware / Runtime). Instance
+  sizing stays open; database, storage, Celery, MongoDB, and Redis
+  questions start in drawers so the form and results stay above the fold.
+  Scientific single-question uses the same grouping. Optional spec
+  sections (current node, concurrency, query regime) start collapsed.
 
 ## 0.6.0
 

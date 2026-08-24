@@ -256,6 +256,130 @@ const XYCALC_APP = (() => {
       models: groups[key],
     }));
   }
+  // Advanced scenario catalog: kind of question, not product. Empty groups
+  // are omitted at render time. "core" stays open; the rest start in a drawer.
+  const SCENARIO_KIND = {
+    "mongodb.size-to-instance": { band: "hardware", group: "instance" },
+    "mongodb.nvd-query-concurrency": { band: "runtime", group: "mongodb" },
+    "ebs.microburst": { band: "hardware", group: "storage" },
+    "storage.ebs-vs-nvme-at-io-size": { band: "hardware", group: "storage" },
+    "clickhouse.parts-insert-ceiling": { band: "hardware", group: "database", sub: "clickhouse" },
+    "redis.celery-broker": { band: "runtime", group: "redis" },
+    "celery.queue-amplification": { band: "runtime", group: "celery" },
+  };
+  const SCENARIO_TAXONOMY = [
+    {
+      id: "hardware",
+      label: "Hardware",
+      groups: [
+        { id: "instance", label: "Instance sizing", core: true },
+        {
+          id: "database",
+          label: "Database internals",
+          subs: [
+            { id: "mongodb", label: "MongoDB" },
+            { id: "clickhouse", label: "ClickHouse" },
+          ],
+        },
+        { id: "storage", label: "Storage performance" },
+        { id: "os", label: "OS performance" },
+      ],
+    },
+    {
+      id: "runtime",
+      label: "Runtime",
+      groups: [
+        { id: "services", label: "Services" },
+        { id: "celery", label: "Celery performance" },
+        { id: "mongodb", label: "MongoDB performance" },
+        { id: "redis", label: "Redis performance" },
+      ],
+    },
+  ];
+
+  function scenarioKind(s) {
+    const slug = s && s.slug;
+    const ui = s && s.ui;
+    if (ui && ui.band && ui.group) {
+      return { band: ui.band, group: ui.group, sub: ui.sub || null };
+    }
+    const mapped = (slug && SCENARIO_KIND[slug]) || { band: "runtime", group: "services" };
+    return { band: mapped.band, group: mapped.group, sub: mapped.sub || null };
+  }
+
+  function groupByTaxonomy(list, kindFn) {
+    const buckets = {};
+    for (const item of list || []) {
+      const k = kindFn(item);
+      const key = k.band + "|" + k.group + "|" + (k.sub || "");
+      if (!buckets[key]) buckets[key] = [];
+      buckets[key].push(item);
+    }
+    const bands = [];
+    for (const band of SCENARIO_TAXONOMY) {
+      const groups = [];
+      for (const g of band.groups) {
+        const bare = buckets[band.id + "|" + g.id + "|"] || [];
+        const subs = [];
+        for (const sub of g.subs || []) {
+          const items = buckets[band.id + "|" + g.id + "|" + sub.id] || [];
+          if (items.length) subs.push({ id: sub.id, label: sub.label, items: items });
+        }
+        if (!bare.length && !subs.length) continue;
+        groups.push({
+          id: g.id,
+          label: g.label,
+          core: !!g.core,
+          items: bare,
+          subs: subs,
+        });
+      }
+      if (groups.length) bands.push({ id: band.id, label: band.label, groups: groups });
+    }
+    return bands;
+  }
+
+  function groupScenarios(scenarios) {
+    return groupByTaxonomy(scenarios, scenarioKind);
+  }
+
+  const MODEL_KIND = {
+    "mongodb.wt-cache": { band: "hardware", group: "instance" },
+    "mongodb.host-ram": { band: "hardware", group: "instance" },
+    "mongodb.storage-from-doc-families": { band: "hardware", group: "instance" },
+    "nvd.storage-from-vuln-growth": { band: "hardware", group: "instance" },
+    "mongodb.ticket-throughput-ceiling": { band: "runtime", group: "mongodb" },
+    "ebs.iops-to-provision": { band: "hardware", group: "storage" },
+    "ebs.gp3-iops-at-io-size": { band: "hardware", group: "storage" },
+    "nvme-ssd.random-read-at-io-size": { band: "hardware", group: "storage" },
+    "azure.premium-v2-throughput-ceiling": { band: "hardware", group: "storage" },
+    "clickhouse.parts-insert-ceiling": { band: "hardware", group: "database", sub: "clickhouse" },
+    "celery.queue-amplification": { band: "runtime", group: "celery" },
+    "celery.worker-prefetch": { band: "runtime", group: "celery" },
+    "celery.redis-broker-maxmemory": { band: "runtime", group: "redis" },
+  };
+
+  function modelKind(m) {
+    const slug = m && m.slug;
+    const ui = m && m.ui;
+    if (ui && ui.band && ui.group) {
+      return { band: ui.band, group: ui.group, sub: ui.sub || null };
+    }
+    const mapped = (slug && MODEL_KIND[slug]) || { band: "runtime", group: "services" };
+    return { band: mapped.band, group: mapped.group, sub: mapped.sub || null };
+  }
+
+  function groupModelsByKind(models) {
+    return groupByTaxonomy(models, modelKind);
+  }
+
+  function scenarioSectionIsDrawer(sec) {
+    const title = String((sec && sec.title) || "");
+    if (/optional/i.test(title)) return true;
+    if (/concurrency|celery|query regime/i.test(title)) return true;
+    const inputs = (sec && sec.inputs) || [];
+    return inputs.length > 0 && inputs.every((i) => i.required === false);
+  }
   const GRADE_RANK = { none: 0, thin: 1, reasonable: 2 };
   const GRADE_LABEL = { none: "Unvalidated", thin: "Thinly validated", reasonable: "Validated" };
   const GRADE_PILL = { none: "unvalidated", thin: "thinly validated", reasonable: "validated" };
@@ -864,7 +988,56 @@ const XYCALC_APP = (() => {
     "simple-residual",
   ];
   const BASIC_DEFAULT_VULN_COUNT = "250000";
+  const SIMPLE_SIZE_SLIDER_MIN_GB = 10;
+  const SIMPLE_SIZE_SLIDER_MAX_GB = 32000;
+  const SIMPLE_SIZE_SLIDER_STEPS = 80;
 
+  function simpleSizeSliderGb(index) {
+    const t = Math.max(0, Math.min(SIMPLE_SIZE_SLIDER_STEPS, Number(index))) / SIMPLE_SIZE_SLIDER_STEPS;
+    const gb = SIMPLE_SIZE_SLIDER_MIN_GB * Math.pow(
+      SIMPLE_SIZE_SLIDER_MAX_GB / SIMPLE_SIZE_SLIDER_MIN_GB,
+      t,
+    );
+    if (gb < 20) return Math.round(gb);
+    if (gb < 100) return Math.round(gb / 5) * 5;
+    if (gb < 1000) return Math.round(gb / 10) * 10;
+    if (gb < 10000) return Math.round(gb / 50) * 50;
+    return Math.round(gb / 100) * 100;
+  }
+
+  function formatSimpleSizeSliderGb(gb) {
+    if (gb >= 1000) {
+      const tb = gb / 1000;
+      const n = tb >= 10 ? Math.round(tb) : Math.round(tb * 10) / 10;
+      return n + "TB";
+    }
+    return gb + "GB";
+  }
+
+  function simpleSizeSliderIndex(gb) {
+    const g = Math.max(SIMPLE_SIZE_SLIDER_MIN_GB, Math.min(SIMPLE_SIZE_SLIDER_MAX_GB, Number(gb) || SIMPLE_SIZE_SLIDER_MIN_GB));
+    const t = Math.log(g / SIMPLE_SIZE_SLIDER_MIN_GB) /
+      Math.log(SIMPLE_SIZE_SLIDER_MAX_GB / SIMPLE_SIZE_SLIDER_MIN_GB);
+    return Math.round(t * SIMPLE_SIZE_SLIDER_STEPS);
+  }
+
+  // Next calendar year is the cited YoY band applied to the last observed
+  // annual count — not an NVD forecast. The coefficient notes say the band
+  // brackets recent publication rates for a one-year add_fraction.
+  function nvdNextYearProjection(chart) {
+    const years = chart && chart.annual;
+    const g = chart && chart.growth_pct;
+    if (!years || !years.length || !g || g.mode == null) return null;
+    const last = years[years.length - 1];
+    if (!last || !(last.count > 0) || last.year == null) return null;
+    const scale = (pct) => last.count * (1 + Number(pct) / 100);
+    return {
+      year: last.year + 1,
+      lo: scale(g.lo),
+      mode: scale(g.mode),
+      hi: scale(g.hi),
+    };
+  }
   // Basic → mongodb.size-to-instance. DB size is today's footprint. Vuln
   // count defaults to the homepage 250000 with target == baseline so a 500 GB
   // box stays 500 GB instead of picking up three-year NVD growth.
@@ -1019,6 +1192,7 @@ const XYCALC_APP = (() => {
       }) || "scenario";
     }
 
+    let lastSimpleData = null;
     let writingHash = false;
     let hashTimer = null;
     let lastSingleCitation = "";
@@ -1241,7 +1415,29 @@ const XYCALC_APP = (() => {
         catch (_) { /* ignore */ }
       }
       if (next === "basic" || next === "scientific") scheduleSimpleCalc();
+      if (next === "scientific") maybeRenderScientificMath();
       if (!opts || opts.hash !== false) scheduleHash();
+    }
+
+    function gbFromSimpleSizeText(raw) {
+      const t = String(raw || "").trim();
+      if (!t) return null;
+      try {
+        const bytes = XY.parseBytes(normalizeSimpleSize(t));
+        if (!(bytes > 0)) return null;
+        return bytes / 1e9;
+      } catch (e) {
+        return null;
+      }
+    }
+
+    function syncSimpleSizeSlider() {
+      const slider = $("simple-size-slider");
+      const field = $("simple-db-size");
+      if (!slider || !field) return;
+      const gb = gbFromSimpleSizeText(field.value);
+      if (gb == null) return;
+      slider.value = String(simpleSizeSliderIndex(gb));
     }
 
     function bootSimple() {
@@ -1250,6 +1446,16 @@ const XYCALC_APP = (() => {
         if (!el) throw new Error("Simple form missing #" + id);
         el.addEventListener("input", scheduleSimpleCalc);
       }
+      const sizeField = $("simple-db-size");
+      if (sizeField) sizeField.addEventListener("input", syncSimpleSizeSlider);
+      const slider = $("simple-size-slider");
+      if (!slider) throw new Error("Simple form missing #simple-size-slider");
+      slider.addEventListener("input", () => {
+        const gb = simpleSizeSliderGb(slider.value);
+        $("simple-db-size").value = formatSimpleSizeSliderGb(gb);
+        scheduleSimpleCalc();
+      });
+      syncSimpleSizeSlider();
       $("simple-rail").addEventListener("click", (ev) => {
         if (ev.target && ev.target.id === "simple-open-scientific") {
           ev.preventDefault();
@@ -1258,6 +1464,7 @@ const XYCALC_APP = (() => {
           if (math) math.scrollIntoView({ behavior: "smooth", block: "start" });
         }
       });
+      paintSimpleNvdChart();
       scheduleSimpleCalc();
       const aside = $("simple-aside");
       if (aside) aside.innerHTML = basicAsideHtml();
@@ -1313,9 +1520,14 @@ const XYCALC_APP = (() => {
       $("scenario-cascade").scrollIntoView({ behavior: "smooth", block: "start" });
     }
 
+    let simpleCalcRaf = null;
     function scheduleSimpleCalc() {
       clearTimeout(simpleCalcTimer);
-      simpleCalcTimer = setTimeout(calculateSimple, 180);
+      if (simpleCalcRaf != null) return;
+      simpleCalcRaf = requestAnimationFrame(() => {
+        simpleCalcRaf = null;
+        calculateSimple();
+      });
     }
 
     function calculateSimple() {
@@ -1351,6 +1563,7 @@ const XYCALC_APP = (() => {
         if (residual && residual !== residualRaw) notes.push(`residual as ${residual}`);
         const as = notes.length ? ` (${notes.join("; ")})` : "";
         status.textContent = "Up to date" + as + " — change a field to recalculate.";
+        syncSimpleSizeSlider();
         const note = document.getElementById("simple-vuln-note");
         if (note) {
           note.hidden = false;
@@ -1473,7 +1686,20 @@ const XYCALC_APP = (() => {
       if (slot) slot.innerHTML = paint.honestyHtml + paint.bannerHtml;
       const val = $("simple-validation");
       if (val) val.hidden = true;
-      renderScientificMath(data);
+      paintSimpleNvdChart();
+      lastSimpleData = data;
+      maybeRenderScientificMath();
+    }
+
+    function scientificMathIsVisible() {
+      if (currentMode() !== "scientific") return false;
+      const panel = $("tab-math");
+      return !!(panel && !panel.hidden);
+    }
+
+    function maybeRenderScientificMath() {
+      if (!scientificMathIsVisible()) return;
+      renderScientificMath(lastSimpleData);
     }
 
     function setTab(name, opts) {
@@ -1483,6 +1709,8 @@ const XYCALC_APP = (() => {
         if (panel) panel.hidden = name !== tab;
         if (btn) btn.classList.toggle("active", name === tab);
       });
+      if (name === "math") maybeRenderScientificMath();
+      if (name === "single" && STATE) drawChart();
       if (!opts || opts.hash !== false) scheduleHash();
     }
 
@@ -1590,9 +1818,35 @@ const XYCALC_APP = (() => {
       });
     }
 
+    function renderScenarioGroup(g) {
+      const cards = (g.items || []).map(renderScenarioOption).join("");
+      const nested = (g.subs || []).map((sub) => `
+        <h4 class="scenario-sub-title">${esc(sub.label)}</h4>
+        <div class="scenario-list">${sub.items.map(renderScenarioOption).join("")}</div>`).join("");
+      const body = `${cards ? `<div class="scenario-list">${cards}</div>` : ""}${nested}`;
+      if (g.core) {
+        return `<section class="scenario-kind" data-kind="${esc(g.id)}">
+          <h3 class="scenario-kind-title">${esc(g.label)}</h3>
+          ${body}
+        </section>`;
+      }
+      return `<details class="scenario-kind-drawer" data-kind="${esc(g.id)}">
+        <summary class="scenario-kind-title">${esc(g.label)}</summary>
+        ${body}
+      </details>`;
+    }
+
+    function renderScenarioCatalog(scenarios) {
+      return groupScenarios(scenarios).map((band) => `
+        <section class="scenario-band" data-band="${esc(band.id)}">
+          <h2 class="scenario-band-title">${esc(band.label)}</h2>
+          ${band.groups.map(renderScenarioGroup).join("")}
+        </section>`).join("");
+    }
+
     function bootScenario() {
       const scenarios = CORPUS.scenarios || [];
-      $("scenario-picker").innerHTML = scenarios.map(renderScenarioOption).join("");
+      $("scenario-picker").innerHTML = renderScenarioCatalog(scenarios);
       wireScenarioPicker();
       $("scn-recalc").addEventListener("click", () => calculateScenario(false));
       const change = $("scenario-change");
@@ -1610,32 +1864,64 @@ const XYCALC_APP = (() => {
       selectScenario(slug);
     }
 
-    function renderNvdChart(chart) {
-      if (!chart?.annual?.length) return "";
-      const years = chart.annual;
-      const W = 420, H = 168, L = 52, R = 10, T = 18, B = 40;
+    function paintSimpleNvdChart() {
+      const slot = $("simple-nvd-chart");
+      if (!slot || slot.dataset.ready === "1") return;
+      slot.innerHTML = renderNvdChart(corpusNvdChart(), { fold: false, projectNext: true });
+      slot.dataset.ready = "1";
+    }
+
+    function corpusNvdChart() {
+      const scenarios = CORPUS.scenarios || [];
+      const inst = scenarios.find((s) => s.slug === "mongodb.size-to-instance");
+      return inst && inst.nvd_chart;
+    }
+
+    function renderNvdChart(chart, opts) {
+      if (!chart) return "";
+      const years = chart.annual || chart.years;
+      if (!years || !years.length) return "";
+      const fold = !opts || opts.fold !== false;
+      const proj = opts && opts.projectNext ? nvdNextYearProjection({ annual: years, growth_pct: chart.growth_pct }) : null;
+      const ticks = proj ? years.concat([{ year: proj.year }]) : years;
+      const W = 420, H = 168, L = 52, R = 14, T = 18, B = 40;
       const iw = W - L - R, ih = H - T - B;
-      const nvdMax = Math.max(...years.map((a) => a.count));
-      const yMax = nvdMax * 1.15;
-      const xAt = (i) => L + (years.length === 1 ? iw / 2 : (i / (years.length - 1)) * iw);
+      const nvdMax = Math.max(...years.map((a) => a.count), proj ? proj.hi : 0);
+      const yMax = nvdMax * 1.12;
+      const xAt = (i) => L + (ticks.length === 1 ? iw / 2 : (i / (ticks.length - 1)) * iw);
       const yAt = (v) => T + ih * (1 - v / yMax);
       const nvdPath = years.map((a, i) => `${i ? "L" : "M"}${esc(xAt(i).toFixed(1))} ${esc(yAt(a.count).toFixed(1))}`).join(" ");
       const dots = years.map((a, i) => `<circle class="nvd-dot" cx="${esc(xAt(i).toFixed(1))}" cy="${esc(yAt(a.count).toFixed(1))}" r="3.5"></circle>`).join("");
       const ms = years.map((a, i) => a.microsoft != null ? `<circle class="ms-dot" cx="${esc(xAt(i).toFixed(1))}" cy="${esc(yAt(a.microsoft).toFixed(1))}" r="4"></circle>` : "").join("");
-      const xLabels = years.map((a, i) => `<text x="${esc(xAt(i).toFixed(1))}" y="${H - 18}" text-anchor="middle">${esc(a.year)}</text>`).join("");
+      const xLabels = ticks.map((a, i) => `<text x="${esc(xAt(i).toFixed(1))}" y="${H - 18}" text-anchor="middle">${esc(a.year)}</text>`).join("");
       const g = chart.growth_pct;
       const src = chart.source_url ? `<a href="${esc(chart.source_url)}" target="_blank" rel="noopener">${esc(chart.source)}</a>` : esc(chart.source);
+      let projSvg = "";
+      let projNote = "";
+      if (proj && g) {
+        const i0 = years.length - 1;
+        const i1 = ticks.length - 1;
+        const fmtN = (n) => Math.round(n).toLocaleString("en-US");
+        projSvg =
+          `<line class="nvd-proj-band" x1="${esc(xAt(i1).toFixed(1))}" x2="${esc(xAt(i1).toFixed(1))}" y1="${esc(yAt(proj.hi).toFixed(1))}" y2="${esc(yAt(proj.lo).toFixed(1))}"></line>` +
+          `<path class="nvd-proj" d="M${esc(xAt(i0).toFixed(1))} ${esc(yAt(years[i0].count).toFixed(1))} L${esc(xAt(i1).toFixed(1))} ${esc(yAt(proj.mode).toFixed(1))}"></path>` +
+          `<circle class="nvd-proj-dot" cx="${esc(xAt(i1).toFixed(1))}" cy="${esc(yAt(proj.mode).toFixed(1))}" r="3.5"></circle>`;
+        projNote = ` ${proj.year} dashed = cited YoY band ${esc(g.lo)}–${esc(g.mode)}–${esc(g.hi)}% on ${esc(years[i0].year)}'s count (${fmtN(proj.lo)}–${fmtN(proj.mode)}–${fmtN(proj.hi)}) — not an NVD forecast. This page still sizes today's record count.`;
+      }
+      const svg = `<svg class="nvd-chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="CVEs published per year">
+            <g class="axis">${xLabels}<text class="axis-title" x="12" y="${T + ih / 2}" text-anchor="middle" transform="rotate(-90 12 ${T + ih / 2})">CVEs published per year</text></g>
+            <path class="nvd-line" d="${nvdPath}"></path>${dots}${ms}${projSvg}
+          </svg>`;
+      const meta = `<p class="nvd-meta">Cumulative through 2025: <strong>${esc((chart.cumulative_2025 || chart.cumulative_2025 || 0).toLocaleString())}</strong>.
+            YoY band: <strong>${esc(g.lo)}–${esc(g.mode)}–${esc(g.hi)}%</strong>. Source: ${src}.
+            ${chart.microsoft_note ? esc(chart.microsoft_note) : ""}${projNote}</p>`;
+      const body = `<div class="nvd-layout">${svg}${meta}</div>`;
+      if (!fold) {
+        return `<div class="nvd-fold"><div class="nvd-title">CVE publication (cited)</div>${body}</div>`;
+      }
       return `<details class="nvd-fold">
         <summary>CVE publication growth</summary>
-        <div class="nvd-layout">
-          <svg class="nvd-chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="CVEs published per year">
-            <g class="axis">${xLabels}<text class="axis-title" x="12" y="${T + ih / 2}" text-anchor="middle" transform="rotate(-90 12 ${T + ih / 2})">CVEs published per year</text></g>
-            <path class="nvd-line" d="${nvdPath}"></path>${dots}${ms}
-          </svg>
-          <p class="nvd-meta">Cumulative through 2025: <strong>${esc(chart.cumulative_2025.toLocaleString())}</strong>.
-            YoY band: <strong>${esc(g.lo)}–${esc(g.mode)}–${esc(g.hi)}%</strong>. Source: ${src}.
-            ${chart.microsoft_note ? esc(chart.microsoft_note) : ""}</p>
-        </div>
+        ${body}
       </details>`;
     }
 
@@ -1737,20 +2023,26 @@ const XYCALC_APP = (() => {
       try {
         const hasInputs = scenarioInputCount(currentScenario) > 0;
         $("scenario-form-panel").hidden = !hasInputs;
-        $("scenario-nvd-chart").innerHTML = hasInputs ? renderNvdChart(currentScenario.nvd_chart) : "";
+        $("scenario-nvd-chart").innerHTML = hasInputs ? renderNvdChart(currentScenario.nvd_chart, { projectNext: true }) : "";
         if (!hasInputs) {
           $("scenario-inputs").innerHTML = "";
           maybeAuto();
           return;
         }
         const defaults = SCENARIO_DEFAULTS[slug] || {};
-        const fields = (currentScenario.input_sections || []).map((sec) => `
-          <div class="input-section"><h3>${esc(sec.title)}</h3>
-          ${scenarioSectionCopyHtml(sec.title)}
+        const fields = (currentScenario.input_sections || []).map((sec) => {
+          const inner = `${scenarioSectionCopyHtml(sec.title)}
           <div class="input-grid">${(sec.inputs || []).map((i) =>
             scenarioInputControlHtml(i, defaults[i.key])
           ).join("")}
-          </div></div>`).join("")
+          </div>`;
+          if (scenarioSectionIsDrawer(sec)) {
+            return `<details class="input-section-drawer"><summary>${esc(sec.title)}</summary>
+          ${inner}</details>`;
+          }
+          return `<div class="input-section"><h3>${esc(sec.title)}</h3>
+          ${inner}</div>`;
+        }).join("")
           || `<div class="input-grid">${(currentScenario.inputs || []).map((i) =>
             scenarioInputControlHtml(i, defaults[i.key])
           ).join("")}</div>`;
@@ -2043,7 +2335,8 @@ const XYCALC_APP = (() => {
           || (existing ? existing.open : false);
         $("scenario-cascade").innerHTML = renderCascadeDetailsHtml(data, open);
         if (opts && opts.expandMath) expandScenarioMath();
-        renderScientificMath(data);
+        lastSimpleData = data;
+        maybeRenderScientificMath();
         $("scn-recalc-status").textContent = citationOnly
           ? "Citation scenario — no fields to edit yet."
           : "Up to date — change any field to recalculate.";
@@ -2081,16 +2374,13 @@ const XYCALC_APP = (() => {
       const el = $("question-picker");
       if (!el) return;
       const selected = $("model") && $("model").value;
-      const html = groupModelsBySystem(MODELS).map((g) => {
-        const models = g.models.filter((m) => modelMatchesQuery(m, filter));
-        if (!models.length) return "";
-        const cards = models.map((m) => {
-          const grade = m.validation && m.validation.grade;
-          const pill = grade
-            ? `<span class="grade-pill">${esc(GRADE_PILL[grade] || grade)}</span>`
-            : "";
-          const on = m.slug === selected;
-          return `<label class="scenario-opt question-opt${on ? " selected" : ""}" data-slug="${esc(m.slug)}">
+      const card = (m) => {
+        const grade = m.validation && m.validation.grade;
+        const pill = grade
+          ? `<span class="grade-pill">${esc(GRADE_PILL[grade] || grade)}</span>`
+          : "";
+        const on = m.slug === selected;
+        return `<label class="scenario-opt question-opt${on ? " selected" : ""}" data-slug="${esc(m.slug)}">
             <input type="radio" name="question" value="${esc(m.slug)}"${on ? " checked" : ""}>
             <span>
               <div class="label">${esc(shortModelTitle(m))} ${pill}</div>
@@ -2098,15 +2388,39 @@ const XYCALC_APP = (() => {
               <div class="slug">${esc(m.slug)}</div>
             </span>
           </label>`;
+      };
+      const kindBlock = (g) => {
+        const models = (g.items || []).filter((m) => modelMatchesQuery(m, filter));
+        const nested = (g.subs || []).map((sub) => {
+          const items = (sub.items || []).filter((m) => modelMatchesQuery(m, filter));
+          if (!items.length) return "";
+          return `<h4 class="scenario-sub-title">${esc(sub.label)}</h4>
+            <div class="scenario-list">${items.map(card).join("")}</div>`;
         }).join("");
-        return `<div class="question-group">
-          <h3 class="question-group-title">${esc(g.label)}</h3>
-          <div class="scenario-list">${cards}</div>
-        </div>`;
+        if (!models.length && !nested) return "";
+        const body = `${models.length ? `<div class="scenario-list">${models.map(card).join("")}</div>` : ""}${nested}`;
+        if (g.core) {
+          return `<section class="scenario-kind" data-kind="${esc(g.id)}">
+            <h3 class="scenario-kind-title">${esc(g.label)}</h3>
+            ${body}
+          </section>`;
+        }
+        return `<details class="scenario-kind-drawer" data-kind="${esc(g.id)}">
+          <summary class="scenario-kind-title">${esc(g.label)}</summary>
+          ${body}
+        </details>`;
+      };
+      const html = groupModelsByKind(MODELS).map((band) => {
+        const groups = band.groups.map(kindBlock).join("");
+        if (!groups) return "";
+        return `<section class="scenario-band" data-band="${esc(band.id)}">
+          <h2 class="scenario-band-title">${esc(band.label)}</h2>
+          ${groups}
+        </section>`;
       }).join("");
       el.innerHTML = html || "<p class='help'>No questions match that filter.</p>";
-      el.querySelectorAll("[data-slug]").forEach((card) => {
-        card.addEventListener("click", () => pickQuestion(card.dataset.slug));
+      el.querySelectorAll("[data-slug]").forEach((c) => {
+        c.addEventListener("click", () => pickQuestion(c.dataset.slug));
       });
     }
 
@@ -2155,14 +2469,20 @@ const XYCALC_APP = (() => {
 
     function renderInputs() {
       const m = current();
-      $("inputs").innerHTML = m.inputs.map((i) => `
+      const fieldHtml = (i) => `
         <div class="field">
           <label for="in-${esc(i.key)}">${esc(i.label)}${i.required ? "" : " <span class='help' style='display:inline'>optional</span>"}</label>
           <input id="in-${esc(i.key)}" data-key="${esc(i.key)}" autocomplete="off"
                  value="${esc(i.default_value == null ? "" : i.default_value)}"
                  placeholder="${i.unit === "bytes" ? "e.g. 500GB" : esc(i.unit)}">
           ${i.help ? `<div class="help">${esc(i.help)}</div>` : ""}
-        </div>`).join("");
+        </div>`;
+      const required = (m.inputs || []).filter((i) => i.required);
+      const optional = (m.inputs || []).filter((i) => !i.required);
+      $("inputs").innerHTML = required.map(fieldHtml).join("")
+        + (optional.length
+          ? `<details class="input-section-drawer"><summary>Optional inputs</summary>${optional.map(fieldHtml).join("")}</details>`
+          : "");
       $("sweep").innerHTML = m.inputs
         .map((i) => `<option value="${esc(i.key)}">${esc(i.label)}</option>`).join("");
       $("result").hidden = true;
@@ -2342,6 +2662,9 @@ const XYCALC_APP = (() => {
 
     function drawChart() {
       if (!STATE) return;
+      if (currentMode() !== "scientific") return;
+      const panel = $("tab-single");
+      if (panel && panel.hidden) return;
       const s = computeSweep();
       const u = STATE.result.unit;
       const svg = $("chart");
@@ -2933,6 +3256,10 @@ const XYCALC_APP = (() => {
     normalizeSimpleAvgBytes: normalizeSimpleAvgBytes,
     SIMPLE_FORM_FIELD_IDS: SIMPLE_FORM_FIELD_IDS,
     BASIC_DEFAULT_VULN_COUNT: BASIC_DEFAULT_VULN_COUNT,
+    simpleSizeSliderGb: simpleSizeSliderGb,
+    formatSimpleSizeSliderGb: formatSimpleSizeSliderGb,
+    simpleSizeSliderIndex: simpleSizeSliderIndex,
+    nvdNextYearProjection: nvdNextYearProjection,
     simpleChainInputs: simpleChainInputs,
     gradeSuffix: gradeSuffix,
     weakestValidation: weakestValidation,
@@ -2959,6 +3286,14 @@ const XYCALC_APP = (() => {
     shortModelTitle: shortModelTitle,
     modelMatchesQuery: modelMatchesQuery,
     groupModelsBySystem: groupModelsBySystem,
+    MODEL_KIND: MODEL_KIND,
+    modelKind: modelKind,
+    groupModelsByKind: groupModelsByKind,
+    scenarioSectionIsDrawer: scenarioSectionIsDrawer,
+    SCENARIO_KIND: SCENARIO_KIND,
+    SCENARIO_TAXONOMY: SCENARIO_TAXONOMY,
+    scenarioKind: scenarioKind,
+    groupScenarios: groupScenarios,
     SIMPLE_HONESTY_LINE: SIMPLE_HONESTY_LINE,
     SIZE_PATH_FOOTNOTES: SIZE_PATH_FOOTNOTES,
     SIZE_PATH_RELATED_FOOTNOTES: SIZE_PATH_RELATED_FOOTNOTES,

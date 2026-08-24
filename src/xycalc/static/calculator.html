@@ -66,12 +66,12 @@ body {
   font-family: var(--sans); line-height: 1.55;
   -webkit-font-smoothing: antialiased;
 }
-.wrap { max-width: 60rem; margin: 0 auto; padding: 2rem 1.25rem 5rem; }
+.wrap { max-width: 60rem; margin: 0 auto; padding: 1.5rem 1.25rem 4.5rem; }
 
-.crumb { font-size: .78rem; color: var(--muted); margin-bottom: 1.25rem; }
+.crumb { font-size: .78rem; color: var(--muted); margin-bottom: 1rem; }
 .crumb a { color: var(--muted); }
 
-header { border-bottom: 1px solid var(--line); padding-bottom: 1.25rem; margin-bottom: 2rem; }
+header { border-bottom: 1px solid var(--line); padding-bottom: 1rem; margin-bottom: 1.35rem; }
 h1 { font-size: 1.5rem; margin: 0 0 .25rem; letter-spacing: -.01em; }
 h1 span { color: var(--accent); font-family: var(--mono); }
 .tagline { color: var(--muted); margin: 0; font-size: .95rem; }
@@ -115,7 +115,7 @@ button.ghost[aria-pressed="true"] { color: var(--accent); border-color: var(--ac
   font-weight: 600; letter-spacing: -.02em; line-height: 1;
 }
 .answer .band { color: var(--muted); font-family: var(--mono); font-size: .95rem; margin-top: .5rem; }
-.answer .label { font-size: .75rem; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+.answer .label { font-size: .75rem; text-transform: uppercase; letter-spacing: .08em; color: var(--accent); font-weight: 700; }
 
 .bandbar { height: 6px; background: var(--line); border-radius: 3px; position: relative; margin: 1.25rem 0 .35rem; }
 .bandbar .fill { position: absolute; top: 0; bottom: 0; background: var(--accent); opacity: .35; border-radius: 3px; }
@@ -270,6 +270,53 @@ footer .family > span:first-child { white-space: nowrap; }
   font-size: .72rem; letter-spacing: .06em; text-transform: uppercase;
   color: var(--muted); font-weight: 700; margin: 0 0 .35rem;
 }
+#scenario-chooser.collapsed #scenario-catalog { display: none; }
+.scenario-catalog-lead {
+  font-size: .8rem; color: var(--muted); margin: .15rem 0 .65rem;
+}
+.scenario-band {
+  margin-top: .85rem;
+  padding: .75rem .85rem .85rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--bg);
+}
+.scenario-band + .scenario-band { margin-top: .65rem; }
+.scenario-band[data-band="hardware"] {
+  border-left: 3px solid var(--floor);
+}
+.scenario-band[data-band="runtime"] {
+  border-left: 3px solid var(--amplifier);
+}
+.scenario-band-title {
+  font-size: .78rem; letter-spacing: .08em; text-transform: uppercase;
+  font-weight: 700; margin: 0 0 .55rem; color: var(--ink);
+}
+.scenario-kind { margin: 0 0 .55rem; }
+.scenario-kind-title {
+  font-size: .72rem; letter-spacing: .06em; text-transform: uppercase;
+  color: var(--accent); font-weight: 700; margin: 0 0 .35rem;
+}
+.scenario-kind-drawer {
+  margin: 0 0 .45rem;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: .35rem .6rem .45rem;
+  background: var(--panel);
+}
+.scenario-kind-drawer > summary.scenario-kind-title {
+  cursor: pointer;
+  list-style: none;
+  margin: 0;
+  padding: .25rem 0;
+}
+.scenario-kind-drawer > summary.scenario-kind-title::-webkit-details-marker { display: none; }
+.scenario-kind-drawer[open] > summary.scenario-kind-title { margin-bottom: .35rem; }
+.scenario-sub-title {
+  font-size: .68rem; letter-spacing: .05em; text-transform: uppercase;
+  color: var(--muted); font-weight: 700; margin: .45rem 0 .3rem;
+}
+.scenario-list { display: flex; flex-direction: column; gap: .5rem; }
 .question-opt .slug {
   font-family: var(--mono); font-size: .72rem; color: var(--muted); margin-top: .2rem;
 }
@@ -358,8 +405,8 @@ footer .family > span:first-child { white-space: nowrap; }
 .sizing-summary { border-color: var(--accent); }
 .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr)); gap: 1rem; margin-top: .75rem; }
 .summary-metric { border: 1px solid var(--line); border-radius: 6px; padding: .75rem; }
-.summary-metric .kicker { font-size: .68rem; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); font-weight: 700; }
-.summary-metric .primary { font-family: var(--mono); font-size: 1.25rem; font-weight: 600; }
+.summary-metric .kicker { font-size: .68rem; text-transform: uppercase; letter-spacing: .07em; color: var(--accent); font-weight: 700; }
+.summary-metric .primary { font-family: var(--mono); font-size: 1.35rem; font-weight: 600; }
 .info-stack { display: flex; flex-direction: column; gap: .75rem; }
 .info-card {
   background: var(--panel); border: 1px solid var(--line); border-radius: 8px;
@@ -381,12 +428,41 @@ svg.nvd-chart { width: 100%; height: auto; display: block; }
 .nvd-chart .nvd-line { fill: none; stroke: var(--accent); stroke-width: 2; }
 .nvd-chart .nvd-dot { fill: var(--accent); }
 .nvd-chart .ms-dot { fill: var(--amplifier); }
+.nvd-chart .nvd-proj { fill: none; stroke: var(--accent); stroke-width: 2; stroke-dasharray: 4 3; opacity: .75; }
+.nvd-chart .nvd-proj-band { stroke: var(--accent); stroke-width: 5; opacity: .28; stroke-linecap: round; }
+.nvd-chart .nvd-proj-dot { fill: var(--bg); stroke: var(--accent); stroke-width: 2; }
+#simple-nvd-chart { margin-top: .75rem; }
+#simple-nvd-chart .nvd-fold { margin: 0; }
+#simple-nvd-chart .nvd-fold > .nvd-title {
+  font-size: .72rem; letter-spacing: .06em; text-transform: uppercase;
+  color: var(--accent); font-weight: 700; margin: 0 0 .45rem;
+}
 .nvd-meta { font-size: .72rem; color: var(--muted); }
 .funnel-row { display: grid; grid-template-columns: 8.5rem 1fr auto; gap: .45rem; align-items: center; margin-top: .35rem; }
 .funnel-track { height: 8px; background: var(--line); border-radius: 4px; overflow: hidden; }
 .funnel-track span { display: block; height: 100%; background: var(--accent); opacity: .5; }
 .cascade-wrap { margin-top: .85rem; }
-.form-heading { font-size: .72rem; letter-spacing: .04em; color: var(--muted); margin: 0 0 .65rem; font-weight: 700; }
+.input-section-drawer {
+  margin: 0 0 .75rem;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: .4rem .7rem .55rem;
+  background: var(--bg);
+}
+.input-section-drawer > summary {
+  cursor: pointer;
+  font-size: .78rem;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding: .2rem 0;
+}
+.input-section-drawer[open] > summary { margin-bottom: .45rem; }
+.sizing-summary h2, .form-heading {
+  font-size: .72rem; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--accent); font-weight: 700;
+}
 @media (max-width: 42rem) {
   .input-grid, .nvd-layout { grid-template-columns: 1fr; }
   .ladder .mark { font-size: .62rem; }
@@ -577,11 +653,55 @@ body.mode-data #simple-view { display: none !important; }
   }
 }
 .simple-in .field { margin-bottom: .75rem; }
-.simple-refine { margin: .35rem 0 .5rem; }
-.simple-refine > summary {
-  cursor: pointer; font-size: .78rem; color: var(--muted); font-weight: 600;
+.simple-size-slider { margin: .15rem 0 .85rem; }
+.simple-size-slider input[type="range"] {
+  width: 100%; margin: .15rem 0 .2rem; accent-color: var(--accent);
+  height: 1.35rem; padding: 0; border: 0; background: transparent;
+  font-family: inherit;
 }
-.simple-refine .field { margin-top: .75rem; }
+.simple-size-slider-scale {
+  display: flex; justify-content: space-between;
+  font-family: var(--mono); font-size: .68rem; color: var(--muted);
+}
+.simple-refine {
+  margin: .45rem 0 .65rem;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--bg);
+}
+.simple-refine > summary {
+  list-style: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  font-size: .8rem;
+  font-weight: 700;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  color: var(--ink);
+  padding: .55rem .75rem;
+}
+.simple-refine > summary::-webkit-details-marker { display: none; }
+.simple-refine > summary::before {
+  content: "";
+  width: 0; height: 0;
+  border-style: solid;
+  border-width: .28rem 0 .28rem .42rem;
+  border-color: transparent transparent transparent var(--accent);
+  flex-shrink: 0;
+}
+.simple-refine[open] > summary::before {
+  border-width: .42rem .28rem 0 .28rem;
+  border-color: var(--accent) transparent transparent transparent;
+}
+.simple-refine > summary:hover { color: var(--accent); }
+.simple-refine[open] > summary {
+  border-bottom: 1px solid var(--line);
+  margin-bottom: .15rem;
+}
+.simple-refine .field { margin: .75rem .75rem 0; }
+.simple-refine .field:last-child { margin-bottom: .75rem; }
 #simple-result .answer { padding: .15rem 0 .1rem; text-align: left; }
 #simple-result .bandbar { margin: .55rem 0 .2rem; }
 .calc-tags {
@@ -728,6 +848,10 @@ button.calc-tag:hover { border-color: var(--accent); color: var(--accent); }
           <input id="simple-db-size" placeholder="e.g. 500 or 500GB" value="500" autocomplete="off">
           <div class="help">On-disk size (collStats / db.stats). Bare number = GB.</div>
         </div>
+        <div class="simple-size-slider">
+          <input type="range" id="simple-size-slider" min="0" max="80" step="1" value="39" aria-label="Dataset size">
+          <div class="simple-size-slider-scale"><span>10 GB</span><span>32 TB</span></div>
+        </div>
         <details class="simple-refine">
           <summary>Refine estimate</summary>
           <div class="field">
@@ -764,6 +888,7 @@ button.calc-tag:hover { border-color: var(--accent); color: var(--accent); }
         <div class="simple-picks" id="simple-picks"></div>
         <div id="simple-family"></div>
         <div class="band" id="simple-vuln-note" hidden></div>
+        <div id="simple-nvd-chart"></div>
         <div class="validation" id="simple-validation" hidden></div>
       </div>
     </div>
@@ -796,6 +921,7 @@ button.calc-tag:hover { border-color: var(--accent); color: var(--accent); }
     </div>
     <div id="scenario-catalog">
       <label>What do you know?</label>
+      <p class="scenario-catalog-lead">Hardware first. Runtime questions sit in the drawers.</p>
       <div class="scenario-list" id="scenario-picker"></div>
     </div>
   </div>
@@ -832,7 +958,7 @@ button.calc-tag:hover { border-color: var(--accent); color: var(--accent); }
   <div id="question-catalog">
     <label for="question-filter">What do you want to size?</label>
     <input id="question-filter" placeholder="Filter — cache, IOPS, Celery, Azure…" autocomplete="off">
-    <p class="help">Grouped by system. Filter or pick a card.</p>
+    <p class="help">Hardware first. Runtime questions sit in the drawers — same grouping as Advanced.</p>
     <div class="question-groups" id="question-picker"></div>
   </div>
   <select id="model" class="sr-only" tabindex="-1" aria-hidden="true"></select>
@@ -840,8 +966,11 @@ button.calc-tag:hover { border-color: var(--accent); color: var(--accent); }
 <div class="panel">
   <div id="inputs"></div>
   <div class="field">
-    <label for="available">What you already have <span class="help" style="display:inline">optional — turns this into a headroom check, and draws a line across the chart</span></label>
-    <input id="available" placeholder="e.g. 256GB" autocomplete="off">
+    <details class="input-section-drawer">
+      <summary>What you already have <span class="help" style="display:inline">optional</span></summary>
+      <label for="available">Turns this into a headroom check, and draws a line across the chart</label>
+      <input id="available" placeholder="e.g. 256GB" autocomplete="off">
+    </details>
   </div>
   <button id="go">Calculate</button>
   <p class="recalc-live" id="single-recalc-status">Sizing and the curve update as you type.</p>
