@@ -62,7 +62,9 @@ was not contested at the host ceiling — this measures "does changing
 Mongo's *own* WT share starve capped neighbors?" not "four services
 fighting the last free gigabyte." A follow-up that sets the sum of
 `mem_limit`s near host RAM (or uses a smaller instance) is required before
-calling the 50–70% guidance dead in production colocation.
+calling the 50–70% guidance dead when the host or parent is actually tight.
+That follow-up is `file` vs `anon` reclaim, not neighbor RSS. Recipe:
+`docs/telemetry/cgroup.md`.
 
 Also n=1 host / one sweep. Direction is clear; do not invent a precise
 `mongodb.colocation-share-pct` coefficient from four points that did not
