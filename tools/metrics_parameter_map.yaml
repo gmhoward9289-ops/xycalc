@@ -1,30 +1,90 @@
 # Map exported metric names → xycalc parameter slugs (data/parameters.yaml).
 # Keys match after lowercasing; Prometheus label braces are stripped.
 # Unmapped series are skipped (and recorded under local/metrics_raw/).
+#
+# Canonical dialect for estate boards: Percona mongodb_exporter diagnosticdata
+# (`mongodb_ss_wt_*`), redis_exporter, node_exporter, and YACE CloudWatch
+# (`aws_ebs_*_maximum` for ExceededCheck — never average 0/1). Lab Prometheus
+# recording rules in tools/bench/metrics_lab/recording_rules.yml (and
+# deploy/grafana/recording_rules.yml) alias Percona names onto the shorter
+# series the Grafana JSON queries.
 
 mappings:
-  # MongoDB / WiredTiger
-  mongodb_wiredtiger_cache_bytes:
-    { system: mongodb, parameter: cache.size_bytes, unit: bytes, agg: last }
-  bytes currently in the cache:
-    { system: mongodb, parameter: cache.size_bytes, unit: bytes, agg: last }
-  cache.size_bytes:
-    { system: mongodb, parameter: cache.size_bytes, unit: bytes, agg: last }
-  # db.stats() field names — shared with `xycalc ingest` / ingest_dbstats so a
-  # Grafana series named storageSize and a pasted db.stats().storageSize cannot
-  # land on different parameter slugs.
+  # --- MongoDB sizing inputs (db.stats / exporters) --------------------
   storageSize:
     { system: mongodb, parameter: storage.collection_bytes_on_disk, unit: bytes, agg: last }
+  mongodb_dbstats_storage_size:
+    { system: mongodb, parameter: storage.collection_bytes_on_disk, unit: bytes, agg: last }
+  mongodb_mongod_db_storage_size_bytes:
+    { system: mongodb, parameter: storage.collection_bytes_on_disk, unit: bytes, agg: last }
+  mongodb_ss_metrics_storage_size:
+    { system: mongodb, parameter: storage.collection_bytes_on_disk, unit: bytes, agg: last }
+
   dataSize:
     { system: mongodb, parameter: storage.collection_bytes_uncompressed, unit: bytes, agg: last }
+  mongodb_dbstats_data_size:
+    { system: mongodb, parameter: storage.collection_bytes_uncompressed, unit: bytes, agg: last }
+  mongodb_mongod_db_data_size_bytes:
+    { system: mongodb, parameter: storage.collection_bytes_uncompressed, unit: bytes, agg: last }
+
   indexSize:
     { system: mongodb, parameter: storage.index_bytes_on_disk, unit: bytes, agg: last }
+  mongodb_dbstats_index_size:
+    { system: mongodb, parameter: storage.index_bytes_on_disk, unit: bytes, agg: last }
+  mongodb_mongod_db_index_size_bytes:
+    { system: mongodb, parameter: storage.index_bytes_on_disk, unit: bytes, agg: last }
+
   storage.compression_ratio:
     { system: mongodb, parameter: storage.compression_ratio, unit: ratio, agg: last }
   datasize/storagesize:
     { system: mongodb, parameter: storage.compression_ratio, unit: ratio, agg: last }
 
-  # Redis
+  # --- WiredTiger cache (resident / configured / dirty) ----------------
+  # serverStatus spellings + Percona diagnosticdata + board aliases
+  bytes currently in the cache:
+    { system: mongodb, parameter: cache.size_bytes, unit: bytes, agg: last }
+  cache.size_bytes:
+    { system: mongodb, parameter: cache.size_bytes, unit: bytes, agg: last }
+  mongodb_wiredtiger_cache_bytes:
+    { system: mongodb, parameter: cache.size_bytes, unit: bytes, agg: last }
+  mongodb_wiredtiger_cache_bytes_currently_in_the_cache:
+    { system: mongodb, parameter: cache.size_bytes, unit: bytes, agg: last }
+  mongodb_ss_wt_cache_bytes_currently_in_the_cache:
+    { system: mongodb, parameter: cache.size_bytes, unit: bytes, agg: last }
+
+  maximum bytes configured:
+    { system: mongodb, parameter: cache.configured_bytes, unit: bytes, agg: last }
+  mongodb_wiredtiger_cache_maximum_bytes_configured:
+    { system: mongodb, parameter: cache.configured_bytes, unit: bytes, agg: last }
+  mongodb_ss_wt_cache_maximum_bytes_configured:
+    { system: mongodb, parameter: cache.configured_bytes, unit: bytes, agg: last }
+
+  tracked dirty bytes in the cache:
+    { system: mongodb, parameter: cache.dirty_bytes, unit: bytes, agg: last }
+  mongodb_wiredtiger_cache_tracked_dirty_bytes_in_the_cache:
+    { system: mongodb, parameter: cache.dirty_bytes, unit: bytes, agg: last }
+  mongodb_ss_wt_cache_tracked_dirty_bytes_in_the_cache:
+    { system: mongodb, parameter: cache.dirty_bytes, unit: bytes, agg: last }
+
+  pages read into cache:
+    { system: mongodb, parameter: cache.pages_read_into_cache, unit: "1", agg: delta }
+  pages_read_into_cache:
+    { system: mongodb, parameter: cache.pages_read_into_cache, unit: "1", agg: delta }
+  mongodb_ss_wt_cache_pages_read_into_cache:
+    { system: mongodb, parameter: cache.pages_read_into_cache, unit: "1", agg: delta }
+
+  pages evicted by application threads:
+    { system: mongodb, parameter: cache.pages_evicted_by_application_threads, unit: "1", agg: delta }
+  pages_evicted_by_application_threads:
+    { system: mongodb, parameter: cache.pages_evicted_by_application_threads, unit: "1", agg: delta }
+  mongodb_ss_wt_cache_pages_evicted_by_application_threads:
+    { system: mongodb, parameter: cache.pages_evicted_by_application_threads, unit: "1", agg: delta }
+
+  # --- Redis ------------------------------------------------------------
+  redis_memory_used_bytes:
+    { system: redis, parameter: server.used_memory_bytes, unit: bytes, agg: last }
+  used_memory:
+    { system: redis, parameter: server.used_memory_bytes, unit: bytes, agg: last }
   redis_memory_max_bytes:
     { system: redis, parameter: server.maxmemory_bytes, unit: bytes, agg: last }
   maxmemory:
@@ -33,13 +93,53 @@ mappings:
     { system: redis, parameter: broker.evicted_keys_delta, unit: "1", agg: delta }
   evicted_keys:
     { system: redis, parameter: broker.evicted_keys_delta, unit: "1", agg: delta }
+  redis_list_length:
+    { system: redis, parameter: broker.queue_depth, unit: count, agg: last }
 
-  # EBS / storage saturation (map checks onto queue/iops vocabulary we already have)
+  # --- Host (headroom only — not Mongo sizing inputs) ------------------
+  node_memory_MemTotal_bytes:
+    { system: mongodb, parameter: host.ram_bytes, unit: bytes, agg: last }
+  node_memory_MemAvailable_bytes:
+    { system: mongodb, parameter: host.ram_available_bytes, unit: bytes, agg: last }
+
+  # --- EBS / YACE (ExceededCheck → max; averages are capacity only) ----
   VolumeQueueLength:
     { system: ebs, parameter: io.queue_depth, unit: count, agg: mean }
   volumequeuelength:
     { system: ebs, parameter: io.queue_depth, unit: count, agg: mean }
+  aws_ebs_volume_queue_length_average:
+    { system: ebs, parameter: io.queue_depth, unit: count, agg: mean }
+
   VolumeAvgIOPS:
     { system: ebs, parameter: io.iops, unit: iops, agg: mean }
   volumeavgiops:
     { system: ebs, parameter: io.iops, unit: iops, agg: mean }
+  aws_ebs_volume_avg_iops_average:
+    { system: ebs, parameter: io.iops, unit: iops, agg: mean }
+
+  VolumeIOPSExceededCheck:
+    { system: ebs, parameter: io.iops_exceeded_check, unit: "1", agg: max }
+  aws_ebs_volume_iops_exceeded_check_maximum:
+    { system: ebs, parameter: io.iops_exceeded_check, unit: "1", agg: max }
+  VolumeThroughputExceededCheck:
+    { system: ebs, parameter: io.throughput_exceeded_check, unit: "1", agg: max }
+  aws_ebs_volume_throughput_exceeded_check_maximum:
+    { system: ebs, parameter: io.throughput_exceeded_check, unit: "1", agg: max }
+  InstanceEBSIOPSExceededCheck:
+    { system: ebs, parameter: io.instance_iops_exceeded_check, unit: "1", agg: max }
+  aws_ebs_instance_ebs_iops_exceeded_check_maximum:
+    { system: ebs, parameter: io.instance_iops_exceeded_check, unit: "1", agg: max }
+  InstanceEBSThroughputExceededCheck:
+    { system: ebs, parameter: io.instance_throughput_exceeded_check, unit: "1", agg: max }
+  aws_ebs_instance_ebs_throughput_exceeded_check_maximum:
+    { system: ebs, parameter: io.instance_throughput_exceeded_check, unit: "1", agg: max }
+  VolumeStalledIOCheck:
+    { system: ebs, parameter: io.stalled_io_check, unit: "1", agg: max }
+  aws_ebs_volume_stalled_io_check_maximum:
+    { system: ebs, parameter: io.stalled_io_check, unit: "1", agg: max }
+
+  # --- Sidecar predictions (xycalc-exporter) ---------------------------
+  xycalc_predicted_bytes:
+    { system: mongodb, parameter: host.ram_bytes, unit: bytes, agg: last }
+  xycalc_input_bytes:
+    { system: mongodb, parameter: storage.collection_bytes_on_disk, unit: bytes, agg: last }

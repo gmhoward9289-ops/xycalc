@@ -20,8 +20,10 @@ from fastapi.staticfiles import StaticFiles
 from . import __version__
 from .db import connect
 from .export import corpus_blob, render
+from .ingest import IngestError
 from .model import Model, ModelError, describe_scenarios
 from .payloads import (
+    ingest_payload,
     list_models_payload,
     scenario_payload,
     sizing_payload,
@@ -102,6 +104,32 @@ def why(model_slug: str, conn: sqlite3.Connection = Depends(_db)):
     they distrust a number rather than when they need one."""
     _model(conn, model_slug)
     return why_payload(conn, model_slug)
+
+
+@app.post("/api/ingest")
+def post_ingest(payload: dict, conn: sqlite3.Connection = Depends(_db)):
+    """Paste db.stats()/serverStatus JSON → model_inputs + optional sizing.
+
+    Candidate only — never writes the published corpus. The static export
+    page does not call this (offline); ``xycalc gui`` and tooling may.
+    """
+    metrics = payload.get("metrics")
+    if metrics is None:
+        raise HTTPException(status_code=422, detail="metrics required")
+    try:
+        return ingest_payload(
+            conn,
+            metrics,
+            model=payload.get("model") or "mongodb.wt-cache",
+            emit_observation=False,
+            tag=payload.get("tag"),
+            workload=payload.get("workload"),
+            machine_class=payload.get("machine_class"),
+        )
+    except IngestError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    except (ModelError, TypeError, ValueError) as e:
+        raise HTTPException(status_code=422, detail=str(e))
 
 
 @app.get("/")

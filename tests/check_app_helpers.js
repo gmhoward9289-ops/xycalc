@@ -106,6 +106,20 @@ assert.strictEqual(APP.normalizeSimpleAvgBytes("2048"), "2048");
 assert.strictEqual(APP.normalizeSimpleAvgBytes("2MB"), "2MB");
 assert.strictEqual(APP.normalizeSimpleAvgBytes("2KB"), "2KB");
 
+assert.strictEqual(APP.bytesToSimpleSize(500e9), "500GB");
+assert.strictEqual(APP.bytesToSimpleSize(1.5e12), "1.5TB");
+assert.deepStrictEqual(
+  APP.parseMetricsPaste(JSON.stringify({ storageSize: 500e9, indexSize: 40e9 })),
+  { storage_size: 500e9, index_size: 40e9 },
+);
+assert.deepStrictEqual(
+  APP.parseMetricsPaste(
+    JSON.stringify({ stats: { storageSize: 1e9, dataSize: 2.5e9, indexSize: 1e8 } }),
+  ),
+  { storage_size: 1e9, index_size: 1e8, data_size: 2.5e9 },
+);
+assert.throws(() => APP.parseMetricsPaste("{}"), /storageSize/);
+
 assert.deepStrictEqual(APP.SIMPLE_FORM_FIELD_IDS, [
   "simple-vulns",
   "simple-db-size",

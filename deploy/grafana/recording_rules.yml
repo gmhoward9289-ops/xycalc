@@ -1,0 +1,51 @@
+# Alias Percona mongodb_exporter diagnosticdata names onto the series the
+# xycalc Grafana boards query. Keep estate dashboard JSON stable — when a
+# scrape is empty, dump /metrics and extend this file; do not rename panels.
+#
+# Deploy next to estate Prometheus (monitoring repo) or load in the lab via
+# tools/bench/metrics_lab/prometheus.yml (rule_files).
+
+groups:
+  - name: xycalc-exporter-aliases
+    rules:
+      # Occupancy / dirty — Percona 0.40+ diagnosticdata
+      - record: mongodb_wiredtiger_cache_bytes_currently_in_the_cache
+        expr: mongodb_ss_wt_cache_bytes_currently_in_the_cache
+      - record: mongodb_wiredtiger_cache_maximum_bytes_configured
+        expr: mongodb_ss_wt_cache_maximum_bytes_configured
+      - record: mongodb_wiredtiger_cache_tracked_dirty_bytes_in_the_cache
+        expr: mongodb_ss_wt_cache_tracked_dirty_bytes_in_the_cache
+
+      - record: mongodb_wiredtiger_cache_occupancy_ratio
+        expr: >
+          mongodb_ss_wt_cache_bytes_currently_in_the_cache
+          / clamp_min(mongodb_ss_wt_cache_maximum_bytes_configured, 1)
+
+      - record: mongodb_wiredtiger_cache_dirty_ratio
+        expr: >
+          mongodb_ss_wt_cache_tracked_dirty_bytes_in_the_cache
+          / clamp_min(mongodb_ss_wt_cache_maximum_bytes_configured, 1)
+
+      # Counters the WT board rates
+      - record: pages_read_into_cache
+        expr: mongodb_ss_wt_cache_pages_read_into_cache
+      - record: pages_evicted_by_application_threads
+        expr: mongodb_ss_wt_cache_pages_evicted_by_application_threads
+
+      # Tickets — Mongo 7 concurrentTransactions; empty on 8.x until queues.* scraped
+      - record: mongodb_tickets_out
+        expr: mongodb_ss_wt_concurrentTransactions_read_out
+      - record: mongodb_tickets_total
+        expr: >
+          mongodb_ss_wt_concurrentTransactions_read_out
+          + mongodb_ss_wt_concurrentTransactions_read_available
+      - record: mongodb_tickets_available
+        expr: mongodb_ss_wt_concurrentTransactions_read_available
+
+      # db.stats sizing inputs (when exporter exposes dbstats)
+      - record: mongodb_dbstats_storage_size
+        expr: mongodb_dbstats_storage_size
+      - record: mongodb_dbstats_index_size
+        expr: mongodb_dbstats_index_size
+      - record: mongodb_dbstats_data_size
+        expr: mongodb_dbstats_data_size

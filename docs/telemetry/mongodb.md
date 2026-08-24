@@ -179,6 +179,11 @@ to be fully resident:
 tests the decompression term and the index term together, against reality, and
 settles the model's weakest inference. A laptop and a restored dump are enough.
 
+**When mongod shares a host:** RSS alone does not show page-cache reclaim.
+Collect `memory.stat` `anon` / `file` / `workingset_refault_file` next to
+this cache snapshot — see [`cgroup.md`](cgroup.md). Investigation 009 did
+not take that pair.
+
 ## Collection
 
 ```javascript

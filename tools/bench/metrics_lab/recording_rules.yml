@@ -1,0 +1,40 @@
+# Alias Percona diagnosticdata names (and a few guesses) onto the series
+# the xycalc WiredTiger board and alerts already query. After first scrape,
+# if a rule is empty, dump /metrics and add the real name here — do not
+# rewrite estate dashboard JSON for a lab alias.
+#
+# Keep in sync with deploy/grafana/recording_rules.yml (estate source).
+
+groups:
+  - name: xycalc-lab-aliases
+    rules:
+      - record: mongodb_wiredtiger_cache_bytes_currently_in_the_cache
+        expr: mongodb_ss_wt_cache_bytes_currently_in_the_cache
+      - record: mongodb_wiredtiger_cache_maximum_bytes_configured
+        expr: mongodb_ss_wt_cache_maximum_bytes_configured
+      - record: mongodb_wiredtiger_cache_tracked_dirty_bytes_in_the_cache
+        expr: mongodb_ss_wt_cache_tracked_dirty_bytes_in_the_cache
+
+      - record: mongodb_wiredtiger_cache_occupancy_ratio
+        expr: >
+          mongodb_ss_wt_cache_bytes_currently_in_the_cache
+          / clamp_min(mongodb_ss_wt_cache_maximum_bytes_configured, 1)
+
+      - record: mongodb_wiredtiger_cache_dirty_ratio
+        expr: >
+          mongodb_ss_wt_cache_tracked_dirty_bytes_in_the_cache
+          / clamp_min(mongodb_ss_wt_cache_maximum_bytes_configured, 1)
+
+      - record: pages_read_into_cache
+        expr: mongodb_ss_wt_cache_pages_read_into_cache
+      - record: pages_evicted_by_application_threads
+        expr: mongodb_ss_wt_cache_pages_evicted_by_application_threads
+
+      - record: mongodb_tickets_out
+        expr: mongodb_ss_wt_concurrentTransactions_read_out
+      - record: mongodb_tickets_total
+        expr: >
+          mongodb_ss_wt_concurrentTransactions_read_out
+          + mongodb_ss_wt_concurrentTransactions_read_available
+      - record: mongodb_tickets_available
+        expr: mongodb_ss_wt_concurrentTransactions_read_available

@@ -210,3 +210,24 @@ class TestPage:
         assert api["cache_cliff"]["status"] == "measured"
         assert len(api["cache_cliff"]["legs"]) == 9
         assert len(api["cache_cliff"]["a2_legs"]) == 6
+
+
+class TestIngest:
+    def test_paste_dbstats_returns_model_inputs(self, client):
+        body = client.post(
+            "/api/ingest",
+            json={
+                "metrics": {
+                    "storageSize": 500_000_000_000,
+                    "indexSize": 40_000_000_000,
+                    "dataSize": 1_250_000_000_000,
+                }
+            },
+        ).json()
+        assert body["model_inputs"]["storage_size"] == 500_000_000_000
+        assert body["model_inputs"]["index_size"] == 40_000_000_000
+        assert body["measurement"]["cited"] is False
+
+    def test_bad_paste_is_422(self, client):
+        r = client.post("/api/ingest", json={"metrics": {"hello": 1}})
+        assert r.status_code == 422

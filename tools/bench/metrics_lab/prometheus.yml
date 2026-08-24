@@ -1,0 +1,66 @@
+# Local scrape for the metrics lab. Labels match the estate contract
+# (machine/os/role/site/exporter) so xycalc Grafana boards can be pointed
+# at this Prometheus without rewriting every panel.
+
+global:
+  scrape_interval: 5s
+  evaluation_interval: 5s
+  external_labels:
+    estate: lab
+    machine: cooper-lab
+
+rule_files:
+  - /etc/prometheus/recording_rules.yml
+
+scrape_configs:
+  - job_name: prometheus
+    static_configs:
+      - targets: ["prometheus:9090"]
+        labels:
+          machine: cooper-lab
+          os: linux
+          role: lab
+          site: home
+          exporter: prometheus
+
+  - job_name: mongodb
+    static_configs:
+      - targets: ["mongo-exporter:9216"]
+        labels:
+          machine: cooper-lab
+          os: linux
+          role: lab
+          site: home
+          exporter: mongodb_exporter
+          service: mongo
+
+  - job_name: redis
+    static_configs:
+      - targets: ["redis-exporter:9121"]
+        labels:
+          machine: cooper-lab
+          os: linux
+          role: lab
+          site: home
+          exporter: redis_exporter
+          service: redis
+
+  - job_name: cadvisor
+    static_configs:
+      - targets: ["cadvisor:8080"]
+        labels:
+          machine: cooper-lab
+          os: linux
+          role: lab
+          site: home
+          exporter: cadvisor
+
+  - job_name: node
+    static_configs:
+      - targets: ["node-exporter:9100"]
+        labels:
+          machine: cooper-lab
+          os: linux
+          role: lab
+          site: home
+          exporter: node_exporter

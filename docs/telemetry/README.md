@@ -27,7 +27,9 @@ Living recommendations — **Product core** (instance sizing), **Simple** /
 **Advanced** / **Evidence** (ops + catalogs) — live in
 [`recommendations.md`](recommendations.md). [`dashboards.md`](dashboards.md)
 is a short pointer to that file. Per-system series contracts remain in
-`mongodb.md`, `ebs.md`, `redis.md`, and `clickhouse.md`.
+`mongodb.md`, `ebs.md`, `redis.md`, and `clickhouse.md`. Linux cgroup
+`anon` vs `file` (generic layouts, not a named estate) is
+[`cgroup.md`](cgroup.md).
 
 ## The import contract
 
@@ -64,6 +66,7 @@ Supported shapes, in rough order of how much work they save:
 | ClickHouse | `SELECT * FROM system.asynchronous_metrics` |
 | CloudWatch | `aws cloudwatch get-metric-statistics` → JSON |
 | Linux block I/O | `iostat -x 1` |
+| Linux cgroup v2 | `memory.stat` + `memory.max` (child **and** parent) |
 | Grafana | CSV export from Explore |
 | Coralogix | DataPrime query results as JSON |
 

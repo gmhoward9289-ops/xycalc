@@ -89,6 +89,10 @@ Investigation 009 / `colocation_probe` and `s3_stack` already record ClickHouse
 container RSS idle/loaded/under_load. Those observations validate neighbor RAM
 pressure, not insert-part thresholds — different question, different series.
 
+009 neighbor RSS being flat still does not show whether other processes'
+anon on the **parent or host** reclaimed Mongo's `file` pages. Collection
+recipe: [`cgroup.md`](cgroup.md).
+
 ## Merges-on / slow-disk probe knobs
 
 `tools/bench/clickhouse_probe.sh` can starve merges without a permanent

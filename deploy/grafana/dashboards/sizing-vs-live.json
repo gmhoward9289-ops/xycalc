@@ -1,0 +1,303 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [
+    {
+      "title": "WiredTiger pressure",
+      "url": "/d/xycalc-mongodb-wt",
+      "type": "link"
+    },
+    {
+      "title": "EBS throttle truth",
+      "url": "/d/xycalc-ebs-throttle",
+      "type": "link"
+    },
+    {
+      "title": "Redis + Celery",
+      "url": "/d/xycalc-redis-celery",
+      "type": "link"
+    },
+    {
+      "title": "xycalc calculator (size-to-instance)",
+      "url": "https://swamplink.com/tools/xycalc/calculator/#tab=scenario&scenario=mongodb.size-to-instance",
+      "type": "link",
+      "targetBlank": true
+    }
+  ],
+  "panels": [
+    {
+      "title": "On-disk collections (storageSize)",
+      "description": "Compressed collection bytes — calculator storage_size / baseline_storage_size. Not filesystem used.",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "targets": [
+        {
+          "expr": "sum(mongodb_dbstats_storage_size{instance=~\"$mongo\"}) or sum(xycalc_input_bytes{parameter=\"storage.collection_bytes_on_disk\",instance=~\"$mongo\"})",
+          "legendFormat": "storageSize",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": { "unit": "bytes", "decimals": 1 },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "colorMode": "none",
+        "graphMode": "none"
+      }
+    },
+    {
+      "title": "Indexes (indexSize)",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "targets": [
+        {
+          "expr": "sum(mongodb_dbstats_index_size{instance=~\"$mongo\"}) or sum(xycalc_input_bytes{parameter=\"storage.index_bytes_on_disk\",instance=~\"$mongo\"})",
+          "legendFormat": "indexSize",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": { "unit": "bytes", "decimals": 1 },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "colorMode": "none",
+        "graphMode": "none"
+      }
+    },
+    {
+      "title": "Compression (dataSize / storageSize)",
+      "description": "Measured ratio beats the published snappy coefficient. Record as an observation — do not silently rewrite the model.",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "targets": [
+        {
+          "expr": "sum(mongodb_dbstats_data_size{instance=~\"$mongo\"}) / clamp_min(sum(mongodb_dbstats_storage_size{instance=~\"$mongo\"}), 1)",
+          "legendFormat": "ratio",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": { "unit": "none", "decimals": 2 },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "colorMode": "none",
+        "graphMode": "none"
+      }
+    },
+    {
+      "title": "Host MemTotal (what you have)",
+      "description": "node_exporter MemTotal — compare to predicted host RAM band. Not mongod RSS.",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "targets": [
+        {
+          "expr": "node_memory_MemTotal_bytes{instance=~\"$node\"}",
+          "legendFormat": "MemTotal",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": { "unit": "bytes", "decimals": 1 },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "colorMode": "none",
+        "graphMode": "none"
+      }
+    },
+    {
+      "title": "Predicted host RAM band vs MemTotal",
+      "description": "xycalc-exporter gauges (lo/mode/hi) vs live MemTotal. Crossing the envelope means the host is undersized for the working-set model — not that CPU is high. Empty until the sidecar scrapes.",
+      "type": "timeseries",
+      "gridPos": { "h": 10, "w": 16, "x": 0, "y": 4 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "targets": [
+        {
+          "expr": "xycalc_predicted_bytes{model=\"mongodb.host-ram\",bound=\"lo\",instance=~\"$mongo\"}",
+          "legendFormat": "predicted lo",
+          "refId": "A"
+        },
+        {
+          "expr": "xycalc_predicted_bytes{model=\"mongodb.host-ram\",bound=\"mode\",instance=~\"$mongo\"}",
+          "legendFormat": "predicted mode",
+          "refId": "B"
+        },
+        {
+          "expr": "xycalc_predicted_bytes{model=\"mongodb.host-ram\",bound=\"hi\",instance=~\"$mongo\"}",
+          "legendFormat": "predicted hi",
+          "refId": "C"
+        },
+        {
+          "expr": "node_memory_MemTotal_bytes{instance=~\"$node\"}",
+          "legendFormat": "MemTotal",
+          "refId": "D"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "custom": { "drawStyle": "line", "fillOpacity": 8, "spanNulls": true }
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "MemTotal" },
+            "properties": [
+              { "id": "custom.lineWidth", "value": 3 },
+              { "id": "color", "value": { "mode": "fixed", "fixedColor": "purple" } }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "title": "SKU picks (lo / mode / hi) vs current",
+      "description": "Info metrics from xycalc-exporter. Current type from aws_ec2_info / label when available.",
+      "type": "table",
+      "gridPos": { "h": 10, "w": 8, "x": 16, "y": 4 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "targets": [
+        {
+          "expr": "xycalc_predicted_sku_info{instance=~\"$mongo\"}",
+          "format": "table",
+          "instant": true,
+          "refId": "A"
+        },
+        {
+          "expr": "aws_ec2_info{instance=~\"$node\"}",
+          "format": "table",
+          "instant": true,
+          "refId": "B"
+        }
+      ],
+      "options": {
+        "showHeader": true
+      },
+      "transformations": [
+        {
+          "id": "labelsToFields",
+          "options": {}
+        }
+      ]
+    },
+    {
+      "title": "Health strip — eviction / EBS exceeded / Redis ratio",
+      "description": "Sparklines only — full recipes on the ops boards.",
+      "type": "timeseries",
+      "gridPos": { "h": 6, "w": 8, "x": 0, "y": 14 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "targets": [
+        {
+          "expr": "rate(pages_evicted_by_application_threads{instance=~\"$mongo\"}[1m])",
+          "legendFormat": "app-evict/s",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "title": "EBS VolumeIOPSExceededCheck (max)",
+      "type": "timeseries",
+      "gridPos": { "h": 6, "w": 8, "x": 8, "y": 14 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "targets": [
+        {
+          "expr": "max_over_time(aws_ebs_volume_iops_exceeded_check_maximum{volume_id=~\"$volume_id\"}[2m])",
+          "legendFormat": "iops exceeded",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": { "min": 0, "max": 1 },
+        "overrides": []
+      }
+    },
+    {
+      "title": "Redis used/maxmemory",
+      "type": "timeseries",
+      "gridPos": { "h": 6, "w": 8, "x": 16, "y": 14 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "targets": [
+        {
+          "expr": "redis_memory_used_bytes{instance=~\"$redis\"} / clamp_min(redis_memory_max_bytes{instance=~\"$redis\"}, 1)",
+          "legendFormat": "ratio",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "min": 0,
+          "max": 1
+        },
+        "overrides": []
+      }
+    }
+  ],
+  "schemaVersion": 39,
+  "tags": ["xycalc", "sizing"],
+  "templating": {
+    "list": [
+      {
+        "name": "mongo",
+        "type": "query",
+        "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+        "query": "label_values(up{job=~\"mongo.*|mongodb.*\"}, instance)",
+        "current": { "text": "All", "value": ".*" },
+        "includeAll": true,
+        "allValue": ".*",
+        "multi": false,
+        "refresh": 2
+      },
+      {
+        "name": "node",
+        "type": "query",
+        "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+        "query": "label_values(node_memory_MemTotal_bytes, instance)",
+        "current": { "text": "All", "value": ".*" },
+        "includeAll": true,
+        "allValue": ".*",
+        "multi": false,
+        "refresh": 2
+      },
+      {
+        "name": "redis",
+        "type": "query",
+        "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+        "query": "label_values(redis_memory_used_bytes, instance)",
+        "current": { "text": "All", "value": ".*" },
+        "includeAll": true,
+        "allValue": ".*",
+        "multi": false,
+        "refresh": 2
+      },
+      {
+        "name": "volume_id",
+        "type": "query",
+        "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+        "query": "label_values(aws_ebs_volume_iops_exceeded_check_maximum, volume_id)",
+        "current": { "text": "All", "value": ".*" },
+        "includeAll": true,
+        "allValue": ".*",
+        "multi": false,
+        "refresh": 2
+      }
+    ]
+  },
+  "time": { "from": "now-6h", "to": "now" },
+  "timezone": "browser",
+  "title": "xycalc - sizing vs live",
+  "uid": "xycalc-sizing-live",
+  "version": 1
+}

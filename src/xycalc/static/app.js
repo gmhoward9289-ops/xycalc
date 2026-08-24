@@ -844,6 +844,78 @@ const XYCALC_APP = (() => {
     return t;
   }
 
+  // Format bytes for the Basic DB-size field (bare number = GB there).
+  function bytesToSimpleSize(n) {
+    const v = Number(n);
+    if (!isFinite(v) || v < 0) return "";
+    if (v === 0) return "0";
+    const trim = (x) => String(Number(x.toFixed(3))).replace(/\.0+$/, "").replace(/(\.\d*?)0+$/, "$1");
+    if (v >= 1e12) return trim(v / 1e12) + "TB";
+    if (v >= 1e9) return trim(v / 1e9) + "GB";
+    if (v >= 1e6) return trim(v / 1e6) + "MB";
+    return String(Math.round(v));
+  }
+
+  // Offline paste → sizing inputs. No Grafana/network — static export stays
+  // offline. Accepts db.stats(), {stats,…}, or Prom vector JSON.
+  function parseMetricsPaste(text) {
+    const raw = String(text || "").trim();
+    if (!raw) throw new Error("paste is empty");
+    let data;
+    try {
+      data = JSON.parse(raw);
+    } catch (e) {
+      throw new Error("paste is not JSON");
+    }
+    const out = {};
+    function takeStats(obj) {
+      if (!obj || typeof obj !== "object" || Array.isArray(obj)) return;
+      if (obj.storageSize != null) out.storage_size = Number(obj.storageSize);
+      if (obj.indexSize != null) out.index_size = Number(obj.indexSize);
+      if (obj.dataSize != null) out.data_size = Number(obj.dataSize);
+    }
+    function takePromRows(rows) {
+      for (const row of rows) {
+        const name = (
+          (row.metric && (row.metric.__name__ || row.metric.Metric)) ||
+          row.metric ||
+          row.name ||
+          ""
+        ).toString().toLowerCase();
+        let val = NaN;
+        if (row.value != null) {
+          val = Number(Array.isArray(row.value) ? row.value[1] : row.value);
+        } else if (row.Value != null) {
+          val = Number(row.Value);
+        }
+        if (!isFinite(val)) continue;
+        if (name.indexOf("storagesize") >= 0 || name.indexOf("storage_size") >= 0 || name === "mongodb_dbstats_storage_size") {
+          out.storage_size = val;
+        } else if (name.indexOf("indexsize") >= 0 || name.indexOf("index_size") >= 0 || name === "mongodb_dbstats_index_size") {
+          out.index_size = val;
+        } else if (name.indexOf("datasize") >= 0 || name === "mongodb_dbstats_data_size") {
+          out.data_size = val;
+        }
+      }
+    }
+    if (Array.isArray(data)) {
+      takePromRows(data);
+    } else if (data && typeof data === "object") {
+      if (data.data && Array.isArray(data.data.result)) {
+        takePromRows(data.data.result);
+      } else {
+        takeStats(data);
+        if (data.stats) takeStats(data.stats);
+      }
+    }
+    if (out.storage_size == null && out.index_size == null) {
+      throw new Error("no storageSize / indexSize found in paste");
+    }
+    return out;
+  }
+
+  const METRICS_PASTE = { parseMetricsPaste: parseMetricsPaste, bytesToSimpleSize: bytesToSimpleSize };
+
   // Per-document averages are usually bytes–KB–MB. Bare number = bytes;
   // explicit units pass through to parseBytes.
   function normalizeSimpleAvgBytes(raw) {
@@ -1249,6 +1321,45 @@ const XYCALC_APP = (() => {
         const el = $(id);
         if (!el) throw new Error("Simple form missing #" + id);
         el.addEventListener("input", scheduleSimpleCalc);
+      }
+      const applyPaste = $("simple-metrics-apply");
+      if (applyPaste) {
+        applyPaste.addEventListener("click", () => {
+          const status = $("simple-metrics-status");
+          try {
+            const parsed = parseMetricsPaste(($("simple-metrics-paste") || {}).value || "");
+            if (parsed.storage_size != null && $("simple-db-size")) {
+              $("simple-db-size").value = bytesToSimpleSize(parsed.storage_size);
+            }
+            if (parsed.index_size != null) {
+              const idx = $("scn-in-index_size");
+              if (idx) idx.value = bytesToSimpleSize(parsed.index_size);
+            }
+            const bits = [];
+            if (parsed.storage_size != null) {
+              bits.push("storageSize → " + bytesToSimpleSize(parsed.storage_size));
+            }
+            if (parsed.index_size != null) {
+              bits.push("indexSize → " + bytesToSimpleSize(parsed.index_size));
+            }
+            if (parsed.data_size != null && parsed.storage_size) {
+              bits.push("compression ~" + (parsed.data_size / parsed.storage_size).toFixed(2));
+            }
+            if (status) {
+              status.hidden = false;
+              status.textContent = bits.join("; ") || "applied";
+              status.className = "help";
+            }
+            scheduleSimpleCalc();
+            scheduleHash();
+          } catch (e) {
+            if (status) {
+              status.hidden = false;
+              status.textContent = e.message || String(e);
+              status.className = "error";
+            }
+          }
+        });
       }
       $("simple-rail").addEventListener("click", (ev) => {
         if (ev.target && ev.target.id === "simple-open-scientific") {
@@ -2931,6 +3042,8 @@ const XYCALC_APP = (() => {
     chartLayout: chartLayout,
     normalizeSimpleSize: normalizeSimpleSize,
     normalizeSimpleAvgBytes: normalizeSimpleAvgBytes,
+    bytesToSimpleSize: bytesToSimpleSize,
+    parseMetricsPaste: parseMetricsPaste,
     SIMPLE_FORM_FIELD_IDS: SIMPLE_FORM_FIELD_IDS,
     BASIC_DEFAULT_VULN_COUNT: BASIC_DEFAULT_VULN_COUNT,
     simpleChainInputs: simpleChainInputs,

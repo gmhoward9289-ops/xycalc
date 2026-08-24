@@ -99,6 +99,42 @@ parameters:
     label: WiredTiger cache size
     unit: bytes
     dimension: bytes
+    notes: >-
+      Resident bytes currently in the WiredTiger cache
+      (`bytes currently in the cache` / exporter gauges). Distinct from
+      cache.configured_bytes (the configured maximum).
+
+  - slug: cache.configured_bytes
+    label: WiredTiger cache maximum configured
+    unit: bytes
+    dimension: bytes
+    notes: >-
+      `maximum bytes configured`. Denominator for occupancy %; not the
+      sizing model's output (that is cache.size_bytes as a requirement).
+
+  - slug: cache.dirty_bytes
+    label: WiredTiger tracked dirty bytes in cache
+    unit: bytes
+    dimension: bytes
+    notes: >-
+      `tracked dirty bytes in the cache`. Against configured max for dirty %
+      (dirty trigger 20%). Distinct from cache.tracked_dirty_pct_peak.
+
+  - slug: cache.pages_read_into_cache
+    label: Pages read into WiredTiger cache (counter)
+    unit: "1"
+    dimension: count
+    notes: >-
+      Cumulative counter; aggregate as delta/rate. Demand side of the
+      cache→disk handoff to EBS.
+
+  - slug: cache.pages_evicted_by_application_threads
+    label: Pages evicted by application threads (counter)
+    unit: "1"
+    dimension: count
+    notes: >-
+      Cumulative counter; rate > 0 sustained is the money metric for cache
+      pressure (not RSS).
 
   - slug: cache.eviction_target_pct
     label: Eviction target (% of cache)
@@ -188,6 +224,15 @@ parameters:
     label: Host RAM
     unit: bytes
     dimension: bytes
+
+  - slug: host.ram_available_bytes
+    label: Host MemAvailable
+    unit: bytes
+    dimension: bytes
+    notes: >-
+      node_exporter MemAvailable. Headroom against Redis maxmemory (~20% free
+      beyond maxmemory) and parent/host reclaim pressure — not a Mongo sizing
+      input.
 
   - slug: host.cache_default_share_pct
     label: Default cache share of (RAM − reserve)
@@ -290,6 +335,40 @@ parameters:
     label: Average queue depth
     unit: count
     dimension: count
+
+  - slug: io.iops_exceeded_check
+    label: Volume IOPS exceeded check (0/1)
+    unit: "1"
+    dimension: count
+    notes: >-
+      CloudWatch VolumeIOPSExceededCheck. Aggregate as **max**, never average.
+      Any second in the minute over provisioned IOPS.
+
+  - slug: io.throughput_exceeded_check
+    label: Volume throughput exceeded check (0/1)
+    unit: "1"
+    dimension: count
+    notes: >-
+      VolumeThroughputExceededCheck. Aggregate as max.
+
+  - slug: io.instance_iops_exceeded_check
+    label: Instance EBS IOPS exceeded check (0/1)
+    unit: "1"
+    dimension: count
+    notes: >-
+      InstanceEBSIOPSExceededCheck — dual ceiling vs the volume.
+
+  - slug: io.instance_throughput_exceeded_check
+    label: Instance EBS throughput exceeded check (0/1)
+    unit: "1"
+    dimension: count
+
+  - slug: io.stalled_io_check
+    label: Volume stalled IO check (0/1)
+    unit: "1"
+    dimension: count
+    notes: >-
+      VolumeStalledIOCheck. Aggregate as max; page immediately when ≥ 1.
 
   - slug: io.iops_per_gib
     label: Provisionable IOPS per GiB of volume
@@ -403,6 +482,23 @@ parameters:
     label: Redis maxmemory ceiling (0 = unlimited)
     unit: bytes
     dimension: bytes
+
+  - slug: server.used_memory_bytes
+    label: Redis used_memory
+    unit: bytes
+    dimension: bytes
+    notes: >-
+      INFO memory used_memory / redis_memory_used_bytes. Ratio against
+      maxmemory is the headroom alert, not used_memory alone.
+
+  - slug: broker.queue_depth
+    label: Broker visible queue depth (LLEN)
+    unit: count
+    dimension: count
+    notes: >-
+      redis_list_length / LLEN. Visible only — understates outstanding by
+      ~prefetch × concurrency. Prefer queue.outstanding_understatement /
+      app bookkeeping for pages.
 
   - slug: server.maxmemory_policy_default
     label: Shipped default maxmemory-policy encoding

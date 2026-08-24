@@ -91,8 +91,13 @@ select, input {
   background: var(--bg); color: var(--ink);
 }
 select { font-family: var(--sans); }
-input:focus, select:focus, button:focus-visible {
+input:focus, select:focus, button:focus-visible, textarea:focus {
   outline: 2px solid var(--accent); outline-offset: 1px;
+}
+textarea {
+  width: 100%; font-family: var(--mono); font-size: .78rem;
+  border: 1px solid var(--line); border-radius: 6px; padding: .5rem .65rem;
+  background: var(--panel); color: var(--ink); resize: vertical;
 }
 .field { margin-bottom: 1rem; }
 .question { font-size: 1.05rem; margin: 0 0 1.25rem; }
@@ -745,6 +750,16 @@ button.calc-tag:hover { border-color: var(--accent); color: var(--accent); }
             <input id="simple-residual" placeholder="e.g. 50 or 50GB" autocomplete="off">
             <div class="help">Optional residual floor. Bare number = GB.</div>
           </div>
+        </details>
+        <details class="simple-refine" id="simple-paste-block">
+          <summary>Paste db.stats / metrics JSON</summary>
+          <div class="field">
+            <label for="simple-metrics-paste">Paste fills DB size (and Advanced index) from storageSize / indexSize — offline, no Grafana fetch</label>
+            <textarea id="simple-metrics-paste" rows="6" placeholder='{"storageSize": 500000000000, "indexSize": 40000000000, "dataSize": 1250000000000}' spellcheck="false"></textarea>
+            <div class="help">db.stats() object, or a wrapper with <code>stats</code>. Prometheus snapshot JSON with those field names also works. Does not call the network.</div>
+          </div>
+          <button type="button" class="ghost" id="simple-metrics-apply">Apply paste</button>
+          <p class="help" id="simple-metrics-status" hidden></p>
         </details>
         <p class="recalc-live" id="simple-status">Enter DB size — sizing updates as you type.</p>
         <p id="simple-error" class="error" hidden></p>
