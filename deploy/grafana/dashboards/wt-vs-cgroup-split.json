@@ -881,7 +881,7 @@
           "type": "prometheus",
           "uid": "PBFA97CFB590B2093"
         },
-        "query": "label_values(container_memory_rss{name=~\".*mongo.*\"}, name)",
+        "query": "label_values(container_memory_rss, name)",
         "current": {
           "text": "xycalc-celery-probe-mongo-1",
           "value": "xycalc-celery-probe-mongo-1"
