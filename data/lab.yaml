@@ -23,7 +23,7 @@ models:
   - model: mongodb.host-ram
     label: Host RAM
     measured: Three default-split round-trips (reef, agent bench, COOPER). MAE 0.8%; 0 in band — the formula inverted, not RSS under load.
-    still_needs: RSS vs predicted host RAM on a loaded mongod, not another invert of the default cache split.
+    still_needs: RSS vs predicted host RAM on a loaded mongod, not another invert of the default cache split. Cgroup file vs anon under real memory pressure still open (docs/telemetry/cgroup.md); 009 left page cache uncontested.
 
   - model: ebs.iops-to-provision
     label: EBS IOPS to provision
