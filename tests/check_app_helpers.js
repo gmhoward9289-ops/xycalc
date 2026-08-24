@@ -260,14 +260,18 @@ assert.deepStrictEqual(view, { mode: "data", tab: "cliff" });
 assert.strictEqual(APP.permalinkView(APP.parsePermalink("#mode=simple")).mode, "basic");
 assert.strictEqual(APP.permalinkView(APP.parsePermalink("#mode=simple")).tab, null);
 assert.strictEqual(APP.permalinkView(APP.parsePermalink("#mode=basic")).mode, "basic");
-assert.strictEqual(APP.permalinkView(APP.parsePermalink("#mode=scientific")).mode, "scientific");
+assert.strictEqual(APP.permalinkView(APP.parsePermalink("#mode=scientific")).mode, "data");
 assert.strictEqual(APP.permalinkView(APP.parsePermalink("#mode=scientific")).tab, "math");
 assert.strictEqual(APP.permalinkView(APP.parsePermalink("#mode=data")).mode, "data");
-assert.strictEqual(APP.permalinkView(APP.parsePermalink("#mode=data")).tab, "occupancy");
+assert.strictEqual(APP.permalinkView(APP.parsePermalink("#mode=data")).tab, "math");
 assert.strictEqual(APP.canonicalMode("simple"), "basic");
+assert.strictEqual(APP.canonicalMode("scientific"), "data");
 assert.strictEqual(APP.modeForTab("cache-cliff"), "data");
-assert.strictEqual(APP.modeForTab("single"), "scientific");
+assert.strictEqual(APP.modeForTab("single"), "questions");
+assert.strictEqual(APP.modeForTab("math"), "data");
 assert.strictEqual(APP.modeForTab("scenario"), "advanced");
+assert.strictEqual(APP.permalinkView(APP.parsePermalink("#mode=questions")).mode, "questions");
+assert.strictEqual(APP.permalinkView(APP.parsePermalink("#mode=questions")).tab, "single");
 
 const cliffHash = APP.serializePermalink({ mode: "data", tab: "cliff", inputs: {} });
 assert.ok(cliffHash.includes("mode=data"), cliffHash);
@@ -286,7 +290,7 @@ assert.strictEqual(href, "/tools/xycalc/calculator/#mode=advanced&tab=cache-clif
 const modelOnly = APP.parsePermalink("#tab=single&model=mongodb.wt-cache");
 assert.strictEqual(modelOnly.model, "mongodb.wt-cache");
 assert.strictEqual(APP.permalinkView(modelOnly).tab, "single");
-assert.strictEqual(APP.permalinkView(modelOnly).mode, "scientific");
+assert.strictEqual(APP.permalinkView(modelOnly).mode, "questions");
 
 const qModel = APP.parsePermalink("?model=mongodb.wt-cache");
 assert.strictEqual(qModel.model, "mongodb.wt-cache");

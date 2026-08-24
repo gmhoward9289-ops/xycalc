@@ -599,7 +599,9 @@ def test_template_keeps_simple_claim_and_reserved_advanced_subnav():
     assert "min-height: 2.05rem;" in text
     assert "--subnav-indent" in text
     assert "body.mode-basic .view-subnav .tabs" in text
-    assert "body.mode-basic .claim" not in text
+    assert 'id="sci-toggle"' in text
+    assert "Questions" in text
+    assert "body.mode-questions" in text
     assert "body.mode-scientific .claim" not in text
     assert "body.mode-data .claim" not in text
 
