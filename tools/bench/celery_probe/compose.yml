@@ -150,3 +150,55 @@ services:
       PROBE_RESULT_EXPIRES: ${PROBE_RESULT_EXPIRES:-60}
     depends_on: [redis, bookkeeping]
     profiles: ["evict"]
+
+  # --- Metrics exporters -------------------------------------------------
+  # Estate Prometheus (host network on swamplink) scrapes these on loopback;
+  # jobs xycalc-mongodb / xycalc-redis / xycalc-predicted in the monitoring
+  # repo's prometheus.yml. The recording rules in deploy/grafana/
+  # recording_rules.yml alias the Percona mongodb_ss_* names onto the series
+  # the xycalc Grafana boards query. Loopback publish only — house rule.
+  mongo-exporter:
+    image: percona/mongodb_exporter:0.47.1
+    command:
+      - --mongodb.uri=mongodb://mongo:27017
+      - --collector.diagnosticdata
+      - --collector.dbstats
+    ports:
+      - "127.0.0.1:9216:9216"
+    depends_on: [mongo]
+    restart: unless-stopped
+    mem_limit: 128m
+
+  redis-exporter:
+    image: oliver006/redis_exporter:v1.74.0
+    command: ["--redis.addr=redis://redis:6379"]
+    ports:
+      - "127.0.0.1:9121:9121"
+    depends_on: [redis]
+    restart: unless-stopped
+    mem_limit: 64m
+
+  # Predicted-band sidecar: tools/xycalc_exporter.py evaluates
+  # mongodb.size-to-instance from Prometheus inputs and exposes
+  # xycalc_predicted_bytes{bound=lo|mode|hi} + xycalc_predicted_sku_info for
+  # the sizing-vs-live board. Host network so it can reach Prometheus on
+  # 127.0.0.1:9090 and still publish only to loopback. The image is the app
+  # image built from a current checkout, tagged separately so a metrics
+  # deploy never restarts the serving container:
+  #     docker build -t xycalc:metrics /srv/apps/xycalc/src
+  # tools/ is not baked into the image, hence the single-file mount.
+  predicted-exporter:
+    image: xycalc:metrics
+    network_mode: host
+    command:
+      - python
+      - tools/xycalc_exporter.py
+      - --prom-url
+      - http://127.0.0.1:9090
+      - --listen
+      - 127.0.0.1:9199
+    volumes:
+      - ../../xycalc_exporter.py:/app/tools/xycalc_exporter.py:ro
+    restart: unless-stopped
+    profiles: ["metrics"]
+    mem_limit: 256m

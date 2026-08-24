@@ -25,6 +25,7 @@ Then open folder **xycalc**:
 - `/d/xycalc-ebs-throttle` — ExceededCheck (max, never avg)
 - `/d/xycalc-redis-celery` — broker headroom + outstanding
 - `/d/xycalc-sizing-live` — live inputs + predicted RAM/SKU vs MemTotal
+- `/d/xycalc-wt-cgroup` — WT cache vs anon vs file inside memory.max (cgroup split)
 
 Panels stay empty until Mongo/Redis/EBS exporters scrape the named series.
 Percona names are aliased in [`recording_rules.yml`](recording_rules.yml);
@@ -48,6 +49,10 @@ sizing board overlays those gauges on `node_memory_MemTotal_bytes`.
 ```
 
 ## This directory
+
+Taking the WT-vs-cgroup board somewhere else (another Grafana, Kubernetes,
+rootless, no containers): [`PORTING.md`](PORTING.md) — written to be handed
+to an AI assistant along with the board JSON.
 
 Source JSON for the estate boards (keep in sync when recipes change).
 

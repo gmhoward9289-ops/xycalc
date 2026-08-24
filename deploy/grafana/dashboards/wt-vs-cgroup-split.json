@@ -1,0 +1,1040 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [
+    {
+      "title": "WiredTiger pressure",
+      "url": "/d/xycalc-mongodb-wt",
+      "type": "link"
+    },
+    {
+      "title": "EBS throttle truth",
+      "url": "/d/xycalc-ebs-throttle",
+      "type": "link"
+    },
+    {
+      "title": "Sizing vs live",
+      "url": "/d/xycalc-sizing-live",
+      "type": "link"
+    }
+  ],
+  "panels": [
+    {
+      "title": "Inside memory.max: WT cache, other anon, file page cache",
+      "description": "Breakdown of the mongo container's memory charge. The stacked bands are WiredTiger's cache, the rest of mongod's anonymous memory (heap, connections, in-flight sorts), and file-backed page cache charged to this cgroup. Dashed lines: the container limit (memory.max) and the configured WT cache maximum. WiredTiger sizes its cache assuming compressed collection files are served from the file cache next to it; when anon grows and the file band shrinks against the limit, that assumption stops holding. The 'anon beyond WT' series subtracts a single WT series via scalar(), so select one mongo at a time. When the container has no memory limit, the memory.max line disappears and a host-MemTotal line takes its place: with no cgroup ceiling, host RAM is the real one.",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 0,
+        "y": 0
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "targets": [
+        {
+          "expr": "max(mongodb_wiredtiger_cache_bytes_currently_in_the_cache{instance=~\"$instance\"})",
+          "legendFormat": "WT cache (anon)",
+          "refId": "A"
+        },
+        {
+          "expr": "clamp_min(max(container_memory_rss{name=~\"$container\"}) - max(mongodb_wiredtiger_cache_bytes_currently_in_the_cache{instance=~\"$instance\"}), 0)",
+          "legendFormat": "anon beyond WT (heap, other)",
+          "refId": "B"
+        },
+        {
+          "expr": "max(container_memory_cache{name=~\"$container\"})",
+          "legendFormat": "file page cache (this cgroup)",
+          "refId": "C"
+        },
+        {
+          "expr": "max(container_spec_memory_limit_bytes{name=~\"$container\"} > 0)",
+          "legendFormat": "memory.max",
+          "refId": "D"
+        },
+        {
+          "expr": "max(mongodb_wiredtiger_cache_maximum_bytes_configured{instance=~\"$instance\"})",
+          "legendFormat": "WT max configured",
+          "refId": "E"
+        },
+        {
+          "expr": "max(node_memory_MemTotal_bytes{machine=~\"$machine\"}) unless on() (container_spec_memory_limit_bytes{name=~\"$container\"} > 0)",
+          "legendFormat": "host MemTotal (no memory.max set)",
+          "refId": "F"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "min": 0,
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 35,
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            }
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "memory.max"
+            },
+            "properties": [
+              {
+                "id": "custom.stacking",
+                "value": {
+                  "mode": "none"
+                }
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              },
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "fill": "dash",
+                  "dash": [
+                    10,
+                    10
+                  ]
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "red"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "WT max configured"
+            },
+            "properties": [
+              {
+                "id": "custom.stacking",
+                "value": {
+                  "mode": "none"
+                }
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              },
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "fill": "dash",
+                  "dash": [
+                    4,
+                    6
+                  ]
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "orange"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "host MemTotal (no memory.max set)"
+            },
+            "properties": [
+              {
+                "id": "custom.stacking",
+                "value": {
+                  "mode": "none"
+                }
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              },
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "fill": "dash",
+                  "dash": [
+                    10,
+                    10
+                  ]
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "purple"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "WT cache (anon)"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "semi-dark-green"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "anon beyond WT (heap, other)"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "semi-dark-blue"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "file page cache (this cgroup)"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "semi-dark-yellow"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "title": "File pages: active vs inactive",
+      "description": "Reclaim order. The kernel drops inactive file pages first; nothing has read them recently, so losing them usually costs nothing. Once the inactive band is exhausted, reclaim starts taking active file pages, which mongod is still reading, and those return later as major faults and disk reads. The working-set line (usage minus inactive file) meets the limit exactly when the cheap-to-reclaim band is gone.",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 12,
+        "y": 0
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "targets": [
+        {
+          "expr": "max(container_memory_total_active_file_bytes{name=~\"$container\"})",
+          "legendFormat": "active file (still hot)",
+          "refId": "A"
+        },
+        {
+          "expr": "max(container_memory_total_inactive_file_bytes{name=~\"$container\"})",
+          "legendFormat": "inactive file (reclaim fodder)",
+          "refId": "B"
+        },
+        {
+          "expr": "max(container_memory_working_set_bytes{name=~\"$container\"})",
+          "legendFormat": "working set",
+          "refId": "C"
+        },
+        {
+          "expr": "max(container_spec_memory_limit_bytes{name=~\"$container\"} > 0)",
+          "legendFormat": "memory.max",
+          "refId": "D"
+        },
+        {
+          "expr": "max(node_memory_MemTotal_bytes{machine=~\"$machine\"}) unless on() (container_spec_memory_limit_bytes{name=~\"$container\"} > 0)",
+          "legendFormat": "host MemTotal (no memory.max set)",
+          "refId": "E"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "min": 0,
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 25,
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            }
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "working set"
+            },
+            "properties": [
+              {
+                "id": "custom.stacking",
+                "value": {
+                  "mode": "none"
+                }
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "memory.max"
+            },
+            "properties": [
+              {
+                "id": "custom.stacking",
+                "value": {
+                  "mode": "none"
+                }
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              },
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "fill": "dash",
+                  "dash": [
+                    10,
+                    10
+                  ]
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "red"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "host MemTotal (no memory.max set)"
+            },
+            "properties": [
+              {
+                "id": "custom.stacking",
+                "value": {
+                  "mode": "none"
+                }
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              },
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "fill": "dash",
+                  "dash": [
+                    10,
+                    10
+                  ]
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "purple"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "active file (still hot)"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "semi-dark-orange"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "inactive file (reclaim fodder)"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "semi-dark-blue"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "working set"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "text"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "title": "Refault cost: major faults and reads against the throttle",
+      "description": "Where evicted file pages come back to bite. WiredTiger reads data files with pread, not mmap, so pages the kernel reclaimed return as ordinary read() I/O - watch 'device reads' against the dashed line, which is the probe's configured blkio cap (8 MiB/s in compose.yml, standing in for a small cloud volume; replace with the real volume's ceiling elsewhere). Reads pinned on that line mean every further miss queues behind the throttle and surfaces as query latency. Major faults stay near zero for mongod and matter mainly for mmap-based engines; cAdvisor has no workingset_refault_file, so read() volume is the refault-cost signal here. 'WT pages into cache' is the same demand counted from Mongo's side.",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 0,
+        "y": 9
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "targets": [
+        {
+          "expr": "max(rate(container_memory_failures_total{failure_type=\"pgmajfault\",scope=\"container\",name=~\"$container\"}[1m]))",
+          "legendFormat": "major faults/s",
+          "refId": "A"
+        },
+        {
+          "expr": "max(rate(container_fs_reads_bytes_total{name=~\"$container\"}[1m]))",
+          "legendFormat": "device reads B/s",
+          "refId": "B"
+        },
+        {
+          "expr": "max(rate(pages_read_into_cache{instance=~\"$instance\"}[1m]))",
+          "legendFormat": "WT pages into cache/s",
+          "refId": "C"
+        },
+        {
+          "expr": "8388608 + 0 * container_spec_memory_limit_bytes{name=~\"$container\"}",
+          "legendFormat": "blkio read throttle (8 MiB/s)",
+          "refId": "D"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops",
+          "min": 0,
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 10
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "device reads B/s"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "Bps"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "blkio read throttle (8 MiB/s)"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "Bps"
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              },
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "fill": "dash",
+                  "dash": [
+                    10,
+                    10
+                  ]
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "red"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "title": "PSI: fraction of time stalled",
+      "description": "Linux pressure-stall information for the mongo cgroup, plotted as seconds stalled per second (0 to 1). 'some' means at least one task was blocked on memory or I/O during the interval; 'full' means all of them were. The memory panels explain the mechanism; this one measures how much time it actually costs.",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 12,
+        "y": 9
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "targets": [
+        {
+          "expr": "max(rate(container_pressure_memory_waiting_seconds_total{name=~\"$container\"}[1m]))",
+          "legendFormat": "memory some",
+          "refId": "A"
+        },
+        {
+          "expr": "max(rate(container_pressure_memory_stalled_seconds_total{name=~\"$container\"}[1m]))",
+          "legendFormat": "memory full",
+          "refId": "B"
+        },
+        {
+          "expr": "max(rate(container_pressure_io_waiting_seconds_total{name=~\"$container\"}[1m]))",
+          "legendFormat": "io some",
+          "refId": "C"
+        },
+        {
+          "expr": "max(rate(container_pressure_io_stalled_seconds_total{name=~\"$container\"}[1m]))",
+          "legendFormat": "io full",
+          "refId": "D"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "min": 0,
+          "max": 1,
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 15
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "title": "WT occupancy vs cgroup usage, same 0-100 axis",
+      "description": "Two utilization views of the same container. WT occupancy is measured against the WT cache maximum and can sit comfortably under 80% while the container's working set is pinned at memory.max. When the two lines diverge - occupancy moderate, working set near 100 - the shortage is in the cgroup's file cache, not inside WiredTiger, and WT-level metrics alone will not show it. The third line tracks how much of the limit is still file cache. With no container limit the two %-of-limit lines go empty rather than reporting against a meaningless number, and a %-of-host-RAM line appears instead.",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 0,
+        "y": 18
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "targets": [
+        {
+          "expr": "max(mongodb_wiredtiger_cache_occupancy_ratio{instance=~\"$instance\"}) * 100",
+          "legendFormat": "WT occupancy % of WT max",
+          "refId": "A"
+        },
+        {
+          "expr": "max(container_memory_working_set_bytes{name=~\"$container\"}) / max(container_spec_memory_limit_bytes{name=~\"$container\"} > 0) * 100",
+          "legendFormat": "working set % of memory.max",
+          "refId": "B"
+        },
+        {
+          "expr": "max(container_memory_cache{name=~\"$container\"}) / max(container_spec_memory_limit_bytes{name=~\"$container\"} > 0) * 100",
+          "legendFormat": "file cache % of memory.max",
+          "refId": "C"
+        },
+        {
+          "expr": "max(container_memory_working_set_bytes{name=~\"$container\"}) / max(node_memory_MemTotal_bytes{machine=~\"$machine\"}) * 100 unless on() (container_spec_memory_limit_bytes{name=~\"$container\"} > 0)",
+          "legendFormat": "working set % of host RAM (no limit set)",
+          "refId": "D"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 5,
+            "thresholdsStyle": {
+              "mode": "line"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 90
+              }
+            ]
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "title": "Ceiling events: memory.max hits and swap",
+      "description": "failcnt counts allocation attempts that hit memory.max. A sustained rate with swap flat means the kernel is absorbing those hits through reclaim; the PSI and refault panels show what that costs. Swap growing means overflow is being written out instead. An OOM kill in memory.events is the end state: anonymous memory could not be reclaimed and the process was killed.",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 12,
+        "y": 18
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "targets": [
+        {
+          "expr": "max(rate(container_memory_failcnt{name=~\"$container\"}[1m]))",
+          "legendFormat": "memory.max hits/s",
+          "refId": "A"
+        },
+        {
+          "expr": "max(container_memory_swap{name=~\"$container\"})",
+          "legendFormat": "swap bytes",
+          "refId": "B"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops",
+          "min": 0,
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 10
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "swap bytes"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "bytes"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "title": "Host shape \u2014 no container, or no memory limit",
+      "type": "row",
+      "collapsed": true,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 27
+      },
+      "panels": [
+        {
+          "title": "Host: anon vs file page cache",
+          "description": "Same split as the container panel, measured for the whole host. Use this row when mongod runs outside a container or without a memory limit; everything here is host-wide, so on a shared box other processes are included. Anon growing while the file cache shrinks against MemTotal is the same failure shape; MemAvailable is what the kernel thinks it can still hand out.",
+          "type": "timeseries",
+          "gridPos": {
+            "h": 9,
+            "w": 12,
+            "x": 0,
+            "y": 28
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "targets": [
+            {
+              "expr": "node_memory_AnonPages_bytes{machine=~\"$machine\"}",
+              "legendFormat": "anon (all processes)",
+              "refId": "A"
+            },
+            {
+              "expr": "node_memory_Cached_bytes{machine=~\"$machine\"}",
+              "legendFormat": "file page cache",
+              "refId": "B"
+            },
+            {
+              "expr": "node_memory_MemTotal_bytes{machine=~\"$machine\"}",
+              "legendFormat": "MemTotal",
+              "refId": "C"
+            },
+            {
+              "expr": "node_memory_MemAvailable_bytes{machine=~\"$machine\"}",
+              "legendFormat": "MemAvailable",
+              "refId": "D"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "bytes",
+              "min": 0,
+              "custom": {
+                "drawStyle": "line",
+                "fillOpacity": 25,
+                "stacking": {
+                  "mode": "normal",
+                  "group": "A"
+                }
+              }
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "MemTotal"
+                },
+                "properties": [
+                  {
+                    "id": "custom.stacking",
+                    "value": {
+                      "mode": "none"
+                    }
+                  },
+                  {
+                    "id": "custom.fillOpacity",
+                    "value": 0
+                  },
+                  {
+                    "id": "custom.lineStyle",
+                    "value": {
+                      "fill": "dash",
+                      "dash": [
+                        10,
+                        10
+                      ]
+                    }
+                  },
+                  {
+                    "id": "color",
+                    "value": {
+                      "mode": "fixed",
+                      "fixedColor": "red"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "MemAvailable"
+                },
+                "properties": [
+                  {
+                    "id": "custom.stacking",
+                    "value": {
+                      "mode": "none"
+                    }
+                  },
+                  {
+                    "id": "custom.fillOpacity",
+                    "value": 0
+                  },
+                  {
+                    "id": "color",
+                    "value": {
+                      "mode": "fixed",
+                      "fixedColor": "green"
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "title": "Host: file pages active vs inactive",
+          "description": "Host-wide reclaim order, same reading as the container panel: inactive file drains first and is cheap; active file dropping means pages something still reads are being taken, and major faults follow.",
+          "type": "timeseries",
+          "gridPos": {
+            "h": 9,
+            "w": 12,
+            "x": 12,
+            "y": 28
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "targets": [
+            {
+              "expr": "node_memory_Active_file_bytes{machine=~\"$machine\"}",
+              "legendFormat": "active file",
+              "refId": "A"
+            },
+            {
+              "expr": "node_memory_Inactive_file_bytes{machine=~\"$machine\"}",
+              "legendFormat": "inactive file",
+              "refId": "B"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "bytes",
+              "min": 0,
+              "custom": {
+                "drawStyle": "line",
+                "fillOpacity": 25,
+                "stacking": {
+                  "mode": "normal",
+                  "group": "A"
+                }
+              }
+            },
+            "overrides": []
+          }
+        },
+        {
+          "title": "Host: major faults and disk reads",
+          "description": "node_vmstat counts faults for every process on the host, and disk reads are per device; pick mongod's volume from the legend. There is no per-process attribution at this level. If these move together with query latency, that is the correlation this panel exists to show.",
+          "type": "timeseries",
+          "gridPos": {
+            "h": 9,
+            "w": 12,
+            "x": 0,
+            "y": 37
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "targets": [
+            {
+              "expr": "rate(node_vmstat_pgmajfault{machine=~\"$machine\"}[1m])",
+              "legendFormat": "major faults/s (host)",
+              "refId": "A"
+            },
+            {
+              "expr": "rate(node_disk_read_bytes_total{machine=~\"$machine\"}[1m])",
+              "legendFormat": "reads B/s {{device}}",
+              "refId": "B"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "ops",
+              "min": 0,
+              "custom": {
+                "drawStyle": "line",
+                "fillOpacity": 15
+              }
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byRegexp",
+                  "options": "reads B/s.*"
+                },
+                "properties": [
+                  {
+                    "id": "unit",
+                    "value": "Bps"
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "title": "Host: PSI, fraction of time stalled",
+          "description": "Same reading as the container PSI panel, for the whole host: seconds stalled per second; 'some' means at least one task was blocked, 'full' means all of them. Also the fallback when the container runtime does not export PSI.",
+          "type": "timeseries",
+          "gridPos": {
+            "h": 9,
+            "w": 12,
+            "x": 12,
+            "y": 37
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "targets": [
+            {
+              "expr": "rate(node_pressure_memory_waiting_seconds_total{machine=~\"$machine\"}[1m])",
+              "legendFormat": "memory some",
+              "refId": "A"
+            },
+            {
+              "expr": "rate(node_pressure_memory_stalled_seconds_total{machine=~\"$machine\"}[1m])",
+              "legendFormat": "memory full",
+              "refId": "B"
+            },
+            {
+              "expr": "rate(node_pressure_io_waiting_seconds_total{machine=~\"$machine\"}[1m])",
+              "legendFormat": "io some",
+              "refId": "C"
+            },
+            {
+              "expr": "rate(node_pressure_io_stalled_seconds_total{machine=~\"$machine\"}[1m])",
+              "legendFormat": "io full",
+              "refId": "D"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percentunit",
+              "min": 0,
+              "custom": {
+                "drawStyle": "line",
+                "fillOpacity": 15
+              },
+              "max": 1
+            },
+            "overrides": []
+          }
+        }
+      ]
+    },
+    {
+      "title": "Captured load windows (replays)",
+      "type": "text",
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 46
+      },
+      "options": {
+        "mode": "markdown",
+        "content": "## Captured load windows\n\n**2026-08-24 - escalating Celery read load, 100/200/400 tasks per s**\nDriver ran 19:23:22Z-19:32:19Z against the probe mongo (640 MiB limit,\n256 MiB WT cache, 1.1 GB data, 8 MiB/s read throttle). Observed: anon\n+63 MiB, file cache -24 MiB (inactive band), reads pinned at the\nthrottle, PSI io-some 81%, ticket pool saturated (7-8 of 8 out,\n6.5k-task backlog). Memory squeeze reached the cheap-reclaim stage;\nactive file was not yet cut - a longer run goes further.\n\n[Replay: before / during / after (19:08-19:48Z)](/d/xycalc-wt-cgroup?from=1787598480000&to=1787600880000&var-container=xycalc-celery-probe-mongo-1)\n| [load window only](/d/xycalc-wt-cgroup?from=1787599380000&to=1787599980000&var-container=xycalc-celery-probe-mongo-1)\n\n**2026-08-24 - aggregation storm to OOM kill (the vivid one)**\nTwo concurrent $group/$addToSet aggregations (~100 MB server memory\neach) on top of 400/s Celery reads. 74 seconds from healthy to dead:\nanon 325 to 603 MiB, file cache 269 to 27 MiB, active file cut to\n23 MiB, then the kernel OOM-killed mongod at 19:44:26Z (the gap in\nevery series). Textbook full arc: squeeze, active-file cut, kill.\n\n[Replay: squeeze to OOM and recovery (19:35-19:52Z)](/d/xycalc-wt-cgroup?from=1787600100000&to=1787601120000&var-container=xycalc-celery-probe-mongo-1)\n\nReproduce (on the host running the probe):\n```\ncd tools/bench/celery_probe\ndocker compose --profile driver run --rm --no-deps \\\n  -e PROBE_RATES=100,200,400 -e PROBE_SECONDS=120 driver\n```\nAdd the new window here with its from/to epoch-ms so the replay list\nstays with the board.\n"
+      }
+    }
+  ],
+  "schemaVersion": 39,
+  "tags": [
+    "xycalc",
+    "mongodb",
+    "cgroup"
+  ],
+  "templating": {
+    "list": [
+      {
+        "name": "container",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "PBFA97CFB590B2093"
+        },
+        "query": "label_values(container_memory_rss, name)",
+        "current": {
+          "text": "xycalc-celery-probe-mongo-1",
+          "value": "xycalc-celery-probe-mongo-1"
+        },
+        "includeAll": false,
+        "multi": false,
+        "refresh": 2
+      },
+      {
+        "name": "instance",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "PBFA97CFB590B2093"
+        },
+        "query": "label_values(mongodb_wiredtiger_cache_bytes_currently_in_the_cache, instance)",
+        "current": {
+          "text": "All",
+          "value": ".*"
+        },
+        "includeAll": true,
+        "allValue": ".*",
+        "multi": false,
+        "refresh": 2
+      },
+      {
+        "name": "machine",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "PBFA97CFB590B2093"
+        },
+        "query": "label_values(node_memory_MemTotal_bytes, machine)",
+        "current": {
+          "text": "swamplink",
+          "value": "swamplink"
+        },
+        "includeAll": false,
+        "multi": false,
+        "refresh": 2
+      }
+    ]
+  },
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "timezone": "browser",
+  "title": "xycalc - WT cache vs cgroup memory split",
+  "uid": "xycalc-wt-cgroup",
+  "version": 1
+}

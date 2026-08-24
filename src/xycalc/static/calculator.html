@@ -356,46 +356,37 @@ footer .family > span:first-child { white-space: nowrap; }
 .stub-notice h3 { margin: 0 0 .45rem; font-size: .95rem; }
 .stub-notice p { margin: 0; color: var(--muted); font-size: .85rem; line-height: 1.5; }
 .scenario-opt.selected { border-color: var(--accent); }
+#scenario-form-panel {
+  container-type: inline-size;
+  container-name: specs;
+}
 .input-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: .55rem .75rem;
+  grid-template-columns: 1fr;
+  gap: .85rem 1.1rem;
   align-items: start;
 }
 .input-grid .field {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(6.75rem, 8.25rem);
-  grid-template-rows: auto auto;
-  column-gap: .45rem;
-  row-gap: .2rem;
-  align-items: center;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
   margin-bottom: 0;
 }
 .input-grid .field label {
-  grid-column: 1;
-  grid-row: 1;
-  min-height: 0;
-  line-height: 1.25;
-  align-self: center;
+  line-height: 1.3;
+  overflow-wrap: break-word;
 }
 .input-grid .field input,
 .input-grid .field select,
 .input-grid .field .scenario-segmented {
-  grid-column: 2;
-  grid-row: 1;
-  margin-top: 0;
   width: 100%;
-  align-self: center;
+  max-width: 100%;
 }
 .input-grid .field .help {
-  grid-column: 1 / -1;
-  grid-row: 2;
+  overflow-wrap: break-word;
 }
-@supports (grid-template-rows: subgrid) {
-  .input-grid .field {
-    grid-template-rows: subgrid;
-    grid-row: span 2;
-  }
+@container specs (min-width: 28rem) {
+  .input-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 .input-section h3 { font-size: .72rem; letter-spacing: .04em; color: var(--muted); margin: 0 0 .45rem; }
 .section-copy {
