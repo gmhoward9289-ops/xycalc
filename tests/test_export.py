@@ -311,7 +311,8 @@ def test_render_substitutes_every_placeholder(blob):
     assert "simple-instrument" in html
     assert 'id="simple-aside"' in html
     assert 'id="mode-basic"' in html
-    assert 'id="mode-scientific"' in html
+    assert 'id="sci-toggle"' in html
+    assert 'id="mode-questions"' in html
     assert 'id="mode-data"' in html
     assert 'id="scientific-math"' in html
     assert 'id="tab-math"' in html
