@@ -1,5 +1,7 @@
 {
-  "annotations": { "list": [] },
+  "annotations": {
+    "list": []
+  },
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 1,
@@ -14,15 +16,28 @@
       "title": "Sizing vs live",
       "url": "/d/xycalc-sizing-live",
       "type": "link"
+    },
+    {
+      "title": "WT vs cgroup split",
+      "url": "/d/xycalc-wt-cgroup",
+      "type": "link"
     }
   ],
   "panels": [
     {
       "title": "Is app-thread eviction sustained? (rate over 1m)",
-      "description": "Money metric. Sustained non-zero means application threads are doing eviction. Prefer 10–15s scrape in incidents.",
+      "description": "Money metric. Sustained non-zero means application threads are doing eviction. Prefer 10\u00e2\u20ac\u201c15s scrape in incidents.",
       "type": "timeseries",
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
-      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 0
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
       "targets": [
         {
           "expr": "rate(pages_evicted_by_application_threads{instance=~\"$instance\"}[1m])",
@@ -37,7 +52,10 @@
       ],
       "fieldConfig": {
         "defaults": {
-          "custom": { "drawStyle": "line", "fillOpacity": 10 },
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 10
+          },
           "unit": "ops"
         },
         "overrides": []
@@ -47,8 +65,16 @@
       "title": "Occupancy % vs dirty % (lines at 80/90/95 and 20)",
       "description": "Occupancy = bytes in cache / maximum configured. Dirty = dirty bytes / maximum configured (not / resident).",
       "type": "timeseries",
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
-      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 0
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
       "targets": [
         {
           "expr": "mongodb_wiredtiger_cache_occupancy_ratio{instance=~\"$instance\"} * 100",
@@ -72,30 +98,56 @@
           "min": 0,
           "max": 100,
           "custom": {
-            "thresholdsStyle": { "mode": "line" }
+            "thresholdsStyle": {
+              "mode": "line"
+            }
           },
           "thresholds": {
             "mode": "absolute",
             "steps": [
-              { "color": "green", "value": null },
-              { "color": "yellow", "value": 80 },
-              { "color": "orange", "value": 90 },
-              { "color": "red", "value": 95 }
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 80
+              },
+              {
+                "color": "orange",
+                "value": 90
+              },
+              {
+                "color": "red",
+                "value": 95
+              }
             ]
           }
         },
         "overrides": [
           {
-            "matcher": { "id": "byRegexp", "options": "dirty.*" },
+            "matcher": {
+              "id": "byRegexp",
+              "options": "dirty.*"
+            },
             "properties": [
               {
                 "id": "thresholds",
                 "value": {
                   "mode": "absolute",
                   "steps": [
-                    { "color": "green", "value": null },
-                    { "color": "orange", "value": 15 },
-                    { "color": "red", "value": 20 }
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "orange",
+                      "value": 15
+                    },
+                    {
+                      "color": "red",
+                      "value": 20
+                    }
                   ]
                 }
               }
@@ -105,10 +157,18 @@
       }
     },
     {
-      "title": "Pages into cache (demand → EBS)",
+      "title": "Pages into cache (demand \u00e2\u2020\u2019 EBS)",
       "type": "timeseries",
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
-      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
       "targets": [
         {
           "expr": "rate(pages_read_into_cache{instance=~\"$instance\"}[1m])",
@@ -118,28 +178,57 @@
       ]
     },
     {
-      "title": "Ticket pool — out vs total + available",
-      "description": "Idle totalTickets often sits at 4 on MongoDB 7+/8.x — not 128. Path differs: 7.x concurrentTransactions; 8.x queues.execution.",
+      "title": "Ticket pool \u00e2\u20ac\u201d out vs total + available",
+      "description": "Idle totalTickets often sits at 4 on MongoDB 7+/8.x \u00e2\u20ac\u201d not 128. Path differs: 7.x concurrentTransactions; 8.x queues.execution.",
       "type": "timeseries",
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
-      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
       "targets": [
-        { "expr": "mongodb_tickets_out{instance=~\"$instance\"}", "legendFormat": "out", "refId": "A" },
-        { "expr": "mongodb_tickets_total{instance=~\"$instance\"}", "legendFormat": "totalTickets", "refId": "B" },
-        { "expr": "mongodb_tickets_available{instance=~\"$instance\"}", "legendFormat": "available", "refId": "C" }
+        {
+          "expr": "mongodb_tickets_out{instance=~\"$instance\"}",
+          "legendFormat": "out",
+          "refId": "A"
+        },
+        {
+          "expr": "mongodb_tickets_total{instance=~\"$instance\"}",
+          "legendFormat": "totalTickets",
+          "refId": "B"
+        },
+        {
+          "expr": "mongodb_tickets_available{instance=~\"$instance\"}",
+          "legendFormat": "available",
+          "refId": "C"
+        }
       ]
     }
   ],
   "schemaVersion": 39,
-  "tags": ["xycalc", "mongodb"],
+  "tags": [
+    "xycalc",
+    "mongodb"
+  ],
   "templating": {
     "list": [
       {
         "name": "instance",
         "type": "query",
-        "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "PBFA97CFB590B2093"
+        },
         "query": "label_values(pages_evicted_by_application_threads, instance)",
-        "current": { "text": "All", "value": ".*" },
+        "current": {
+          "text": "All",
+          "value": ".*"
+        },
         "includeAll": true,
         "allValue": ".*",
         "multi": false,
@@ -147,7 +236,10 @@
       }
     ]
   },
-  "time": { "from": "now-6h", "to": "now" },
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
   "timezone": "browser",
   "title": "xycalc - MongoDB WiredTiger pressure",
   "uid": "xycalc-mongodb-wt",

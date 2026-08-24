@@ -25,6 +25,7 @@ Then open folder **xycalc**:
 - `/d/xycalc-ebs-throttle` — ExceededCheck (max, never avg)
 - `/d/xycalc-redis-celery` — broker headroom + outstanding
 - `/d/xycalc-sizing-live` — live inputs + predicted RAM/SKU vs MemTotal
+- `/d/xycalc-wt-cgroup` — WT cache vs anon vs file inside memory.max (cgroup split)
 
 Panels stay empty until Mongo/Redis/EBS exporters scrape the named series.
 Percona names are aliased in [`recording_rules.yml`](recording_rules.yml);

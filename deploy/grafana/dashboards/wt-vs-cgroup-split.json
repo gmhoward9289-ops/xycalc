@@ -1,0 +1,346 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [
+    {
+      "title": "WiredTiger pressure",
+      "url": "/d/xycalc-mongodb-wt",
+      "type": "link"
+    },
+    {
+      "title": "EBS throttle truth",
+      "url": "/d/xycalc-ebs-throttle",
+      "type": "link"
+    },
+    {
+      "title": "Sizing vs live",
+      "url": "/d/xycalc-sizing-live",
+      "type": "link"
+    }
+  ],
+  "panels": [
+    {
+      "title": "Who owns memory.max? WT cache vs other anon vs file cache",
+      "description": "The thesis chart (docs/telemetry/cgroup.md). WT's budget only means what the docs say if the rest of memory.max stays file-backed page cache. Stacked: WT cache + anon beyond WT + file pages, against the dashed memory.max and WT-max lines. Anon squeezing the file band is the failure taking shape. The 'anon beyond WT' series uses scalar() and assumes one mongo per selection.",
+      "type": "timeseries",
+      "gridPos": { "h": 9, "w": 12, "x": 0, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "targets": [
+        {
+          "expr": "mongodb_wiredtiger_cache_bytes_currently_in_the_cache{instance=~\"$instance\"}",
+          "legendFormat": "WT cache (anon)",
+          "refId": "A"
+        },
+        {
+          "expr": "clamp_min(container_memory_rss{name=~\"$container\"} - scalar(mongodb_wiredtiger_cache_bytes_currently_in_the_cache{instance=~\"$instance\"}), 0)",
+          "legendFormat": "anon beyond WT (heap, other)",
+          "refId": "B"
+        },
+        {
+          "expr": "container_memory_cache{name=~\"$container\"}",
+          "legendFormat": "file page cache (this cgroup)",
+          "refId": "C"
+        },
+        {
+          "expr": "container_spec_memory_limit_bytes{name=~\"$container\"}",
+          "legendFormat": "memory.max",
+          "refId": "D"
+        },
+        {
+          "expr": "mongodb_wiredtiger_cache_maximum_bytes_configured{instance=~\"$instance\"}",
+          "legendFormat": "WT max configured",
+          "refId": "E"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "min": 0,
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 35,
+            "stacking": { "mode": "normal", "group": "A" }
+          }
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "memory.max" },
+            "properties": [
+              { "id": "custom.stacking", "value": { "mode": "none" } },
+              { "id": "custom.fillOpacity", "value": 0 },
+              { "id": "custom.lineStyle", "value": { "fill": "dash", "dash": [10, 10] } },
+              { "id": "color", "value": { "mode": "fixed", "fixedColor": "red" } }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "WT max configured" },
+            "properties": [
+              { "id": "custom.stacking", "value": { "mode": "none" } },
+              { "id": "custom.fillOpacity", "value": 0 },
+              { "id": "custom.lineStyle", "value": { "fill": "dash", "dash": [4, 6] } },
+              { "id": "color", "value": { "mode": "fixed", "fixedColor": "orange" } }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "title": "File pages: active vs inactive — what reclaim eats first",
+      "description": "Reclaim drains inactive file pages first (cheap). Active file dropping means the kernel is cutting file pages something still reads — refaults follow. Working set = usage minus inactive file, so it hugs the limit exactly when the cheap band is gone.",
+      "type": "timeseries",
+      "gridPos": { "h": 9, "w": 12, "x": 12, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "targets": [
+        {
+          "expr": "container_memory_total_active_file_bytes{name=~\"$container\"}",
+          "legendFormat": "active file (still hot)",
+          "refId": "A"
+        },
+        {
+          "expr": "container_memory_total_inactive_file_bytes{name=~\"$container\"}",
+          "legendFormat": "inactive file (reclaim fodder)",
+          "refId": "B"
+        },
+        {
+          "expr": "container_memory_working_set_bytes{name=~\"$container\"}",
+          "legendFormat": "working set",
+          "refId": "C"
+        },
+        {
+          "expr": "container_spec_memory_limit_bytes{name=~\"$container\"}",
+          "legendFormat": "memory.max",
+          "refId": "D"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "min": 0,
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 25,
+            "stacking": { "mode": "normal", "group": "A" }
+          }
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "working set" },
+            "properties": [
+              { "id": "custom.stacking", "value": { "mode": "none" } },
+              { "id": "custom.fillOpacity", "value": 0 }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "memory.max" },
+            "properties": [
+              { "id": "custom.stacking", "value": { "mode": "none" } },
+              { "id": "custom.fillOpacity", "value": 0 },
+              { "id": "custom.lineStyle", "value": { "fill": "dash", "dash": [10, 10] } },
+              { "id": "color", "value": { "mode": "fixed", "fixedColor": "red" } }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "title": "Refault cost — major faults and reads against the throttle",
+      "description": "cAdvisor has no workingset_refault_file; pgmajfault/s is the proxy. Read bytes/s plateauing at the dashed 8 MiB/s line is the probe's blkio throttle absorbing those faults — the point where reclaimed file pages become wall-clock latency. WT pages-into-cache/s shows the same demand from Mongo's side.",
+      "type": "timeseries",
+      "gridPos": { "h": 9, "w": 12, "x": 0, "y": 9 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "targets": [
+        {
+          "expr": "rate(container_memory_failures_total{failure_type=\"pgmajfault\",scope=\"container\",name=~\"$container\"}[1m])",
+          "legendFormat": "major faults/s",
+          "refId": "A"
+        },
+        {
+          "expr": "rate(container_fs_reads_bytes_total{name=~\"$container\"}[1m])",
+          "legendFormat": "device reads B/s",
+          "refId": "B"
+        },
+        {
+          "expr": "rate(pages_read_into_cache{instance=~\"$instance\"}[1m])",
+          "legendFormat": "WT pages into cache/s",
+          "refId": "C"
+        },
+        {
+          "expr": "8388608 + 0 * container_spec_memory_limit_bytes{name=~\"$container\"}",
+          "legendFormat": "blkio read throttle (8 MiB/s)",
+          "refId": "D"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops",
+          "min": 0,
+          "custom": { "drawStyle": "line", "fillOpacity": 10 }
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "device reads B/s" },
+            "properties": [{ "id": "unit", "value": "Bps" }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "blkio read throttle (8 MiB/s)" },
+            "properties": [
+              { "id": "unit", "value": "Bps" },
+              { "id": "custom.fillOpacity", "value": 0 },
+              { "id": "custom.lineStyle", "value": { "fill": "dash", "dash": [10, 10] } },
+              { "id": "color", "value": { "mode": "fixed", "fixedColor": "red" } }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "title": "PSI — fraction of time actually waiting",
+      "description": "Pressure Stall Information for the mongo cgroup, as seconds-waited per second (0–1). 'some' = at least one task stalled; 'full' = nothing ran. Memory pressure here while the WT board shows green occupancy is the whole point: the cgroup, not the WT cache, is the bottleneck.",
+      "type": "timeseries",
+      "gridPos": { "h": 9, "w": 12, "x": 12, "y": 9 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "targets": [
+        {
+          "expr": "rate(container_pressure_memory_waiting_seconds_total{name=~\"$container\"}[1m])",
+          "legendFormat": "memory some",
+          "refId": "A"
+        },
+        {
+          "expr": "rate(container_pressure_memory_stalled_seconds_total{name=~\"$container\"}[1m])",
+          "legendFormat": "memory full",
+          "refId": "B"
+        },
+        {
+          "expr": "rate(container_pressure_io_waiting_seconds_total{name=~\"$container\"}[1m])",
+          "legendFormat": "io some",
+          "refId": "C"
+        },
+        {
+          "expr": "rate(container_pressure_io_stalled_seconds_total{name=~\"$container\"}[1m])",
+          "legendFormat": "io full",
+          "refId": "D"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "min": 0,
+          "max": 1,
+          "custom": { "drawStyle": "line", "fillOpacity": 15 }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "title": "The lie — WT occupancy green while the cgroup is at the wall",
+      "description": "Same 0–100 axis on purpose. WT occupancy under its own max says healthy; working set against memory.max says the budget is gone. When the gap between these two lines is wide and the file-share line is thin, the 50/50 assumption has already failed — WT metrics alone would never tell you.",
+      "type": "timeseries",
+      "gridPos": { "h": 9, "w": 12, "x": 0, "y": 18 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "targets": [
+        {
+          "expr": "mongodb_wiredtiger_cache_occupancy_ratio{instance=~\"$instance\"} * 100",
+          "legendFormat": "WT occupancy % of WT max",
+          "refId": "A"
+        },
+        {
+          "expr": "container_memory_working_set_bytes{name=~\"$container\"} / clamp_min(container_spec_memory_limit_bytes{name=~\"$container\"}, 1) * 100",
+          "legendFormat": "working set % of memory.max",
+          "refId": "B"
+        },
+        {
+          "expr": "container_memory_cache{name=~\"$container\"} / clamp_min(container_spec_memory_limit_bytes{name=~\"$container\"}, 1) * 100",
+          "legendFormat": "file cache % of memory.max",
+          "refId": "C"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 5,
+            "thresholdsStyle": { "mode": "line" }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "orange", "value": 90 }
+            ]
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "title": "Hard-ceiling events — memory.max hits and swap",
+      "description": "failcnt counts allocations that hit memory.max; sustained non-zero with swap flat means reclaim is absorbing the hits (see PSI for the cost). Swap growing means the fight moved off-box. An oom event in memory.events ends the argument — per the doc: anon won, the latency fight is already over.",
+      "type": "timeseries",
+      "gridPos": { "h": 9, "w": 12, "x": 12, "y": 18 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "targets": [
+        {
+          "expr": "rate(container_memory_failcnt{name=~\"$container\"}[1m])",
+          "legendFormat": "memory.max hits/s",
+          "refId": "A"
+        },
+        {
+          "expr": "container_memory_swap{name=~\"$container\"}",
+          "legendFormat": "swap bytes",
+          "refId": "B"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops",
+          "min": 0,
+          "custom": { "drawStyle": "line", "fillOpacity": 10 }
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "swap bytes" },
+            "properties": [{ "id": "unit", "value": "bytes" }]
+          }
+        ]
+      }
+    }
+  ],
+  "schemaVersion": 39,
+  "tags": ["xycalc", "mongodb", "cgroup"],
+  "templating": {
+    "list": [
+      {
+        "name": "container",
+        "type": "query",
+        "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+        "query": "label_values(container_memory_rss{name=~\".*mongo.*\"}, name)",
+        "current": { "text": "xycalc-celery-probe-mongo-1", "value": "xycalc-celery-probe-mongo-1" },
+        "includeAll": false,
+        "multi": false,
+        "refresh": 2
+      },
+      {
+        "name": "instance",
+        "type": "query",
+        "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+        "query": "label_values(mongodb_wiredtiger_cache_bytes_currently_in_the_cache, instance)",
+        "current": { "text": "All", "value": ".*" },
+        "includeAll": true,
+        "allValue": ".*",
+        "multi": false,
+        "refresh": 2
+      }
+    ]
+  },
+  "time": { "from": "now-6h", "to": "now" },
+  "timezone": "browser",
+  "title": "xycalc - WT cache vs cgroup memory split",
+  "uid": "xycalc-wt-cgroup",
+  "version": 1
+}

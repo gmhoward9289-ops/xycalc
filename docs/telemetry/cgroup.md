@@ -54,3 +54,9 @@ page-cache reclaim vs volume burst. RSS/`file`/`anon` and iostat split those.
 
 Status: `obtainable` on Linux with cgroup v2; `work only` if only cAdvisor
 RSS/working-set is scraped (working set ≠ `file`).
+
+The estate cAdvisor scrape carries more than working-set: `rss` (anon),
+`cache` (file), active/inactive file, `pgmajfault`, PSI, and `failcnt` for
+the probe mongo — everything above except `workingset_refault_file` and
+`pgscan`/`pgsteal` (majfault rate is the refault-cost proxy). Board:
+`/d/xycalc-wt-cgroup` in the estate Grafana xycalc folder.
