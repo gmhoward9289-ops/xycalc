@@ -50,6 +50,10 @@ sizing board overlays those gauges on `node_memory_MemTotal_bytes`.
 
 ## This directory
 
+Taking the WT-vs-cgroup board somewhere else (another Grafana, Kubernetes,
+rootless, no containers): [`PORTING.md`](PORTING.md) — written to be handed
+to an AI assistant along with the board JSON.
+
 Source JSON for the estate boards (keep in sync when recipes change).
 
 ## History → corpus
