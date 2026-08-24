@@ -311,7 +311,8 @@ def test_render_substitutes_every_placeholder(blob):
     assert "simple-instrument" in html
     assert 'id="simple-aside"' in html
     assert 'id="mode-basic"' in html
-    assert 'id="mode-scientific"' in html
+    assert 'id="sci-toggle"' in html
+    assert 'id="mode-questions"' in html
     assert 'id="mode-data"' in html
     assert 'id="scientific-math"' in html
     assert 'id="tab-math"' in html
@@ -599,7 +600,9 @@ def test_template_keeps_simple_claim_and_reserved_advanced_subnav():
     assert "min-height: 2.05rem;" in text
     assert "--subnav-indent" in text
     assert "body.mode-basic .view-subnav .tabs" in text
-    assert "body.mode-basic .claim" not in text
+    assert 'id="sci-toggle"' in text
+    assert "Questions" in text
+    assert "body.mode-questions" in text
     assert "body.mode-scientific .claim" not in text
     assert "body.mode-data .claim" not in text
 

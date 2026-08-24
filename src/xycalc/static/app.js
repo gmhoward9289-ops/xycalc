@@ -10,17 +10,17 @@ const XYCALC_APP = (() => {
   "use strict";
 
   const TABS = ["scenario", "math", "single", "flow", "occupancy", "cliff"];
-  const MODES = ["basic", "advanced", "scientific", "data"];
+  const MODES = ["basic", "advanced", "questions", "data"];
   const MODE_TABS = {
     basic: [],
     advanced: ["scenario"],
-    scientific: ["math", "single", "flow"],
-    data: ["occupancy", "cliff"],
+    questions: ["single"],
+    data: ["math", "flow", "occupancy", "cliff"],
   };
   const MODE_DEFAULT_TAB = {
     advanced: "scenario",
-    scientific: "math",
-    data: "occupancy",
+    questions: "single",
+    data: "math",
   };
   const SAMPLES = 96;
 
@@ -394,7 +394,7 @@ const XYCALC_APP = (() => {
   const GRADE_RANK = { none: 0, thin: 1, reasonable: 2 };
   const GRADE_LABEL = { none: "Unvalidated", thin: "Thinly validated", reasonable: "Validated" };
   const GRADE_PILL = { none: "unvalidated", thin: "thinly validated", reasonable: "validated" };
-  const PERMALINK_RESERVED = ["mode", "tab", "model", "scenario", "available"];
+  const PERMALINK_RESERVED = ["mode", "tab", "model", "scenario", "available", "sci"];
   const TAB_ALIASES = {
     "cache-cliff": "cliff",
     cache_cliff: "cliff",
@@ -427,7 +427,9 @@ const XYCALC_APP = (() => {
 
   function canonicalMode(mode) {
     if (mode === "simple" || mode === "basic") return "basic";
-    if (mode === "scientific" || mode === "advanced" || mode === "data") return mode;
+    if (mode === "questions" || mode === "advanced" || mode === "data") return mode;
+    // Old Scientific view: cited math / flow live under Data now.
+    if (mode === "scientific") return "data";
     return "basic";
   }
 
@@ -450,7 +452,7 @@ const XYCALC_APP = (() => {
     let mode = parsed.mode ? canonicalMode(parsed.mode) : null;
     const fromTab = tab ? modeForTab(tab) : null;
     if (fromTab) mode = fromTab;
-    else if (parsed.model) mode = "scientific";
+    else if (parsed.model) mode = "questions";
     else if (parsed.scenario) mode = "advanced";
     else if (!mode) mode = "basic";
     let nextTab = tab;
@@ -896,6 +898,7 @@ const XYCALC_APP = (() => {
     if (state.model) p.set("model", state.model);
     if (state.scenario) p.set("scenario", state.scenario);
     if (state.available) p.set("available", state.available);
+    if (state.sci) p.set("sci", state.sci);
     const reserved = {};
     for (const k of PERMALINK_RESERVED) reserved[k] = true;
     for (const key of Object.keys(state.inputs || {})) {
@@ -1284,8 +1287,10 @@ const XYCALC_APP = (() => {
         if (devices) state.inputs.devices = devices;
         if (deviceAvg) state.inputs.deviceAvg = deviceAvg;
         if (residual) state.inputs.residual = residual;
+        if (scientificIsOn()) state.sci = "1";
         return state;
       }
+      if (scientificIsOn()) state.sci = "1";
       state.tab = currentTab();
       if (state.tab === "single") {
         state.model = $("model").value;
@@ -1326,6 +1331,7 @@ const XYCALC_APP = (() => {
       if (!view) return false;
       writingHash = true;
       try {
+        setScientific(parsed.sci === "1", { hash: false, paint: false });
         if (view.mode === "basic") {
           setMode("basic", { persist: false, hash: false });
           const storageVal = parsed.inputs.storage || parsed.inputs.size;
@@ -1466,8 +1472,10 @@ const XYCALC_APP = (() => {
       setMode(mode, { persist: false, hash: false });
       $("mode-basic").addEventListener("click", () => setMode("basic"));
       $("mode-advanced").addEventListener("click", () => setMode("advanced"));
-      $("mode-scientific").addEventListener("click", () => setMode("scientific"));
+      $("mode-questions").addEventListener("click", () => setMode("questions"));
       $("mode-data").addEventListener("click", () => setMode("data"));
+      const sciBtn = $("sci-toggle");
+      if (sciBtn) sciBtn.addEventListener("click", () => setScientific(!scientificIsOn()));
       alignViewSubnav();
       window.addEventListener("resize", alignViewSubnav);
       if (document.fonts && document.fonts.ready) {
@@ -1486,17 +1494,37 @@ const XYCALC_APP = (() => {
       sub.style.setProperty("--subnav-indent", indent.toFixed(1) + "px");
     }
 
+    function scientificIsOn() {
+      return document.body.classList.contains("sci-on");
+    }
+
+    function setScientific(on, opts) {
+      const next = !!on;
+      document.body.classList.toggle("sci-on", next);
+      const btn = $("sci-toggle");
+      if (btn) btn.setAttribute("aria-pressed", next ? "true" : "false");
+      const simplePanel = $("simple-sci-panel");
+      const scenarioPanel = $("scenario-sci-panel");
+      if (simplePanel) simplePanel.hidden = !next;
+      if (scenarioPanel) scenarioPanel.hidden = !next;
+      if (next) maybeRenderScientificMath();
+      if ((!opts || opts.paint !== false) && lastSimpleData && currentMode() === "basic") {
+        renderSimpleResult(lastSimpleData);
+      }
+      if (!opts || opts.hash !== false) scheduleHash();
+    }
+
     function setMode(mode, opts) {
       const persist = !opts || opts.persist !== false;
       const next = canonicalMode(mode);
-      document.body.classList.remove("mode-basic", "mode-simple", "mode-scientific", "mode-advanced", "mode-data");
+      document.body.classList.remove("mode-basic", "mode-simple", "mode-scientific", "mode-advanced", "mode-questions", "mode-data");
       document.body.classList.add("mode-" + next);
       $("mode-basic").setAttribute("aria-pressed", next === "basic" ? "true" : "false");
       $("mode-advanced").setAttribute("aria-pressed", next === "advanced" ? "true" : "false");
-      $("mode-scientific").setAttribute("aria-pressed", next === "scientific" ? "true" : "false");
+      $("mode-questions").setAttribute("aria-pressed", next === "questions" ? "true" : "false");
       $("mode-data").setAttribute("aria-pressed", next === "data" ? "true" : "false");
       const subnav = document.querySelector(".view-subnav");
-      if (subnav) subnav.setAttribute("aria-hidden", next === "basic" ? "true" : "false");
+      if (subnav) subnav.setAttribute("aria-hidden", "false");
       const allowed = MODE_TABS[next] || [];
       if (allowed.length) {
         const cur = currentTab();
@@ -1506,8 +1534,9 @@ const XYCALC_APP = (() => {
         try { localStorage.setItem(MODE_KEY, next); }
         catch (_) { /* ignore */ }
       }
-      if (next === "basic" || next === "scientific") scheduleSimpleCalc();
-      if (next === "scientific") maybeRenderScientificMath();
+      if (next === "basic") scheduleSimpleCalc();
+      if (next === "data" || scientificIsOn()) maybeRenderScientificMath();
+      if (next === "questions" && STATE) drawChart();
       if (!opts || opts.hash !== false) scheduleHash();
     }
 
@@ -1579,8 +1608,8 @@ const XYCALC_APP = (() => {
       $("simple-rail").addEventListener("click", (ev) => {
         if (ev.target && ev.target.id === "simple-open-scientific") {
           ev.preventDefault();
-          setMode("scientific");
-          const math = $("scientific-math");
+          setScientific(true);
+          const math = $("simple-sci-math") || $("scientific-math");
           if (math) math.scrollIntoView({ behavior: "smooth", block: "start" });
         }
       });
@@ -1808,7 +1837,7 @@ const XYCALC_APP = (() => {
       const paint = simpleFirstPaintHtml(
         data,
         fmt,
-        document.body.classList.contains("mode-scientific") ? "scientific" : "basic",
+        document.body.classList.contains("sci-on") ? "scientific" : "basic",
       );
       $("simple-result").hidden = false;
       if (ram && paint.ramText) {
@@ -1849,7 +1878,8 @@ const XYCALC_APP = (() => {
     }
 
     function scientificMathIsVisible() {
-      if (currentMode() !== "scientific") return false;
+      if (scientificIsOn()) return true;
+      if (currentMode() !== "data") return false;
       const panel = $("tab-math");
       return !!(panel && !panel.hidden);
     }
@@ -2413,13 +2443,12 @@ const XYCALC_APP = (() => {
     }
 
     function renderScientificMath(data) {
-      const el = $("scientific-math");
-      if (!el) return;
-      if (!data || !data.steps || !data.steps.length) {
-        el.innerHTML = "<p class=\"help\">Enter a DB size in Basic, or run a scenario in Advanced — cited steps appear here.</p>";
-        return;
-      }
-      el.innerHTML = renderCascadeDetailsHtml(data, true);
+      const html = (!data || !data.steps || !data.steps.length)
+        ? "<p class=\"help\">Enter a DB size in Basic, or run a scenario in Advanced — cited steps appear here.</p>"
+        : renderCascadeDetailsHtml(data, true);
+      document.querySelectorAll(".sci-math-host").forEach((el) => {
+        el.innerHTML = html;
+      });
     }
 
     function calculateScenario(auto, opts) {
@@ -2820,7 +2849,7 @@ const XYCALC_APP = (() => {
 
     function drawChart() {
       if (!STATE) return;
-      if (currentMode() !== "scientific") return;
+      if (currentMode() !== "questions") return;
       const panel = $("tab-single");
       if (panel && panel.hidden) return;
       const s = computeSweep();
@@ -3146,7 +3175,7 @@ const XYCALC_APP = (() => {
     }
 
     function openModelFromOcc(slug) {
-      setMode("scientific", { hash: false });
+      setMode("questions", { hash: false });
       setTab("single");
       pickQuestion(slug);
       if (slug === "mongodb.wt-cache") {
@@ -3438,6 +3467,7 @@ const XYCALC_APP = (() => {
     permalinkView: permalinkView,
     permalinkHref: permalinkHref,
     permalinkFromLocation: permalinkFromLocation,
+    simpleHonestyBlockHtml: simpleHonestyBlockHtml,
     validationClause: validationClause,
     validationBannerInner: validationBannerInner,
     validationBannerHtml: validationBannerHtml,
@@ -3486,6 +3516,11 @@ const XYCALC_APP = (() => {
     scenarioSectionCopyHtml: scenarioSectionCopyHtml,
     queryRegimeSizingNote: queryRegimeSizingNote,
     concurrencySummaryHtml: concurrencySummaryHtml,
+    canonicalMode: canonicalMode,
+    modeForTab: modeForTab,
+    permalinkView: permalinkView,
+    simpleHonestyBlockHtml: simpleHonestyBlockHtml,
+    SIMPLE_HONESTY_LINE: SIMPLE_HONESTY_LINE,
   };
 })();
 

@@ -633,7 +633,7 @@ svg.nvd-chart { width: 100%; height: auto; display: block; }
 }
 [hidden] { display: none !important; }
 
-/* -- Basic / Advanced / Scientific / Data -- */
+/* -- Basic / Advanced / Questions / Data -- */
 .mode-bar {
   display: flex; gap: .35rem; align-items: center;
   margin: 0 0 .35rem; flex-wrap: wrap;
@@ -658,9 +658,30 @@ svg.nvd-chart { width: 100%; height: auto; display: block; }
   min-height: 2.05rem;
   margin: 0;
   --subnav-indent: 5.2rem;
+  display: grid;
+  grid-template-columns: var(--subnav-indent) minmax(0, 1fr);
+  align-items: center;
+  column-gap: 0;
+}
+.sci-toggle {
+  grid-column: 1;
+  justify-self: start;
+  background: transparent; color: var(--muted);
+  border: 1px solid var(--line); font-weight: 600;
+  padding: .28rem .7rem; font-size: .78rem; border-radius: 6px;
+  line-height: 1.2; cursor: pointer;
+}
+.sci-toggle[aria-pressed="true"] {
+  color: var(--accent); border-color: var(--accent); background: transparent;
+}
+body.mode-questions .sci-toggle,
+body.mode-data .sci-toggle {
+  visibility: hidden;
+  pointer-events: none;
 }
 .view-subnav .tabs {
-  margin: 0 0 0 var(--subnav-indent);
+  grid-column: 2;
+  margin: 0;
 }
 /* Slightly smaller than VIEW so Scenario reads as a child of Basic, not a twin. */
 .view-subnav .tab {
@@ -672,11 +693,11 @@ svg.nvd-chart { width: 100%; height: auto; display: block; }
 }
 body.mode-basic .view-subnav .tabs { display: none; }
 body.mode-advanced .tab:not([data-tab="scenario"]) { display: none; }
-body.mode-scientific .tab:not([data-tab="math"]):not([data-tab="single"]):not([data-tab="flow"]) { display: none; }
-body.mode-data .tab:not([data-tab="occupancy"]):not([data-tab="cliff"]) { display: none; }
+body.mode-questions .tab:not([data-tab="single"]) { display: none; }
+body.mode-data .tab:not([data-tab="math"]):not([data-tab="flow"]):not([data-tab="occupancy"]):not([data-tab="cliff"]) { display: none; }
 body.mode-basic #work-chrome { display: none !important; }
 body.mode-advanced #simple-view,
-body.mode-scientific #simple-view,
+body.mode-questions #simple-view,
 body.mode-data #simple-view { display: none !important; }
 .simple-answer .band-row {
   display: flex; justify-content: space-between; gap: 1rem;
@@ -870,10 +891,11 @@ button.calc-tag:hover { border-color: var(--accent); color: var(--accent); }
   <span class="mode-label">View</span>
   <button type="button" class="mode-btn" id="mode-basic" aria-pressed="true">Basic</button>
   <button type="button" class="mode-btn" id="mode-advanced" aria-pressed="false">Advanced</button>
-  <button type="button" class="mode-btn" id="mode-scientific" aria-pressed="false">Scientific</button>
+  <button type="button" class="mode-btn" id="mode-questions" aria-pressed="false">Questions</button>
   <button type="button" class="mode-btn" id="mode-data" aria-pressed="false">Data</button>
 </div>
 <div class="view-subnav" aria-label="View sections">
+  <button type="button" class="sci-toggle" id="sci-toggle" aria-pressed="false">Scientific</button>
   <div class="tabs">
     <button class="tab active" id="tab-btn-scenario" data-tab="scenario">Scenario</button>
     <button class="tab" id="tab-btn-math" data-tab="math">Cited math</button>
@@ -964,6 +986,13 @@ button.calc-tag:hover { border-color: var(--accent); color: var(--accent); }
       </div>
     </div>
   </div>
+  <div class="panel sci-on-panel" id="simple-sci-panel" hidden>
+    <h2 style="margin-top:0">Cited math</h2>
+    <p style="margin:0 0 .75rem;font-size:.92rem;color:var(--muted)">
+      Term-by-term chain for this footprint. Each step names the sentence it was read from.
+    </p>
+    <div class="sci-math-host" id="simple-sci-math"></div>
+  </div>
   <div class="simple-basics">
     <div id="simple-aside"></div>
   </div>
@@ -977,7 +1006,7 @@ button.calc-tag:hover { border-color: var(--accent); color: var(--accent); }
       Term-by-term chain from the Basic footprint (or the last Advanced scenario run).
       Each step names the sentence it was read from.
     </p>
-    <div id="scientific-math"></div>
+    <div class="sci-math-host" id="scientific-math"></div>
   </div>
 </div>
 
@@ -1012,6 +1041,13 @@ button.calc-tag:hover { border-color: var(--accent); color: var(--accent); }
       <div id="scenario-summary"></div>
     </div>
     <div id="scenario-cascade"></div>
+    <div class="panel sci-on-panel" id="scenario-sci-panel" hidden>
+      <h2 style="margin-top:0">Cited math</h2>
+      <p style="margin:0 0 .75rem;font-size:.92rem;color:var(--muted)">
+        Term-by-term chain from this scenario run. Each step names the sentence it was read from.
+      </p>
+      <div class="sci-math-host" id="scenario-sci-math"></div>
+    </div>
   </div>
 </div>
 
