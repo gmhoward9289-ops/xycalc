@@ -5,6 +5,13 @@ Corpus identity is `corpus_digest` on the exported page. See `docs/VERSIONING.md
 
 ## 0.6.1
 
+- Calculator views are Basic / Advanced / Scientific / Data. Basic is
+  footprint only (DB size, device count, avg space, other collections).
+  Scientific holds cited math, a single model, and how it flows; Data holds
+  occupancy and cache-cliff. `#mode=simple` still opens Basic.
+- Basic is one instrument: DB size in on the left, Host RAM and AWS/Azure
+  SKUs (Low / Typical / High) on the right. Caveats are quiet tags under
+  the number, not filled banners.
 - `xycalc export` copies Bill's approved still from
   `src/xycalc/static/landing-still.png` to `og.png` (no generated substitute).
   `stamp.html` is the same digest / version / git as the calculator footer.

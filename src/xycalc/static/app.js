@@ -9,7 +9,19 @@
 const XYCALC_APP = (() => {
   "use strict";
 
-  const TABS = ["scenario", "single", "flow", "occupancy", "cliff"];
+  const TABS = ["scenario", "math", "single", "flow", "occupancy", "cliff"];
+  const MODES = ["basic", "advanced", "scientific", "data"];
+  const MODE_TABS = {
+    basic: [],
+    advanced: ["scenario"],
+    scientific: ["math", "single", "flow"],
+    data: ["occupancy", "cliff"],
+  };
+  const MODE_DEFAULT_TAB = {
+    advanced: "scenario",
+    scientific: "math",
+    data: "occupancy",
+  };
   const SAMPLES = 96;
 
   function esc(s) {
@@ -185,6 +197,65 @@ const XYCALC_APP = (() => {
     return reveal;
   }
 
+  const SYSTEM_LABELS = {
+    mongodb: "MongoDB",
+    ebs: "AWS EBS",
+    "azure-disks": "Azure disks",
+    "nvme-ssd": "Local NVMe",
+    nvd: "NVD / CVE growth",
+    celery: "Celery / Redis",
+    clickhouse: "ClickHouse",
+  };
+  const SYSTEM_ORDER = [
+    "mongodb", "ebs", "azure-disks", "nvme-ssd", "nvd", "celery", "clickhouse",
+  ];
+
+  function systemLabel(system) {
+    const key = String(system || "");
+    return SYSTEM_LABELS[key] || (key ? key.replace(/-/g, " ") : "Other");
+  }
+
+  function shortModelTitle(model) {
+    if (model && model.lab && model.lab.label) return model.lab.label;
+    if (model && model.question) return model.question;
+    return (model && model.slug) || "";
+  }
+
+  function modelMatchesQuery(model, raw) {
+    const q = String(raw || "").trim().toLowerCase();
+    if (!q) return true;
+    if (!model) return false;
+    const hay = [
+      model.slug,
+      model.question,
+      model.system,
+      shortModelTitle(model),
+      systemLabel(model.system),
+    ].join(" ").toLowerCase();
+    return q.split(/\s+/).every((part) => hay.indexOf(part) >= 0);
+  }
+
+  function groupModelsBySystem(models) {
+    const groups = {};
+    for (const m of models || []) {
+      const key = m.system || "other";
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(m);
+    }
+    const keys = Object.keys(groups).sort((a, b) => {
+      const ia = SYSTEM_ORDER.indexOf(a);
+      const ib = SYSTEM_ORDER.indexOf(b);
+      if (ia < 0 && ib < 0) return a < b ? -1 : a > b ? 1 : 0;
+      if (ia < 0) return 1;
+      if (ib < 0) return -1;
+      return ia - ib;
+    });
+    return keys.map((key) => ({
+      system: key,
+      label: systemLabel(key),
+      models: groups[key],
+    }));
+  }
   const GRADE_RANK = { none: 0, thin: 1, reasonable: 2 };
   const GRADE_LABEL = { none: "Unvalidated", thin: "Thinly validated", reasonable: "Validated" };
   const GRADE_PILL = { none: "unvalidated", thin: "thinly validated", reasonable: "validated" };
@@ -197,6 +268,9 @@ const XYCALC_APP = (() => {
     occupancy_bands: "occupancy",
     occupancy: "occupancy",
     scenario: "scenario",
+    math: "math",
+    "cited-math": "math",
+    cited_math: "math",
     single: "single",
     flow: "flow",
   };
@@ -216,23 +290,40 @@ const XYCALC_APP = (() => {
     return TAB_PUBLIC[c] || c;
   }
 
+  function canonicalMode(mode) {
+    if (mode === "simple" || mode === "basic") return "basic";
+    if (mode === "scientific" || mode === "advanced" || mode === "data") return mode;
+    return "basic";
+  }
+
+  function modeForTab(tab) {
+    const c = canonicalTab(tab);
+    if (!c) return null;
+    for (let i = 0; i < MODES.length; i++) {
+      const m = MODES[i];
+      if ((MODE_TABS[m] || []).indexOf(c) >= 0) return m;
+    }
+    return null;
+  }
+
   // Turn a parsed hash into the mode/tab the UI should show. Tab aliases
   // (cache-cliff → cliff) live here so boot cannot treat an inbound cliff
   // link as "no tab" and fall through to the Scenario default.
   function permalinkView(parsed) {
     if (!parsed) return null;
     const tab = canonicalTab(parsed.tab);
-    const forcedAdvanced = !!(tab || parsed.model || parsed.scenario);
-    if (parsed.mode === "simple" && !forcedAdvanced) {
-      return { mode: "simple", tab: null };
-    }
-    if (parsed.mode === "scientific" && !forcedAdvanced) {
-      return { mode: "scientific", tab: null };
-    }
+    let mode = parsed.mode ? canonicalMode(parsed.mode) : null;
+    const fromTab = tab ? modeForTab(tab) : null;
+    if (fromTab) mode = fromTab;
+    else if (parsed.model) mode = "scientific";
+    else if (parsed.scenario) mode = "advanced";
+    else if (!mode) mode = "basic";
     let nextTab = tab;
     if (!nextTab && parsed.model) nextTab = "single";
     else if (!nextTab && parsed.scenario) nextTab = "scenario";
-    return { mode: "advanced", tab: nextTab || null };
+    else if (!nextTab) nextTab = MODE_DEFAULT_TAB[mode] || null;
+    if (mode === "basic") return { mode: "basic", tab: null };
+    return { mode: mode, tab: nextTab || null };
   }
 
   function permalinkHref(hash, loc) {
@@ -271,8 +362,7 @@ const XYCALC_APP = (() => {
   // Simple first paint must not look like a cited buy-size. The full chain
   // lives in Advanced; this is the line that cannot be missed if we refuse
   // to mini-render every quote here.
-  const SIMPLE_HONESTY_LINE =
-    "Not a buy size / uncited path — open Scientific for sources.";
+  const SIMPLE_HONESTY_LINE = "What are we missing?";
 
   // Bench findings a planner must see on the default MongoDB size path.
   // Sentences are pinned; do not invent numbers. Occupancy/cliff and EBS
@@ -345,6 +435,101 @@ const XYCALC_APP = (() => {
       .join("");
   }
 
+  function infoCardHtml(kicker, title, paragraphs) {
+    const paras = (Array.isArray(paragraphs) ? paragraphs : [paragraphs])
+      .filter((p) => p != null && String(p).trim() !== "")
+      .map((p) => `<p>${esc(p)}</p>`)
+      .join("");
+    return `<div class="info-card">
+      <div class="kicker">${esc(kicker)}</div>
+      ${title ? `<div class="primary">${esc(title)}</div>` : ""}
+      ${paras}
+    </div>`;
+  }
+
+  function widestCitedTerm(model) {
+    let best = null;
+    let factor = 1;
+    for (const t of (model && model.terms) || []) {
+      if (!(t.coeff_lo > 0) || t.coeff_hi == null) continue;
+      const f = t.coeff_hi / t.coeff_lo;
+      if (f > factor) {
+        factor = f;
+        best = t;
+      }
+    }
+    return best ? { term: best, factor: factor } : null;
+  }
+
+  function answerRangeFactor(result) {
+    if (!result || !(result.lo > 0) || result.hi == null) return null;
+    return result.hi / result.lo;
+  }
+
+  function modelAsideHtml(model, result, fmt) {
+    if (!model) return "";
+    const cards = [];
+    const factor = answerRangeFactor(result);
+    if (factor != null) {
+      const band = fmt
+        ? fmt(result.lo, result.unit) + " – " + fmt(result.hi, result.unit)
+        : String(result.lo) + " – " + String(result.hi);
+      const rangeNote = factor <= 2
+        ? "Tight enough that lo and hi land in the same conversation."
+        : "Wide — read the whole band, not the mode, as the answer.";
+      const shown = factor >= 10 ? factor.toFixed(1) : factor.toFixed(2);
+      cards.push(infoCardHtml("This answer's range", band, shown + "× from lo to hi. " + rangeNote));
+    }
+    const v = displayValidation(model.validation);
+    if (v && v.grade) {
+      cards.push(infoCardHtml(
+        "Checked against reality",
+        GRADE_LABEL[v.grade] || v.grade,
+        validationClause(v),
+      ));
+    }
+    const lab = model.lab || {};
+    if (lab.measured) {
+      cards.push(infoCardHtml("What we measured", lab.label || "", [
+        lab.measured,
+        lab.still_needs ? "Still needs: " + lab.still_needs : "",
+      ]));
+    }
+    const wide = widestCitedTerm(model);
+    if (wide && wide.factor > 1.01) {
+      const t = wide.term;
+      const band = [t.coeff_lo, t.coeff_mode, t.coeff_hi].filter((x) => x != null).join("–");
+      const shown = wide.factor >= 10 ? wide.factor.toFixed(1) : wide.factor.toFixed(2);
+      cards.push(infoCardHtml(
+        "Widest cited coefficient",
+        t.label || t.key,
+        band + (t.unit ? " " + t.unit : "") + " · factor " + shown + "×. The sentence is under Show the math.",
+      ));
+    }
+    const fn = footnoteForModel(model.slug);
+    if (fn && fn.text) {
+      cards.push(infoCardHtml("Related finding", "", fn.text));
+    }
+    return cards.length ? `<div class="info-stack">${cards.join("")}</div>` : "";
+  }
+
+  function basicAsideHtml() {
+    const cards = [
+      infoCardHtml(
+        "What to type",
+        "storageSize, not dataSize",
+        "Compressed on-disk collection bytes (db.stats / collStats). dataSize is already uncompressed; totalSize includes indexes — those are a separate input.",
+      ),
+    ];
+    const occ = SIZE_PATH_FOOTNOTES["mongodb.wt-cache"];
+    if (occ) cards.push(infoCardHtml("Occupancy / cache-cliff", "", occ.text));
+    const tix = SIZE_PATH_FOOTNOTES["mongodb.ticket-throughput-ceiling"];
+    if (tix) cards.push(infoCardHtml("Tickets", "", tix.text));
+    const ebs = SIZE_PATH_FOOTNOTES["ebs.iops-to-provision"];
+    if (ebs) cards.push(infoCardHtml("EBS peak-to-mean", "", ebs.text));
+    return `<div class="info-stack">${cards.join("")}</div>`;
+  }
+
   function chainModelValidations(steps) {
     const out = [];
     for (const st of steps || []) {
@@ -377,13 +562,18 @@ const XYCALC_APP = (() => {
   }
 
   function simpleHonestyBlockHtml(kind) {
-    const body = kind === "scientific"
-      ? "<p>Cited math is expanded below — each term names its source sentence.</p>"
-      : `<p>${esc(SIMPLE_HONESTY_LINE)}</p>
-      <button type="button" class="ghost" id="simple-open-scientific">Open Scientific · show the math</button>`;
-    return `<div class="simple-honesty" id="simple-honesty" role="status">
-      ${body}
-    </div>`;
+    if (kind === "scientific") {
+      return `<span class="calc-tag" id="simple-honesty">Cited math below</span>`;
+    }
+    return `<button type="button" class="calc-tag calc-tag-miss" id="simple-open-scientific">${esc(SIMPLE_HONESTY_LINE)}</button>`;
+  }
+
+  function simpleGradeTagHtml(v) {
+    if (!v || v.grade == null || v.grade === "") return "";
+    const label = GRADE_LABEL[v.grade] || v.grade;
+    const clause = validationClause(v);
+    const cls = v.grade === "reasonable" ? " reasonable" : "";
+    return `<span class="calc-tag calc-tag-grade ${esc(v.grade)}${cls}" title="${esc(clause)}"><strong>${esc(label)}</strong><span class="sr-only"> — ${esc(clause)}</span></span>`;
   }
 
   function simpleCatalogMissReason(pick, fmt) {
@@ -413,6 +603,34 @@ const XYCALC_APP = (() => {
     </div>`;
   }
 
+  function skuOrCustom(name) {
+    return name || "custom sizing";
+  }
+
+  function simpleCloudPicksHtml(s, ram, awsPick, fmt) {
+    const aws = s && s.cpu;
+    const azure = s && s.azure;
+    if (!aws && !azure) return "";
+    const cell = (name) => `<td><div class="name">${esc(skuOrCustom(name))}</div></td>`;
+    const ends = [
+      { key: "lo", label: "Low", aws: aws && aws.instance_lo, azure: azure && azure.lo },
+      { key: "mode", label: "Typical", aws: aws && aws.instance_mode, azure: azure && azure.mode },
+      { key: "hi", label: "High", aws: aws && aws.instance_hi, azure: azure && azure.hi },
+    ];
+    const body = ends.map((row) => `<tr>
+      <th scope="row">${esc(row.label)}</th>
+      ${aws ? cell(row.aws) : ""}
+      ${azure ? cell(row.azure) : ""}
+    </tr>`).join("");
+    return `<table class="cloud-picks">
+        <thead><tr><th></th>
+          ${aws ? `<th>AWS <span class="note">r8i → U7i</span></th>` : ""}
+          ${azure ? `<th>Azure <span class="note">Esv5 / Esv6</span></th>` : ""}
+        </tr></thead>
+        <tbody>${body}</tbody>
+      </table>`;
+  }
+
   function simpleRamHonestyOk(ramText, bannerHtml, weakest) {
     if (!ramText) return true;
     if (!weakest || weakest.grade == null) return false;
@@ -432,7 +650,7 @@ const XYCALC_APP = (() => {
     const ram = s.ram;
     const pick = (data && data.simple_instance_pick) || null;
     const weakest = simpleWeakestValidation(data && data.steps);
-    const bannerHtml = validationBannerHtml(weakest);
+    const bannerHtml = simpleGradeTagHtml(weakest);
     const honestyHtml = simpleHonestyBlockHtml(kind);
     const footnotesHtml = sizePathFootnotesHtml(
       data && data.steps,
@@ -440,15 +658,10 @@ const XYCALC_APP = (() => {
     );
     let ramText = ram && fmt ? fmt(ram.mode, ram.unit) : "";
     if (ramText && !simpleRamHonestyOk(ramText, bannerHtml, weakest)) ramText = "";
-    const ends = [
-      { key: "lo", label: "Low", name: s.cpu && s.cpu.instance_lo, ram: ram && ram.lo },
-      { key: "mode", label: "Mode", name: s.cpu && s.cpu.instance_mode, ram: ram && ram.mode },
-      { key: "hi", label: "High", name: s.cpu && s.cpu.instance_hi, ram: ram && ram.hi },
-    ];
-    const picksHtml = ends.map((e) => simplePickCardHtml(e, ram, pick, fmt)).join("");
+    const picksHtml = simpleCloudPicksHtml(s, ram, pick, fmt);
     const r6 = s.r6i;
     const r6iHtml = r6
-      ? `<div class="simple-pick"><div class="which">r6i family</div>
+      ? `<div class="simple-family"><div class="which">r6i family</div>
          <div class="name">${esc(r6.mode || "custom sizing")}</div>
          <div class="spec">${r6.exceeds_pool
            ? "ceiling " + esc(r6.largest || "r6i.32xlarge") + " · 1,024 GiB"
@@ -465,7 +678,7 @@ const XYCALC_APP = (() => {
       picksHtml: picksHtml,
       r6iHtml: r6iHtml,
       footnotesHtml: footnotesHtml,
-      html: (ramText || "") + bannerHtml + honestyHtml + footnotesHtml + picksHtml + r6iHtml,
+      html: (ramText || "") + honestyHtml + bannerHtml + footnotesHtml + picksHtml + r6iHtml,
     };
   }
 
@@ -645,33 +858,32 @@ const XYCALC_APP = (() => {
   // tests catch before the page can boot against the wrong node.
   const SIMPLE_FORM_FIELD_IDS = [
     "simple-vulns",
-    "simple-vuln-storage",
+    "simple-db-size",
     "simple-devices",
     "simple-device-avg",
     "simple-residual",
   ];
+  const BASIC_DEFAULT_VULN_COUNT = "250000";
 
-  // Simple → mongodb.size-to-instance. Vuln count + today's storageSize are
-  // the family measurement; target count equals today's count so a 500 GB
-  // footprint stays 500 GB (homepage / Rickey path) instead of picking up
-  // three-year NVD growth.
+  // Basic → mongodb.size-to-instance. DB size is today's footprint. Vuln
+  // count defaults to the homepage 250000 with target == baseline so a 500 GB
+  // box stays 500 GB instead of picking up three-year NVD growth.
   function simpleChainInputs(fields) {
     const src = fields || {};
-    const vulns = String(src.vulns || "").replace(/,/g, "").trim();
     const storageRaw = String(src.storage || src.size || "").trim();
-    if (!vulns || !storageRaw) return null;
+    if (!storageRaw) return null;
+    const vulns = String(src.vulns || BASIC_DEFAULT_VULN_COUNT).replace(/,/g, "").trim()
+      || BASIC_DEFAULT_VULN_COUNT;
     const devices = String(src.devices || "").replace(/,/g, "").trim();
     const deviceAvgRaw = String(src.deviceAvg || "").trim();
     const residualRaw = String(src.residual || "").trim();
-    if ((devices && !deviceAvgRaw) || (!devices && deviceAvgRaw)) {
-      throw new Error("Device count and avg on-disk bytes must be supplied together.");
-    }
+    const devicePairComplete = !!(devices && deviceAvgRaw);
     const inputs = {
       baseline_vuln_count: vulns,
       baseline_storage_size: normalizeSimpleSize(storageRaw),
       target_vuln_count: vulns,
     };
-    if (devices) {
+    if (devicePairComplete) {
       inputs.device_count = devices;
       inputs.device_avg_storage_bytes = normalizeSimpleAvgBytes(deviceAvgRaw);
     }
@@ -812,17 +1024,23 @@ const XYCALC_APP = (() => {
     let lastSingleCitation = "";
     let lastScenarioCitation = "";
 
+    function currentMode() {
+      for (let i = 0; i < MODES.length; i++) {
+        if (document.body.classList.contains("mode-" + MODES[i])) return MODES[i];
+      }
+      return "basic";
+    }
+
     function permalinkState() {
-      const scientific = document.body.classList.contains("mode-scientific");
-      const simpleSurface = document.body.classList.contains("mode-simple") || scientific;
-      const state = { mode: scientific ? "scientific" : (simpleSurface ? "simple" : "advanced"), inputs: {} };
-      if (simpleSurface) {
+      const mode = currentMode();
+      const state = { mode: mode, inputs: {} };
+      if (mode === "basic") {
         const vulns = $("simple-vulns") && $("simple-vulns").value.trim();
-        const storage = $("simple-vuln-storage") && $("simple-vuln-storage").value.trim();
+        const storage = $("simple-db-size") && $("simple-db-size").value.trim();
         const devices = $("simple-devices") && $("simple-devices").value.trim();
         const deviceAvg = $("simple-device-avg") && $("simple-device-avg").value.trim();
         const residual = $("simple-residual") && $("simple-residual").value.trim();
-        if (vulns) state.inputs.vulns = vulns;
+        if (vulns && vulns !== BASIC_DEFAULT_VULN_COUNT) state.inputs.vulns = vulns;
         if (storage) state.inputs.storage = storage;
         if (devices) state.inputs.devices = devices;
         if (deviceAvg) state.inputs.deviceAvg = deviceAvg;
@@ -869,18 +1087,18 @@ const XYCALC_APP = (() => {
       if (!view) return false;
       writingHash = true;
       try {
-        if (view.mode === "simple" || view.mode === "scientific") {
-          setMode(view.mode, { persist: false, hash: false });
+        if (view.mode === "basic") {
+          setMode("basic", { persist: false, hash: false });
           const storageVal = parsed.inputs.storage || parsed.inputs.size;
           if (parsed.inputs.vulns && $("simple-vulns")) $("simple-vulns").value = parsed.inputs.vulns;
-          if (storageVal && $("simple-vuln-storage")) $("simple-vuln-storage").value = storageVal;
+          if (storageVal && $("simple-db-size")) $("simple-db-size").value = storageVal;
           if (parsed.inputs.devices && $("simple-devices")) $("simple-devices").value = parsed.inputs.devices;
           if (parsed.inputs.deviceAvg && $("simple-device-avg")) $("simple-device-avg").value = parsed.inputs.deviceAvg;
           if (parsed.inputs.residual && $("simple-residual")) $("simple-residual").value = parsed.inputs.residual;
           calculateSimple();
           return true;
         }
-        setMode("advanced", { persist: false, hash: false });
+        setMode(view.mode, { persist: false, hash: false });
         if (view.tab) setTab(view.tab, { hash: false });
         if (parsed.scenario) {
           pickScenario(parsed.scenario);
@@ -896,8 +1114,7 @@ const XYCALC_APP = (() => {
           if (def) pickScenario(def.slug);
         }
         if (parsed.model) {
-          $("model").value = parsed.model;
-          renderInputs();
+          pickQuestion(parsed.model, { hash: false, collapse: true });
           for (const key of Object.keys(parsed.inputs)) {
             const el = $("in-" + key);
             if (el) el.value = parsed.inputs[key];
@@ -936,8 +1153,10 @@ const XYCALC_APP = (() => {
       $("model").innerHTML = MODELS.map((m) =>
         `<option value="${esc(m.slug)}">${esc(m.question)}${esc(gradeSuffix(m.validation && m.validation.grade))}</option>`
       ).join("");
+      bootQuestionPicker();
       renderInputs();
       $("model").addEventListener("change", () => {
+        syncQuestionPicker($("model").value);
         renderInputs();
         scheduleSingleCalc();
         scheduleHash();
@@ -952,8 +1171,7 @@ const XYCALC_APP = (() => {
         btn.addEventListener("click", () => setTab(btn.dataset.tab)));
       document.addEventListener("keydown", (e) => {
         if (e.key === "Enter" && e.target.tagName === "INPUT") {
-          if (document.body.classList.contains("mode-simple")
-              || document.body.classList.contains("mode-scientific")) calculateSimple();
+          if (currentMode() === "basic") calculateSimple();
           else if (!$("tab-single").hidden) calculate();
           else if (!$("tab-scenario").hidden) calculateScenario(false);
         }
@@ -990,32 +1208,39 @@ const XYCALC_APP = (() => {
     let simpleCalcTimer = null;
 
     function bootMode() {
-      let mode = "simple";
+      let mode = "basic";
       try {
         const saved = localStorage.getItem(MODE_KEY);
-        if (saved === "simple" || saved === "scientific" || saved === "advanced") mode = saved;
+        if (saved) mode = canonicalMode(saved);
       } catch (_) { /* private mode / blocked storage */ }
       setMode(mode, { persist: false, hash: false });
-      $("mode-simple").addEventListener("click", () => setMode("simple"));
-      $("mode-scientific").addEventListener("click", () => setMode("scientific"));
+      $("mode-basic").addEventListener("click", () => setMode("basic"));
       $("mode-advanced").addEventListener("click", () => setMode("advanced"));
+      $("mode-scientific").addEventListener("click", () => setMode("scientific"));
+      $("mode-data").addEventListener("click", () => setMode("data"));
     }
 
     function setMode(mode, opts) {
       const persist = !opts || opts.persist !== false;
-      const next = (mode === "scientific" || mode === "advanced") ? mode : "simple";
-      document.body.classList.remove("mode-simple", "mode-scientific", "mode-advanced");
+      const next = canonicalMode(mode);
+      document.body.classList.remove("mode-basic", "mode-simple", "mode-scientific", "mode-advanced", "mode-data");
       document.body.classList.add("mode-" + next);
-      $("mode-simple").setAttribute("aria-pressed", next === "simple" ? "true" : "false");
-      $("mode-scientific").setAttribute("aria-pressed", next === "scientific" ? "true" : "false");
+      $("mode-basic").setAttribute("aria-pressed", next === "basic" ? "true" : "false");
       $("mode-advanced").setAttribute("aria-pressed", next === "advanced" ? "true" : "false");
+      $("mode-scientific").setAttribute("aria-pressed", next === "scientific" ? "true" : "false");
+      $("mode-data").setAttribute("aria-pressed", next === "data" ? "true" : "false");
       const subnav = document.querySelector(".view-subnav");
-      if (subnav) subnav.setAttribute("aria-hidden", next === "advanced" ? "false" : "true");
+      if (subnav) subnav.setAttribute("aria-hidden", next === "basic" ? "true" : "false");
+      const allowed = MODE_TABS[next] || [];
+      if (allowed.length) {
+        const cur = currentTab();
+        if (allowed.indexOf(cur) < 0) setTab(allowed[0], { hash: false });
+      }
       if (persist) {
         try { localStorage.setItem(MODE_KEY, next); }
         catch (_) { /* ignore */ }
       }
-      if (next === "simple" || next === "scientific") scheduleSimpleCalc();
+      if (next === "basic" || next === "scientific") scheduleSimpleCalc();
       if (!opts || opts.hash !== false) scheduleHash();
     }
 
@@ -1025,7 +1250,7 @@ const XYCALC_APP = (() => {
         if (!el) throw new Error("Simple form missing #" + id);
         el.addEventListener("input", scheduleSimpleCalc);
       }
-      $("simple-result").addEventListener("click", (ev) => {
+      $("simple-rail").addEventListener("click", (ev) => {
         if (ev.target && ev.target.id === "simple-open-scientific") {
           ev.preventDefault();
           setMode("scientific");
@@ -1034,6 +1259,8 @@ const XYCALC_APP = (() => {
         }
       });
       scheduleSimpleCalc();
+      const aside = $("simple-aside");
+      if (aside) aside.innerHTML = basicAsideHtml();
     }
 
     let pendingExpandMathUntil = 0;
@@ -1048,7 +1275,7 @@ const XYCALC_APP = (() => {
 
     function openAdvancedFromSimple() {
       const vulns = ($("simple-vulns").value || "").trim();
-      const storageRaw = ($("simple-vuln-storage").value || "").trim();
+      const storageRaw = ($("simple-db-size").value || "").trim();
       const devices = ($("simple-devices").value || "").trim();
       const deviceAvgRaw = ($("simple-device-avg").value || "").trim();
       const residualRaw = ($("simple-residual").value || "").trim();
@@ -1093,17 +1320,16 @@ const XYCALC_APP = (() => {
 
     function calculateSimple() {
       const vulns = ($("simple-vulns").value || "").trim();
-      const storageRaw = ($("simple-vuln-storage").value || "").trim();
+      const storageRaw = ($("simple-db-size").value || "").trim();
       const devices = ($("simple-devices").value || "").trim();
       const deviceAvgRaw = ($("simple-device-avg").value || "").trim();
       const residualRaw = ($("simple-residual").value || "").trim();
       const err = $("simple-error");
       const status = $("simple-status");
-      if (!vulns || !storageRaw) {
+      if (!storageRaw) {
         $("simple-result").hidden = true;
         err.hidden = true;
-        status.textContent =
-          "Enter vuln count and storageSize — sizing updates as you type.";
+        status.textContent = "Enter DB size — sizing updates as you type.";
         return;
       }
       try {
@@ -1127,12 +1353,10 @@ const XYCALC_APP = (() => {
         status.textContent = "Up to date" + as + " — change a field to recalculate.";
         const note = document.getElementById("simple-vuln-note");
         if (note) {
-          const n = Number(inputs.baseline_vuln_count);
           note.hidden = false;
-          note.textContent = "Sizing today's footprint for " + n.toLocaleString() + " vuln records.";
+          note.textContent = "Sizing today's footprint — no NVD growth (target count equals today).";
         }
-        if (document.body.classList.contains("mode-simple")
-            || document.body.classList.contains("mode-scientific")) scheduleHash();
+        if (currentMode() === "basic" || currentMode() === "scientific") scheduleHash();
       } catch (e) {
         $("simple-result").hidden = true;
         err.hidden = false;
@@ -1159,7 +1383,9 @@ const XYCALC_APP = (() => {
       // Re-pick against the floored band from the whole aws-ec2 catalog
       // (r8i, then cited U7i). An r8i-only filter made the homepage 500 GB
       // example report custom sizing on every card.
-      const catalog = CORPUS.instance_catalog || [];
+      const catalogs = CORPUS.instance_catalogs || {};
+      const catalog = catalogs["aws-ec2"] || CORPUS.instance_catalog || [];
+      const azureCatalog = catalogs["azure-vm"] || [];
       const ceiling = CORPUS.default_instance_ceiling_bytes;
       const band = { lo: s.ram.lo, mode: s.ram.mode, hi: s.ram.hi };
       const pick = XY.selectInstance
@@ -1190,6 +1416,17 @@ const XYCALC_APP = (() => {
           largest: r6iPick.largest_in_pool && r6iPick.largest_in_pool.name,
         };
       }
+      const azurePick = XY.selectInstance && azureCatalog.length
+        ? XY.selectInstance(band, azureCatalog, null, ceiling === 0 ? null : ceiling)
+        : null;
+      if (azurePick) {
+        s.azure = {
+          lo: azurePick.pick_lo && azurePick.pick_lo.name,
+          mode: azurePick.pick_mode && azurePick.pick_mode.name,
+          hi: azurePick.pick_hi && azurePick.pick_hi.name,
+          exceeds_pool: azurePick.exceeds_pool,
+        };
+      }
       data.sizing_summary = s;
       data.simple_instance_pick = pick || null;
       return data;
@@ -1201,7 +1438,7 @@ const XYCALC_APP = (() => {
       const paint = simpleFirstPaintHtml(
         data,
         fmt,
-        document.body.classList.contains("mode-scientific") ? "scientific" : "simple",
+        document.body.classList.contains("mode-scientific") ? "scientific" : "basic",
       );
       $("simple-result").hidden = false;
       if (ram && paint.ramText) {
@@ -1229,9 +1466,11 @@ const XYCALC_APP = (() => {
         $("simple-bandends").hidden = true;
       }
 
-      $("simple-picks").innerHTML = paint.picksHtml + (paint.r6iHtml || "");
+      $("simple-picks").innerHTML = paint.picksHtml;
+      const family = $("simple-family");
+      if (family) family.innerHTML = paint.r6iHtml || "";
       const slot = $("simple-honesty-slot");
-      if (slot) slot.innerHTML = paint.bannerHtml + paint.honestyHtml + (paint.footnotesHtml || "");
+      if (slot) slot.innerHTML = paint.honestyHtml + paint.bannerHtml;
       const val = $("simple-validation");
       if (val) val.hidden = true;
       renderScientificMath(data);
@@ -1239,8 +1478,10 @@ const XYCALC_APP = (() => {
 
     function setTab(name, opts) {
       TABS.forEach((tab) => {
-        $("tab-" + tab).hidden = name !== tab;
-        $("tab-btn-" + tab).classList.toggle("active", name === tab);
+        const panel = $("tab-" + tab);
+        const btn = $("tab-btn-" + tab);
+        if (panel) panel.hidden = name !== tab;
+        if (btn) btn.classList.toggle("active", name === tab);
       });
       if (!opts || opts.hash !== false) scheduleHash();
     }
@@ -1725,7 +1966,7 @@ const XYCALC_APP = (() => {
       const el = $("scientific-math");
       if (!el) return;
       if (!data || !data.steps || !data.steps.length) {
-        el.innerHTML = "";
+        el.innerHTML = "<p class=\"help\">Enter a DB size in Basic, or run a scenario in Advanced — cited steps appear here.</p>";
         return;
       }
       el.innerHTML = renderCascadeDetailsHtml(data, true);
@@ -1802,6 +2043,7 @@ const XYCALC_APP = (() => {
           || (existing ? existing.open : false);
         $("scenario-cascade").innerHTML = renderCascadeDetailsHtml(data, open);
         if (opts && opts.expandMath) expandScenarioMath();
+        renderScientificMath(data);
         $("scn-recalc-status").textContent = citationOnly
           ? "Citation scenario — no fields to edit yet."
           : "Up to date — change any field to recalculate.";
@@ -1813,6 +2055,103 @@ const XYCALC_APP = (() => {
     }
 
     function current() { return MODELS.find((m) => m.slug === $("model").value); }
+
+    function setQuestionChooserCollapsed(collapsed) {
+      const chooser = $("question-chooser");
+      const btn = $("question-change");
+      if (chooser) chooser.classList.toggle("collapsed", !!collapsed);
+      if (btn) btn.textContent = collapsed ? "Change question" : "Hide list";
+    }
+
+    function fillQuestionCompact(m) {
+      const title = $("question-compact-title");
+      const sub = $("question-compact-sub");
+      const compact = $("question-compact");
+      if (!title || !sub || !compact || !m) return;
+      const grade = m.validation && m.validation.grade;
+      const pill = grade
+        ? ` <span class="grade-pill">${esc(GRADE_PILL[grade] || grade)}</span>`
+        : "";
+      title.innerHTML = esc(shortModelTitle(m)) + pill;
+      sub.textContent = m.question || "";
+      compact.hidden = false;
+    }
+
+    function renderQuestionPicker(filter) {
+      const el = $("question-picker");
+      if (!el) return;
+      const selected = $("model") && $("model").value;
+      const html = groupModelsBySystem(MODELS).map((g) => {
+        const models = g.models.filter((m) => modelMatchesQuery(m, filter));
+        if (!models.length) return "";
+        const cards = models.map((m) => {
+          const grade = m.validation && m.validation.grade;
+          const pill = grade
+            ? `<span class="grade-pill">${esc(GRADE_PILL[grade] || grade)}</span>`
+            : "";
+          const on = m.slug === selected;
+          return `<label class="scenario-opt question-opt${on ? " selected" : ""}" data-slug="${esc(m.slug)}">
+            <input type="radio" name="question" value="${esc(m.slug)}"${on ? " checked" : ""}>
+            <span>
+              <div class="label">${esc(shortModelTitle(m))} ${pill}</div>
+              <div class="sub">${esc(m.question || "")}</div>
+              <div class="slug">${esc(m.slug)}</div>
+            </span>
+          </label>`;
+        }).join("");
+        return `<div class="question-group">
+          <h3 class="question-group-title">${esc(g.label)}</h3>
+          <div class="scenario-list">${cards}</div>
+        </div>`;
+      }).join("");
+      el.innerHTML = html || "<p class='help'>No questions match that filter.</p>";
+      el.querySelectorAll("[data-slug]").forEach((card) => {
+        card.addEventListener("click", () => pickQuestion(card.dataset.slug));
+      });
+    }
+
+    function syncQuestionPicker(slug) {
+      fillQuestionCompact(MODELS.find((m) => m.slug === slug));
+      document.querySelectorAll("#question-picker [data-slug]").forEach((el) => {
+        const on = el.dataset.slug === slug;
+        el.classList.toggle("selected", on);
+        const radio = el.querySelector("input[type=radio]");
+        if (radio) radio.checked = on;
+      });
+    }
+
+    function pickQuestion(slug, opts) {
+      if (!slug || !MODELS.some((m) => m.slug === slug)) return;
+      const sel = $("model");
+      if (sel) sel.value = slug;
+      syncQuestionPicker(slug);
+      if (!opts || opts.collapse !== false) setQuestionChooserCollapsed(true);
+      renderInputs();
+      scheduleSingleCalc();
+      if (!opts || opts.hash !== false) scheduleHash();
+    }
+
+    function bootQuestionPicker() {
+      renderQuestionPicker("");
+      const filter = $("question-filter");
+      if (filter) {
+        filter.addEventListener("input", () => renderQuestionPicker(filter.value));
+      }
+      const change = $("question-change");
+      if (change) {
+        change.addEventListener("click", () => {
+          const chooser = $("question-chooser");
+          const collapsed = chooser && chooser.classList.contains("collapsed");
+          setQuestionChooserCollapsed(!collapsed);
+          if (collapsed && filter) filter.focus();
+        });
+      }
+      const initial = $("model") && $("model").value;
+      if (initial) {
+        fillQuestionCompact(MODELS.find((m) => m.slug === initial));
+        setQuestionChooserCollapsed(true);
+      }
+    }
 
     function renderInputs() {
       const m = current();
@@ -1827,6 +2166,8 @@ const XYCALC_APP = (() => {
       $("sweep").innerHTML = m.inputs
         .map((i) => `<option value="${esc(i.key)}">${esc(i.label)}</option>`).join("");
       $("result").hidden = true;
+      const aside = $("single-aside");
+      if (aside) aside.innerHTML = modelAsideHtml(m);
       const st = $("single-recalc-status");
       if (st) st.textContent = "Sizing and the curve update as you type.";
     }
@@ -1881,6 +2222,8 @@ const XYCALC_APP = (() => {
       $("error").hidden = true;
       STATE = { model: m, inputs, result, available };
       render();
+      const aside = $("single-aside");
+      if (aside) aside.innerHTML = modelAsideHtml(m, result, fmt);
       const st = $("single-recalc-status");
       if (st) st.textContent = "Up to date — change a field or scrub the curve.";
     }
@@ -2322,9 +2665,9 @@ const XYCALC_APP = (() => {
     }
 
     function openModelFromOcc(slug) {
+      setMode("scientific", { hash: false });
       setTab("single");
-      $("model").value = slug;
-      renderInputs();
+      pickQuestion(slug);
       if (slug === "mongodb.wt-cache") {
         const storage = $("in-storage_size");
         const index = $("in-index_size");
@@ -2445,16 +2788,8 @@ const XYCALC_APP = (() => {
         </tr>`;
       }).join("");
       drawCliffChart(g);
-      $("cliff-open-wt").addEventListener("click", () => {
-        setTab("single");
-        $("model").value = g.model || "mongodb.wt-cache";
-        renderInputs();
-        const storage = $("in-storage_size");
-        const index = $("in-index_size");
-        if (storage && !storage.value) storage.value = "500GB";
-        if (index && !index.value) index.value = "40GB";
-        calculate();
-      });
+      $("cliff-open-wt").addEventListener("click", () =>
+        openModelFromOcc(g.model || "mongodb.wt-cache"));
     }
 
     function drawCliffChart(g) {
@@ -2581,6 +2916,8 @@ const XYCALC_APP = (() => {
 
   return {
     TABS: TABS,
+    MODES: MODES,
+    MODE_TABS: MODE_TABS,
     SAMPLES: SAMPLES,
     esc: esc,
     ticks: ticks,
@@ -2595,6 +2932,7 @@ const XYCALC_APP = (() => {
     normalizeSimpleSize: normalizeSimpleSize,
     normalizeSimpleAvgBytes: normalizeSimpleAvgBytes,
     SIMPLE_FORM_FIELD_IDS: SIMPLE_FORM_FIELD_IDS,
+    BASIC_DEFAULT_VULN_COUNT: BASIC_DEFAULT_VULN_COUNT,
     simpleChainInputs: simpleChainInputs,
     gradeSuffix: gradeSuffix,
     weakestValidation: weakestValidation,
@@ -2605,6 +2943,8 @@ const XYCALC_APP = (() => {
     serializePermalink: serializePermalink,
     parsePermalink: parsePermalink,
     canonicalTab: canonicalTab,
+    canonicalMode: canonicalMode,
+    modeForTab: modeForTab,
     publicTab: publicTab,
     permalinkView: permalinkView,
     permalinkHref: permalinkHref,
@@ -2614,6 +2954,11 @@ const XYCALC_APP = (() => {
     validationBannerHtml: validationBannerHtml,
     formatCitation: formatCitation,
     GRADE_LABEL: GRADE_LABEL,
+    SYSTEM_ORDER: SYSTEM_ORDER,
+    systemLabel: systemLabel,
+    shortModelTitle: shortModelTitle,
+    modelMatchesQuery: modelMatchesQuery,
+    groupModelsBySystem: groupModelsBySystem,
     SIMPLE_HONESTY_LINE: SIMPLE_HONESTY_LINE,
     SIZE_PATH_FOOTNOTES: SIZE_PATH_FOOTNOTES,
     SIZE_PATH_RELATED_FOOTNOTES: SIZE_PATH_RELATED_FOOTNOTES,
@@ -2629,9 +2974,17 @@ const XYCALC_APP = (() => {
     displayValidation: displayValidation,
     simpleWeakestValidation: simpleWeakestValidation,
     simpleHonestyBlockHtml: simpleHonestyBlockHtml,
+    simpleGradeTagHtml: simpleGradeTagHtml,
     simpleCatalogMissReason: simpleCatalogMissReason,
     simpleRamHonestyOk: simpleRamHonestyOk,
+    simplePickCardHtml: simplePickCardHtml,
+    simpleCloudPicksHtml: simpleCloudPicksHtml,
     simpleFirstPaintHtml: simpleFirstPaintHtml,
+    infoCardHtml: infoCardHtml,
+    widestCitedTerm: widestCitedTerm,
+    answerRangeFactor: answerRangeFactor,
+    modelAsideHtml: modelAsideHtml,
+    basicAsideHtml: basicAsideHtml,
     scenarioInputControlHtml: scenarioInputControlHtml,
     scenarioSectionCopyHtml: scenarioSectionCopyHtml,
     queryRegimeSizingNote: queryRegimeSizingNote,

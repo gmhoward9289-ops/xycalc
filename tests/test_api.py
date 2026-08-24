@@ -188,6 +188,8 @@ class TestPage:
         assert 'id="corpus"' in html
         assert "XY.checkGolden" in html
         assert 'data-tab="scenario"' in html
+        assert 'data-tab="math"' in html
+        assert 'id="mode-basic"' in html
         assert 'data-tab="single"' in html
         assert 'data-tab="flow"' in html
         assert 'data-tab="occupancy"' in html

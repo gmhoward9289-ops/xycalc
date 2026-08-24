@@ -7,7 +7,7 @@ const APP = require(process.argv[2]);
 
 assert.deepStrictEqual(
   APP.TABS,
-  ["scenario", "single", "flow", "occupancy", "cliff"],
+  ["scenario", "math", "single", "flow", "occupancy", "cliff"],
 );
 assert.strictEqual(APP.SAMPLES, 96);
 
@@ -108,12 +108,19 @@ assert.strictEqual(APP.normalizeSimpleAvgBytes("2KB"), "2KB");
 
 assert.deepStrictEqual(APP.SIMPLE_FORM_FIELD_IDS, [
   "simple-vulns",
-  "simple-vuln-storage",
+  "simple-db-size",
   "simple-devices",
   "simple-device-avg",
   "simple-residual",
 ]);
-assert.strictEqual(APP.simpleChainInputs({ vulns: "", storage: "500" }), null);
+assert.deepStrictEqual(
+  APP.simpleChainInputs({ vulns: "", storage: "500" }),
+  {
+    baseline_vuln_count: APP.BASIC_DEFAULT_VULN_COUNT,
+    baseline_storage_size: "500GB",
+    target_vuln_count: APP.BASIC_DEFAULT_VULN_COUNT,
+  },
+);
 assert.strictEqual(APP.simpleChainInputs({ vulns: "250000", storage: "" }), null);
 assert.deepStrictEqual(
   APP.simpleChainInputs({ vulns: "250,000", storage: "500" }),
@@ -140,9 +147,13 @@ assert.deepStrictEqual(
     residual_storage_size: "50GB",
   },
 );
-assert.throws(
-  () => APP.simpleChainInputs({ vulns: "250000", storage: "500", devices: "10" }),
-  /together/,
+assert.deepStrictEqual(
+  APP.simpleChainInputs({ vulns: "250000", storage: "500", devices: "10" }),
+  {
+    baseline_vuln_count: "250000",
+    baseline_storage_size: "500GB",
+    target_vuln_count: "250000",
+  },
 );
 assert.strictEqual(APP.esc("<img src=x onerror=alert(1)>"), "&lt;img src=x onerror=alert(1)&gt;");
 assert.strictEqual(APP.esc('a&b"c'), "a&amp;b&quot;c");
@@ -226,18 +237,25 @@ const inboundCliff = APP.parsePermalink("#mode=advanced&tab=cache-cliff");
 assert.strictEqual(inboundCliff.mode, "advanced");
 assert.strictEqual(inboundCliff.tab, "cliff");
 const view = APP.permalinkView(inboundCliff);
-assert.deepStrictEqual(view, { mode: "advanced", tab: "cliff" });
-assert.strictEqual(APP.permalinkView(APP.parsePermalink("#mode=simple")).mode, "simple");
+assert.deepStrictEqual(view, { mode: "data", tab: "cliff" });
+assert.strictEqual(APP.permalinkView(APP.parsePermalink("#mode=simple")).mode, "basic");
 assert.strictEqual(APP.permalinkView(APP.parsePermalink("#mode=simple")).tab, null);
+assert.strictEqual(APP.permalinkView(APP.parsePermalink("#mode=basic")).mode, "basic");
 assert.strictEqual(APP.permalinkView(APP.parsePermalink("#mode=scientific")).mode, "scientific");
-assert.strictEqual(APP.permalinkView(APP.parsePermalink("#mode=scientific")).tab, null);
+assert.strictEqual(APP.permalinkView(APP.parsePermalink("#mode=scientific")).tab, "math");
+assert.strictEqual(APP.permalinkView(APP.parsePermalink("#mode=data")).mode, "data");
+assert.strictEqual(APP.permalinkView(APP.parsePermalink("#mode=data")).tab, "occupancy");
+assert.strictEqual(APP.canonicalMode("simple"), "basic");
+assert.strictEqual(APP.modeForTab("cache-cliff"), "data");
+assert.strictEqual(APP.modeForTab("single"), "scientific");
+assert.strictEqual(APP.modeForTab("scenario"), "advanced");
 
-const cliffHash = APP.serializePermalink({ mode: "advanced", tab: "cliff", inputs: {} });
-assert.ok(cliffHash.includes("mode=advanced"), cliffHash);
+const cliffHash = APP.serializePermalink({ mode: "data", tab: "cliff", inputs: {} });
+assert.ok(cliffHash.includes("mode=data"), cliffHash);
 assert.ok(cliffHash.includes("tab=cache-cliff"), cliffHash);
 assert.ok(!cliffHash.includes("tab=scenario"), cliffHash);
 const cliffRoundTrip = APP.parsePermalink("#" + cliffHash);
-assert.strictEqual(cliffRoundTrip.mode, "advanced");
+assert.strictEqual(cliffRoundTrip.mode, "data");
 assert.strictEqual(cliffRoundTrip.tab, "cliff");
 
 const href = APP.permalinkHref("#mode=advanced&tab=cache-cliff", {
@@ -249,7 +267,7 @@ assert.strictEqual(href, "/tools/xycalc/calculator/#mode=advanced&tab=cache-clif
 const modelOnly = APP.parsePermalink("#tab=single&model=mongodb.wt-cache");
 assert.strictEqual(modelOnly.model, "mongodb.wt-cache");
 assert.strictEqual(APP.permalinkView(modelOnly).tab, "single");
-assert.strictEqual(APP.permalinkView(modelOnly).mode, "advanced");
+assert.strictEqual(APP.permalinkView(modelOnly).mode, "scientific");
 
 const qModel = APP.parsePermalink("?model=mongodb.wt-cache");
 assert.strictEqual(qModel.model, "mongodb.wt-cache");
@@ -323,11 +341,10 @@ assert.ok(cite.includes("Set cacheSizeGB"));
 assert.ok(cite.includes("Corpus abc · xycalc 0.0.0 · deadbee"));
 assert.ok(!cite.includes("<script>"));
 
-assert.ok(APP.SIMPLE_HONESTY_LINE.includes("Not a buy size"));
-assert.ok(APP.SIMPLE_HONESTY_LINE.includes("open Scientific for sources"));
+assert.ok(APP.SIMPLE_HONESTY_LINE.includes("What are we missing"));
 assert.ok(APP.simpleHonestyBlockHtml().includes("simple-open-scientific"));
 assert.ok(APP.simpleHonestyBlockHtml().includes(APP.SIMPLE_HONESTY_LINE));
-assert.ok(APP.simpleHonestyBlockHtml("scientific").includes("Cited math is expanded below"));
+assert.ok(APP.simpleHonestyBlockHtml("scientific").includes("Cited math below"));
 assert.ok(!APP.simpleHonestyBlockHtml("scientific").includes("simple-open-scientific"));
 
 const demoted = APP.displayValidation({
@@ -401,5 +418,56 @@ const queued = APP.concurrencySummaryHtml({ slots: 8, fanout: 12, in_flight: 96 
 assert.ok(queued.includes("96 in-flight scans"), queued);
 assert.ok(queued.includes("arrivals queue; this is not extra ops/s"), queued);
 assert.ok(queued.includes("More Celery workers increase in-flight scans and broker occupancy."), queued);
+
+const wide = APP.widestCitedTerm({
+  terms: [
+    { key: "a", label: "tight", coeff_lo: 1, coeff_mode: 1, coeff_hi: 1.1 },
+    { key: "b", label: "peak-to-mean", coeff_lo: 1.5, coeff_mode: 3, coeff_hi: 10, unit: "ratio" },
+  ],
+});
+assert.strictEqual(wide.term.key, "b");
+assert.ok(Math.abs(wide.factor - 10 / 1.5) < 1e-9, wide.factor);
+
+assert.strictEqual(APP.answerRangeFactor({ lo: 100, hi: 200 }), 2);
+assert.strictEqual(APP.answerRangeFactor({ lo: 0, hi: 200 }), null);
+
+const aside = APP.modelAsideHtml({
+  validation: { grade: "thin", text: "thinly validated (n=1)" },
+  lab: { label: "WiredTiger cache size", measured: "Two resident-cache cases.", still_needs: "Independent collections." },
+  terms: [{ key: "b", label: "peak-to-mean", coeff_lo: 1.5, coeff_mode: 3, coeff_hi: 10, unit: "ratio" }],
+  slug: "ebs.iops-to-provision",
+});
+assert.ok(aside.includes("Checked against reality"), aside);
+assert.ok(aside.includes("Thinly validated"), aside);
+assert.ok(aside.includes("What we measured"), aside);
+assert.ok(aside.includes("Widest cited coefficient"), aside);
+assert.ok(aside.includes("peak-to-mean"), aside);
+assert.ok(aside.includes("&lt;img") || !aside.includes("<img src=x"), aside);
+const xssAside = APP.modelAsideHtml({
+  validation: { grade: "none", text: "<img src=x onerror=alert(1)>" },
+  terms: [],
+});
+assert.ok(xssAside.includes("&lt;img"), xssAside);
+assert.ok(!xssAside.includes("<img src=x"), xssAside);
+
+const basicAside = APP.basicAsideHtml();
+assert.ok(basicAside.includes("storageSize, not dataSize"), basicAside);
+assert.ok(basicAside.includes("Occupancy / cache-cliff"), basicAside);
+
+assert.strictEqual(APP.systemLabel("mongodb"), "MongoDB");
+assert.strictEqual(APP.systemLabel("azure-disks"), "Azure disks");
+assert.strictEqual(APP.systemLabel(""), "Other");
+assert.strictEqual(
+  APP.shortModelTitle({ lab: { label: "WiredTiger cache size" }, question: "How much RAM…" }),
+  "WiredTiger cache size",
+);
+assert.ok(APP.modelMatchesQuery({ slug: "ebs.iops-to-provision", question: "microburst", system: "ebs" }, "iops"));
+assert.ok(!APP.modelMatchesQuery({ slug: "mongodb.wt-cache", question: "cache", system: "mongodb" }, "azure"));
+const grouped = APP.groupModelsBySystem([
+  { slug: "ebs.iops-to-provision", system: "ebs" },
+  { slug: "mongodb.wt-cache", system: "mongodb" },
+  { slug: "azure.premium-v2-throughput-ceiling", system: "azure-disks" },
+]);
+assert.deepStrictEqual(grouped.map((g) => g.system), ["mongodb", "ebs", "azure-disks"]);
 
 console.log("app helpers ok");
