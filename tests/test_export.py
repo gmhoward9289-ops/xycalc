@@ -601,6 +601,9 @@ def test_template_keeps_simple_claim_and_reserved_advanced_subnav():
     assert "--subnav-indent" in text
     assert "body.mode-basic .view-subnav .tabs" in text
     assert 'id="sci-toggle"' in text
+    assert 'class="mode-toggles"' in text
+    assert 'role="switch"' in text
+    assert 'sci-toggle-state' in text
     assert "Questions" in text
     assert "body.mode-questions" in text
     assert "body.mode-scientific .claim" not in text

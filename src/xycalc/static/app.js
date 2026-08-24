@@ -1502,7 +1502,11 @@ const XYCALC_APP = (() => {
       const next = !!on;
       document.body.classList.toggle("sci-on", next);
       const btn = $("sci-toggle");
-      if (btn) btn.setAttribute("aria-pressed", next ? "true" : "false");
+      if (btn) {
+        btn.setAttribute("aria-checked", next ? "true" : "false");
+        const state = btn.querySelector(".sci-toggle-state");
+        if (state) state.textContent = next ? "On" : "Off";
+      }
       const simplePanel = $("simple-sci-panel");
       const scenarioPanel = $("scenario-sci-panel");
       if (simplePanel) simplePanel.hidden = !next;
