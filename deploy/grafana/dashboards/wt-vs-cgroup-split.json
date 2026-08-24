@@ -340,7 +340,7 @@
     },
     {
       "title": "Refault cost: major faults and reads against the throttle",
-      "description": "Major faults are file pages re-read from disk after reclaim dropped them; cAdvisor does not export workingset_refault_file, so this rate is the closest available proxy. Compare with device read bytes: this probe's block device is throttled to 8 MiB/s (dashed line), so as re-reads approach that line each additional fault queues behind the throttle and surfaces as query latency. 'WT pages into cache' is the same demand counted from Mongo's side.",
+      "description": "Where evicted file pages come back to bite. WiredTiger reads data files with pread, not mmap, so pages the kernel reclaimed return as ordinary read() I/O - watch 'device reads' against the dashed line, which is the probe's configured blkio cap (8 MiB/s in compose.yml, standing in for a small cloud volume; replace with the real volume's ceiling elsewhere). Reads pinned on that line mean every further miss queues behind the throttle and surfaces as query latency. Major faults stay near zero for mongod and matter mainly for mmap-based engines; cAdvisor has no workingset_refault_file, so read() volume is the refault-cost signal here. 'WT pages into cache' is the same demand counted from Mongo's side.",
       "type": "timeseries",
       "gridPos": {
         "h": 9,
@@ -864,6 +864,20 @@
           }
         }
       ]
+    },
+    {
+      "title": "Captured load windows (replays)",
+      "type": "text",
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 46
+      },
+      "options": {
+        "mode": "markdown",
+        "content": "## Captured load windows\n\n**2026-08-24 - escalating Celery read load, 100/200/400 tasks per s**\nDriver ran 19:23:22Z-19:32:19Z against the probe mongo (640 MiB limit,\n256 MiB WT cache, 1.1 GB data, 8 MiB/s read throttle). Observed: anon\n+63 MiB, file cache -24 MiB (inactive band), reads pinned at the\nthrottle, PSI io-some 81%, ticket pool saturated (7-8 of 8 out,\n6.5k-task backlog). Memory squeeze reached the cheap-reclaim stage;\nactive file was not yet cut - a longer run goes further.\n\n[Replay: before / during / after (19:08-19:48Z)](/d/xycalc-wt-cgroup?from=1787598480000&to=1787600880000&var-container=xycalc-celery-probe-mongo-1)\n| [load window only](/d/xycalc-wt-cgroup?from=1787599380000&to=1787599980000&var-container=xycalc-celery-probe-mongo-1)\n\nReproduce (on the host running the probe):\n```\ncd tools/bench/celery_probe\ndocker compose --profile driver run --rm --no-deps \\\n  -e PROBE_RATES=100,200,400 -e PROBE_SECONDS=120 driver\n```\nAdd the new window here with its from/to epoch-ms so the replay list\nstays with the board.\n"
+      }
     }
   ],
   "schemaVersion": 39,
