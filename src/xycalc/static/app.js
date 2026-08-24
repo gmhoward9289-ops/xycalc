@@ -33,6 +33,17 @@ const XYCALC_APP = (() => {
       .replace(/'/g, "&#39;");
   }
 
+  function safeExternalUrl(raw) {
+    if (!raw) return null;
+    try {
+      const u = new URL(String(raw), "https://example.invalid");
+      if (u.protocol !== "http:" && u.protocol !== "https:") return null;
+      return u.href;
+    } catch (_) {
+      return null;
+    }
+  }
+
   // Round tick values so the axis reads in figures a person would say out loud
   // (1, 2, 5, 10 ...) rather than in whatever the data range happened to be.
   function ticks(lo, hi, log, count) {
@@ -378,7 +389,7 @@ const XYCALC_APP = (() => {
     if (/optional/i.test(title)) return true;
     if (/concurrency|celery|query regime/i.test(title)) return true;
     const inputs = (sec && sec.inputs) || [];
-    return inputs.length > 0 && inputs.every((i) => i.required === false);
+    return inputs.length > 0 && inputs.every((i) => !i.required);
   }
   const GRADE_RANK = { none: 0, thin: 1, reasonable: 2 };
   const GRADE_LABEL = { none: "Unvalidated", thin: "Thinly validated", reasonable: "Validated" };
@@ -1379,7 +1390,6 @@ const XYCALC_APP = (() => {
     }
 
     const MODE_KEY = "xycalc.calcMode";
-    let simpleCalcTimer = null;
 
     function bootMode() {
       let mode = "basic";
@@ -1522,7 +1532,6 @@ const XYCALC_APP = (() => {
 
     let simpleCalcRaf = null;
     function scheduleSimpleCalc() {
-      clearTimeout(simpleCalcTimer);
       if (simpleCalcRaf != null) return;
       simpleCalcRaf = requestAnimationFrame(() => {
         simpleCalcRaf = null;
@@ -1879,7 +1888,7 @@ const XYCALC_APP = (() => {
 
     function renderNvdChart(chart, opts) {
       if (!chart) return "";
-      const years = chart.annual || chart.years;
+      const years = chart.annual;
       if (!years || !years.length) return "";
       const fold = !opts || opts.fold !== false;
       const proj = opts && opts.projectNext ? nvdNextYearProjection({ annual: years, growth_pct: chart.growth_pct }) : null;
@@ -1895,7 +1904,8 @@ const XYCALC_APP = (() => {
       const ms = years.map((a, i) => a.microsoft != null ? `<circle class="ms-dot" cx="${esc(xAt(i).toFixed(1))}" cy="${esc(yAt(a.microsoft).toFixed(1))}" r="4"></circle>` : "").join("");
       const xLabels = ticks.map((a, i) => `<text x="${esc(xAt(i).toFixed(1))}" y="${H - 18}" text-anchor="middle">${esc(a.year)}</text>`).join("");
       const g = chart.growth_pct;
-      const src = chart.source_url ? `<a href="${esc(chart.source_url)}" target="_blank" rel="noopener">${esc(chart.source)}</a>` : esc(chart.source);
+      const sourceUrl = safeExternalUrl(chart.source_url);
+      const src = sourceUrl ? `<a href="${esc(sourceUrl)}" target="_blank" rel="noopener">${esc(chart.source)}</a>` : esc(chart.source);
       let projSvg = "";
       let projNote = "";
       if (proj && g) {
@@ -1912,7 +1922,7 @@ const XYCALC_APP = (() => {
             <g class="axis">${xLabels}<text class="axis-title" x="12" y="${T + ih / 2}" text-anchor="middle" transform="rotate(-90 12 ${T + ih / 2})">CVEs published per year</text></g>
             <path class="nvd-line" d="${nvdPath}"></path>${dots}${ms}${projSvg}
           </svg>`;
-      const meta = `<p class="nvd-meta">Cumulative through 2025: <strong>${esc((chart.cumulative_2025 || chart.cumulative_2025 || 0).toLocaleString())}</strong>.
+      const meta = `<p class="nvd-meta">Cumulative through 2025: <strong>${esc((chart.cumulative_2025 || 0).toLocaleString())}</strong>.
             YoY band: <strong>${esc(g.lo)}–${esc(g.mode)}–${esc(g.hi)}%</strong>. Source: ${src}.
             ${chart.microsoft_note ? esc(chart.microsoft_note) : ""}${projNote}</p>`;
       const body = `<div class="nvd-layout">${svg}${meta}</div>`;
