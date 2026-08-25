@@ -572,10 +572,31 @@ const XYCALC_APP = (() => {
       .join("");
   }
 
+  function grafanaPublicBase() {
+    return "https://grafana.swamplink.com";
+  }
+
+  function grafanaWatchHref(uid) {
+    if (!uid || !/^[A-Za-z0-9_-]+$/.test(String(uid))) return null;
+    return grafanaPublicBase() + "/d/" + uid;
+  }
+
   function infoCardHtml(kicker, title, paragraphs) {
     const paras = (Array.isArray(paragraphs) ? paragraphs : [paragraphs])
-      .filter((p) => p != null && String(p).trim() !== "")
-      .map((p) => `<p>${esc(p)}</p>`)
+      .filter((p) => {
+        if (p == null) return false;
+        if (typeof p === "object" && p.href && p.text) return true;
+        return String(p).trim() !== "";
+      })
+      .map((p) => {
+        if (typeof p === "object" && p.href && p.text) {
+          const href = safeExternalUrl(p.href);
+          if (!href) return "";
+          const note = p.note ? " — " + esc(p.note) : "";
+          return `<p><a href="${esc(href)}" target="_blank" rel="noopener">${esc(p.text)}</a>${note}</p>`;
+        }
+        return `<p>${esc(p)}</p>`;
+      })
       .join("");
     return `<div class="info-card">
       <div class="kicker">${esc(kicker)}</div>
@@ -627,10 +648,19 @@ const XYCALC_APP = (() => {
     }
     const lab = model.lab || {};
     if (lab.measured) {
-      cards.push(infoCardHtml("What we measured", lab.label || "", [
+      const measuredParas = [
         lab.measured,
         lab.still_needs ? "Still needs: " + lab.still_needs : "",
-      ]));
+      ];
+      const watch = grafanaWatchHref(lab.grafana_uid);
+      if (watch) {
+        measuredParas.push({
+          href: watch,
+          text: "Watch live on estate Grafana",
+          note: "Empty until this host is scraped — not a chart of the YAML case.",
+        });
+      }
+      cards.push(infoCardHtml("What we measured", lab.label || "", measuredParas));
     }
     const wide = widestCitedTerm(model);
     if (wide && wide.factor > 1.01) {
@@ -658,9 +688,9 @@ const XYCALC_APP = (() => {
         "Compressed on-disk collection bytes (db.stats / collStats). dataSize is already uncompressed; totalSize includes indexes — those are a separate input. Records path is count × avg as a starting guess until you measure.",
       ),
       infoCardHtml(
-        "Record defaults",
-        "4 MB · vulns 14 MB",
-        "Starting guesses only — not a cited coefficient. 4 MB is a typical BSON-sized document; 14 MB is near MongoDB's 16 MB document cap for fat vuln records. Override with storageSize ÷ count from collStats when you have it.",
+        "Records",
+        "count × avg, DB size still required",
+        "How many documents is MongoDB document count. Avg on-disk size defaults to 0.5 MB and cannot exceed 16 MB. That product can estimate DB size; it does not multiply on top of a DB size you already entered. Carry DB size from the other control, or type it.",
       ),
     ];
     const occ = SIZE_PATH_FOOTNOTES["mongodb.wt-cache"];
@@ -997,8 +1027,13 @@ const XYCALC_APP = (() => {
   }
 
   // Documents-path avg: people mean megabytes. Bare number = MB.
-  const SIMPLE_DOC_AVG_DEFAULT = "4 MB";
-  const SIMPLE_VULN_DOC_AVG_DEFAULT = "14 MB";
+  // Default 0.5 MB. MongoDB BSON cap is 16 MB — never accept more.
+  // Count is document count (part of the weight). DB size is still required.
+  const SIMPLE_DOC_AVG_DEFAULT = "0.5 MB";
+  const SIMPLE_DOC_AVG_MAX = "16 MB";
+  const SIMPLE_DOC_AVG_MIN_MB = 0.01;
+  const SIMPLE_DOC_AVG_MAX_MB = 16;
+  const SIMPLE_DOC_AVG_SLIDER_STEPS = 80;
 
   function normalizeSimpleDocAvg(raw) {
     const t = String(raw || "").trim();
@@ -1011,17 +1046,72 @@ const XYCALC_APP = (() => {
     return normalizeSimpleDocAvg(raw).replace(/\s+/g, "").toUpperCase();
   }
 
-  function simpleDocAvgIsDefault(raw, vulnDocs) {
-    const want = vulnDocs ? SIMPLE_VULN_DOC_AVG_DEFAULT : SIMPLE_DOC_AVG_DEFAULT;
-    return canonicalSimpleDocAvg(raw) === canonicalSimpleDocAvg(want);
+  function simpleDocAvgIsDefault(raw) {
+    return canonicalSimpleDocAvg(raw) === canonicalSimpleDocAvg(SIMPLE_DOC_AVG_DEFAULT);
+  }
+
+  function simpleDocAvgBytes(raw) {
+    const avg = normalizeSimpleDocAvg(raw);
+    if (!avg || typeof XY === "undefined" || !XY.parseBytes) return null;
+    try {
+      const bytes = XY.parseBytes(avg);
+      if (!isFinite(bytes) || bytes <= 0) return null;
+      return bytes;
+    } catch (_err) {
+      return null;
+    }
+  }
+
+  function clampSimpleDocAvg(raw) {
+    const t = String(raw || "").trim();
+    if (!t) return t;
+    const bytes = simpleDocAvgBytes(t);
+    const cap = simpleDocAvgBytes(SIMPLE_DOC_AVG_MAX);
+    if (bytes != null && cap != null && bytes > cap) return SIMPLE_DOC_AVG_MAX;
+    return normalizeSimpleDocAvg(t);
+  }
+
+  function simpleDocAvgSliderMb(index) {
+    const t = Math.max(0, Math.min(SIMPLE_DOC_AVG_SLIDER_STEPS, Number(index))) / SIMPLE_DOC_AVG_SLIDER_STEPS;
+    const mb = SIMPLE_DOC_AVG_MIN_MB * Math.pow(
+      SIMPLE_DOC_AVG_MAX_MB / SIMPLE_DOC_AVG_MIN_MB,
+      t,
+    );
+    if (mb < 0.1) return Math.round(mb * 1000) / 1000;
+    if (mb < 1) return Math.round(mb * 100) / 100;
+    if (mb < 4) return Math.round(mb * 10) / 10;
+    return Math.round(mb * 2) / 2;
+  }
+
+  function formatSimpleDocAvgMb(mb) {
+    const n = Number(mb);
+    if (!(n > 0)) return SIMPLE_DOC_AVG_DEFAULT;
+    if (n >= SIMPLE_DOC_AVG_MAX_MB) return SIMPLE_DOC_AVG_MAX;
+    if (n < 0.1) return (Math.round(n * 1000) / 1000) + " MB";
+    if (n < 1) return (Math.round(n * 100) / 100) + " MB";
+    return (Math.round(n * 10) / 10) + " MB";
+  }
+
+  function simpleDocAvgSliderIndex(mb) {
+    const m = Math.max(
+      SIMPLE_DOC_AVG_MIN_MB,
+      Math.min(SIMPLE_DOC_AVG_MAX_MB, Number(mb) || SIMPLE_DOC_AVG_MIN_MB),
+    );
+    const t = Math.log(m / SIMPLE_DOC_AVG_MIN_MB) /
+      Math.log(SIMPLE_DOC_AVG_MAX_MB / SIMPLE_DOC_AVG_MIN_MB);
+    return Math.round(t * SIMPLE_DOC_AVG_SLIDER_STEPS);
   }
 
   function simpleDocProductStorage(countRaw, avgRaw) {
     const n = Number(String(countRaw || "").replace(/,/g, "").trim());
-    const avg = normalizeSimpleDocAvg(avgRaw);
+    const avg = clampSimpleDocAvg(avgRaw);
     if (!n || n < 0 || !isFinite(n) || !avg) return null;
     if (typeof XY === "undefined" || !XY.parseBytes || !XY.formatQuantity) return null;
-    const bytes = n * XY.parseBytes(avg);
+    const per = simpleDocAvgBytes(avg);
+    const cap = simpleDocAvgBytes(SIMPLE_DOC_AVG_MAX);
+    if (per == null) return null;
+    const used = cap != null && per > cap ? cap : per;
+    const bytes = n * used;
     if (!isFinite(bytes) || bytes <= 0) return null;
     return XY.formatQuantity(bytes, "bytes").replace(/\s+/g, "");
   }
@@ -1035,7 +1125,6 @@ const XYCALC_APP = (() => {
     "simple-db-size",
     "simple-doc-count",
     "simple-doc-avg",
-    "simple-doc-vulns",
     "simple-devices",
     "simple-device-avg",
     "simple-residual",
@@ -1092,22 +1181,17 @@ const XYCALC_APP = (() => {
       hi: scale(g.hi),
     };
   }
-  // Basic → mongodb.size-to-instance. DB size is today's footprint. Vuln
-  // count defaults to the homepage 250000 with target == baseline so a 500 GB
-  // box stays 500 GB instead of picking up three-year NVD growth.
+  // Basic → mongodb.size-to-instance. DB size is today's footprint (always
+  // required; Records carries it). Document count is MongoDB docs — the
+  // denominator / vuln-family count — not a second storage multiplier.
   function simpleChainInputs(fields) {
     const src = fields || {};
-    const path = String(src.path || "db").trim() || "db";
-    let storageRaw = "";
-    if (path === "docs") {
-      storageRaw = simpleDocProductStorage(src.docs || src.docCount, src.docAvg);
-      if (!storageRaw) return null;
-    } else {
-      storageRaw = String(src.storage || src.size || "").trim();
-      if (!storageRaw) return null;
-    }
-    const vulns = String(src.vulns || BASIC_DEFAULT_VULN_COUNT).replace(/,/g, "").trim()
-      || BASIC_DEFAULT_VULN_COUNT;
+    const storageRaw = String(src.storage || src.size || "").trim();
+    if (!storageRaw) return null;
+    const docs = String(src.docs || src.docCount || "").replace(/,/g, "").trim();
+    const vulns = (docs
+      || String(src.vulns || BASIC_DEFAULT_VULN_COUNT).replace(/,/g, "").trim()
+      || BASIC_DEFAULT_VULN_COUNT);
     const devices = String(src.devices || "").replace(/,/g, "").trim();
     const deviceAvgRaw = String(src.deviceAvg || "").trim();
     const residualRaw = String(src.residual || "").trim();
@@ -1275,7 +1359,6 @@ const XYCALC_APP = (() => {
         const storage = $("simple-db-size") && $("simple-db-size").value.trim();
         const docs = $("simple-doc-count") && $("simple-doc-count").value.trim();
         const docAvg = $("simple-doc-avg") && $("simple-doc-avg").value.trim();
-        const docVulns = $("simple-doc-vulns") && $("simple-doc-vulns").checked;
         const devices = $("simple-devices") && $("simple-devices").value.trim();
         const deviceAvg = $("simple-device-avg") && $("simple-device-avg").value.trim();
         const residual = $("simple-residual") && $("simple-residual").value.trim();
@@ -1283,8 +1366,7 @@ const XYCALC_APP = (() => {
         if (path === "docs") state.inputs.path = "docs";
         if (storage) state.inputs.storage = storage;
         if (docs) state.inputs.docs = docs;
-        if (docAvg && !simpleDocAvgIsDefault(docAvg, docVulns)) state.inputs.docAvg = docAvg;
-        if (docVulns) state.inputs.docVulns = "1";
+        if (docAvg && !simpleDocAvgIsDefault(docAvg)) state.inputs.docAvg = docAvg;
         if (devices) state.inputs.devices = devices;
         if (deviceAvg) state.inputs.deviceAvg = deviceAvg;
         if (residual) state.inputs.residual = residual;
@@ -1339,13 +1421,9 @@ const XYCALC_APP = (() => {
           if (parsed.inputs.vulns && $("simple-vulns")) $("simple-vulns").value = parsed.inputs.vulns;
           if (storageVal && $("simple-db-size")) $("simple-db-size").value = storageVal;
           if (parsed.inputs.docs && $("simple-doc-count")) $("simple-doc-count").value = parsed.inputs.docs;
-          const wantVulnDocs = parsed.inputs.docVulns === "1" || parsed.inputs.docVulns === "true";
-          if ($("simple-doc-vulns")) $("simple-doc-vulns").checked = wantVulnDocs;
-          if (parsed.inputs.docAvg && $("simple-doc-avg")) {
-            $("simple-doc-avg").value = parsed.inputs.docAvg;
-          } else if ($("simple-doc-avg")) {
-            $("simple-doc-avg").value = wantVulnDocs
-              ? SIMPLE_VULN_DOC_AVG_DEFAULT
+          if ($("simple-doc-avg")) {
+            $("simple-doc-avg").value = parsed.inputs.docAvg
+              ? clampSimpleDocAvg(parsed.inputs.docAvg)
               : SIMPLE_DOC_AVG_DEFAULT;
           }
           if (parsed.inputs.devices && $("simple-devices")) $("simple-devices").value = parsed.inputs.devices;
@@ -1353,6 +1431,7 @@ const XYCALC_APP = (() => {
           if (parsed.inputs.residual && $("simple-residual")) $("simple-residual").value = parsed.inputs.residual;
           setSimplePath(parsed.inputs.path === "docs" ? "docs" : "db", { calc: false });
           syncSimpleSizeSlider();
+          syncSimpleDocAvgSlider();
           calculateSimple();
           return true;
         }
@@ -1566,7 +1645,50 @@ const XYCALC_APP = (() => {
       slider.value = String(simpleSizeSliderIndex(gb));
     }
 
-    let simpleDocAvgEdited = false;
+    function syncSimpleDocAvgSlider() {
+      const slider = $("simple-doc-avg-slider");
+      const field = $("simple-doc-avg");
+      if (!slider || !field) return;
+      const mb = mbFromSimpleDocAvgText(field.value);
+      if (mb == null) return;
+      slider.value = String(simpleDocAvgSliderIndex(mb));
+    }
+
+    function mbFromSimpleDocAvgText(raw) {
+      const bytes = simpleDocAvgBytes(raw);
+      if (bytes == null) return null;
+      return bytes / 1e6;
+    }
+
+    function applySimpleDocAvgField() {
+      const el = $("simple-doc-avg");
+      if (!el) return;
+      const clamped = clampSimpleDocAvg(el.value);
+      if (clamped && el.value.trim() && canonicalSimpleDocAvg(el.value) !== canonicalSimpleDocAvg(clamped)) {
+        const bytes = simpleDocAvgBytes(el.value);
+        const cap = simpleDocAvgBytes(SIMPLE_DOC_AVG_MAX);
+        if (bytes != null && cap != null && bytes > cap) el.value = SIMPLE_DOC_AVG_MAX;
+      }
+    }
+
+    function writeDbSizeFromDocProduct() {
+      const docs = ($("simple-doc-count").value || "").replace(/,/g, "").trim();
+      const product = simpleDocProductStorage(docs, $("simple-doc-avg").value);
+      if (!product) return false;
+      $("simple-db-size").value = product;
+      syncSimpleSizeSlider();
+      return true;
+    }
+
+    function syncAvgFromDbAndCount() {
+      const docs = Number(($("simple-doc-count").value || "").replace(/,/g, "").trim());
+      const gb = gbFromSimpleSizeText($("simple-db-size").value);
+      if (!(docs > 0) || gb == null) return;
+      const mb = (gb * 1e9) / docs / 1e6;
+      const clamped = Math.min(SIMPLE_DOC_AVG_MAX_MB, Math.max(SIMPLE_DOC_AVG_MIN_MB, mb));
+      $("simple-doc-avg").value = formatSimpleDocAvgMb(clamped);
+      syncSimpleDocAvgSlider();
+    }
 
     function setSimplePath(path, opts) {
       const docs = path === "docs";
@@ -1576,9 +1698,7 @@ const XYCALC_APP = (() => {
       const docsBtn = $("simple-path-docs");
       if (dbBtn) dbBtn.setAttribute("aria-pressed", docs ? "false" : "true");
       if (docsBtn) docsBtn.setAttribute("aria-pressed", docs ? "true" : "false");
-      const slotDb = $("simple-slot-db");
       const slotDocs = $("simple-slot-docs");
-      if (slotDb) slotDb.hidden = docs;
       if (slotDocs) slotDocs.hidden = !docs;
       if (!opts || opts.calc !== false) scheduleSimpleCalc();
     }
@@ -1590,26 +1710,38 @@ const XYCALC_APP = (() => {
         el.addEventListener("input", scheduleSimpleCalc);
       }
       const sizeField = $("simple-db-size");
-      if (sizeField) sizeField.addEventListener("input", syncSimpleSizeSlider);
+      if (sizeField) sizeField.addEventListener("input", () => {
+        syncSimpleSizeSlider();
+        syncAvgFromDbAndCount();
+      });
       const slider = $("simple-size-slider");
       if (!slider) throw new Error("Simple form missing #simple-size-slider");
       slider.addEventListener("input", () => {
         const gb = simpleSizeSliderGb(slider.value);
         $("simple-db-size").value = formatSimpleSizeSliderGb(gb);
+        syncAvgFromDbAndCount();
         scheduleSimpleCalc();
       });
       syncSimpleSizeSlider();
       $("simple-path-db").addEventListener("click", () => setSimplePath("db"));
       $("simple-path-docs").addEventListener("click", () => setSimplePath("docs"));
-      $("simple-doc-avg").addEventListener("input", () => { simpleDocAvgEdited = true; });
-      $("simple-doc-vulns").addEventListener("change", () => {
-        if (!simpleDocAvgEdited) {
-          $("simple-doc-avg").value = $("simple-doc-vulns").checked
-            ? SIMPLE_VULN_DOC_AVG_DEFAULT
-            : SIMPLE_DOC_AVG_DEFAULT;
-        }
+      const avgSlider = $("simple-doc-avg-slider");
+      if (!avgSlider) throw new Error("Simple form missing #simple-doc-avg-slider");
+      avgSlider.addEventListener("input", () => {
+        const mb = simpleDocAvgSliderMb(avgSlider.value);
+        $("simple-doc-avg").value = formatSimpleDocAvgMb(mb);
+        writeDbSizeFromDocProduct();
         scheduleSimpleCalc();
       });
+      $("simple-doc-avg").addEventListener("input", () => {
+        applySimpleDocAvgField();
+        syncSimpleDocAvgSlider();
+        writeDbSizeFromDocProduct();
+      });
+      $("simple-doc-count").addEventListener("input", () => {
+        syncAvgFromDbAndCount();
+      });
+      syncSimpleDocAvgSlider();
       $("simple-rail").addEventListener("click", (ev) => {
         if (ev.target && ev.target.id === "simple-open-scientific") {
           ev.preventDefault();
@@ -1635,17 +1767,16 @@ const XYCALC_APP = (() => {
     }
 
     function openAdvancedFromSimple() {
-      const vulns = ($("simple-vulns").value || "").trim();
       const path = ($("simple-size-path").value || "db").trim();
       const storageRaw = ($("simple-db-size").value || "").trim();
       const docs = ($("simple-doc-count").value || "").trim();
+      applySimpleDocAvgField();
       const docAvg = ($("simple-doc-avg").value || "").trim();
       const devices = ($("simple-devices").value || "").trim();
       const deviceAvgRaw = ($("simple-device-avg").value || "").trim();
       const residualRaw = ($("simple-residual").value || "").trim();
       const derived = simpleChainInputs({
         path: path,
-        vulns: vulns,
         storage: storageRaw,
         docs: docs,
         docAvg: docAvg,
@@ -1664,11 +1795,14 @@ const XYCALC_APP = (() => {
         const el = $("scn-in-baseline_storage_size");
         if (el) el.value = storageForAdv;
       }
-      if (vulns) {
+      const vulnsForAdv = derived
+        ? derived.baseline_vuln_count
+        : (docs || ($("simple-vulns").value || "").trim());
+      if (vulnsForAdv) {
         const b = $("scn-in-baseline_vuln_count");
-        if (b) b.value = vulns.replace(/,/g, "");
+        if (b) b.value = String(vulnsForAdv).replace(/,/g, "");
         const t = $("scn-in-target_vuln_count");
-        if (t) t.value = vulns.replace(/,/g, "");
+        if (t) t.value = String(vulnsForAdv).replace(/,/g, "");
       }
       if (devices) {
         const d = $("scn-in-device_count");
@@ -1700,24 +1834,17 @@ const XYCALC_APP = (() => {
     }
 
     function calculateSimple() {
-      const vulns = ($("simple-vulns").value || "").trim();
       const path = ($("simple-size-path").value || "db").trim();
       const storageRaw = ($("simple-db-size").value || "").trim();
       const docs = ($("simple-doc-count").value || "").trim();
+      applySimpleDocAvgField();
       const docAvg = ($("simple-doc-avg").value || "").trim();
       const devices = ($("simple-devices").value || "").trim();
       const deviceAvgRaw = ($("simple-device-avg").value || "").trim();
       const residualRaw = ($("simple-residual").value || "").trim();
       const err = $("simple-error");
       const status = $("simple-status");
-      if (path === "docs") {
-        if (!docs || !docAvg) {
-          $("simple-result").hidden = true;
-          err.hidden = true;
-          status.textContent = "Enter a record count — sizing updates as you type.";
-          return;
-        }
-      } else if (!storageRaw) {
+      if (!storageRaw) {
         $("simple-result").hidden = true;
         err.hidden = true;
         status.textContent = "Enter DB size — sizing updates as you type.";
@@ -1726,7 +1853,6 @@ const XYCALC_APP = (() => {
       try {
         const inputs = simpleChainInputs({
           path: path,
-          vulns: vulns,
           storage: storageRaw,
           docs: docs,
           docAvg: docAvg,
@@ -1737,9 +1863,7 @@ const XYCALC_APP = (() => {
         if (!inputs) {
           $("simple-result").hidden = true;
           err.hidden = true;
-          status.textContent = path === "docs"
-            ? "Enter a record count — sizing updates as you type."
-            : "Enter DB size — sizing updates as you type.";
+          status.textContent = "Enter DB size — sizing updates as you type.";
           return;
         }
         const data = applySimpleHostFloor(
@@ -1749,12 +1873,16 @@ const XYCALC_APP = (() => {
         const storage = inputs.baseline_storage_size;
         const residual = inputs.residual_storage_size;
         const notes = [];
-        if (path === "docs") notes.push(`${docs} × ${docAvg} → ${storage}`);
-        else if (storage !== storageRaw) notes.push(`storage as ${storage}`);
+        if (storage !== storageRaw) notes.push(`storage as ${storage}`);
+        if (docs) notes.push(`${docs.replace(/,/g, "")} docs`);
+        if (path === "docs" && docs && docAvg) {
+          notes.push(`avg ${clampSimpleDocAvg(docAvg)}`);
+        }
         if (residual && residual !== residualRaw) notes.push(`residual as ${residual}`);
         const as = notes.length ? ` (${notes.join("; ")})` : "";
         status.textContent = "Up to date" + as + " — change a field to recalculate.";
         syncSimpleSizeSlider();
+        syncSimpleDocAvgSlider();
         const note = document.getElementById("simple-vuln-note");
         if (note) {
           note.hidden = false;
@@ -3448,7 +3576,13 @@ const XYCALC_APP = (() => {
     normalizeSimpleAvgBytes: normalizeSimpleAvgBytes,
     normalizeSimpleDocAvg: normalizeSimpleDocAvg,
     SIMPLE_DOC_AVG_DEFAULT: SIMPLE_DOC_AVG_DEFAULT,
-    SIMPLE_VULN_DOC_AVG_DEFAULT: SIMPLE_VULN_DOC_AVG_DEFAULT,
+    SIMPLE_DOC_AVG_MAX: SIMPLE_DOC_AVG_MAX,
+    SIMPLE_DOC_AVG_MIN_MB: SIMPLE_DOC_AVG_MIN_MB,
+    SIMPLE_DOC_AVG_MAX_MB: SIMPLE_DOC_AVG_MAX_MB,
+    clampSimpleDocAvg: clampSimpleDocAvg,
+    simpleDocAvgSliderMb: simpleDocAvgSliderMb,
+    formatSimpleDocAvgMb: formatSimpleDocAvgMb,
+    simpleDocAvgSliderIndex: simpleDocAvgSliderIndex,
     simpleDocProductStorage: simpleDocProductStorage,
     SIMPLE_FORM_FIELD_IDS: SIMPLE_FORM_FIELD_IDS,
     BASIC_DEFAULT_VULN_COUNT: BASIC_DEFAULT_VULN_COUNT,
@@ -3513,6 +3647,7 @@ const XYCALC_APP = (() => {
     simpleCloudPicksHtml: simpleCloudPicksHtml,
     simpleFirstPaintHtml: simpleFirstPaintHtml,
     infoCardHtml: infoCardHtml,
+    grafanaWatchHref: grafanaWatchHref,
     widestCitedTerm: widestCitedTerm,
     answerRangeFactor: answerRangeFactor,
     modelAsideHtml: modelAsideHtml,

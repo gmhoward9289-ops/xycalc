@@ -115,21 +115,30 @@ assert.deepStrictEqual(APP.SIMPLE_FORM_FIELD_IDS, [
   "simple-db-size",
   "simple-doc-count",
   "simple-doc-avg",
-  "simple-doc-vulns",
   "simple-devices",
   "simple-device-avg",
   "simple-residual",
 ]);
-assert.strictEqual(APP.normalizeSimpleDocAvg("4"), "4MB");
-assert.strictEqual(APP.normalizeSimpleDocAvg("4 MB"), "4 MB");
+assert.strictEqual(APP.SIMPLE_DOC_AVG_DEFAULT, "0.5 MB");
+assert.strictEqual(APP.normalizeSimpleDocAvg("0.5"), "0.5MB");
+assert.strictEqual(APP.normalizeSimpleDocAvg("0.5 MB"), "0.5 MB");
+assert.strictEqual(APP.simpleDocProductStorage("10000", "0.5 MB"), "5.0GB");
 assert.strictEqual(APP.simpleDocProductStorage("10000", "4 MB"), "40.0GB");
-assert.strictEqual(APP.simpleDocProductStorage("10000", "14 MB"), "140.0GB");
+assert.strictEqual(APP.SIMPLE_DOC_AVG_MAX, "16 MB");
+assert.strictEqual(APP.SIMPLE_DOC_AVG_MAX_MB, 16);
+assert.strictEqual(APP.clampSimpleDocAvg("20"), "16 MB");
+assert.strictEqual(APP.clampSimpleDocAvg("20 MB"), "16 MB");
+assert.strictEqual(APP.clampSimpleDocAvg("0.5 MB"), "0.5 MB");
+assert.strictEqual(APP.simpleDocProductStorage("10000", "20 MB"), APP.simpleDocProductStorage("10000", "16 MB"));
+assert.ok(APP.simpleDocAvgSliderMb(APP.simpleDocAvgSliderIndex(0.5)) <= 0.6);
+assert.strictEqual(APP.simpleDocAvgSliderMb(80), 16);
+assert.strictEqual(APP.simpleChainInputs({ path: "docs", docs: "10000", docAvg: "4" }), null);
 assert.deepStrictEqual(
-  APP.simpleChainInputs({ path: "docs", docs: "10,000", docAvg: "4" }),
+  APP.simpleChainInputs({ storage: "2.5GB", docs: "50000", docAvg: "0.5" }),
   {
-    baseline_vuln_count: APP.BASIC_DEFAULT_VULN_COUNT,
-    baseline_storage_size: "40.0GB",
-    target_vuln_count: APP.BASIC_DEFAULT_VULN_COUNT,
+    baseline_vuln_count: "50000",
+    baseline_storage_size: "2.5GB",
+    target_vuln_count: "50000",
   },
 );
 assert.deepStrictEqual(
@@ -456,16 +465,30 @@ assert.strictEqual(APP.answerRangeFactor({ lo: 0, hi: 200 }), null);
 
 const aside = APP.modelAsideHtml({
   validation: { grade: "thin", text: "thinly validated (n=1)" },
-  lab: { label: "WiredTiger cache size", measured: "Two resident-cache cases.", still_needs: "Independent collections." },
+  lab: {
+    label: "WiredTiger cache size",
+    measured: "Two resident-cache cases.",
+    still_needs: "Independent collections.",
+    grafana_uid: "xycalc-mongodb-wt",
+  },
   terms: [{ key: "b", label: "peak-to-mean", coeff_lo: 1.5, coeff_mode: 3, coeff_hi: 10, unit: "ratio" }],
   slug: "ebs.iops-to-provision",
 });
 assert.ok(aside.includes("Checked against reality"), aside);
 assert.ok(aside.includes("Thinly validated"), aside);
 assert.ok(aside.includes("What we measured"), aside);
+assert.ok(aside.includes("Watch live on estate Grafana"), aside);
+assert.ok(aside.includes("https://grafana.swamplink.com/d/xycalc-mongodb-wt"), aside);
+assert.ok(aside.includes("not a chart of the YAML case"), aside);
 assert.ok(aside.includes("Widest cited coefficient"), aside);
 assert.ok(aside.includes("peak-to-mean"), aside);
 assert.ok(aside.includes("&lt;img") || !aside.includes("<img src=x"), aside);
+assert.strictEqual(APP.grafanaWatchHref("xycalc-mongodb-wt"), "https://grafana.swamplink.com/d/xycalc-mongodb-wt");
+assert.strictEqual(APP.grafanaWatchHref("javascript:alert(1)"), null);
+assert.ok(!APP.modelAsideHtml({
+  lab: { measured: "x", still_needs: "y", grafana_uid: null },
+  terms: [],
+}).includes("Watch live"), "null uid must not invent a board");
 const xssAside = APP.modelAsideHtml({
   validation: { grade: "none", text: "<img src=x onerror=alert(1)>" },
   terms: [],
@@ -475,7 +498,8 @@ assert.ok(!xssAside.includes("<img src=x"), xssAside);
 
 const basicAside = APP.basicAsideHtml();
 assert.ok(basicAside.includes("storageSize, not dataSize"), basicAside);
-assert.ok(basicAside.includes("4 MB · vulns 14 MB"), basicAside);
+assert.ok(basicAside.includes("count × avg, DB size still required"), basicAside);
+assert.ok(basicAside.includes("16 MB"), basicAside);
 assert.ok(basicAside.includes("Occupancy / cache-cliff"), basicAside);
 
 assert.strictEqual(APP.systemLabel("mongodb"), "MongoDB");

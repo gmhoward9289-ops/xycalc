@@ -3,6 +3,13 @@
 All notable changes to the **xycalc tool** (not the corpus) are recorded here.
 Corpus identity is `corpus_digest` on the exported page. See `docs/VERSIONING.md`.
 
+## Unreleased
+
+- Records keeps DB size (type it or carry it from the other control).
+  Document count is MongoDB docs — part of the weight, not a second
+  storage multiplier. Avg defaults to 0.5 MB with a slider, hard-capped
+  at 16 MB. The 14 MB vuln checkbox is gone.
+
 ## 0.6.2
 
 - Basic size slider defaults to 2.5 GB and tops out at 12 TB (was 500 GB

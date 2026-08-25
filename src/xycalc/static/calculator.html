@@ -747,7 +747,7 @@ body.mode-data #simple-view { display: none !important; }
     grid-template-columns: minmax(14rem, 0.36fr) minmax(0, 1fr);
   }
 }
-.simple-in { min-height: 18.5rem; }
+.simple-in { min-height: 26rem; }
 .simple-in .field { margin-bottom: .75rem; }
 .simple-size-slider { margin: .15rem 0 .85rem; }
 .simple-size-slider input[type="range"] {
@@ -756,13 +756,7 @@ body.mode-data #simple-view { display: none !important; }
   font-family: inherit;
 }
 .simple-path-seg { margin-bottom: .75rem; }
-.simple-path-slot { min-height: 12.5rem; }
-.simple-doc-vuln {
-  display: flex; gap: .5rem; align-items: flex-start;
-  font-size: .82rem; color: var(--muted); font-weight: 400;
-  margin: .15rem 0 .65rem;
-}
-.simple-doc-vuln input { width: auto; margin-top: .2rem; }
+.simple-path-slot { min-height: 22rem; }
 .simple-size-slider-scale {
   display: flex; justify-content: space-between;
   font-family: var(--mono); font-size: .68rem; color: var(--muted);
@@ -970,18 +964,19 @@ button.calc-tag:hover { border-color: var(--accent); color: var(--accent); }
         </div>
         <div id="simple-slot-docs" hidden>
         <div class="field">
-          <label for="simple-doc-count">How many records</label>
-          <input id="simple-doc-count" placeholder="e.g. 10000" autocomplete="off">
+          <label for="simple-doc-count">How many MongoDB documents</label>
+          <input id="simple-doc-count" placeholder="e.g. 50000" autocomplete="off">
+          <div class="help">Document count — one factor of the collection weight. DB size above still required (carried from DB size).</div>
         </div>
         <div class="field">
-          <label for="simple-doc-avg">Avg size each</label>
-          <input id="simple-doc-avg" value="4 MB" placeholder="e.g. 4 MB" autocomplete="off">
-          <div class="help">Starting guess, not collStats. Bare number = MB.</div>
+          <label for="simple-doc-avg">Avg on-disk size each</label>
+          <input id="simple-doc-avg" value="0.5 MB" placeholder="e.g. 0.5 MB" autocomplete="off">
+          <div class="help">Starting guess, not collStats. Bare number = MB. Max 16 MB (MongoDB document cap).</div>
         </div>
-        <label class="simple-doc-vuln">
-          <input type="checkbox" id="simple-doc-vulns" autocomplete="off">
-          <span>These are vuln records — starting guess becomes 14 MB</span>
-        </label>
+        <div class="simple-size-slider">
+          <input type="range" id="simple-doc-avg-slider" min="0" max="80" step="1" value="0" aria-label="Average document size">
+          <div class="simple-size-slider-scale"><span>0.01 MB</span><span>16 MB</span></div>
+        </div>
         </div>
         </div>
         <details class="simple-refine">
