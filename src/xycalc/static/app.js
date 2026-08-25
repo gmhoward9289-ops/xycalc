@@ -1041,8 +1041,8 @@ const XYCALC_APP = (() => {
     "simple-residual",
   ];
   const BASIC_DEFAULT_VULN_COUNT = "250000";
-  const SIMPLE_SIZE_SLIDER_MIN_GB = 10;
-  const SIMPLE_SIZE_SLIDER_MAX_GB = 32000;
+  const SIMPLE_SIZE_SLIDER_MIN_GB = 2.5;
+  const SIMPLE_SIZE_SLIDER_MAX_GB = 12000;
   const SIMPLE_SIZE_SLIDER_STEPS = 80;
 
   function simpleSizeSliderGb(index) {
@@ -1051,6 +1051,7 @@ const XYCALC_APP = (() => {
       SIMPLE_SIZE_SLIDER_MAX_GB / SIMPLE_SIZE_SLIDER_MIN_GB,
       t,
     );
+    if (gb < 10) return Math.round(gb * 2) / 2;
     if (gb < 20) return Math.round(gb);
     if (gb < 100) return Math.round(gb / 5) * 5;
     if (gb < 1000) return Math.round(gb / 10) * 10;

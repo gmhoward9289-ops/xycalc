@@ -1,6 +1,6 @@
 [project]
 name = "xycalc"
-version = "0.6.1"
+version = "0.6.2"
 description = "How much X do I need to run Y? Infrastructure sizing from a cited corpus."
 requires-python = ">=3.11"
 license = "Apache-2.0"
