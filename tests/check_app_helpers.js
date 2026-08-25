@@ -519,12 +519,13 @@ const modelBands = APP.groupModelsByKind([
 assert.deepStrictEqual(modelBands.map((b) => b.id), ["hardware", "runtime"]);
 assert.strictEqual(APP.modelKind({ slug: "ebs.iops-to-provision" }).group, "storage");
 
+assert.strictEqual(APP.formatSimpleSizeSliderGb(2.5), "2.5GB");
 assert.strictEqual(APP.formatSimpleSizeSliderGb(500), "500GB");
 assert.strictEqual(APP.formatSimpleSizeSliderGb(2000), "2TB");
-assert.strictEqual(APP.simpleSizeSliderIndex(10), 0);
-assert.strictEqual(APP.simpleSizeSliderIndex(32000), 80);
-assert.strictEqual(APP.simpleSizeSliderGb(0), 10);
-assert.strictEqual(APP.simpleSizeSliderGb(80), 32000);
+assert.strictEqual(APP.simpleSizeSliderIndex(2.5), 0);
+assert.strictEqual(APP.simpleSizeSliderIndex(12000), 80);
+assert.strictEqual(APP.simpleSizeSliderGb(0), 2.5);
+assert.strictEqual(APP.simpleSizeSliderGb(80), 12000);
 assert.ok(Math.abs(APP.simpleSizeSliderGb(APP.simpleSizeSliderIndex(500)) - 500) <= 20);
 
 const nvdProj = APP.nvdNextYearProjection({

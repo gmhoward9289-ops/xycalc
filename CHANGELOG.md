@@ -3,6 +3,11 @@
 All notable changes to the **xycalc tool** (not the corpus) are recorded here.
 Corpus identity is `corpus_digest` on the exported page. See `docs/VERSIONING.md`.
 
+## 0.6.2
+
+- Basic size slider defaults to 2.5 GB and tops out at 12 TB (was 500 GB
+  default, 10 GB–32 TB scale).
+
 ## 0.6.1
 
 - Calculator views are Basic / Advanced / Scientific / Data. Basic is
