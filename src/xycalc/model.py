@@ -1618,7 +1618,7 @@ def lab_status(conn: sqlite3.Connection, model_slug: str) -> dict:
     """Short measured / still-needs copy from lab.yaml. Empty dict if absent."""
     conn.row_factory = sqlite3.Row
     row = conn.execute(
-        "SELECT l.label, l.measured, l.still_needs "
+        "SELECT l.label, l.measured, l.still_needs, l.grafana_uid "
         "FROM lab l JOIN model m ON m.id = l.model_id WHERE m.slug = ?",
         (model_slug,),
     ).fetchone()
@@ -1628,4 +1628,5 @@ def lab_status(conn: sqlite3.Connection, model_slug: str) -> dict:
         "label": row["label"],
         "measured": row["measured"],
         "still_needs": row["still_needs"],
+        "grafana_uid": row["grafana_uid"],
     }

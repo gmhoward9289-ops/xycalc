@@ -9,6 +9,11 @@ Corpus identity is `corpus_digest` on the exported page. See `docs/VERSIONING.md
   Document count is MongoDB docs — part of the weight, not a second
   storage multiplier. Avg defaults to 0.5 MB with a slider, hard-capped
   at 16 MB. The 14 MB vuln checkbox is gone.
+- Lab YAML maps each model to a packed Grafana board uid (or explicit null).
+  Calculator Evidence links the live estate board when a uid is set, and says
+  the panels are empty until that host is scraped — not a chart of the YAML
+  case. Lab probes print a time-range URL via
+  `tools/bench/metrics_lab/grafana_link.py`.
 
 ## 0.6.2
 

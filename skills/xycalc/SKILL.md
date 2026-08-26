@@ -51,5 +51,9 @@ Install: `pip install -e ".[mcp]"` then `xycalc-mcp` or `python -m xycalc`.
 ## Grafana monitoring
 
 Estate: `https://grafana.swamplink.com/` or tunnel `http://localhost:8108/`.
-Folder **xycalc** is provisioned from the monitoring repo. Source recipes:
+Folder **xycalc** is provisioned from the monitoring repo. JSON uids (use these
+in URLs, not aliases): `xycalc-mongodb-wt`, `xycalc-ebs-throttle`,
+`xycalc-redis-celery`, `xycalc-sizing-live`, `xycalc-wt-cgroup`.
+Model → uid map: `data/lab.yaml` `grafana_uid`. Lab window helper:
+`tools/bench/metrics_lab/grafana_link.py`. Recipes:
 `deploy/grafana/` and `docs/telemetry/recommendations.md`.

@@ -9,6 +9,7 @@ import json
 import subprocess
 import sys
 import urllib.request
+from pathlib import Path
 
 CONTAINERS = (
     "xycalc-lab-mongo",
@@ -90,6 +91,25 @@ def main() -> None:
     docker_stats()
     cadvisor()
     linux_cgroup()
+    grafana_watch()
+
+
+def grafana_watch() -> None:
+    script = Path(__file__).resolve().parent.parent / "grafana_link.py"
+    print("=== watch live (empty unless this host is scraped) ===")
+    subprocess.run(
+        [
+            sys.executable,
+            str(script),
+            "--uid",
+            "xycalc-wt-cgroup",
+            "--window-s",
+            "1800",
+            "--var",
+            "container=xycalc-lab-mongo",
+        ],
+        check=False,
+    )
 
 
 if __name__ == "__main__":

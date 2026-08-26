@@ -132,10 +132,17 @@ Live scrape → predicted band (optional sidecar):
 .venv/Scripts/python.exe tools/xycalc_exporter.py --listen 127.0.0.1:9199 --prom-url http://127.0.0.1:9090
 ```
 
-Grafana boards (source JSON in `deploy/grafana/dashboards/`): WiredTiger
-pressure, EBS ExceededCheck, Redis/Celery, and **sizing vs live**
-(`/d/xycalc-sizing-live`). Recording-rule aliases for Percona exporters:
-`deploy/grafana/recording_rules.yml`.
+Grafana boards (source JSON in `deploy/grafana/dashboards/`; uid = path):
+
+- WiredTiger pressure — `https://grafana.swamplink.com/d/xycalc-mongodb-wt`
+- EBS ExceededCheck — `https://grafana.swamplink.com/d/xycalc-ebs-throttle`
+- Redis/Celery — `https://grafana.swamplink.com/d/xycalc-redis-celery`
+- Sizing vs live — `https://grafana.swamplink.com/d/xycalc-sizing-live`
+- WT vs cgroup — `https://grafana.swamplink.com/d/xycalc-wt-cgroup`
+
+Recording-rule aliases for Percona exporters:
+`deploy/grafana/recording_rules.yml`. Lab scrape windows:
+`python tools/bench/metrics_lab/grafana_link.py --uid xycalc-wt-cgroup --window-s 1800`.
 
 ## The calculator
 

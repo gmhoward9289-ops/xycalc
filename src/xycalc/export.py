@@ -504,6 +504,7 @@ def corpus_blob(conn: sqlite3.Connection) -> dict:
         },
         "default_instance_ceiling_bytes": parse_bytes(DEFAULT_INSTANCE_CEILING),
         "scenario_golden": scenario_golden_vectors(conn),
+        "grafana_public_base": "https://grafana.swamplink.com",
     }
     blob.update(render_guides(conn))
     # A short digest of the corpus itself (not the vectors), so a reader can

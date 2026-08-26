@@ -341,7 +341,10 @@ CREATE TABLE lab (
     sequence     INTEGER NOT NULL,
     label        TEXT    NOT NULL,
     measured     TEXT    NOT NULL,
-    still_needs  TEXT    NOT NULL
+    still_needs  TEXT    NOT NULL,
+    -- Packed board uid, or NULL when this model has no estate scrape board.
+    -- Not a citation of a historical YAML case.
+    grafana_uid  TEXT
 );
 
 -- Optional extra landing rows (scenarios) that are not models.
@@ -354,7 +357,8 @@ CREATE TABLE lab_landing (
     href         TEXT    NOT NULL,
     validated    TEXT    NOT NULL,
     measured     TEXT    NOT NULL,
-    still_needs  TEXT    NOT NULL
+    still_needs  TEXT    NOT NULL,
+    grafana_uid  TEXT
 );
 
 

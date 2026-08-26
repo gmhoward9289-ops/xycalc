@@ -19,6 +19,7 @@ def test_every_model_has_lab_copy(db_path):
         assert lab.get("label"), slug
         assert len(lab["measured"]) <= 400, slug
         assert len(lab["still_needs"]) <= 400, slug
+        assert "grafana_uid" in lab
     conn.close()
 
 

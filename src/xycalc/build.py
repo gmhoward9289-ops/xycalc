@@ -34,6 +34,8 @@ from pathlib import Path
 
 import yaml
 
+from .grafana import dashboard_uids
+
 PKG = Path(__file__).parent
 ROOT = PKG.parent.parent
 DATA = ROOT / "data"
@@ -86,6 +88,21 @@ def collect(*relative: str) -> list[tuple[Path, dict, str]]:
             for p in paths:
                 out.append((p, _read(p), origin))
     return out
+
+
+def _lab_grafana_uid(row: dict, ctx: str, known: frozenset[str]) -> str | None:
+    """Every lab row must declare a board uid or explicit null."""
+    if "grafana_uid" not in row:
+        raise BuildError(f"{ctx}: grafana_uid is required (board uid or null)")
+    uid = row["grafana_uid"]
+    if uid is None or str(uid).strip() == "":
+        return None
+    uid = str(uid).strip()
+    if known and uid not in known:
+        raise BuildError(
+            f"{ctx}: unknown grafana_uid {uid!r}; packed boards: {sorted(known)}"
+        )
+    return uid
 
 
 def _band(row: dict, ctx: str) -> tuple[float, float, float]:
@@ -376,6 +393,7 @@ class Builder:
         lab_max = 400
         seen: set[str] = set()
         seq = 0
+        known_uids = dashboard_uids()
         for path, doc, _ in collect("lab.yaml"):
             for row in doc.get("landing") or []:
                 ctx = f"{path.name}:landing:{row.get('slug', '?')}"
@@ -399,6 +417,7 @@ class Builder:
                     validated=str(row["validated"]).strip(),
                     measured=measured,
                     still_needs=still,
+                    grafana_uid=_lab_grafana_uid(row, ctx, known_uids),
                 )
                 seq += 1
             for row in doc.get("models") or []:
@@ -430,6 +449,7 @@ class Builder:
                     label=label,
                     measured=measured,
                     still_needs=still,
+                    grafana_uid=_lab_grafana_uid(row, ctx, known_uids),
                 )
                 seq += 1
         missing = sorted(set(self.model) - seen)

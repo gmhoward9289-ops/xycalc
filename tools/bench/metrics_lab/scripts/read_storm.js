@@ -1,5 +1,10 @@
 // Sequential + indexed reads so WiredTiger pulls pages. Run while Grafana
-// is open on the WT board and the cgroup board.
+// is open on the WT board and the cgroup board. After this script, print a
+// time-range URL (empty unless Prometheus scraped the run):
+//
+//   python ../grafana_link.py --uid xycalc-mongodb-wt --window-s 1800
+//   python ../grafana_link.py --uid xycalc-wt-cgroup --window-s 1800 \
+//       --var container=xycalc-lab-mongo
 //
 //   docker exec -i xycalc-lab-mongo mongosh --quiet < scripts/read_storm.js
 

@@ -19,13 +19,25 @@ cd ~/dev/monitoring
 git push swamplink main
 ```
 
-Then open folder **xycalc**:
+Then open folder **xycalc**. Paths are the JSON ``uid`` field — do not invent aliases:
 
-- `/d/xycalc-mongodb-wt` — WiredTiger pressure
-- `/d/xycalc-ebs-throttle` — ExceededCheck (max, never avg)
-- `/d/xycalc-redis-celery` — broker headroom + outstanding
-- `/d/xycalc-sizing-live` — live inputs + predicted RAM/SKU vs MemTotal
-- `/d/xycalc-wt-cgroup` — WT cache vs anon vs file inside memory.max (cgroup split)
+| JSON uid | Board | Models in `data/lab.yaml` |
+|---|---|---|
+| `xycalc-mongodb-wt` | WiredTiger pressure | `mongodb.wt-cache`, `mongodb.ticket-throughput-ceiling` |
+| `xycalc-ebs-throttle` | ExceededCheck (max, never avg) | `ebs.iops-to-provision`, `ebs.gp3-iops-at-io-size` |
+| `xycalc-redis-celery` | broker headroom + outstanding | Celery queue / prefetch / Redis maxmemory |
+| `xycalc-sizing-live` | live inputs + predicted RAM/SKU vs MemTotal | scenario `mongodb.size-to-instance` |
+| `xycalc-wt-cgroup` | WT cache vs anon vs file inside memory.max | `mongodb.host-ram` |
+
+Public URLs: `https://grafana.swamplink.com/d/<uid>` (tunnel: `http://localhost:8108/d/<uid>`).
+ClickHouse, NVMe, Azure Premium v2, and NVD storage models have `grafana_uid: null` — no estate board yet.
+
+A live link is empty until that host is scraped. It is **not** a chart of a historical YAML validation case. Lab probes that *are* scraped can print a time-range URL:
+
+```bash
+python tools/bench/metrics_lab/grafana_link.py --uid xycalc-wt-cgroup \
+  --from-ts "$START" --to-ts "$END" --var container=xycalc-lab-mongo
+```
 
 Panels stay empty until Mongo/Redis/EBS exporters scrape the named series.
 Percona names are aliased in [`recording_rules.yml`](recording_rules.yml);
