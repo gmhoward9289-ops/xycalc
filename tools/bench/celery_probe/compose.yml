@@ -35,11 +35,13 @@ services:
       - ${PROBE_MAXMEMORY:-0}
       - --maxmemory-policy
       - ${PROBE_MAXMEMORY_POLICY:-noeviction}
+    restart: unless-stopped
     mem_limit: 256m
 
   bookkeeping:
     image: redis:7-alpine
     command: ["redis-server", "--save", "", "--appendonly", "no"]
+    restart: unless-stopped
     mem_limit: 256m
 
   mongo:
@@ -48,6 +50,7 @@ services:
     # Bounds the PAGE CACHE, not just the heap. Without it the host serves
     # reads from its own RAM, the block-IO throttle never engages, and the
     # probe reports a healthy database on a "throttled" disk.
+    restart: unless-stopped
     mem_limit: 640m
     memswap_limit: 640m
     blkio_config:
@@ -81,6 +84,7 @@ services:
       PROBE_RETRY_DEADLINE: ${PROBE_RETRY_DEADLINE:-120}
       PROBE_MAX_TIME_MS: ${PROBE_MAX_TIME_MS:-500}
     depends_on: [redis, bookkeeping, mongo]
+    restart: unless-stopped
     mem_limit: 1g
 
   driver:
@@ -124,7 +128,10 @@ services:
     depends_on: [redis, mongo, worker]
     profiles: ["stall"]
     # Needs docker.sock (or host cgroup write) for live throttle rewrite —
-    # run_stall_recover.sh mounts it when available.
+    # run_stall_recover.sh mounts it when available. The image runs as a
+    # non-root user by default; this probe writes host cgroup files, so it
+    # is the one service that stays root.
+    user: "0:0"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - /sys/fs/cgroup:/sys/fs/cgroup:rw
