@@ -36,15 +36,27 @@ services:
       - --maxmemory-policy
       - ${PROBE_MAXMEMORY_POLICY:-noeviction}
     restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /data
     mem_limit: 256m
 
   bookkeeping:
     image: redis:7-alpine
     command: ["redis-server", "--save", "", "--appendonly", "no"]
     restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /data
     mem_limit: 256m
 
   mongo:
+    # The one service left with a writable rootfs ON PURPOSE. The image
+    # declares VOLUME /data/db + /data/configdb as anonymous volumes, so
+    # adding read_only here forces a recreate -- and a recreate makes NEW
+    # anonymous volumes, silently discarding the seeded dataset. Restarts
+    # keep the data; recreates do not. If this ever moves to named volumes,
+    # read_only + tmpfs /tmp becomes safe to add.
     image: mongo:7
     command: ["--wiredTigerCacheSizeGB", "0.25"]
     # Bounds the PAGE CACHE, not just the heap. Without it the host serves
@@ -85,6 +97,9 @@ services:
       PROBE_MAX_TIME_MS: ${PROBE_MAX_TIME_MS:-500}
     depends_on: [redis, bookkeeping, mongo]
     restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp
     mem_limit: 1g
 
   driver:
@@ -174,6 +189,7 @@ services:
       - "127.0.0.1:9216:9216"
     depends_on: [mongo]
     restart: unless-stopped
+    read_only: true
     mem_limit: 128m
 
   redis-exporter:
@@ -183,6 +199,7 @@ services:
       - "127.0.0.1:9121:9121"
     depends_on: [redis]
     restart: unless-stopped
+    read_only: true
     mem_limit: 64m
 
   # Predicted-band sidecar: tools/xycalc_exporter.py evaluates
@@ -207,5 +224,8 @@ services:
     volumes:
       - ../../xycalc_exporter.py:/app/tools/xycalc_exporter.py:ro
     restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp
     profiles: ["metrics"]
     mem_limit: 256m
